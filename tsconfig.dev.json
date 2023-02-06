@@ -3,12 +3,13 @@
   "compilerOptions": {
     "alwaysStrict": true,
     "declaration": true,
-    "esModuleInterop": true,
+    "esModuleInterop": false,
     "experimentalDecorators": true,
     "inlineSourceMap": true,
     "inlineSources": true,
     "lib": [
-      "es2019"
+      "es2020",
+      "es2021.WeakRef"
     ],
     "module": "CommonJS",
     "noEmitOnError": false,
@@ -23,7 +24,12 @@
     "strictNullChecks": true,
     "strictPropertyInitialization": true,
     "stripInternal": true,
-    "target": "ES2019"
+    "target": "ES2020",
+    "skipLibCheck": true,
+    "types": [
+      "jest",
+      "node"
+    ]
   },
   "include": [
     ".projenrc.js",

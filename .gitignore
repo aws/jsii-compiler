@@ -45,4 +45,5 @@ junit.xml
 /lib
 /dist/
 !/.eslintrc.json
+src/version.ts
 !/.github/workflows/release.yml
