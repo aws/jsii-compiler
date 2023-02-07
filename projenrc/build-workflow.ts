@@ -75,7 +75,7 @@ export class BuildWorkflow {
             },
           },
         },
-        name: 'node ${{ matrix.node-version }}',
+        name: 'test (node ${{ matrix.node-version }})',
         needs: ['build'],
         permissions: {},
         runsOn: ['ubuntu-latest'],
