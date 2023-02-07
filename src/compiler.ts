@@ -91,9 +91,13 @@ export class Compiler implements Emitter {
       deleteFile: ts.sys.deleteFile && ((pth) => ts.sys.deleteFile!(path.join(rootDir, pth))),
       fileExists: (pth) => ts.sys.fileExists(path.resolve(rootDir, pth)),
       getFileSize: ts.sys.getFileSize && ((pth) => ts.sys.getFileSize!(path.resolve(rootDir, pth))),
-      readFile: (pth, encoding) => ts.sys.readFile(path.resolve(rootDir,pth), encoding),
-      watchFile: ts.sys.watchFile &&((pth, callback, pollingInterval, options) => ts.sys.watchFile!(path.resolve(rootDir,pth), callback, pollingInterval, options)),
-      writeFile: (pth, data, writeByteOrderMark) => ts.sys.writeFile(path.resolve(rootDir, pth), data, writeByteOrderMark),
+      readFile: (pth, encoding) => ts.sys.readFile(path.resolve(rootDir, pth), encoding),
+      watchFile:
+        ts.sys.watchFile &&
+        ((pth, callback, pollingInterval, watchOptions) =>
+          ts.sys.watchFile!(path.resolve(rootDir, pth), callback, pollingInterval, watchOptions)),
+      writeFile: (pth, data, writeByteOrderMark) =>
+        ts.sys.writeFile(path.resolve(rootDir, pth), data, writeByteOrderMark),
     });
 
     const configFileName = options.generateTypeScriptConfig ?? 'tsconfig.json';
