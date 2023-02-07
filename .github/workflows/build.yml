@@ -33,8 +33,9 @@ jobs:
           path: |-
             ${{ github.workspace }}
             !${{ github.workspace }}/node_modules
+            !${{ github.workspace }}/fixtures/node_modules
   matrix-test:
-    name: node ${{ matrix.node-version }}
+    name: test (node ${{ matrix.node-version }})
     needs: build
     runs-on: ubuntu-latest
     permissions: {}
@@ -53,6 +54,8 @@ jobs:
           cache: yarn
       - name: Install dependencies
         run: yarn install --frozen-lockfile
+      - name: Setup Node.js
+        uses: npx projen post-compile
       - name: Test
         run: npx projen test
       - name: Assert clean working directory
@@ -86,7 +89,7 @@ jobs:
       - name: Install dependencies
         run: yarn install --frozen-lockfile
       - name: Package
-        run: yarn package
+        run: npx projen package
       - name: Upload artifact
         uses: actions/upload-artifact@v3
         with:

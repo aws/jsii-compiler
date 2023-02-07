@@ -4,9 +4,6 @@ import { dirname, join } from 'node:path';
 const fixtureRoot = join(__dirname, '..', 'fixtures');
 const nodeModulesDir = join(fixtureRoot, 'node_modules');
 
-// Ensure we replace the links in case the source gets relocated.
-rmSync(nodeModulesDir, { force: true, recursive: true });
-
 for (const pkg of [
   '@fixtures/jsii-calc-bundled',
   '@scope/jsii-calc-base',

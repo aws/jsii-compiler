@@ -55,6 +55,7 @@ export class BuildWorkflow {
                 '${{ github.workspace }}',
                 // Exclude node_modules to reduce artifact size (we won't use those anyway)...
                 '!${{ github.workspace }}/node_modules',
+                '!${{ github.workspace }}/fixtures/node_modules',
               ].join('\n'),
             },
           },
