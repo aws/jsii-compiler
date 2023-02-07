@@ -1,0 +1,4 @@
+import * as calc from '.';
+const calculator = new calc.Calculator();
+
+/// here

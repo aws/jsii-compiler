@@ -1,0 +1,81 @@
+{
+  "name": "@scope/jsii-calc-base",
+  "version": "0.0.0",
+  "private": true,
+  "description": "An example direct dependency for jsii-calc.",
+  "license": "Apache-2.0",
+  "author": {
+    "name": "Amazon Web Services",
+    "url": "https://aws.amazon.com",
+    "organization": true
+  },
+  "homepage": "https://github.com/aws/jsii",
+  "bugs": {
+    "url": "https://github.com/aws/jsii/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/aws/jsii.git",
+    "directory": "packages/@scope/jsii-calc-base"
+  },
+  "engines": {
+    "node": ">= 14.6.0"
+  },
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "scripts": {
+    "build": "jsii --project-references && jsii-rosetta",
+    "test": "diff-test test/assembly.jsii .jsii",
+    "test:update": "npm run build && UPDATE_DIFF=1 npm run test"
+  },
+  "dependencies": {
+    "@scope/jsii-calc-base-of-base": "^2.1.1"
+  },
+  "peerDependencies": {
+    "@scope/jsii-calc-base-of-base": "^2.1.1"
+  },
+  "devDependencies": {
+    "jsii": "^0.0.0",
+    "jsii-build-tools": "^0.0.0",
+    "jsii-rosetta": "^0.0.0"
+  },
+  "jsii": {
+    "metadata": {
+      "jsii": {
+        "pacmak": {
+          "hasDefaultInterfaces": false
+        },
+        "rosetta": {
+          "strict": true
+        }
+      }
+    },
+    "outdir": "dist",
+    "targets": {
+      "go": {
+        "moduleName": "github.com/aws/jsii/jsii-calc/go",
+        "packageName": "jcb"
+      },
+      "java": {
+        "package": "software.amazon.jsii.tests.calculator.base",
+        "maven": {
+          "groupId": "software.amazon.jsii.tests",
+          "artifactId": "calculator-base"
+        }
+      },
+      "dotnet": {
+        "namespace": "Amazon.JSII.Tests.CalculatorNamespace.BaseNamespace",
+        "packageId": "Amazon.JSII.Tests.CalculatorPackageId.BasePackageId",
+        "iconUrl": "https://raw.githubusercontent.com/aws/aws-cdk/main/logo/default-256-dark.png"
+      },
+      "python": {
+        "distName": "scope.jsii-calc-base",
+        "module": "scope.jsii_calc_base"
+      }
+    },
+    "tsc": {
+      "types": []
+    },
+    "versionFormat": "short"
+  }
+}

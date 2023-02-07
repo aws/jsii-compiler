@@ -1,0 +1,16 @@
+tsconfig.json
+dist
+.jsii
+*.tgz
+
+tsconfig.json
+dist
+.jsii
+
+*.js
+*.d.ts
+*.tsbuildinfo
+node_modules/
+.nyc_output/
+coverage/
+*.d.ts.map

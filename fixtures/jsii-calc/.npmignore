@@ -1,0 +1,15 @@
+# Don't include original .ts files when doing `npm pack`
+*.ts
+!*.d.ts
+*.tgz
+
+# Include .jsii and .jsii.gz
+!.jsii
+!.jsii.gz
+
+
+# Exclude jsii outdir
+dist
+
+tsconfig.json
+*.tsbuildinfo

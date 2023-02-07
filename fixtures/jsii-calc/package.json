@@ -1,0 +1,129 @@
+{
+  "name": "jsii-calc",
+  "version": "3.20.120",
+  "private": true,
+  "description": "A simple calcuator built on JSII.",
+  "stability": "stable",
+  "license": "Apache-2.0",
+  "author": {
+    "name": "Amazon Web Services",
+    "url": "https://aws.amazon.com",
+    "organization": true
+  },
+  "homepage": "https://github.com/aws/jsii",
+  "bugs": {
+    "url": "https://github.com/aws/jsii/issues"
+  },
+  "bin": {
+    "calc": "bin/run"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/aws/jsii.git",
+    "directory": "packages/jsii-calc"
+  },
+  "keywords": [
+    "aws",
+    "jsii",
+    "test"
+  ],
+  "engines": {
+    "node": ">= 14.6.0"
+  },
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "scripts": {
+    "build": "jsii --project-references --silence-warnings reserved-word && npm run lint && jsii-rosetta --compile --verbose",
+    "watch": "jsii --project-references -w",
+    "lint": "eslint . --ext .js,.ts --ignore-path=.gitignore",
+    "lint:fix": "yarn lint --fix",
+    "test": "(ls test/test.*.js | xargs -n1 node) && diff-test test/assembly.jsii .jsii",
+    "test:update": "npm run build && UPDATE_DIFF=1 npm run test",
+    "update": "./update-all.sh"
+  },
+  "dependencies": {
+    "@fixtures/jsii-calc-bundled": "file:../@fixtures/jsii-calc-bundled",
+    "@scope/jsii-calc-base": "^0.0.0",
+    "@scope/jsii-calc-lib": "^0.0.0"
+  },
+  "peerDependencies": {
+    "@scope/jsii-calc-base": "^0.0.0",
+    "@scope/jsii-calc-lib": "^0.0.0"
+  },
+  "devDependencies": {
+    "jsii": "^0.0.0",
+    "jsii-build-tools": "^0.0.0",
+    "jsii-rosetta": "^0.0.0"
+  },
+  "jsii": {
+    "outdir": "dist",
+    "targets": {
+      "go": {
+        "moduleName": "github.com/aws/jsii/jsii-calc/go"
+      },
+      "java": {
+        "package": "software.amazon.jsii.tests.calculator",
+        "maven": {
+          "groupId": "software.amazon.jsii.tests",
+          "artifactId": "calculator"
+        }
+      },
+      "dotnet": {
+        "namespace": "Amazon.JSII.Tests.CalculatorNamespace",
+        "packageId": "Amazon.JSII.Tests.CalculatorPackageId",
+        "iconUrl": "https://sdk-for-net.amazonwebservices.com/images/AWSLogo128x128.png"
+      },
+      "python": {
+        "distName": "jsii-calc",
+        "module": "jsii_calc",
+        "classifiers": [
+          "Test :: Classifier :: Is Dummy"
+        ]
+      }
+    },
+    "tsc": {
+      "types": [
+        "node"
+      ]
+    },
+    "metadata": {
+      "jsii:boolean": true,
+      "jsii:number": 1337,
+      "jsii:object": {
+        "string": "yes!"
+      },
+      "jsii": {
+        "rosetta": {
+          "strict": true
+        }
+      }
+    },
+    "versionFormat": "short"
+  },
+  "bundledDependencies": [
+    "@fixtures/jsii-calc-bundled"
+  ],
+  "contributors": [
+    {
+      "name": "Elad Ben-Israel",
+      "url": "https://github.com/eladb",
+      "roles": [
+        "maintainer"
+      ]
+    },
+    {
+      "name": "Rico Huijbers",
+      "url": "https://github.com/rix0rrr",
+      "roles": [
+        "maintainer"
+      ]
+    },
+    {
+      "name": "Romain Marcadier-Muller",
+      "url": "https://github.com/RomainMuller",
+      "roles": [
+        "maintainer"
+      ]
+    }
+  ]
+}
