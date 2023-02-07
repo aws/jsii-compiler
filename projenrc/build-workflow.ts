@@ -97,6 +97,7 @@ export class BuildWorkflow {
             name: 'Install dependencies',
             run: 'yarn install --frozen-lockfile',
           },
+          // Re-run post-compile to ensure /fixtures/ symlinks are correctly present...
           {
             name: 'Setup Node.js',
             uses: 'npx projen post-compile',
