@@ -147,7 +147,7 @@ export class BuildWorkflow {
             },
           },
         ],
-      }
+      },
     });
   }
 }

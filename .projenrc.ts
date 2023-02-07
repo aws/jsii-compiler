@@ -1,6 +1,6 @@
 import { javascript, typescript } from 'projen';
-import { JsiiCalcFixtures } from './projenrc/fixtures';
 import { BuildWorkflow } from './projenrc/build-workflow';
+import { JsiiCalcFixtures } from './projenrc/fixtures';
 import { ReleaseWorkflow } from './projenrc/release';
 
 const project = new typescript.TypeScriptProject({
