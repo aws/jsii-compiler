@@ -100,8 +100,8 @@ export class BuildWorkflow {
           },
           // Re-run post-compile to ensure /fixtures/ symlinks are correctly present...
           {
-            name: 'Setup Node.js',
-            uses: 'npx projen post-compile',
+            name: 'Re-run post-compile',
+            run: 'npx projen post-compile',
           },
           { name: 'Test', run: 'npx projen test' },
           {
