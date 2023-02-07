@@ -1,5 +1,5 @@
-import * as fs from 'fs';
-import * as path from 'path';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 import * as chalk from 'chalk';
 import * as log4js from 'log4js';
 import * as ts from 'typescript';
@@ -467,9 +467,9 @@ export class Compiler implements Emitter {
       if (dependencyMap === undefined) {
         continue;
       }
-      Object.keys(dependencyMap).forEach(
-        dependencyNames.add.bind(dependencyNames),
-      );
+      for (const name of Object.keys(dependencyMap)) {
+        dependencyNames.add(name);
+      }
     }
 
     for (const tsconfigFile of Array.from(dependencyNames).map((depName) =>
@@ -551,7 +551,7 @@ export class Compiler implements Emitter {
    */
   private findMonorepoPeerTsconfig(depName: string): string | undefined {
     // eslint-disable-next-line @typescript-eslint/no-require-imports,@typescript-eslint/no-var-requires
-    const { builtinModules } = require('module');
+    const { builtinModules } = require('node:module');
     if ((builtinModules ?? []).includes(depName)) {
       // Can happen for modules like 'punycode' which are declared as dependency for polyfill purposes
       return undefined;

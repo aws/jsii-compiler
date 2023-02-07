@@ -7,7 +7,8 @@
   "root": true,
   "plugins": [
     "@typescript-eslint",
-    "import"
+    "import",
+    "unicorn"
   ],
   "parser": "@typescript-eslint/parser",
   "parserOptions": {
@@ -221,6 +222,15 @@
           "method"
         ]
       }
+    ],
+    "unicorn/prefer-node-protocol": [
+      "error"
+    ],
+    "unicorn/no-array-for-each": [
+      "error"
+    ],
+    "unicorn/no-unnecessary-await": [
+      "error"
     ]
   },
   "overrides": [

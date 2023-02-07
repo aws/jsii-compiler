@@ -13,7 +13,7 @@ const project = new typescript.TypeScriptProject({
   homepage: 'https://aws.github.io/jsii',
   repository: 'https://github.com/aws/jsii-compiler.git',
 
-  minNodeVersion: '14.6.0',
+  minNodeVersion: '14.18.0',
   tsconfig: {
     compilerOptions: {
       // @see https://github.com/microsoft/TypeScript/wiki/Node-Target-Mapping
@@ -57,6 +57,7 @@ project.addDevDeps(
   '@types/semver',
   'all-contributors-cli',
   'clone',
+  'eslint-plugin-unicorn',
 );
 
 project.preCompileTask.exec('ts-node build-tools/code-gen.ts', { name: 'code-gen' });
@@ -65,6 +66,14 @@ project.gitignore.addPatterns('src/version.ts');
 // Customize ESLint rules
 project.tsconfigDev.addInclude('build-tools/**/*.ts');
 project.eslint!.rules!['no-bitwise'] = ['off']; // The TypeScript compiler API leverages some bit-flags.
+
+// Add Unicorn rules (https://github.com/sindresorhus/eslint-plugin-unicorn#rules)
+project.eslint?.addPlugins('unicorn');
+project.eslint?.addRules({
+  'unicorn/prefer-node-protocol': ['error'],
+  'unicorn/no-array-for-each': ['error'],
+  'unicorn/no-unnecessary-await': ['error'],
+});
 
 new ReleaseWorkflow(project);
 

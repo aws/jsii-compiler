@@ -1,5 +1,5 @@
-import * as fs from 'fs';
-import * as path from 'path';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 import * as spec from '@jsii/spec';
 import { findAssemblyFile, loadAssemblyFromFile } from '@jsii/spec';
 import * as log4js from 'log4js';

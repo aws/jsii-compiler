@@ -6,9 +6,9 @@
  * well put it in one reusable place.
  */
 
-import * as fs from 'fs';
-import * as os from 'os';
-import * as path from 'path';
+import * as fs from 'node:fs';
+import * as os from 'node:os';
+import * as path from 'node:path';
 import { PackageJson, loadAssemblyFromPath, writeAssembly } from '@jsii/spec';
 import * as spec from '@jsii/spec';
 import { DiagnosticCategory } from 'typescript';
@@ -91,10 +91,10 @@ export function compileJsiiForTest(
   // Easiest way to get the source into the compiler is to write it to disk somewhere.
   // I guess we could make an in-memory compiler host but that seems like work...
   return inSomeLocation(() => {
-    Object.entries(source).forEach(([fileName, content]) => {
+    for (const [fileName, content] of Object.entries(source)) {
       fs.mkdirSync(path.dirname(fileName), { recursive: true });
       fs.writeFileSync(fileName, content, { encoding: 'utf-8' });
-    });
+    }
     const { projectInfo, packageJson } = makeProjectInfo(
       'index.ts',
       typeof options === 'function'

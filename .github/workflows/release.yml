@@ -24,7 +24,7 @@ jobs:
         uses: actions/setup-node@v3
         with:
           cache: yarn
-          node-version: 14.6.0
+          node-version: 14.18.0
       - name: Install dependencies
         run: yarn install --frozen-lockfile
       - name: Prepare Release
@@ -49,7 +49,7 @@ jobs:
         uses: actions/setup-node@v3
         with:
           cache: yarn
-          node-version: 14.6.0
+          node-version: 14.18.0
       - name: Download artifact
         uses: actions/download-artifact@v3
         with:
@@ -82,7 +82,7 @@ jobs:
         uses: actions/setup-node@v3
         with:
           cache: yarn
-          node-version: 14.6.0
+          node-version: 14.18.0
       - name: Download artifact
         uses: actions/download-artifact@v3
         with:

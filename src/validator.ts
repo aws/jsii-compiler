@@ -643,7 +643,7 @@ function _allMethods(
     if (!type.methods) {
       continue;
     }
-    type.methods.forEach((method) => methods.push({ member: method, type }));
+    for (const method of type.methods) methods.push({ member: method, type });
   }
   return methods;
 }
@@ -659,9 +659,8 @@ function _allProperties(
     if (!type.properties) {
       continue;
     }
-    type.properties.forEach((property) =>
-      properties.push({ member: property, type }),
-    );
+    for (const property of type.properties) properties.push({ member: property, type })
+    ;
   }
   return properties;
 }
@@ -705,7 +704,7 @@ function _allTypeReferences(
     }
     if (type.interfaces) {
       const node = bindings.getClassOrInterfaceRelatedNode(type);
-      type.interfaces.forEach((iface) =>
+      for (const iface of type.interfaces) {
         typeReferences.push({
           fqn: iface,
           node: node?.heritageClauses?.find(
@@ -715,8 +714,9 @@ function _allTypeReferences(
                 ? ts.SyntaxKind.ImplementsKeyword
                 : ts.SyntaxKind.ExtendsKeyword),
           ),
-        }),
-      );
+        })
+        ;
+      }
     }
   }
   for (const { member: prop } of _allProperties(assm)) {
@@ -750,7 +750,7 @@ function _allTypeReferences(
     } else if (spec.isCollectionTypeReference(type)) {
       _collectTypeReferences(type.collection.elementtype, node);
     } else if (spec.isUnionTypeReference(type)) {
-      type.union.types.forEach((t) => _collectTypeReferences(t, node));
+      for (const t of type.union.types) _collectTypeReferences(t, node);
     }
   }
 }

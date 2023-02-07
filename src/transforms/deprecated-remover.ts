@@ -1,4 +1,4 @@
-import { basename, dirname, relative } from 'path';
+import { basename, dirname, relative } from 'node:path';
 import {
   Assembly,
   ClassType,
@@ -103,7 +103,7 @@ export class DeprecatedRemover {
       if (isEnumType(typeInfo)) {
         const enumNode = bindings.getEnumRelatedNode(typeInfo)!;
         const members: EnumMember[] = [];
-        typeInfo.members.forEach((mem) => {
+        for (const mem of typeInfo.members) {
           if (
             mem.docs?.stability === Stability.Deprecated &&
             this.shouldFqnBeStripped(`${fqn}#${mem.name}`)
@@ -117,7 +117,7 @@ export class DeprecatedRemover {
           } else {
             members.push(mem);
           }
-        });
+        }
         typeInfo.members = members;
         continue;
       }
@@ -131,7 +131,7 @@ export class DeprecatedRemover {
       ) {
         while (typeInfo.base != null && strippedFqns.has(typeInfo.base)) {
           const oldBase = assembly.types[typeInfo.base] as ClassType;
-          oldBase.interfaces?.forEach((addFqn) => additionalInterfaces.add(addFqn));
+          if (oldBase.interfaces) for (const addFqn of oldBase.interfaces) additionalInterfaces.add(addFqn);
           typeInfo.base = replaceWithClass.get(typeInfo.base);
         }
         this.transformations.push(
@@ -213,35 +213,39 @@ export class DeprecatedRemover {
       // Drop all `@deprecated` members, and remove "overrides" from stripped types
       const methods: Method[] = [];
       const properties: Property[] = [];
-      typeInfo.methods?.forEach((meth) => {
-        if (
-          meth.docs?.stability === Stability.Deprecated &&
+      if (typeInfo.methods) {
+        for (const meth of typeInfo.methods) {
+          if (
+            meth.docs?.stability === Stability.Deprecated &&
           this.shouldFqnBeStripped(`${fqn}#${meth.name}`)
-        ) {
-          this.nodesToRemove.add(bindings.getMethodRelatedNode(meth)!);
-        } else {
-          methods.push(
-            meth.overrides != null && strippedFqns.has(meth.overrides)
-              ? { ...meth, overrides: undefined }
-              : meth,
-          );
+          ) {
+            this.nodesToRemove.add(bindings.getMethodRelatedNode(meth)!);
+          } else {
+            methods.push(
+              meth.overrides != null && strippedFqns.has(meth.overrides)
+                ? { ...meth, overrides: undefined }
+                : meth,
+            );
+          }
         }
-      });
+      }
       typeInfo.methods = typeInfo.methods ? methods : undefined;
-      typeInfo.properties?.forEach((prop) => {
-        if (
-          prop.docs?.stability === Stability.Deprecated &&
+      if (typeInfo.properties) {
+        for (const prop of typeInfo.properties) {
+          if (
+            prop.docs?.stability === Stability.Deprecated &&
           this.shouldFqnBeStripped(`${fqn}#${prop.name}`)
-        ) {
-          this.nodesToRemove.add(bindings.getParameterRelatedNode(prop)!);
-        } else {
-          properties.push(
-            prop.overrides != null && strippedFqns.has(prop.overrides)
-              ? { ...prop, overrides: undefined }
-              : prop,
-          );
+          ) {
+            this.nodesToRemove.add(bindings.getParameterRelatedNode(prop)!);
+          } else {
+            properties.push(
+              prop.overrides != null && strippedFqns.has(prop.overrides)
+                ? { ...prop, overrides: undefined }
+                : prop,
+            );
+          }
         }
-      });
+      }
       typeInfo.properties = typeInfo.properties ? properties : undefined;
     }
 
@@ -280,12 +284,10 @@ export class DeprecatedRemover {
           ...this.verifyCallable(assembly, strippedFqns, type.initializer),
         );
       }
-      type.methods?.forEach((method) =>
-        result.push(...this.verifyCallable(assembly, strippedFqns, method)),
-      );
-      type.properties?.forEach((property) =>
-        result.push(...this.verifyProperty(assembly, strippedFqns, property)),
-      );
+      if (type.methods) for (const method of type.methods) result.push(...this.verifyCallable(assembly, strippedFqns, method))
+      ;
+      if (type.properties) for (const property of type.properties) result.push(...this.verifyProperty(assembly, strippedFqns, property))
+      ;
     }
 
     return result;

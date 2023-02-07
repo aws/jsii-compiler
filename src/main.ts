@@ -1,7 +1,7 @@
 import '@jsii/check-node/run';
 
-import * as path from 'path';
-import * as util from 'util';
+import * as path from 'node:path';
+import * as util from 'node:util';
 import * as log4js from 'log4js';
 import { version as tsVersion } from 'typescript/package.json';
 import * as yargs from 'yargs';

@@ -1,7 +1,7 @@
-import { spawnSync } from 'child_process';
-import { readFileSync, writeFileSync } from 'fs';
-import * as os from 'os';
-import { join } from 'path';
+import { spawnSync } from 'node:child_process';
+import { readFileSync, writeFileSync } from 'node:fs';
+import * as os from 'node:os';
+import { join } from 'node:path';
 import * as gh from '@actions/github';
 
 const { version } = JSON.parse(readFileSync(join(__dirname, '..', 'package.json'), 'utf-8'));

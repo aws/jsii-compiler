@@ -56,8 +56,8 @@
  *     console.log(x);
  *     ```
  */
-import * as fs from 'fs';
-import * as path from 'path';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 
 /**
  * Convert an annotated TypeScript source file to MarkDown
