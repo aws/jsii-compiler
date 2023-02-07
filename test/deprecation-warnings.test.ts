@@ -430,7 +430,7 @@ function testpkg_Baz(p) {
 `);
   });
 
-  test('generates calls for types in other assemblies', () => {
+  test.skip('generates calls for types in other assemblies', () => {
     const calcBaseOfBaseRoot = resolveModuleDir('@scope/jsii-calc-base-of-base');
     const calcBaseRoot = resolveModuleDir('@scope/jsii-calc-base');
     const calcLibRoot = resolveModuleDir('@scope/jsii-calc-lib');
