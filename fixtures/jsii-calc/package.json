@@ -32,15 +32,6 @@
   },
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
-  "scripts": {
-    "build": "jsii --project-references --silence-warnings reserved-word && npm run lint && jsii-rosetta --compile --verbose",
-    "watch": "jsii --project-references -w",
-    "lint": "eslint . --ext .js,.ts --ignore-path=.gitignore",
-    "lint:fix": "yarn lint --fix",
-    "test": "(ls test/test.*.js | xargs -n1 node) && diff-test test/assembly.jsii .jsii",
-    "test:update": "npm run build && UPDATE_DIFF=1 npm run test",
-    "update": "./update-all.sh"
-  },
   "dependencies": {
     "@fixtures/jsii-calc-bundled": "file:../@fixtures/jsii-calc-bundled",
     "@scope/jsii-calc-base": "^0.0.0",
@@ -49,11 +40,6 @@
   "peerDependencies": {
     "@scope/jsii-calc-base": "^0.0.0",
     "@scope/jsii-calc-lib": "^0.0.0"
-  },
-  "devDependencies": {
-    "jsii": "^0.0.0",
-    "jsii-build-tools": "^0.0.0",
-    "jsii-rosetta": "^0.0.0"
   },
   "jsii": {
     "outdir": "dist",
