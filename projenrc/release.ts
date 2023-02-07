@@ -163,13 +163,10 @@ class ReleaseTask {
       description: 'Prepare a release bundle',
     });
 
-    task.exec(
-      'ts-node projenrc/set-version.ts',
-      {
-        name: 'set-version',
-        receiveArgs: true,
-      },
-    );
+    task.exec('ts-node projenrc/set-version.ts', {
+      name: 'set-version',
+      receiveArgs: true,
+    });
 
     task.spawn(project.preCompileTask);
     task.spawn(project.compileTask);
@@ -177,11 +174,8 @@ class ReleaseTask {
 
     task.spawn(project.packageTask);
 
-    task.exec(
-      'yarn version --no-git-tag-version --new-version 0.0.0',
-      {
-        name: 'reset-version',
-      },
-    );
+    task.exec('yarn version --no-git-tag-version --new-version 0.0.0', {
+      name: 'reset-version',
+    });
   }
 }

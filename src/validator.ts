@@ -13,10 +13,7 @@ import { ProjectInfo } from './project-info';
 export class Validator implements Emitter {
   public static VALIDATIONS: ValidationFunction[] = _defaultValidations();
 
-  public constructor(
-    public readonly projectInfo: ProjectInfo,
-    public readonly assembly: spec.Assembly,
-  ) {}
+  public constructor(public readonly projectInfo: ProjectInfo, public readonly assembly: spec.Assembly) {}
 
   public emit(): ts.EmitResult {
     const diagnostics = new Array<ts.Diagnostic>();
@@ -27,19 +24,13 @@ export class Validator implements Emitter {
 
     return {
       diagnostics: diagnostics,
-      emitSkipped: diagnostics.some(
-        (diag) => diag.category === ts.DiagnosticCategory.Error,
-      ),
+      emitSkipped: diagnostics.some((diag) => diag.category === ts.DiagnosticCategory.Error),
     };
   }
 }
 
 export type DiagnosticEmitter = (diag: JsiiDiagnostic) => void;
-export type ValidationFunction = (
-  validator: Validator,
-  assembly: spec.Assembly,
-  diagnostic: DiagnosticEmitter,
-) => void;
+export type ValidationFunction = (validator: Validator, assembly: spec.Assembly, diagnostic: DiagnosticEmitter) => void;
 
 function _defaultValidations(): ValidationFunction[] {
   return [
@@ -52,11 +43,7 @@ function _defaultValidations(): ValidationFunction[] {
     _staticMembersAndNestedTypesMustNotSharePascalCaseName,
   ];
 
-  function _enumMembersMustUserUpperSnakeCase(
-    _: Validator,
-    assembly: spec.Assembly,
-    diagnostic: DiagnosticEmitter,
-  ) {
+  function _enumMembersMustUserUpperSnakeCase(_: Validator, assembly: spec.Assembly, diagnostic: DiagnosticEmitter) {
     for (const type of _allTypes(assembly)) {
       if (!spec.isEnumType(type)) {
         continue;
@@ -64,33 +51,19 @@ function _defaultValidations(): ValidationFunction[] {
 
       for (const member of type.members) {
         if (member.name && !isConstantCase(member.name)) {
-          diagnostic(
-            JsiiDiagnostic.JSII_8001_ALL_CAPS_ENUM_MEMBERS.createDetached(
-              member.name,
-              type.fqn,
-            ),
-          );
+          diagnostic(JsiiDiagnostic.JSII_8001_ALL_CAPS_ENUM_MEMBERS.createDetached(member.name, type.fqn));
         }
       }
     }
   }
 
-  function _memberNamesMustUseCamelCase(
-    _: Validator,
-    assembly: spec.Assembly,
-    diagnostic: DiagnosticEmitter,
-  ) {
+  function _memberNamesMustUseCamelCase(_: Validator, assembly: spec.Assembly, diagnostic: DiagnosticEmitter) {
     for (const { member, type } of _allMembers(assembly)) {
       if (member.static && (member as spec.Property).const) {
         continue;
       }
       if (member.name && member.name !== Case.camel(member.name)) {
-        diagnostic(
-          JsiiDiagnostic.JSII_8002_CAMEL_CASED_MEMBERS.createDetached(
-            member.name,
-            type.fqn,
-          ),
-        );
+        diagnostic(JsiiDiagnostic.JSII_8002_CAMEL_CASED_MEMBERS.createDetached(member.name, type.fqn));
       }
     }
   }
@@ -110,12 +83,7 @@ function _defaultValidations(): ValidationFunction[] {
         member.name !== Case.pascal(member.name) &&
         member.name !== Case.camel(member.name)
       ) {
-        diagnostic(
-          JsiiDiagnostic.JSII_8003_STATIC_CONST_CASING.createDetached(
-            member.name,
-            type.name,
-          ),
-        );
+        diagnostic(JsiiDiagnostic.JSII_8003_STATIC_CONST_CASING.createDetached(member.name, type.name));
       }
     }
   }
@@ -130,35 +98,15 @@ function _defaultValidations(): ValidationFunction[] {
         continue;
       }
       const snakeName = Case.snake(member.name);
-      if (
-        snakeName.startsWith('get_') &&
-        _isEmpty((member as spec.Method).parameters)
-      ) {
-        diagnostic(
-          JsiiDiagnostic.JSII_5000_JAVA_GETTERS.createDetached(
-            member.name,
-            type.name,
-          ),
-        );
-      } else if (
-        snakeName.startsWith('set_') &&
-        ((member as spec.Method).parameters ?? []).length === 1
-      ) {
-        diagnostic(
-          JsiiDiagnostic.JSII_5001_JAVA_SETTERS.createDetached(
-            member.name,
-            type.name,
-          ),
-        );
+      if (snakeName.startsWith('get_') && _isEmpty((member as spec.Method).parameters)) {
+        diagnostic(JsiiDiagnostic.JSII_5000_JAVA_GETTERS.createDetached(member.name, type.name));
+      } else if (snakeName.startsWith('set_') && ((member as spec.Method).parameters ?? []).length === 1) {
+        diagnostic(JsiiDiagnostic.JSII_5001_JAVA_SETTERS.createDetached(member.name, type.name));
       }
     }
   }
 
-  function _allTypeReferencesAreValid(
-    validator: Validator,
-    assembly: spec.Assembly,
-    diagnostic: DiagnosticEmitter,
-  ) {
+  function _allTypeReferencesAreValid(validator: Validator, assembly: spec.Assembly, diagnostic: DiagnosticEmitter) {
     for (const typeRef of _allTypeReferences(assembly)) {
       const [assm] = typeRef.fqn.split('.');
       if (assembly.name === assm) {
@@ -172,19 +120,13 @@ function _defaultValidations(): ValidationFunction[] {
         }
         continue;
       }
-      const foreignAssm = validator.projectInfo.dependencyClosure.find(
-        (dep) => dep.name === assm,
-      );
+      const foreignAssm = validator.projectInfo.dependencyClosure.find((dep) => dep.name === assm);
       if (!foreignAssm) {
-        diagnostic(
-          JsiiDiagnostic.JSII_9000_UNKNOWN_MODULE.createDetached(assm),
-        );
+        diagnostic(JsiiDiagnostic.JSII_9000_UNKNOWN_MODULE.createDetached(assm));
         continue;
       }
       if (!(typeRef.fqn in (foreignAssm.types ?? {}))) {
-        diagnostic(
-          JsiiDiagnostic.JSII_9001_TYPE_NOT_FOUND.createDetached(typeRef),
-        );
+        diagnostic(JsiiDiagnostic.JSII_9001_TYPE_NOT_FOUND.createDetached(typeRef));
       }
     }
   }
@@ -203,10 +145,7 @@ function _defaultValidations(): ValidationFunction[] {
           _validatePropertyOverride(property, type);
         }
       }
-      if (
-        spec.isClassOrInterfaceType(type) &&
-        (type.interfaces?.length ?? 0) > 0
-      ) {
+      if (spec.isClassOrInterfaceType(type) && (type.interfaces?.length ?? 0) > 0) {
         for (const method of _allImplementations(type, (t) => t.methods)) {
           _validateMethodImplementation(method, type);
         }
@@ -269,98 +208,53 @@ function _defaultValidations(): ValidationFunction[] {
       return result;
     }
 
-    function _validateMethodOverride(
-      method: spec.Method,
-      type: spec.ClassType,
-    ): boolean {
+    function _validateMethodOverride(method: spec.Method, type: spec.ClassType): boolean {
       if (!type.base) {
         return false;
       }
-      const baseType = _dereference(
-        type.base,
-        assembly,
-        validator,
-      ) as spec.ClassType;
+      const baseType = _dereference(type.base, assembly, validator) as spec.ClassType;
       if (!baseType) {
         return false;
       }
-      const overridden = (baseType.methods ?? []).find(
-        (m) => m.name === method.name,
-      );
+      const overridden = (baseType.methods ?? []).find((m) => m.name === method.name);
       if (!overridden) {
         return _validateMethodOverride(method, baseType);
       }
-      _assertSignaturesMatch(
-        overridden,
-        method,
-        `${type.fqn}#${method.name}`,
-        `overriding ${baseType.fqn}`,
-      );
+      _assertSignaturesMatch(overridden, method, `${type.fqn}#${method.name}`, `overriding ${baseType.fqn}`);
       method.overrides = baseType.fqn;
       return true;
     }
 
-    function _validatePropertyOverride(
-      property: spec.Property,
-      type: spec.ClassType,
-    ): boolean {
+    function _validatePropertyOverride(property: spec.Property, type: spec.ClassType): boolean {
       if (!type.base) {
         return false;
       }
-      const baseType = _dereference(
-        type.base,
-        assembly,
-        validator,
-      ) as spec.ClassType;
+      const baseType = _dereference(type.base, assembly, validator) as spec.ClassType;
       if (!baseType) {
         return false;
       }
-      const overridden = (baseType.properties ?? []).find(
-        (p) => p.name === property.name,
-      );
+      const overridden = (baseType.properties ?? []).find((p) => p.name === property.name);
       if (!overridden) {
         return _validatePropertyOverride(property, baseType);
       }
-      _assertPropertiesMatch(
-        overridden,
-        property,
-        `${type.fqn}#${property.name}`,
-        `overriding ${baseType.fqn}`,
-      );
+      _assertPropertiesMatch(overridden, property, `${type.fqn}#${property.name}`, `overriding ${baseType.fqn}`);
       property.overrides = baseType.fqn;
       return true;
     }
 
-    function _validateMethodImplementation(
-      method: spec.Method,
-      type: spec.ClassType | spec.InterfaceType,
-    ): boolean {
+    function _validateMethodImplementation(method: spec.Method, type: spec.ClassType | spec.InterfaceType): boolean {
       if (!type.interfaces) {
         // Abstract classes may not directly implement all members, need to check their supertypes...
         if (spec.isClassType(type) && type.base && type.abstract) {
-          return _validateMethodImplementation(
-            method,
-            _dereference(type.base, assembly, validator) as spec.ClassType,
-          );
+          return _validateMethodImplementation(method, _dereference(type.base, assembly, validator) as spec.ClassType);
         }
         return false;
       }
       for (const iface of type.interfaces) {
-        const ifaceType = _dereference(
-          iface,
-          assembly,
-          validator,
-        ) as spec.InterfaceType;
-        const implemented = (ifaceType.methods ?? []).find(
-          (m) => m.name === method.name,
-        );
+        const ifaceType = _dereference(iface, assembly, validator) as spec.InterfaceType;
+        const implemented = (ifaceType.methods ?? []).find((m) => m.name === method.name);
         if (implemented) {
-          _assertSignaturesMatch(
-            implemented,
-            method,
-            `${type.fqn}#${method.name}`,
-            `implementing ${ifaceType.fqn}`,
-          );
+          _assertSignaturesMatch(implemented, method, `${type.fqn}#${method.name}`, `implementing ${ifaceType.fqn}`);
           // We won't replace a previous overrides declaration from a method override, as those have
           // higher precedence than an initial implementation.
           method.overrides = method.overrides ?? iface;
@@ -388,14 +282,8 @@ function _defaultValidations(): ValidationFunction[] {
         return false;
       }
       for (const iface of type.interfaces) {
-        const ifaceType = _dereference(
-          iface,
-          assembly,
-          validator,
-        ) as spec.InterfaceType;
-        const implemented = (ifaceType.properties ?? []).find(
-          (p) => p.name === property.name,
-        );
+        const ifaceType = _dereference(iface, assembly, validator) as spec.InterfaceType;
+        const implemented = (ifaceType.properties ?? []).find((p) => p.name === property.name);
         if (implemented) {
           _assertPropertiesMatch(
             implemented,
@@ -415,12 +303,7 @@ function _defaultValidations(): ValidationFunction[] {
       return false;
     }
 
-    function _assertSignaturesMatch(
-      expected: spec.Method,
-      actual: spec.Method,
-      label: string,
-      action: string,
-    ) {
+    function _assertSignaturesMatch(expected: spec.Method, actual: spec.Method, label: string, action: string) {
       if (!!expected.protected !== !!actual.protected) {
         const expVisibility = expected.protected ? 'protected' : 'public';
         const actVisibility = actual.protected ? 'protected' : 'public';
@@ -437,12 +320,7 @@ function _defaultValidations(): ValidationFunction[] {
         const expType = spec.describeTypeReference(expected.returns?.type);
         const actType = spec.describeTypeReference(actual.returns?.type);
         diagnostic(
-          JsiiDiagnostic.JSII_5003_OVERRIDE_CHANGES_RETURN_TYPE.createDetached(
-            label,
-            action,
-            actType,
-            expType,
-          ),
+          JsiiDiagnostic.JSII_5003_OVERRIDE_CHANGES_RETURN_TYPE.createDetached(label, action, actType, expType),
         );
       }
       const expectedParams = expected.parameters ?? [];
@@ -463,12 +341,7 @@ function _defaultValidations(): ValidationFunction[] {
         const actParam = actualParams[i];
         if (!deepEqual(expParam.type, actParam.type)) {
           diagnostic(
-            JsiiDiagnostic.JSII_5006_OVERRIDE_CHANGES_PARAM_TYPE.createDetached(
-              label,
-              action,
-              actParam,
-              expParam,
-            ),
+            JsiiDiagnostic.JSII_5006_OVERRIDE_CHANGES_PARAM_TYPE.createDetached(label, action, actParam, expParam),
           );
         }
         // Not-ing those to force the values to a strictly boolean context (they're optional, undefined means false)
@@ -484,23 +357,13 @@ function _defaultValidations(): ValidationFunction[] {
         }
         if (expParam.optional !== actParam.optional) {
           diagnostic(
-            JsiiDiagnostic.JSII_5008_OVERRIDE_CHANGES_PARAM_OPTIONAL.createDetached(
-              label,
-              action,
-              actParam,
-              expParam,
-            ),
+            JsiiDiagnostic.JSII_5008_OVERRIDE_CHANGES_PARAM_OPTIONAL.createDetached(label, action, actParam, expParam),
           );
         }
       }
     }
 
-    function _assertPropertiesMatch(
-      expected: spec.Property,
-      actual: spec.Property,
-      label: string,
-      action: string,
-    ) {
+    function _assertPropertiesMatch(expected: spec.Property, actual: spec.Property, label: string, action: string) {
       const actualNode = bindings.getPropertyRelatedNode(actual);
       const expectedNode = bindings.getPropertyRelatedNode(expected);
       if (!!expected.protected !== !!actual.protected) {
@@ -509,9 +372,7 @@ function _defaultValidations(): ValidationFunction[] {
         diagnostic(
           JsiiDiagnostic.JSII_5002_OVERRIDE_CHANGES_VISIBILITY.create(
             actualNode?.modifiers?.find(
-              (mod) =>
-                mod.kind === ts.SyntaxKind.PublicKeyword ||
-                mod.kind === ts.SyntaxKind.ProtectedKeyword,
+              (mod) => mod.kind === ts.SyntaxKind.PublicKeyword || mod.kind === ts.SyntaxKind.ProtectedKeyword,
             ) ?? declarationName(actualNode),
             label,
             action,
@@ -519,9 +380,7 @@ function _defaultValidations(): ValidationFunction[] {
             expVisibility,
           ).maybeAddRelatedInformation(
             expectedNode?.modifiers?.find(
-              (mod) =>
-                mod.kind === ts.SyntaxKind.PublicKeyword ||
-                mod.kind === ts.SyntaxKind.ProtectedKeyword,
+              (mod) => mod.kind === ts.SyntaxKind.PublicKeyword || mod.kind === ts.SyntaxKind.ProtectedKeyword,
             ) ?? declarationName(expectedNode),
             'The implemented delcaration is here.',
           ),
@@ -544,17 +403,15 @@ function _defaultValidations(): ValidationFunction[] {
       if (expected.immutable !== actual.immutable) {
         diagnostic(
           JsiiDiagnostic.JSII_5010_OVERRIDE_CHANGES_MUTABILITY.create(
-            actualNode?.modifiers?.find(
-              (mod) => mod.kind === ts.SyntaxKind.ReadonlyKeyword,
-            ) ?? declarationName(actualNode),
+            actualNode?.modifiers?.find((mod) => mod.kind === ts.SyntaxKind.ReadonlyKeyword) ??
+              declarationName(actualNode),
             label,
             action,
             actual.immutable,
             expected.immutable,
           ).maybeAddRelatedInformation(
-            expectedNode?.modifiers?.find(
-              (mod) => mod.kind === ts.SyntaxKind.ReadonlyKeyword,
-            ) ?? declarationName(expectedNode),
+            expectedNode?.modifiers?.find((mod) => mod.kind === ts.SyntaxKind.ReadonlyKeyword) ??
+              declarationName(expectedNode),
             'The implemented delcaration is here.',
           ),
         );
@@ -562,17 +419,13 @@ function _defaultValidations(): ValidationFunction[] {
       if (expected.optional !== actual.optional) {
         diagnostic(
           JsiiDiagnostic.JSII_5009_OVERRIDE_CHANGES_PROP_OPTIONAL.create(
-            actualNode?.questionToken ??
-              actualNode?.type ??
-              declarationName(actualNode),
+            actualNode?.questionToken ?? actualNode?.type ?? declarationName(actualNode),
             label,
             action,
             actual.optional,
             expected.optional,
           ).maybeAddRelatedInformation(
-            expectedNode?.questionToken ??
-              expectedNode?.type ??
-              declarationName(expectedNode),
+            expectedNode?.questionToken ?? expectedNode?.type ?? declarationName(expectedNode),
             'The implemented delcaration is here.',
           ),
         );
@@ -589,27 +442,22 @@ function _defaultValidations(): ValidationFunction[] {
       if (nestedType.namespace == null) {
         continue;
       }
-      const nestingType =
-        assembly.types![`${assembly.name}.${nestedType.namespace}`];
+      const nestingType = assembly.types![`${assembly.name}.${nestedType.namespace}`];
       if (nestingType == null) {
         continue;
       }
       const nestedTypeName = Case.pascal(nestedType.name);
       for (const { name, member } of staticMembers(nestingType)) {
         if (name === nestedTypeName) {
-          let diag =
-            JsiiDiagnostic.JSII_5020_STATIC_MEMBER_CONFLICTS_WITH_NESTED_TYPE.create(
-              getRelatedNode(member)!,
-              nestingType,
-              member,
-              nestedType,
-            );
+          let diag = JsiiDiagnostic.JSII_5020_STATIC_MEMBER_CONFLICTS_WITH_NESTED_TYPE.create(
+            getRelatedNode(member)!,
+            nestingType,
+            member,
+            nestedType,
+          );
           const nestedTypeNode = getRelatedNode(nestedType);
           if (nestedTypeNode != null) {
-            diag = diag.addRelatedInformation(
-              nestedTypeNode,
-              'This is the conflicting nested type declaration',
-            );
+            diag = diag.addRelatedInformation(nestedTypeNode, 'This is the conflicting nested type declaration');
           }
           diagnostic(diag);
         }
@@ -632,9 +480,7 @@ function _allTypes(assm: spec.Assembly): spec.Type[] {
   return Object.values(assm.types ?? {});
 }
 
-function _allMethods(
-  assm: spec.Assembly,
-): Array<{ member: spec.Method; type: spec.Type }> {
+function _allMethods(assm: spec.Assembly): Array<{ member: spec.Method; type: spec.Type }> {
   const methods = new Array<{ member: spec.Method; type: spec.Type }>();
   for (const type of _allTypes(assm)) {
     if (!spec.isClassOrInterfaceType(type)) {
@@ -648,9 +494,7 @@ function _allMethods(
   return methods;
 }
 
-function _allProperties(
-  assm: spec.Assembly,
-): Array<{ member: spec.Property; type: spec.Type }> {
+function _allProperties(assm: spec.Assembly): Array<{ member: spec.Property; type: spec.Type }> {
   const properties = new Array<{ member: spec.Property; type: spec.Type }>();
   for (const type of _allTypes(assm)) {
     if (!spec.isClassOrInterfaceType(type)) {
@@ -659,15 +503,12 @@ function _allProperties(
     if (!type.properties) {
       continue;
     }
-    for (const property of type.properties) properties.push({ member: property, type })
-    ;
+    for (const property of type.properties) properties.push({ member: property, type });
   }
   return properties;
 }
 
-function _allMembers(
-  assm: spec.Assembly,
-): Array<{ member: spec.Property | spec.Method; type: spec.Type }> {
+function _allMembers(assm: spec.Assembly): Array<{ member: spec.Property | spec.Method; type: spec.Type }> {
   return [..._allMethods(assm), ..._allProperties(assm)];
 }
 
@@ -675,9 +516,7 @@ interface AnnotatedTypeReference extends spec.NamedTypeReference {
   readonly node: ts.Node | undefined;
 }
 
-function _allTypeReferences(
-  assm: spec.Assembly,
-): readonly AnnotatedTypeReference[] {
+function _allTypeReferences(assm: spec.Assembly): readonly AnnotatedTypeReference[] {
   const typeReferences = new Array<AnnotatedTypeReference>();
   for (const type of _allTypes(assm)) {
     if (!spec.isClassOrInterfaceType(type)) {
@@ -688,17 +527,12 @@ function _allTypeReferences(
       if (type.base) {
         typeReferences.push({
           fqn: type.base,
-          node: node?.heritageClauses?.find(
-            (hc) => hc.token === ts.SyntaxKind.ExtendsKeyword,
-          )?.types[0],
+          node: node?.heritageClauses?.find((hc) => hc.token === ts.SyntaxKind.ExtendsKeyword)?.types[0],
         });
       }
       if (type.initializer?.parameters) {
         for (const param of type.initializer.parameters) {
-          _collectTypeReferences(
-            param.type,
-            bindings.getParameterRelatedNode(param)?.type,
-          );
+          _collectTypeReferences(param.type, bindings.getParameterRelatedNode(param)?.type);
         }
       }
     }
@@ -710,41 +544,26 @@ function _allTypeReferences(
           node: node?.heritageClauses?.find(
             (hc) =>
               hc.token ===
-              (spec.isInterfaceType(type)
-                ? ts.SyntaxKind.ImplementsKeyword
-                : ts.SyntaxKind.ExtendsKeyword),
+              (spec.isInterfaceType(type) ? ts.SyntaxKind.ImplementsKeyword : ts.SyntaxKind.ExtendsKeyword),
           ),
-        })
-        ;
+        });
       }
     }
   }
   for (const { member: prop } of _allProperties(assm)) {
-    _collectTypeReferences(
-      prop.type,
-      bindings.getPropertyRelatedNode(prop)?.type,
-    );
+    _collectTypeReferences(prop.type, bindings.getPropertyRelatedNode(prop)?.type);
   }
   for (const { member: meth } of _allMethods(assm)) {
     if (meth.returns) {
-      _collectTypeReferences(
-        meth.returns.type,
-        bindings.getMethodRelatedNode(meth)?.type,
-      );
+      _collectTypeReferences(meth.returns.type, bindings.getMethodRelatedNode(meth)?.type);
     }
     for (const param of meth.parameters ?? []) {
-      _collectTypeReferences(
-        param.type,
-        bindings.getParameterRelatedNode(param)?.type,
-      );
+      _collectTypeReferences(param.type, bindings.getParameterRelatedNode(param)?.type);
     }
   }
   return typeReferences;
 
-  function _collectTypeReferences(
-    type: spec.TypeReference,
-    node: ts.Node | undefined,
-  ): void {
+  function _collectTypeReferences(type: spec.TypeReference, node: ts.Node | undefined): void {
     if (spec.isNamedTypeReference(type)) {
       typeReferences.push({ ...type, node });
     } else if (spec.isCollectionTypeReference(type)) {
@@ -767,9 +586,7 @@ function _dereference(
   if (assembly.name === assm) {
     return assembly.types?.[typeRef];
   }
-  const foreignAssm = validator.projectInfo.dependencyClosure.find(
-    (dep) => dep.name === assm,
-  );
+  const foreignAssm = validator.projectInfo.dependencyClosure.find((dep) => dep.name === assm);
   return foreignAssm?.types?.[typeRef];
 }
 
@@ -802,9 +619,7 @@ function isConstantCase(x: string) {
  * @returns the name of the declaration if it has one, or the declaration itself. Might return
  *          `undefined` if the provided declaration is undefined.
  */
-function declarationName(
-  decl: ts.Declaration | ts.Expression | undefined,
-): ts.Node {
+function declarationName(decl: ts.Declaration | ts.Expression | undefined): ts.Node {
   if (decl == null) {
     // Pretend we returned a node - this is used to create diagnostics, worst case it'll be unbound.
     return decl as any;

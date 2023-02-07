@@ -62,10 +62,7 @@ import * as path from 'node:path';
 /**
  * Convert an annotated TypeScript source file to MarkDown
  */
-export function typescriptSourceToMarkdown(
-  lines: string[],
-  codeBlockAnnotations: string[],
-): string[] {
+export function typescriptSourceToMarkdown(lines: string[], codeBlockAnnotations: string[]): string[] {
   const relevantLines = findRelevantLines(lines);
   const markdownLines = markdownify(relevantLines, codeBlockAnnotations);
   return markdownLines;
@@ -86,11 +83,7 @@ export type FileLoader = (relativePath: string) => LoadedFile;
  *
  *     [example](test/integ.bucket.ts)
  */
-export function includeAndRenderExamples(
-  lines: string[],
-  loader: FileLoader,
-  projectRoot: string,
-): string[] {
+export function includeAndRenderExamples(lines: string[], loader: FileLoader, projectRoot: string): string[] {
   const ret: string[] = [];
 
   const regex = /^\[([^\]]*)\]\(([^)]+\.lit\.ts)\)/i;
@@ -103,9 +96,7 @@ export function includeAndRenderExamples(
       const { lines: source, fullPath } = loader(filename);
       // 'lit' source attribute will make snippet compiler know to extract the same source
       // Needs to be relative to the project root.
-      const imported = typescriptSourceToMarkdown(source, [
-        `lit=${toUnixPath(path.relative(projectRoot, fullPath))}`,
-      ]);
+      const imported = typescriptSourceToMarkdown(source, [`lit=${toUnixPath(path.relative(projectRoot, fullPath))}`]);
       ret.push(...imported);
     } else {
       ret.push(line);
@@ -186,10 +177,7 @@ function stripCommonIndent(lines: string[]): string[] {
 /**
  * Turn source lines into Markdown, starting in TypeScript mode
  */
-function markdownify(
-  lines: string[],
-  codeBlockAnnotations: string[],
-): string[] {
+function markdownify(lines: string[], codeBlockAnnotations: string[]): string[] {
   const typescriptLines: string[] = [];
   const ret: string[] = [];
 
@@ -215,11 +203,7 @@ function markdownify(
     if (typescriptLines.length !== 0) {
       // eslint-disable-next-line prefer-template
       ret.push(
-        `\`\`\`ts${
-          codeBlockAnnotations.length > 0
-            ? ` ${codeBlockAnnotations.join(' ')}`
-            : ''
-        }`,
+        `\`\`\`ts${codeBlockAnnotations.length > 0 ? ` ${codeBlockAnnotations.join(' ')}` : ''}`,
         ...typescriptLines,
         '```',
       );

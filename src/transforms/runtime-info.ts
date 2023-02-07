@@ -48,11 +48,7 @@ export class RuntimeTypeInfoInjector {
             const fqn = this.getClassFqn(node);
             if (fqn) {
               classesAnnotated = true;
-              return this.addRuntimeInfoToClass(
-                node,
-                fqn,
-                rttiSymbolIdentifier,
-              );
+              return this.addRuntimeInfoToClass(node, fqn, rttiSymbolIdentifier);
             }
           }
           return ts.visitEachChild(node, visitor, context);
@@ -64,24 +60,14 @@ export class RuntimeTypeInfoInjector {
         // Only add the symbol definition if it's actually used.
         if (classesAnnotated) {
           const rttiSymbol = ts.createCall(
-            ts.createPropertyAccess(
-              ts.createIdentifier('Symbol'),
-              ts.createIdentifier('for'),
-            ),
+            ts.createPropertyAccess(ts.createIdentifier('Symbol'), ts.createIdentifier('for')),
             undefined,
             [ts.createStringLiteral('jsii.rtti')],
           );
-          const rttiSymbolDeclaration = ts.createVariableDeclaration(
-            rttiSymbolIdentifier,
-            undefined,
-            rttiSymbol,
-          );
+          const rttiSymbolDeclaration = ts.createVariableDeclaration(rttiSymbolIdentifier, undefined, rttiSymbol);
           const variableDeclaration = ts.createVariableStatement(
             [],
-            ts.createVariableDeclarationList(
-              [rttiSymbolDeclaration],
-              ts.NodeFlags.Const,
-            ),
+            ts.createVariableDeclarationList([rttiSymbolDeclaration], ts.NodeFlags.Const),
           );
 
           annotatedSourceFile = ts.updateSourceFileNode(annotatedSourceFile, [
@@ -110,22 +96,14 @@ export class RuntimeTypeInfoInjector {
     rttiSymbol: ts.Identifier,
   ): ts.ClassDeclaration {
     const runtimeInfo = ts.createObjectLiteral([
-      ts.createPropertyAssignment(
-        ts.createIdentifier('fqn'),
-        ts.createStringLiteral(fqn),
-      ),
-      ts.createPropertyAssignment(
-        ts.createIdentifier('version'),
-        ts.createStringLiteral(this.version),
-      ),
+      ts.createPropertyAssignment(ts.createIdentifier('fqn'), ts.createStringLiteral(fqn)),
+      ts.createPropertyAssignment(ts.createIdentifier('version'), ts.createStringLiteral(this.version)),
     ]);
     const runtimeProperty = ts.createProperty(
       undefined,
       ts.createModifiersFromModifierFlags(
         // eslint-disable-next-line no-bitwise
-        ts.ModifierFlags.Private |
-          ts.ModifierFlags.Static |
-          ts.ModifierFlags.Readonly,
+        ts.ModifierFlags.Private | ts.ModifierFlags.Static | ts.ModifierFlags.Readonly,
       ),
       ts.createComputedPropertyName(rttiSymbol),
       undefined,

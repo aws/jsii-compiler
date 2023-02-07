@@ -53,9 +53,7 @@ const warningTypes = Object.keys(enabledWarnings);
           .option('silence-warnings', {
             type: 'array',
             default: [],
-            desc: `List of warnings to silence (warnings: ${warningTypes.join(
-              ',',
-            )})`,
+            desc: `List of warnings to silence (warnings: ${warningTypes.join(',')})`,
           })
           .option('strip-deprecated', {
             type: 'string',
@@ -85,21 +83,14 @@ const warningTypes = Object.keys(enabledWarnings);
       async (argv) => {
         _configureLog4js(argv.verbose);
 
-        const projectRoot = path.normalize(
-          path.resolve(process.cwd(), argv.PROJECT_ROOT),
-        );
+        const projectRoot = path.normalize(path.resolve(process.cwd(), argv.PROJECT_ROOT));
 
-        const { projectInfo, diagnostics: projectInfoDiagnostics } =
-          loadProjectInfo(projectRoot);
+        const { projectInfo, diagnostics: projectInfoDiagnostics } = loadProjectInfo(projectRoot);
 
         // disable all silenced warnings
         for (const key of argv['silence-warnings']) {
           if (!(key in enabledWarnings)) {
-            throw new Error(
-              `Unknown warning type ${
-                key as any
-              }. Must be one of: ${warningTypes.join(', ')}`,
-            );
+            throw new Error(`Unknown warning type ${key as any}. Must be one of: ${warningTypes.join(', ')}`);
           }
 
           enabledWarnings[key] = false;
@@ -155,9 +146,7 @@ function _configureLog4js(verbosity: number) {
       [utils.DIAGNOSTICS]: {
         type: 'stdout',
         layout: {
-          type: stdoutColor
-            ? 'messagePassThrough'
-            : ('passThroughNoColor' as any),
+          type: stdoutColor ? 'messagePassThrough' : ('passThroughNoColor' as any),
         },
       },
     },

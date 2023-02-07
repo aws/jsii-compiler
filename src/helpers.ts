@@ -84,9 +84,7 @@ export function compileJsiiForTest(
   }
 
   const inSomeLocation =
-    isOptionsObject(options) && options.compilationDirectory
-      ? inOtherDir(options.compilationDirectory)
-      : inTempDir;
+    isOptionsObject(options) && options.compilationDirectory ? inOtherDir(options.compilationDirectory) : inTempDir;
 
   // Easiest way to get the source into the compiler is to write it to disk somewhere.
   // I guess we could make an in-memory compiler host but that seems like work...
@@ -100,11 +98,8 @@ export function compileJsiiForTest(
       typeof options === 'function'
         ? options
         : (pi) => {
-          Object.assign(
-            pi,
-            options?.packageJson ?? options?.projectInfo ?? {},
-          );
-        },
+            Object.assign(pi, options?.packageJson ?? options?.projectInfo ?? {});
+          },
     );
     const compiler = new Compiler({
       projectInfo,
@@ -112,9 +107,7 @@ export function compileJsiiForTest(
     });
     const emitResult = compiler.emit();
 
-    const errors = emitResult.diagnostics.filter(
-      (d) => d.category === DiagnosticCategory.Error,
-    );
+    const errors = emitResult.diagnostics.filter((d) => d.category === DiagnosticCategory.Error);
     for (const error of errors) {
       console.error(formatDiagnostic(error, projectInfo.projectRoot));
       // logDiagnostic() doesn't work out of the box, so console.error() it is.
@@ -151,8 +144,7 @@ export function compileJsiiForTest(
       assembly,
       files,
       packageJson,
-      compressAssembly:
-        isOptionsObject(options) && options.compressAssembly ? true : false,
+      compressAssembly: isOptionsObject(options) && options.compressAssembly ? true : false,
     } as HelperCompilationResult;
   });
 }
@@ -208,7 +200,11 @@ function makeProjectInfo(
     cb(packageJson);
   }
 
-  fs.writeFileSync('package.json', JSON.stringify(packageJson, (_: string, v: any) => v, 2), 'utf-8');
+  fs.writeFileSync(
+    'package.json',
+    JSON.stringify(packageJson, (_: string, v: any) => v, 2),
+    'utf-8',
+  );
 
   const { projectInfo } = loadProjectInfo(path.resolve(process.cwd(), '.'));
   return { projectInfo, packageJson };
@@ -296,11 +292,7 @@ export class TestWorkspace {
     //
     // We will drop them in 'node_modules/<name>' so they can be imported
     // as if they were installed.
-    const modDir = path.join(
-      this.rootDirectory,
-      'node_modules',
-      dependencyAssembly.assembly.name,
-    );
+    const modDir = path.join(this.rootDirectory, 'node_modules', dependencyAssembly.assembly.name);
     fs.mkdirSync(modDir, { recursive: true });
 
     writeAssembly(modDir, dependencyAssembly.assembly, {
@@ -312,10 +304,10 @@ export class TestWorkspace {
       'utf-8',
     );
 
-    for (const [fileName, fileContents] of Object.entries(
-      dependencyAssembly.files,
-    )) {
-      fs.mkdirSync(path.dirname(path.join(modDir, fileName)), { recursive: true });
+    for (const [fileName, fileContents] of Object.entries(dependencyAssembly.files)) {
+      fs.mkdirSync(path.dirname(path.join(modDir, fileName)), {
+        recursive: true,
+      });
       fs.writeFileSync(path.join(modDir, fileName), fileContents);
     }
   }

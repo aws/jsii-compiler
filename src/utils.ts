@@ -59,10 +59,7 @@ export function diagnosticsLogger(
  *
  * @returns a formatted string.
  */
-export function formatDiagnostic(
-  diagnostic: ts.Diagnostic,
-  projectRoot: string,
-) {
+export function formatDiagnostic(diagnostic: ts.Diagnostic, projectRoot: string) {
   if (JsiiDiagnostic.isJsiiDiagnostic(diagnostic)) {
     // Ensure we leverage pre-rendered diagnostics where available.
     return diagnostic.format(projectRoot);
@@ -80,10 +77,7 @@ export function formatDiagnostic(
  *
  * @returns a formatted string.
  */
-export function _formatDiagnostic(
-  diagnostic: ts.Diagnostic,
-  projectRoot: string,
-) {
+export function _formatDiagnostic(diagnostic: ts.Diagnostic, projectRoot: string) {
   const formatDiagnosticsHost: ts.FormatDiagnosticsHost = {
     getCurrentDirectory: () => projectRoot,
     getCanonicalFileName: (fileName) => fileName,
@@ -92,10 +86,7 @@ export function _formatDiagnostic(
 
   const message =
     diagnostic.file != null
-      ? ts.formatDiagnosticsWithColorAndContext(
-        [diagnostic],
-        formatDiagnosticsHost,
-      )
+      ? ts.formatDiagnosticsWithColorAndContext([diagnostic], formatDiagnosticsHost)
       : ts.formatDiagnostic(diagnostic, formatDiagnosticsHost);
 
   if (!JsiiDiagnostic.isJsiiDiagnostic(diagnostic)) {
@@ -103,10 +94,7 @@ export function _formatDiagnostic(
   }
 
   // This is our own diagnostics, so we'll format appropriately (replacing TS#### with JSII####).
-  return message.replace(
-    ` TS${JSII_DIAGNOSTICS_CODE}: `,
-    ` JSII${diagnostic.jsiiCode}: `,
-  );
+  return message.replace(` TS${JSII_DIAGNOSTICS_CODE}: `, ` JSII${diagnostic.jsiiCode}: `);
 }
 
 export function logDiagnostic(diagnostic: ts.Diagnostic, projectRoot: string) {
@@ -144,8 +132,7 @@ export function parsePerson(value: string) {
   return result;
 }
 
-const REPOSITORY_REGEX =
-  /^(?:(github|gist|bitbucket|gitlab):)?([A-Za-z\d_-]+\/[A-Za-z\d_-]+)$/;
+const REPOSITORY_REGEX = /^(?:(github|gist|bitbucket|gitlab):)?([A-Za-z\d_-]+\/[A-Za-z\d_-]+)$/;
 export function parseRepository(value: string): { url: string } {
   const match = REPOSITORY_REGEX.exec(value);
   if (!match) {
@@ -172,10 +159,7 @@ export function parseRepository(value: string): { url: string } {
  * (This code is duplicated among jsii/jsii-pacmak/jsii-reflect. Changes should be done in all
  * 3 locations, and we should unify these at some point: https://github.com/aws/jsii/issues/3236)
  */
-export function findDependencyDirectory(
-  dependencyName: string,
-  searchStart: string,
-) {
+export function findDependencyDirectory(dependencyName: string, searchStart: string) {
   // Explicitly do not use 'require("dep/package.json")' because that will fail if the
   // package does not export that particular file.
   const entryPoint = require.resolve(dependencyName, {
@@ -184,15 +168,10 @@ export function findDependencyDirectory(
 
   // Search up from the given directory, looking for a package.json that matches
   // the dependency name (so we don't accidentally find stray 'package.jsons').
-  const depPkgJsonPath = findPackageJsonUp(
-    dependencyName,
-    path.dirname(entryPoint),
-  );
+  const depPkgJsonPath = findPackageJsonUp(dependencyName, path.dirname(entryPoint));
 
   if (!depPkgJsonPath) {
-    throw new Error(
-      `Could not find dependency '${dependencyName}' from '${searchStart}'`,
-    );
+    throw new Error(`Could not find dependency '${dependencyName}' from '${searchStart}'`);
   }
 
   return depPkgJsonPath;
@@ -207,9 +186,7 @@ export function findDependencyDirectory(
 export function findPackageJsonUp(packageName: string, directory: string) {
   return findUp(directory, (dir) => {
     const pjFile = path.join(dir, 'package.json');
-    return (
-      fs.existsSync(pjFile) && JSON.parse(fs.readFileSync(pjFile, 'utf-8')).name === packageName
-    );
+    return fs.existsSync(pjFile) && JSON.parse(fs.readFileSync(pjFile, 'utf-8')).name === packageName;
   });
 }
 
@@ -221,10 +198,7 @@ export function findPackageJsonUp(packageName: string, directory: string) {
  * (This code is duplicated among jsii/jsii-pacmak/jsii-reflect. Changes should be done in all
  * 3 locations, and we should unify these at some point: https://github.com/aws/jsii/issues/3236)
  */
-export function findUp(
-  directory: string,
-  pred: (dir: string) => boolean,
-): string | undefined {
+export function findUp(directory: string, pred: (dir: string) => boolean): string | undefined {
   const result = pred(directory);
 
   if (result) {

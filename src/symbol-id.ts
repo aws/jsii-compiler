@@ -59,11 +59,11 @@ export function symbolIdentifier(
   }
 
   const isMember =
-  // eslint-disable-next-line no-bitwise
+    // eslint-disable-next-line no-bitwise
     (sym.flags &
       // eslint-disable-next-line no-bitwise
       (ts.SymbolFlags.Method |
-      // eslint-disable-next-line no-bitwise
+        // eslint-disable-next-line no-bitwise
         ts.SymbolFlags.Property |
         ts.SymbolFlags.EnumMember)) !==
     0;
@@ -78,18 +78,13 @@ export function symbolIdentifier(
 
   const [, fileName, inFileName] = groups; // inFileName may be absent
 
-  const relFile = Helper.for(typeChecker).assemblyRelativeSourceFile(
-    fileName,
-    options?.assembly,
-  );
+  const relFile = Helper.for(typeChecker).assemblyRelativeSourceFile(fileName, options?.assembly);
   if (!relFile) {
     return undefined;
   }
 
   // If this is a member symbol, replace the final '.' with a '#'
-  const typeSymbol = isMember
-    ? (inFileName ?? '').replace(/\.([^.]+)$/, '#$1')
-    : inFileName ?? '';
+  const typeSymbol = isMember ? (inFileName ?? '').replace(/\.([^.]+)$/, '#$1') : inFileName ?? '';
 
   return `${relFile}:${typeSymbol}`;
 }
@@ -117,10 +112,7 @@ class Helper {
       return undefined;
     }
 
-    let sourcePath = removePrefix(
-      packageInfo.outdir ?? '',
-      path.relative(packageInfo.packageJsonDir, sourceFileName),
-    );
+    let sourcePath = removePrefix(packageInfo.outdir ?? '', path.relative(packageInfo.packageJsonDir, sourceFileName));
 
     // Modify the namespace if we send in the assembly.
     if (asm) {
@@ -147,9 +139,7 @@ class Helper {
       return this.packageInfo.get(from);
     }
 
-    const packageJsonDir = findUp(from, (dir) =>
-      fs.existsSync(path.join(dir, 'package.json')),
-    );
+    const packageJsonDir = findUp(from, (dir) => fs.existsSync(path.join(dir, 'package.json')));
 
     if (!packageJsonDir) {
       this.packageInfo.set(from, undefined);
@@ -188,11 +178,7 @@ interface PackageInfo {
  * if the out directory is present in the sourcePath, and if so,
  * we replace it with the root directory.
  */
-export function normalizePath(
-  sourcePath: string,
-  rootDir?: string,
-  outDir?: string,
-): string {
+export function normalizePath(sourcePath: string, rootDir?: string, outDir?: string): string {
   if (rootDir === undefined || outDir === undefined) {
     return sourcePath;
   }
@@ -210,15 +196,12 @@ export function normalizePath(
     if (outDir !== '.') {
       paths = paths.slice(outDirLength);
     }
-    sourcePath =
-      rootDir === '.' ? paths.join('/') : `${rootDir}/${paths.join('/')}`;
+    sourcePath = rootDir === '.' ? paths.join('/') : `${rootDir}/${paths.join('/')}`;
   }
   return unixize(sourcePath);
 
   function removeEndSlash(filePath: string) {
-    return filePath.endsWith(path.sep)
-      ? filePath.slice(0, filePath.length - 1)
-      : filePath;
+    return filePath.endsWith(path.sep) ? filePath.slice(0, filePath.length - 1) : filePath;
   }
 }
 

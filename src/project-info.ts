@@ -15,24 +15,24 @@ const spdx: Set<string> = require('spdx-license-list/simple');
 const LOG = log4js.getLogger('jsii/package-info');
 
 export type TSCompilerOptions = Partial<
-Pick<
-ts.CompilerOptions,
-// Directory preferences
-| 'outDir'
-| 'rootDir'
-// TypeScript path mapping
-| 'baseUrl'
-| 'paths'
-// Style preferences
-| 'forceConsistentCasingInFileNames'
-// Source map preferences
-| 'declarationMap'
-| 'inlineSourceMap'
-| 'inlineSources'
-| 'sourceMap'
-// Types limitations
-| 'types'
->
+  Pick<
+    ts.CompilerOptions,
+    // Directory preferences
+    | 'outDir'
+    | 'rootDir'
+    // TypeScript path mapping
+    | 'baseUrl'
+    | 'paths'
+    // Style preferences
+    | 'forceConsistentCasingInFileNames'
+    // Source map preferences
+    | 'declarationMap'
+    | 'inlineSourceMap'
+    | 'inlineSources'
+    | 'sourceMap'
+    // Types limitations
+    | 'types'
+  >
 >;
 
 export interface ProjectInfo {
@@ -97,9 +97,7 @@ export function loadProjectInfo(projectRoot: string): ProjectInfoResult {
     }
 
     if (pkg.peerDependencies && name in pkg.peerDependencies) {
-      throw new Error(
-        `The "package.json" file has "${name}" in "bundleDependencies", and also in "peerDependencies"`,
-      );
+      throw new Error(`The "package.json" file has "${name}" in "bundleDependencies", and also in "peerDependencies"`);
     }
 
     bundleDependencies = bundleDependencies ?? {};
@@ -112,15 +110,10 @@ export function loadProjectInfo(projectRoot: string): ProjectInfoResult {
   // produces is warnings, not errors.
   const devDependencies = pkg.devDependencies ?? {};
   for (const [name, rng] of Object.entries(pkg.peerDependencies ?? {})) {
-    const range = new semver.Range(
-      _resolveVersion(rng as string, projectRoot).version,
-    );
+    const range = new semver.Range(_resolveVersion(rng as string, projectRoot).version);
     const minVersion = semver.minVersion(range)?.raw;
 
-    if (
-      !(name in devDependencies) ||
-      devDependencies[name] !== `${minVersion}`
-    ) {
+    if (!(name in devDependencies) || devDependencies[name] !== `${minVersion}`) {
       diagnostics.push(
         JsiiDiagnostic.JSII_0006_MISSING_DEV_DEPENDENCY.createDetached(
           name,
@@ -163,50 +156,26 @@ export function loadProjectInfo(projectRoot: string): ProjectInfoResult {
     projectRoot,
     packageJson: pkg,
 
-    name: _required(
-      pkg.name,
-      'The "package.json" file must specify the "name" attribute',
-    ),
-    version: _required(
-      pkg.version,
-      'The "package.json" file must specify the "version" attribute',
-    ),
+    name: _required(pkg.name, 'The "package.json" file must specify the "name" attribute'),
+    version: _required(pkg.version, 'The "package.json" file must specify the "version" attribute'),
     deprecated: pkg.deprecated,
     stability: _validateStability(pkg.stability, pkg.deprecated),
-    author: _toPerson(
-      _required(
-        pkg.author,
-        'The "package.json" file must specify the "author" attribute',
-      ),
-      'author',
-    ),
+    author: _toPerson(_required(pkg.author, 'The "package.json" file must specify the "author" attribute'), 'author'),
     repository: _toRepository(
-      _required(
-        pkg.repository,
-        'The "package.json" file must specify the "repository" attribute',
-      ),
+      _required(pkg.repository, 'The "package.json" file must specify the "repository" attribute'),
     ),
     license: _validateLicense(pkg.license),
     keywords: pkg.keywords,
 
-    main: _required(
-      pkg.main,
-      'The "package.json" file must specify the "main" attribute',
-    ),
-    types: _required(
-      pkg.types,
-      'The "package.json" file must specify the "types" attribute',
-    ),
+    main: _required(pkg.main, 'The "package.json" file must specify the "main" attribute'),
+    types: _required(pkg.types, 'The "package.json" file must specify the "types" attribute'),
 
     dependencies,
     peerDependencies,
     dependencyClosure: transitiveDependencies,
     bundleDependencies,
     targets: {
-      ..._required(
-        pkg.jsii,
-        'The "package.json" file must specify the "jsii" attribute',
-      ).targets,
+      ..._required(pkg.jsii, 'The "package.json" file must specify the "jsii" attribute').targets,
       js: { npm: pkg.name },
     },
     metadata,
@@ -225,8 +194,7 @@ export function loadProjectInfo(projectRoot: string): ProjectInfoResult {
       rootDir: pkg.jsii?.tsc?.rootDir,
       baseUrl: pkg.jsii?.tsc?.baseUrl,
       paths: pkg.jsii?.tsc?.paths,
-      forceConsistentCasingInFileNames:
-        pkg.jsii?.tsc?.forceConsistentCasingInFileNames,
+      forceConsistentCasingInFileNames: pkg.jsii?.tsc?.forceConsistentCasingInFileNames,
       ..._sourceMapPreferences(pkg.jsii?.tsc),
       types: pkg.jsii?.tsc?.types,
     },
@@ -245,25 +213,13 @@ function _guessRepositoryType(url: string): string {
   if (parts?.[1] !== 'http' && parts?.[1] !== 'https') {
     return parts![1];
   }
-  throw new Error(
-    `The "package.json" file must specify the "repository.type" attribute (could not guess from ${url})`,
-  );
+  throw new Error(`The "package.json" file must specify the "repository.type" attribute (could not guess from ${url})`);
 }
 
-function _sourceMapPreferences({
-  declarationMap,
-  inlineSourceMap,
-  inlineSources,
-  sourceMap,
-}: TSCompilerOptions = {}) {
+function _sourceMapPreferences({ declarationMap, inlineSourceMap, inlineSources, sourceMap }: TSCompilerOptions = {}) {
   // If none of the options are specified, use the default configuration from jsii <= 1.58.0, which
   // means inline source maps with embedded source information.
-  if (
-    declarationMap == null &&
-    inlineSourceMap == null &&
-    inlineSources == null &&
-    sourceMap == null
-  ) {
+  if (declarationMap == null && inlineSourceMap == null && inlineSources == null && sourceMap == null) {
     declarationMap = false;
     inlineSourceMap = true;
     inlineSources = true;
@@ -293,10 +249,7 @@ class DependencyResolver {
    *
    * Return the resolved jsii dependency paths
    */
-  public discoverDependencyTree(
-    root: string,
-    dependencies: Record<string, string>,
-  ): Record<string, string> {
+  public discoverDependencyTree(root: string, dependencies: Record<string, string>): Record<string, string> {
     const ret: Record<string, string> = {};
     for (const [name, declaration] of Object.entries(dependencies)) {
       // eslint-disable-next-line no-await-in-loop
@@ -345,15 +298,10 @@ class DependencyResolver {
   }
 
   private resolveDependency(root: string, name: string, declaration: string) {
-    const { version: versionString, localPackage } = _resolveVersion(
-      declaration,
-      root,
-    );
+    const { version: versionString, localPackage } = _resolveVersion(declaration, root);
     const version = new semver.Range(versionString);
     if (!version) {
-      throw new Error(
-        `Invalid semver expression for ${name}: ${versionString}`,
-      );
+      throw new Error(`Invalid semver expression for ${name}: ${versionString}`);
     }
     const jsiiFile = _tryResolveAssembly(name, localPackage, root);
     LOG.debug(`Resolved dependency ${name} to ${jsiiFile}`);
@@ -374,10 +322,7 @@ class DependencyResolver {
 
     // Continue loading any dependencies declared in the asm
     const resolvedDependencies = assembly.dependencies
-      ? this.discoverDependencyTree(
-        path.dirname(jsiiFile),
-        assembly.dependencies,
-      )
+      ? this.discoverDependencyTree(path.dirname(jsiiFile), assembly.dependencies)
       : {};
 
     const depInfo: DependencyInfo = {
@@ -396,19 +341,12 @@ function _required<T>(value: T, message: string): T {
   return value;
 }
 
-function _toPerson(
-  value: any,
-  field: string,
-  defaultRole: string = field,
-): spec.Person {
+function _toPerson(value: any, field: string, defaultRole: string = field): spec.Person {
   if (typeof value === 'string') {
     value = parsePerson(value);
   }
   return {
-    name: _required(
-      value.name,
-      `The "package.json" file must specify the "${field}.name" attribute`,
-    ),
+    name: _required(value.name, `The "package.json" file must specify the "${field}.name" attribute`),
     roles: value.roles ? [...new Set(value.roles as string[])] : [defaultRole],
     email: value.email,
     url: value.url,
@@ -425,20 +363,13 @@ function _toRepository(value: any): {
     value = parseRepository(value);
   }
   return {
-    url: _required(
-      value.url,
-      'The "package.json" file must specify the "repository.url" attribute',
-    ),
+    url: _required(value.url, 'The "package.json" file must specify the "repository.url" attribute'),
     type: value.type || _guessRepositoryType(value.url),
     directory: value.directory,
   };
 }
 
-function _tryResolveAssembly(
-  mod: string,
-  localPackage: string | undefined,
-  searchPath: string,
-): string {
+function _tryResolveAssembly(mod: string, localPackage: string | undefined, searchPath: string): string {
   if (localPackage) {
     const result = findAssemblyFile(localPackage);
     if (!fs.existsSync(result)) {
@@ -461,26 +392,19 @@ function _validateLicense(id: string): string {
     return id;
   }
   if (!spdx.has(id)) {
-    throw new Error(
-      `Invalid license identifier "${id}", see valid license identifiers at https://spdx.org/licenses/`,
-    );
+    throw new Error(`Invalid license identifier "${id}", see valid license identifiers at https://spdx.org/licenses/`);
   }
   return id;
 }
 
 function _validateVersionFormat(format: string): 'short' | 'full' {
   if (format !== 'short' && format !== 'full') {
-    throw new Error(
-      `Invalid jsii.versionFormat "${format}", it must be either "short" or "full" (the default)`,
-    );
+    throw new Error(`Invalid jsii.versionFormat "${format}", it must be either "short" or "full" (the default)`);
   }
   return format;
 }
 
-function _validateStability(
-  stability: string | undefined,
-  deprecated: string | undefined,
-): spec.Stability | undefined {
+function _validateStability(stability: string | undefined, deprecated: string | undefined): spec.Stability | undefined {
   if (!stability && deprecated) {
     stability = spec.Stability.Deprecated;
   } else if (deprecated && stability !== spec.Stability.Deprecated) {
@@ -492,11 +416,7 @@ function _validateStability(
     return undefined;
   }
   if (!Object.values(spec.Stability).includes(stability as any)) {
-    throw new Error(
-      `Invalid stability "${stability}", it must be one of ${Object.values(
-        spec.Stability,
-      ).join(', ')}`,
-    );
+    throw new Error(`Invalid stability "${stability}", it must be one of ${Object.values(spec.Stability).join(', ')}`);
   }
   return stability as spec.Stability;
 }
@@ -508,10 +428,7 @@ function _validateStability(
  * package references a local file, return the version that
  * package is at.
  */
-function _resolveVersion(
-  dep: string,
-  searchPath: string,
-): { version: string; localPackage?: string } {
+function _resolveVersion(dep: string, searchPath: string): { version: string; localPackage?: string } {
   const matches = /^file:(.+)$/.exec(dep);
   if (!matches) {
     return { version: dep };
@@ -520,9 +437,7 @@ function _resolveVersion(
   return {
     // Rendering as a caret version to maintain uniformity against the "standard".
     // eslint-disable-next-line @typescript-eslint/no-require-imports,@typescript-eslint/no-var-requires
-    version: `^${
-      JSON.parse(fs.readFileSync(path.join(localPackage, 'package.json'), 'utf-8')).version
-    }`,
+    version: `^${JSON.parse(fs.readFileSync(path.join(localPackage, 'package.json'), 'utf-8')).version}`,
     localPackage,
   };
 }
@@ -544,14 +459,9 @@ function mergeMetadata(
   }
   return mergeObjects(base, user);
 
-  function mergeObjects(
-    baseObj: Record<string, any>,
-    override: Record<string, any>,
-  ): Record<string, any> {
+  function mergeObjects(baseObj: Record<string, any>, override: Record<string, any>): Record<string, any> {
     const result: Record<string, any> = {};
-    const allKeys = Array.from(
-      new Set([...Object.keys(baseObj), ...Object.keys(override)]),
-    ).sort();
+    const allKeys = Array.from(new Set([...Object.keys(baseObj), ...Object.keys(override)])).sort();
     for (const key of allKeys) {
       const baseValue = baseObj[key];
       const overrideValue = override[key];
@@ -569,10 +479,10 @@ function mergeMetadata(
 }
 
 function _loadDiagnostics(entries?: { [key: string]: string }):
-| {
-  [key: string]: ts.DiagnosticCategory;
-}
-| undefined {
+  | {
+      [key: string]: ts.DiagnosticCategory;
+    }
+  | undefined {
   if (entries === undefined || Object.keys(entries).length === 0) {
     return undefined;
   }
@@ -593,19 +503,14 @@ function _loadDiagnostics(entries?: { [key: string]: string }):
         category = ts.DiagnosticCategory.Message;
         break;
       default:
-        throw new Error(
-          `Invalid category '${entries[code]}' for code '${code}'`,
-        );
+        throw new Error(`Invalid category '${entries[code]}' for code '${code}'`);
     }
     result[code] = category;
   }
   return result;
 }
 
-function filterDictByKey<A>(
-  xs: Record<string, A>,
-  predicate: (key: string) => boolean,
-): Record<string, A> {
+function filterDictByKey<A>(xs: Record<string, A>, predicate: (key: string) => boolean): Record<string, A> {
   const ret: Record<string, A> = {};
   for (const [key, value] of Object.entries(xs)) {
     if (predicate(key)) {

@@ -12,9 +12,7 @@ import { JSII_DIAGNOSTICS_CODE, _formatDiagnostic } from './utils';
  * The `category` or non-error codes can be updated, for example to treat
  * warnings as errors, or to suppress certain undesirable warnings.
  */
-export class Code<
-  T extends DiagnosticMessageFormatter = DiagnosticMessageFormatter,
-> {
+export class Code<T extends DiagnosticMessageFormatter = DiagnosticMessageFormatter> {
   /**
    * @internal
    */
@@ -122,14 +120,10 @@ export class Code<
     this.#formatter = formatter;
 
     if (code in Code.byCode) {
-      throw new Error(
-        `Attempted to create two instances of ${this.constructor.name} with code ${code}`,
-      );
+      throw new Error(`Attempted to create two instances of ${this.constructor.name} with code ${code}`);
     }
     if (name in Code.byName) {
-      throw new Error(
-        `Attempted to create two instances of ${this.constructor.name} with name ${name}`,
-      );
+      throw new Error(`Attempted to create two instances of ${this.constructor.name} with name ${name}`);
     }
     Code.byCode[code] = Code.byName[name] = this;
   }
@@ -201,8 +195,7 @@ export class JsiiDiagnostic implements ts.Diagnostic {
 
   public static readonly JSII_0001_PKG_MISSING_DESCRIPTION = Code.suggestion({
     code: 1,
-    formatter: () =>
-      'A "description" field should be specified in "package.json"',
+    formatter: () => 'A "description" field should be specified in "package.json"',
     name: 'metadata/package-json-missing-description',
   });
 
@@ -214,8 +207,7 @@ export class JsiiDiagnostic implements ts.Diagnostic {
 
   public static readonly JSII_0003_MISSING_README = Code.warning({
     code: 3,
-    formatter: () =>
-      'There is no "README.md" file. It is required in order to generate valid PyPI (Python) packages.',
+    formatter: () => 'There is no "README.md" file. It is required in order to generate valid PyPI (Python) packages.',
     name: 'metadata/missing-readme',
   });
 
@@ -238,12 +230,7 @@ export class JsiiDiagnostic implements ts.Diagnostic {
   // as it's being emitted before the overrides have been loaded
   public static readonly JSII_0006_MISSING_DEV_DEPENDENCY = Code.warning({
     code: 6,
-    formatter: (
-      dependencyName: string,
-      peerRange: string,
-      minVersion: string,
-      actual: string,
-    ) =>
+    formatter: (dependencyName: string, peerRange: string, minVersion: string, actual: string) =>
       `A "peerDependency" on "${dependencyName}" at "${peerRange}" means you ` +
       `should take a "devDependency" on "${dependencyName}" at "${minVersion}" ` +
       `(found ${JSON.stringify(actual)})`,
@@ -270,8 +257,7 @@ export class JsiiDiagnostic implements ts.Diagnostic {
 
   public static readonly JSII_1001_TYPE_HAS_NO_SYMBOL = Code.error({
     code: 1001,
-    formatter: () =>
-      'Non-primitive types without a symbol cannot be processed.',
+    formatter: () => 'Non-primitive types without a symbol cannot be processed.',
     name: 'typescript-restrictions/type-has-no-symbol',
   });
 
@@ -290,9 +276,7 @@ export class JsiiDiagnostic implements ts.Diagnostic {
   public static readonly JSII_1004_DUPLICATE_ENUM_VALUE = Code.error({
     code: 1004,
     formatter: (enumValue: string, enumMemberNames: string[]) =>
-      `Value ${enumValue} is used for multiple enum values: ${enumMemberNames.join(
-        ', ',
-      )}`,
+      `Value ${enumValue} is used for multiple enum values: ${enumMemberNames.join(', ')}`,
     name: 'typescript-restrictions/duplicate-enum-value',
   });
 
@@ -304,8 +288,7 @@ export class JsiiDiagnostic implements ts.Diagnostic {
 
   public static readonly JSII_3000_EXPORTED_API_USES_HIDDEN_TYPE = Code.error({
     code: 3000,
-    formatter: (badFqn) =>
-      `Exported APIs cannot use un-exported type "${badFqn}"`,
+    formatter: (badFqn) => `Exported APIs cannot use un-exported type "${badFqn}"`,
     name: 'type-model/exported-api-cannot-use-unexported-type',
   });
 
@@ -327,17 +310,14 @@ export class JsiiDiagnostic implements ts.Diagnostic {
 
   public static readonly JSII_3003_SYMBOL_IS_EXPORTED_TWICE = Code.error({
     code: 3003,
-    formatter: (ns1: string, ns2: string) =>
-      `Symbol is exported under two distinct submodules: ${ns1} and ${ns2}`,
+    formatter: (ns1: string, ns2: string) => `Symbol is exported under two distinct submodules: ${ns1} and ${ns2}`,
     name: 'type-model/symbol-is-exported-twice',
   });
 
   public static readonly JSII_3004_INVALID_SUPERTYPE = Code.error({
     code: 3004,
     formatter: (clause: ts.HeritageClause, badDeclaration: ts.Declaration) => {
-      return `Illegal ${clauseType(clause.token)} clause for an exported API: ${
-        ts.SyntaxKind[badDeclaration.kind]
-      }`;
+      return `Illegal ${clauseType(clause.token)} clause for an exported API: ${ts.SyntaxKind[badDeclaration.kind]}`;
 
       function clauseType(token: ts.SyntaxKind): string {
         switch (token) {
@@ -356,9 +336,7 @@ export class JsiiDiagnostic implements ts.Diagnostic {
   public static readonly JSII_3005_TYPE_USED_AS_INTERFACE = Code.error({
     code: 3005,
     formatter: (badType: spec.TypeReference) =>
-      `Type "${spec.describeTypeReference(
-        badType,
-      )}" cannot be used as an interface`,
+      `Type "${spec.describeTypeReference(badType)}" cannot be used as an interface`,
     name: 'type-model/type-used-as-interface',
   });
 
@@ -383,13 +361,12 @@ export class JsiiDiagnostic implements ts.Diagnostic {
     name: 'type-model/struct-props-must-be-readonly',
   });
 
-  public static readonly JSII_3009_OPTIONAL_PARAMETER_BEFORE_REQUIRED =
-    Code.error({
-      code: 3009,
-      formatter: (param: spec.Parameter, nextParam: spec.Parameter) =>
-        `Parameter "${param.name}" cannot be optional, as it precedes required parameter "${nextParam.name}"`,
-      name: 'type-model/optional-parameter-before-required',
-    });
+  public static readonly JSII_3009_OPTIONAL_PARAMETER_BEFORE_REQUIRED = Code.error({
+    code: 3009,
+    formatter: (param: spec.Parameter, nextParam: spec.Parameter) =>
+      `Parameter "${param.name}" cannot be optional, as it precedes required parameter "${nextParam.name}"`,
+    name: 'type-model/optional-parameter-before-required',
+  });
 
   public static readonly JSII_3999_INCOHERENT_TYPE_MODEL = Code.error({
     code: 3999,
@@ -424,136 +401,81 @@ export class JsiiDiagnostic implements ts.Diagnostic {
       action: string,
       newValue: 'protected' | 'public',
       oldValue: 'protected' | 'public',
-    ) =>
-      `"${newElement}" changes visibility to ${newValue} when ${action}. Change it to ${oldValue}`,
+    ) => `"${newElement}" changes visibility to ${newValue} when ${action}. Change it to ${oldValue}`,
     name: 'language-compatibility/override-changes-visibility',
   });
 
   public static readonly JSII_5003_OVERRIDE_CHANGES_RETURN_TYPE = Code.error({
     code: 5003,
-    formatter: (
-      newElement: string,
-      action: string,
-      newValue: string,
-      oldValue: string,
-    ) =>
+    formatter: (newElement: string, action: string, newValue: string, oldValue: string) =>
       `"${newElement}" changes the return type to "${newValue}" when ${action}. Change it to "${oldValue}"`,
     name: 'language-compatibility/override-changes-return-type',
   });
 
   public static readonly JSII_5004_OVERRIDE_CHANGES_PROP_TYPE = Code.error({
     code: 5004,
-    formatter: (
-      newElement: string,
-      action: string,
-      newType: spec.TypeReference,
-      oldType: spec.TypeReference,
-    ) =>
+    formatter: (newElement: string, action: string, newType: spec.TypeReference, oldType: spec.TypeReference) =>
       `"${newElement}" changes the property type to "${spec.describeTypeReference(
         newType,
-      )}" when ${action}. Change it to "${spec.describeTypeReference(
-        oldType,
-      )}"`,
+      )}" when ${action}. Change it to "${spec.describeTypeReference(oldType)}"`,
     name: 'language-compatibility/override-changes-property-type',
   });
 
   public static readonly JSII_5005_OVERRIDE_CHANGES_PARAM_COUNT = Code.error({
     code: 5005,
-    formatter: (
-      newElement: string,
-      action: string,
-      newCount: number,
-      oldCount: number,
-    ) =>
+    formatter: (newElement: string, action: string, newCount: number, oldCount: number) =>
       `"${newElement}" has ${newCount} parameters when ${action}. It should accept ${oldCount} parameters`,
     name: 'language-compatibility/override-changes-param-count',
   });
 
   public static readonly JSII_5006_OVERRIDE_CHANGES_PARAM_TYPE = Code.error({
     code: 5006,
-    formatter: (
-      newElement: string,
-      action: string,
-      newParam: spec.Parameter,
-      oldParam: spec.Parameter,
-    ) =>
-      `"${newElement}" changes the type of parameter "${
-        newParam.name
-      }" to ${spec.describeTypeReference(
+    formatter: (newElement: string, action: string, newParam: spec.Parameter, oldParam: spec.Parameter) =>
+      `"${newElement}" changes the type of parameter "${newParam.name}" to ${spec.describeTypeReference(
         newParam.type,
-      )} when ${action}. Change it to ${spec.describeTypeReference(
-        oldParam.type,
-      )}`,
+      )} when ${action}. Change it to ${spec.describeTypeReference(oldParam.type)}`,
     name: 'language-compatibility/override-changes-param-type',
   });
 
   public static readonly JSII_5007_OVERRIDE_CHANGES_VARIADIC = Code.error({
     code: 5007,
-    formatter: (
-      newElement: string,
-      action: string,
-      newVariadic = false,
-      oldVariadic = false,
-    ) =>
-      `"${newElement}" turns ${
-        newVariadic ? 'variadic' : 'non variadic'
-      } when ${action}. Make it ${oldVariadic ? 'variadic' : 'non-variadic'}`,
+    formatter: (newElement: string, action: string, newVariadic = false, oldVariadic = false) =>
+      `"${newElement}" turns ${newVariadic ? 'variadic' : 'non variadic'} when ${action}. Make it ${
+        oldVariadic ? 'variadic' : 'non-variadic'
+      }`,
     name: 'language-compatibility/override-changes-variadic',
   });
 
-  public static readonly JSII_5008_OVERRIDE_CHANGES_PARAM_OPTIONAL = Code.error(
-    {
-      code: 5008,
-      formatter: (
-        newElement: string,
-        action: string,
-        newParam: spec.Parameter,
-        oldParam: spec.Parameter,
-      ) =>
-        `"${newElement}" turns parameter "${newParam.name}" ${
-          newParam.optional ? 'optional' : 'required'
-        } when ${action}. Make it ${
-          oldParam.optional ? 'optional' : 'required'
-        }`,
-      name: 'language-compatibility/override-changes-param-optional',
-    },
-  );
+  public static readonly JSII_5008_OVERRIDE_CHANGES_PARAM_OPTIONAL = Code.error({
+    code: 5008,
+    formatter: (newElement: string, action: string, newParam: spec.Parameter, oldParam: spec.Parameter) =>
+      `"${newElement}" turns parameter "${newParam.name}" ${
+        newParam.optional ? 'optional' : 'required'
+      } when ${action}. Make it ${oldParam.optional ? 'optional' : 'required'}`,
+    name: 'language-compatibility/override-changes-param-optional',
+  });
 
   public static readonly JSII_5009_OVERRIDE_CHANGES_PROP_OPTIONAL = Code.error({
     code: 5009,
-    formatter: (
-      newElement: string,
-      action: string,
-      newOptional = false,
-      oldOptional = false,
-    ) =>
-      `"${newElement}" turns ${
-        newOptional ? 'optional' : 'required'
-      } when ${action}. Make it ${oldOptional ? 'optional' : 'required'}`,
+    formatter: (newElement: string, action: string, newOptional = false, oldOptional = false) =>
+      `"${newElement}" turns ${newOptional ? 'optional' : 'required'} when ${action}. Make it ${
+        oldOptional ? 'optional' : 'required'
+      }`,
     name: 'language-compatibility/override-changes-prop-optional',
   });
 
   public static readonly JSII_5010_OVERRIDE_CHANGES_MUTABILITY = Code.error({
     code: 5010,
-    formatter: (
-      newElement: string,
-      action: string,
-      newReadonly = false,
-      oldReadonly = false,
-    ) =>
-      `"${newElement}" turns ${
-        newReadonly ? 'readonly' : 'mutable'
-      } when ${action}. Make it ${oldReadonly ? 'readonly' : 'mutable'}`,
+    formatter: (newElement: string, action: string, newReadonly = false, oldReadonly = false) =>
+      `"${newElement}" turns ${newReadonly ? 'readonly' : 'mutable'} when ${action}. Make it ${
+        oldReadonly ? 'readonly' : 'mutable'
+      }`,
     name: 'language-compatibility/override-changes-mutability',
   });
 
   public static readonly JSII_5011_SUBMODULE_NAME_CONFLICT = Code.error({
     code: 5011,
-    formatter: (
-      submoduleName: string,
-      typeName: string,
-      reserved: readonly string[],
-    ) =>
+    formatter: (submoduleName: string, typeName: string, reserved: readonly string[]) =>
       `Submodule "${submoduleName}" conflicts with "${typeName}, as different languages could represent it as: ${reserved
         .map((x) => `"${x}"`)
         .join(', ')}"`,
@@ -582,9 +504,7 @@ export class JsiiDiagnostic implements ts.Diagnostic {
       baseMember: spec.Method | spec.Property,
       baseType: spec.ClassType,
     ) =>
-      `${member.static ? 'Static' : 'Instance'} member "${
-        member.name
-      }" of class "${type.fqn}" conflicts with ${
+      `${member.static ? 'Static' : 'Instance'} member "${member.name}" of class "${type.fqn}" conflicts with ${
         baseMember.static ? 'static' : 'instance'
       } member in ancestor "${baseType.fqn}"`,
     name: 'language-compatibility/inherited-static-conflict',
@@ -622,26 +542,21 @@ export class JsiiDiagnostic implements ts.Diagnostic {
 
   public static readonly JSII_5019_MEMBER_TYPE_NAME_CONFLICT = Code.warning({
     code: 5019,
-    formatter: (
-      memberKind: 'method' | 'property',
-      memberSymbol: ts.Symbol,
-      declaringType: spec.Type,
-    ) =>
+    formatter: (memberKind: 'method' | 'property', memberSymbol: ts.Symbol, declaringType: spec.Type) =>
       `The ${memberKind} name "${memberSymbol.name}" conflicts with the declaring ${declaringType.kind} "${declaringType.name}". This will result in renaming the ${declaringType.kind} to "_${declaringType.name}" in C#. Consider renaming "${memberSymbol.name}".`,
     name: 'language-compatibility/member-name-conflicts-with-type-name',
   });
 
-  public static readonly JSII_5020_STATIC_MEMBER_CONFLICTS_WITH_NESTED_TYPE =
-    Code.error({
-      code: 5020,
-      formatter: (
-        nestingType: spec.Type,
-        staticMember: spec.Property | spec.Method | spec.EnumMember,
-        nestedType: spec.Type,
-      ) =>
-        `The static member "${nestingType.name}.${staticMember.name}" has the same PascalCased representation as nested type "${nestingType.name}.${nestedType.name}". This would result in invalid code in Go.`,
-      name: 'language-compatibility/static-member-name-conflicts-with-nested-type',
-    });
+  public static readonly JSII_5020_STATIC_MEMBER_CONFLICTS_WITH_NESTED_TYPE = Code.error({
+    code: 5020,
+    formatter: (
+      nestingType: spec.Type,
+      staticMember: spec.Property | spec.Method | spec.EnumMember,
+      nestedType: spec.Type,
+    ) =>
+      `The static member "${nestingType.name}.${staticMember.name}" has the same PascalCased representation as nested type "${nestingType.name}.${nestedType.name}". This would result in invalid code in Go.`,
+    name: 'language-compatibility/static-member-name-conflicts-with-nested-type',
+  });
 
   //////////////////////////////////////////////////////////////////////////////
   // 6000 => 6999 -- RESERVED
@@ -659,9 +574,7 @@ export class JsiiDiagnostic implements ts.Diagnostic {
   public static readonly JSII_7001_ILLEGAL_HINT = Code.error({
     code: 7001,
     formatter: (hint: keyof TypeSystemHints, ...valid: readonly string[]) =>
-      `Illegal use of "@${hint}" hint. It is only valid on ${valid.join(
-        ', ',
-      )}.`,
+      `Illegal use of "@${hint}" hint. It is only valid on ${valid.join(', ')}.`,
     name: 'documentation/illegal-hint',
   });
 
@@ -684,9 +597,7 @@ export class JsiiDiagnostic implements ts.Diagnostic {
   public static readonly JSII_8001_ALL_CAPS_ENUM_MEMBERS = Code.error({
     code: 8001,
     formatter: (badName: string, typeName: string) =>
-      `Enum members must be ALL_CAPS. Rename "${typeName}.${badName}" to "${constant(
-        badName,
-      )}"`,
+      `Enum members must be ALL_CAPS. Rename "${typeName}.${badName}" to "${constant(badName)}"`,
     name: 'code-style/enum-members-must-use-all-caps',
   });
 
@@ -711,9 +622,7 @@ export class JsiiDiagnostic implements ts.Diagnostic {
   public static readonly JSII_8004_SUBMOULE_NAME_CASING = Code.error({
     code: 8004,
     formatter: (badName: string) =>
-      `Submodule namespaces must be camelCased or snake_cased. Rename "${badName}" to ${camel(
-        badName,
-      )}`,
+      `Submodule namespaces must be camelCased or snake_cased. Rename "${badName}" to ${camel(badName)}`,
     name: 'code-style/submodule-name-casing',
   });
 
@@ -733,8 +642,7 @@ export class JsiiDiagnostic implements ts.Diagnostic {
 
   public static readonly JSII_8007_BEHAVIORAL_INTERFACE_NAME = Code.error({
     code: 8007,
-    formatter: (badName: string) =>
-      `Interface contains behavior. Rename "${badName}" to "I${badName}"`,
+    formatter: (badName: string) => `Interface contains behavior. Rename "${badName}" to "I${badName}"`,
     name: 'code-style/behavioral-interface-name',
   });
 
@@ -750,8 +658,7 @@ export class JsiiDiagnostic implements ts.Diagnostic {
 
   public static readonly JSII_9001_TYPE_NOT_FOUND = Code.error({
     code: 9001,
-    formatter: (typeRef: spec.NamedTypeReference) =>
-      `Type not found in the corresponding assembly: "${typeRef.fqn}"`,
+    formatter: (typeRef: spec.NamedTypeReference) => `Type not found in the corresponding assembly: "${typeRef.fqn}"`,
     name: 'miscellaneous/type-not-found',
   });
 
@@ -764,8 +671,7 @@ export class JsiiDiagnostic implements ts.Diagnostic {
 
   public static readonly JSII_9003_UNRESOLVEABLE_MODULE = Code.error({
     code: 9003,
-    formatter: (location: string) =>
-      `Unable to resolve module location "${location}"`,
+    formatter: (location: string) => `Unable to resolve module location "${location}"`,
     name: 'miscellaneous/unresolveable-module',
   });
 
@@ -784,8 +690,7 @@ export class JsiiDiagnostic implements ts.Diagnostic {
 
   public static readonly JSII_9997_UNKNOWN_ERROR = Code.error({
     code: 9997,
-    formatter: (error: Error) =>
-      `Unknown error: ${error.message} -- ${error.stack}`,
+    formatter: (error: Error) => `Unknown error: ${error.message} -- ${error.stack}`,
     name: 'miscellaneous/unknown-error',
   });
 
@@ -834,8 +739,7 @@ export class JsiiDiagnostic implements ts.Diagnostic {
   public readonly start: number | undefined;
   public readonly length: number | undefined;
 
-  public readonly relatedInformation =
-    new Array<ts.DiagnosticRelatedInformation>();
+  public readonly relatedInformation = new Array<ts.DiagnosticRelatedInformation>();
 
   // eslint-disable-next-line @typescript-eslint/explicit-member-accessibility
   #formatted?: string;
@@ -845,11 +749,7 @@ export class JsiiDiagnostic implements ts.Diagnostic {
    *
    * @internal
    */
-  public constructor(
-    code: Code,
-    messageText: string | ts.DiagnosticMessageChain,
-    location?: ts.Node,
-  ) {
+  public constructor(code: Code, messageText: string | ts.DiagnosticMessageChain, location?: ts.Node) {
     this.category = code.category;
     this.jsiiCode = code.code;
     this.messageText = messageText;
@@ -861,13 +761,8 @@ export class JsiiDiagnostic implements ts.Diagnostic {
     }
   }
 
-  public addRelatedInformation(
-    node: ts.Node,
-    message: JsiiDiagnostic['messageText'],
-  ): this {
-    this.relatedInformation.push(
-      JsiiDiagnostic.JSII_9999_RELATED_INFO.create(node, message),
-    );
+  public addRelatedInformation(node: ts.Node, message: JsiiDiagnostic['messageText']): this {
+    this.relatedInformation.push(JsiiDiagnostic.JSII_9999_RELATED_INFO.create(node, message));
     // Clearing out #formatted, as this would no longer be the correct string.
     this.#formatted = undefined;
     return this;
@@ -882,10 +777,7 @@ export class JsiiDiagnostic implements ts.Diagnostic {
    *
    * @returns `this`
    */
-  public addRelatedInformationIf(
-    node: ts.Node | undefined,
-    message: JsiiDiagnostic['messageText'],
-  ): this {
+  public addRelatedInformationIf(node: ts.Node | undefined, message: JsiiDiagnostic['messageText']): this {
     if (node != null) {
       return this.addRelatedInformation(node, message);
     } else {
@@ -902,16 +794,11 @@ export class JsiiDiagnostic implements ts.Diagnostic {
    *
    * @returns `this`
    */
-  public maybeAddRelatedInformation(
-    node: ts.Node | undefined,
-    message: JsiiDiagnostic['messageText'],
-  ): this {
+  public maybeAddRelatedInformation(node: ts.Node | undefined, message: JsiiDiagnostic['messageText']): this {
     if (node == null) {
       return this;
     }
-    this.relatedInformation.push(
-      JsiiDiagnostic.JSII_9999_RELATED_INFO.create(node, message),
-    );
+    this.relatedInformation.push(JsiiDiagnostic.JSII_9999_RELATED_INFO.create(node, message));
     // Clearing out #formatted, as this would no longer be the correct string.
     this.#formatted = undefined;
     return this;
@@ -932,13 +819,9 @@ export class JsiiDiagnostic implements ts.Diagnostic {
   }
 }
 
-export type DiagnosticMessageFormatter = (
-  ...args: any[]
-) => JsiiDiagnostic['messageText'];
+export type DiagnosticMessageFormatter = (...args: any[]) => JsiiDiagnostic['messageText'];
 
-export function configureCategories(records: {
-  [code: string]: ts.DiagnosticCategory;
-}) {
+export function configureCategories(records: { [code: string]: ts.DiagnosticCategory }) {
   for (const [code, category] of Object.entries(records)) {
     const diagCode = Code.lookup(diagnosticCode(code));
     if (!diagCode) {
@@ -954,9 +837,7 @@ function diagnosticCode(str: string): string | number {
     if (re) {
       return parseInt(re[1], 10);
     }
-    throw new Error(
-      `Invalid diagnostic code ${str}. A number must follow code that starts with 'JSII'`,
-    );
+    throw new Error(`Invalid diagnostic code ${str}. A number must follow code that starts with 'JSII'`);
   }
   return str;
 }

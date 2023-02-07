@@ -36,30 +36,21 @@ export class DeprecationWarningsInjector {
       // This will add the parameter to the set of visited objects, to prevent infinite recursion
       statements.push(
         ts.createExpressionStatement(
-          ts.createCall(
-            ts.createPropertyAccess(
-              ts.createIdentifier(VISITED_OBJECTS_SET_NAME),
-              'add',
-            ),
-            undefined,
-            [ts.createIdentifier(PARAMETER_NAME)],
-          ),
+          ts.createCall(ts.createPropertyAccess(ts.createIdentifier(VISITED_OBJECTS_SET_NAME), 'add'), undefined, [
+            ts.createIdentifier(PARAMETER_NAME),
+          ]),
         ),
       );
 
       const tryStatements = [];
       if (spec.isDeprecated(type) && spec.isEnumType(type)) {
         // The type is deprecated
-        tryStatements.push(
-          createWarningFunctionCall(type.fqn, type.docs?.deprecated),
-        );
+        tryStatements.push(createWarningFunctionCall(type.fqn, type.docs?.deprecated));
         isEmpty = false;
       }
 
       if (spec.isEnumType(type) && type.locationInModule?.filename) {
-        tryStatements.push(
-          createEnumRequireStatement(type.locationInModule?.filename),
-        );
+        tryStatements.push(createEnumRequireStatement(type.locationInModule?.filename));
         tryStatements.push(createDuplicateEnumValuesCheck(type));
 
         for (const member of Object.values(type.members ?? [])) {
@@ -69,19 +60,12 @@ export class DeprecationWarningsInjector {
               ts.createIdentifier(PARAMETER_NAME),
               ts.SyntaxKind.EqualsEqualsEqualsToken,
               ts.createPropertyAccess(
-                ts.createPropertyAccess(
-                  ts.createIdentifier(LOCAL_ENUM_NAMESPACE),
-                  type.name,
-                ),
+                ts.createPropertyAccess(ts.createIdentifier(LOCAL_ENUM_NAMESPACE), type.name),
                 member.name,
               ),
             );
             tryStatements.push(
-              createWarningFunctionCall(
-                `${type.fqn}#${member.name}`,
-                member.docs?.deprecated,
-                condition,
-              ),
+              createWarningFunctionCall(`${type.fqn}#${member.name}`, member.docs?.deprecated, condition),
             );
             isEmpty = false;
           }
@@ -111,10 +95,7 @@ export class DeprecationWarningsInjector {
           ts.createBlock([
             ts.createExpressionStatement(
               ts.createCall(
-                ts.createPropertyAccess(
-                  ts.createIdentifier(VISITED_OBJECTS_SET_NAME),
-                  'delete',
-                ),
+                ts.createPropertyAccess(ts.createIdentifier(VISITED_OBJECTS_SET_NAME), 'delete'),
                 undefined,
                 [ts.createIdentifier(PARAMETER_NAME)],
               ),
@@ -123,12 +104,7 @@ export class DeprecationWarningsInjector {
         ),
       );
 
-      const paramValue = ts.createParameter(
-        undefined,
-        undefined,
-        undefined,
-        PARAMETER_NAME,
-      );
+      const paramValue = ts.createParameter(undefined, undefined, undefined, PARAMETER_NAME);
       const functionName = fnName(type.fqn);
       const functionDeclaration = ts.createFunctionDeclaration(
         undefined,
@@ -208,31 +184,17 @@ function processInterfaceType(
       excludedProps.add(prop.name);
     }
 
-    if (
-      spec.isNamedTypeReference(prop.type) &&
-      Object.keys(types).includes(prop.type.fqn)
-    ) {
-      const functionName = importedFunctionName(
-        prop.type.fqn,
-        assembly,
-        projectInfo,
-      );
+    if (spec.isNamedTypeReference(prop.type) && Object.keys(types).includes(prop.type.fqn)) {
+      const functionName = importedFunctionName(prop.type.fqn, assembly, projectInfo);
       if (functionName) {
-        const statement = createTypeHandlerCall(
-          functionName,
-          `${PARAMETER_NAME}.${prop.name}`,
-        );
+        const statement = createTypeHandlerCall(functionName, `${PARAMETER_NAME}.${prop.name}`);
         statementsByProp.set(`${prop.name}_`, statement);
       }
     } else if (
       spec.isCollectionTypeReference(prop.type) &&
       spec.isNamedTypeReference(prop.type.collection.elementtype)
     ) {
-      const functionName = importedFunctionName(
-        prop.type.collection.elementtype.fqn,
-        assembly,
-        projectInfo,
-      );
+      const functionName = importedFunctionName(prop.type.collection.elementtype.fqn, assembly, projectInfo);
       if (functionName) {
         const statement = createTypeHandlerCall(
           functionName,
@@ -246,16 +208,9 @@ function processInterfaceType(
       spec.isNamedTypeReference(prop.type.union.types[0]) &&
       Object.keys(types).includes(prop.type.union.types[0].fqn)
     ) {
-      const functionName = importedFunctionName(
-        prop.type.union.types[0].fqn,
-        assembly,
-        projectInfo,
-      );
+      const functionName = importedFunctionName(prop.type.union.types[0].fqn, assembly, projectInfo);
       if (functionName) {
-        const statement = createTypeHandlerCall(
-          functionName,
-          `${PARAMETER_NAME}.${prop.name}`,
-        );
+        const statement = createTypeHandlerCall(functionName, `${PARAMETER_NAME}.${prop.name}`);
         statementsByProp.set(`${prop.name}_`, statement);
       }
     }
@@ -286,11 +241,7 @@ function fnName(fqn: string): string {
 function createFunctionBlock(statements: ts.Statement[]): ts.Block {
   if (statements.length > 0) {
     const validation = ts.createIf(
-      ts.createBinary(
-        ts.createIdentifier(PARAMETER_NAME),
-        ts.SyntaxKind.EqualsEqualsToken,
-        ts.createNull(),
-      ),
+      ts.createBinary(ts.createIdentifier(PARAMETER_NAME), ts.SyntaxKind.EqualsEqualsToken, ts.createNull()),
       ts.createReturn(),
     );
     return ts.createBlock([validation, ...statements], true);
@@ -304,33 +255,18 @@ function createWarningFunctionCall(
   condition?: ts.Expression,
   includeNamespace = false,
 ): ts.Statement {
-  const functionName = includeNamespace
-    ? `${NAMESPACE}.${WARNING_FUNCTION_NAME}`
-    : WARNING_FUNCTION_NAME;
+  const functionName = includeNamespace ? `${NAMESPACE}.${WARNING_FUNCTION_NAME}` : WARNING_FUNCTION_NAME;
 
   const mainStatement = ts.createExpressionStatement(
-    ts.createCall(ts.createIdentifier(functionName), undefined, [
-      ts.createLiteral(fqn),
-      ts.createLiteral(message),
-    ]),
+    ts.createCall(ts.createIdentifier(functionName), undefined, [ts.createLiteral(fqn), ts.createLiteral(message)]),
   );
 
   return condition ? ts.createIf(condition, mainStatement) : mainStatement;
 }
 
-function generateWarningsFile(
-  projectRoot: string,
-  functionDeclarations: ts.FunctionDeclaration[],
-) {
-  const names = [...functionDeclarations]
-    .map((d) => d.name?.text)
-    .filter(Boolean);
-  const exportedSymbols = [
-    WARNING_FUNCTION_NAME,
-    GET_PROPERTY_DESCRIPTOR,
-    DEPRECATION_ERROR,
-    ...names,
-  ].join(',');
+function generateWarningsFile(projectRoot: string, functionDeclarations: ts.FunctionDeclaration[]) {
+  const names = [...functionDeclarations].map((d) => d.name?.text).filter(Boolean);
+  const exportedSymbols = [WARNING_FUNCTION_NAME, GET_PROPERTY_DESCRIPTOR, DEPRECATION_ERROR, ...names].join(',');
 
   const functionText = `function ${WARNING_FUNCTION_NAME}(name, deprecationMessage) {
   const deprecated = process.env.JSII_DEPRECATED;
@@ -410,10 +346,7 @@ class Transformer {
     const result = this.visitEachChild(node);
 
     if (ts.isSourceFile(result) && this.warningCallsWereInjected) {
-      const importDir = path.relative(
-        path.dirname(result.fileName),
-        this.projectRoot,
-      );
+      const importDir = path.relative(path.dirname(result.fileName), this.projectRoot);
       const importPath = importDir.startsWith('..')
         ? unixPath(path.join(importDir, WARNINGSCODE_FILE_NAME))
         : `./${WARNINGSCODE_FILE_NAME}`;
@@ -433,8 +366,7 @@ class Transformer {
   private visitor<T extends ts.Node>(node: T): ts.VisitResult<T> {
     if (ts.isMethodDeclaration(node) && node.body != null) {
       const statements = this.getStatementsForDeclaration(node);
-      this.warningCallsWereInjected =
-        this.warningCallsWereInjected || statements.length > 0;
+      this.warningCallsWereInjected = this.warningCallsWereInjected || statements.length > 0;
       return ts.updateMethod(
         node,
         node.decorators,
@@ -448,18 +380,14 @@ class Transformer {
         ts.updateBlock(node.body, [
           ...wrapWithRethrow(
             statements,
-            ts.createPropertyAccess(
-              ts.createThis(),
-              node.name.getText(node.getSourceFile()),
-            ),
+            ts.createPropertyAccess(ts.createThis(), node.name.getText(node.getSourceFile())),
           ),
           ...node.body.statements,
         ]),
       ) as any;
     } else if (ts.isGetAccessorDeclaration(node) && node.body != null) {
       const statements = this.getStatementsForDeclaration(node);
-      this.warningCallsWereInjected =
-        this.warningCallsWereInjected || statements.length > 0;
+      this.warningCallsWereInjected = this.warningCallsWereInjected || statements.length > 0;
       return ts.updateGetAccessor(
         node,
         node.decorators,
@@ -472,15 +400,9 @@ class Transformer {
             statements,
             ts.createPropertyAccess(
               ts.createCall(
-                ts.createPropertyAccess(
-                  ts.createIdentifier(NAMESPACE),
-                  GET_PROPERTY_DESCRIPTOR,
-                ),
+                ts.createPropertyAccess(ts.createIdentifier(NAMESPACE), GET_PROPERTY_DESCRIPTOR),
                 undefined,
-                [
-                  ts.createThis(),
-                  ts.createLiteral(node.name.getText(node.getSourceFile())),
-                ],
+                [ts.createThis(), ts.createLiteral(node.name.getText(node.getSourceFile()))],
               ),
               'get',
             ),
@@ -490,8 +412,7 @@ class Transformer {
       ) as any;
     } else if (ts.isSetAccessorDeclaration(node) && node.body != null) {
       const statements = this.getStatementsForDeclaration(node);
-      this.warningCallsWereInjected =
-        this.warningCallsWereInjected || statements.length > 0;
+      this.warningCallsWereInjected = this.warningCallsWereInjected || statements.length > 0;
       return ts.updateSetAccessor(
         node,
         node.decorators,
@@ -503,15 +424,9 @@ class Transformer {
             statements,
             ts.createPropertyAccess(
               ts.createCall(
-                ts.createPropertyAccess(
-                  ts.createIdentifier(NAMESPACE),
-                  GET_PROPERTY_DESCRIPTOR,
-                ),
+                ts.createPropertyAccess(ts.createIdentifier(NAMESPACE), GET_PROPERTY_DESCRIPTOR),
                 undefined,
-                [
-                  ts.createThis(),
-                  ts.createLiteral(node.name.getText(node.getSourceFile())),
-                ],
+                [ts.createThis(), ts.createLiteral(node.name.getText(node.getSourceFile()))],
               ),
               'set',
             ),
@@ -521,20 +436,13 @@ class Transformer {
       ) as any;
     } else if (ts.isConstructorDeclaration(node) && node.body != null) {
       const statements = this.getStatementsForDeclaration(node);
-      this.warningCallsWereInjected =
-        this.warningCallsWereInjected || statements.length > 0;
+      this.warningCallsWereInjected = this.warningCallsWereInjected || statements.length > 0;
       return ts.updateConstructor(
         node,
         node.decorators,
         ts.getModifiers(node),
         node.parameters,
-        ts.updateBlock(
-          node.body,
-          insertStatements(
-            node.body,
-            wrapWithRethrow(statements, node.parent.name!),
-          ),
-        ),
+        ts.updateBlock(node.body, insertStatements(node.body, wrapWithRethrow(statements, node.parent.name!))),
       ) as any;
     }
 
@@ -546,17 +454,10 @@ class Transformer {
    *                 setter should be used to get the caller function value.
    */
   private getStatementsForDeclaration(
-    node:
-    | ts.MethodDeclaration
-    | ts.GetAccessorDeclaration
-    | ts.SetAccessorDeclaration
-    | ts.ConstructorDeclaration,
+    node: ts.MethodDeclaration | ts.GetAccessorDeclaration | ts.SetAccessorDeclaration | ts.ConstructorDeclaration,
   ): ts.Statement[] {
     const klass = node.parent;
-    const classSymbolId = symbolIdentifier(
-      this.typeChecker,
-      this.typeChecker.getTypeAtLocation(klass).symbol,
-    );
+    const classSymbolId = symbolIdentifier(this.typeChecker, this.typeChecker.getTypeAtLocation(klass).symbol);
     if (classSymbolId && this.typeIndex.has(classSymbolId)) {
       const classType = this.typeIndex.get(classSymbolId)! as spec.ClassType;
 
@@ -568,17 +469,13 @@ class Transformer {
       }
 
       const methods = classType?.methods ?? [];
-      const method = methods.find(
-        (m) => m.name === node.name?.getText(),
-      );
+      const method = methods.find((m) => m.name === node.name?.getText());
       if (method) {
         return this.getStatements(classType, method);
       }
 
       const properties = classType?.properties ?? [];
-      const property = properties.find(
-        (p) => p.name === node.name?.getText(),
-      );
+      const property = properties.find((p) => p.name === node.name?.getText());
       if (property) {
         return createWarningStatementForElement(property, classType);
       }
@@ -586,10 +483,7 @@ class Transformer {
     return [];
   }
 
-  private getStatements(
-    classType: spec.ClassType,
-    method: spec.Method | spec.Initializer,
-  ) {
+  private getStatements(classType: spec.ClassType, method: spec.Method | spec.Initializer) {
     const statements = createWarningStatementForElement(method, classType);
     for (const parameter of Object.values(method.parameters ?? {})) {
       const parameterType =
@@ -601,9 +495,7 @@ class Transformer {
         const functionName = `${NAMESPACE}.${fnName(parameterType.fqn)}`;
         statements.push(
           ts.createExpressionStatement(
-            ts.createCall(ts.createIdentifier(functionName), undefined, [
-              ts.createIdentifier(parameter.name),
-            ]),
+            ts.createCall(ts.createIdentifier(functionName), undefined, [ts.createIdentifier(parameter.name)]),
           ),
         );
       }
@@ -638,10 +530,7 @@ function insertStatements(block: ts.Block, newStatements: ts.Statement[]) {
     }
     let isSuper = false;
     statement.forEachChild((node) => {
-      if (
-        ts.isCallExpression(node) &&
-        node.expression.kind === ts.SyntaxKind.SuperKeyword
-      ) {
+      if (ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.SuperKeyword) {
         isSuper = true;
       }
     });
@@ -660,10 +549,7 @@ function createEnumRequireStatement(typeLocation: string): ts.Statement {
   return createRequireStatement(LOCAL_ENUM_NAMESPACE, `./${jsFileName}`);
 }
 
-function createRequireStatement(
-  name: string,
-  importPath: string,
-): ts.Statement {
+function createRequireStatement(name: string, importPath: string): ts.Statement {
   return ts.createVariableStatement(
     undefined,
     ts.createVariableDeclarationList(
@@ -671,9 +557,7 @@ function createRequireStatement(
         ts.createVariableDeclaration(
           name,
           undefined,
-          ts.createCall(ts.createIdentifier('require'), undefined, [
-            ts.createLiteral(importPath),
-          ]),
+          ts.createCall(ts.createIdentifier('require'), undefined, [ts.createLiteral(importPath)]),
         ),
       ],
       ts.NodeFlags.Const,
@@ -684,11 +568,7 @@ function createRequireStatement(
 /**
  * Returns a ready-to-used function name (including a `require`, if necessary)
  */
-function importedFunctionName(
-  typeName: string,
-  assembly: Assembly,
-  projectInfo: ProjectInfo,
-) {
+function importedFunctionName(typeName: string, assembly: Assembly, projectInfo: ProjectInfo) {
   const assemblies = projectInfo.dependencyClosure.concat(assembly);
   const { type, moduleName } = findType(typeName, assemblies);
   if (type) {
@@ -725,39 +605,23 @@ function createTypeHandlerCall(
   switch (collectionKind) {
     case spec.CollectionKind.Array:
       return ts.createIf(
-        ts.createBinary(
-          ts.createIdentifier(parameter),
-          ts.SyntaxKind.ExclamationEqualsToken,
-          ts.createNull(),
-        ),
+        ts.createBinary(ts.createIdentifier(parameter), ts.SyntaxKind.ExclamationEqualsToken, ts.createNull()),
         ts.createForOf(
           undefined,
-          ts.createVariableDeclarationList(
-            [ts.createVariableDeclaration(FOR_LOOP_ITEM_NAME)],
-            ts.NodeFlags.Const,
-          ),
+          ts.createVariableDeclarationList([ts.createVariableDeclaration(FOR_LOOP_ITEM_NAME)], ts.NodeFlags.Const),
           ts.createIdentifier(parameter),
           createTypeHandlerCall(functionName, FOR_LOOP_ITEM_NAME),
         ),
       );
     case spec.CollectionKind.Map:
       return ts.createIf(
-        ts.createBinary(
-          ts.createIdentifier(parameter),
-          ts.SyntaxKind.ExclamationEqualsToken,
-          ts.createNull(),
-        ),
+        ts.createBinary(ts.createIdentifier(parameter), ts.SyntaxKind.ExclamationEqualsToken, ts.createNull()),
         ts.createForOf(
           undefined,
-          ts.createVariableDeclarationList(
-            [ts.createVariableDeclaration(FOR_LOOP_ITEM_NAME)],
-            ts.NodeFlags.Const,
-          ),
-          ts.createCall(
-            ts.createPropertyAccess(ts.createIdentifier('Object'), 'values'),
-            undefined,
-            [ts.createIdentifier(parameter)],
-          ),
+          ts.createVariableDeclarationList([ts.createVariableDeclaration(FOR_LOOP_ITEM_NAME)], ts.NodeFlags.Const),
+          ts.createCall(ts.createPropertyAccess(ts.createIdentifier('Object'), 'values'), undefined, [
+            ts.createIdentifier(parameter),
+          ]),
           createTypeHandlerCall(functionName, FOR_LOOP_ITEM_NAME),
         ),
       );
@@ -766,18 +630,13 @@ function createTypeHandlerCall(
         ts.createPrefix(
           ts.SyntaxKind.ExclamationToken,
           ts.createCall(
-            ts.createPropertyAccess(
-              ts.createIdentifier(VISITED_OBJECTS_SET_NAME),
-              ts.createIdentifier('has'),
-            ),
+            ts.createPropertyAccess(ts.createIdentifier(VISITED_OBJECTS_SET_NAME), ts.createIdentifier('has')),
             undefined,
             [ts.createIdentifier(parameter)],
           ),
         ),
         ts.createExpressionStatement(
-          ts.createCall(ts.createIdentifier(functionName), undefined, [
-            ts.createIdentifier(parameter),
-          ]),
+          ts.createCall(ts.createIdentifier(functionName), undefined, [ts.createIdentifier(parameter)]),
         ),
       );
   }
@@ -795,24 +654,15 @@ function createTypeHandlerCall(
  * Note that we can't just check the assembly for these duplicates, due to:
  * https://github.com/aws/jsii/issues/2782
  */
-function createDuplicateEnumValuesCheck(
-  type: spec.TypeBase & spec.EnumType,
-): ts.Statement {
+function createDuplicateEnumValuesCheck(type: spec.TypeBase & spec.EnumType): ts.Statement {
   return ts.createIf(
     ts.createBinary(
       ts.createPropertyAccess(
         ts.createCall(
           ts.createPropertyAccess(
-            ts.createCall(
-              ts.createPropertyAccess(ts.createIdentifier('Object'), 'values'),
-              undefined,
-              [
-                ts.createPropertyAccess(
-                  ts.createIdentifier(LOCAL_ENUM_NAMESPACE),
-                  type.name,
-                ),
-              ],
-            ),
+            ts.createCall(ts.createPropertyAccess(ts.createIdentifier('Object'), 'values'), undefined, [
+              ts.createPropertyAccess(ts.createIdentifier(LOCAL_ENUM_NAMESPACE), type.name),
+            ]),
             ts.createIdentifier('filter'),
           ),
           undefined,
@@ -843,10 +693,7 @@ function createDuplicateEnumValuesCheck(
 // We try-then-rethrow exceptions to avoid runtimes displaying an uncanny wall of text if the place
 // where the error was thrown is webpacked. For example, jest somehow manages to capture the throw
 // location and renders the source line (which may be the whole file) when bundled.
-function wrapWithRethrow(
-  statements: ts.Statement[],
-  caller: ts.Expression,
-): ts.Statement[] {
+function wrapWithRethrow(statements: ts.Statement[], caller: ts.Expression): ts.Statement[] {
   if (statements.length === 0) {
     return statements;
   }
@@ -862,13 +709,7 @@ function wrapWithRethrow(
           ts.createIf(
             ts.createBinary(
               ts.createBinary(
-                ts.createPropertyAccess(
-                  ts.createPropertyAccess(
-                    ts.createIdentifier('process'),
-                    'env',
-                  ),
-                  'JSII_DEBUG',
-                ),
+                ts.createPropertyAccess(ts.createPropertyAccess(ts.createIdentifier('process'), 'env'), 'JSII_DEBUG'),
                 ts.SyntaxKind.ExclamationEqualsEqualsToken,
                 ts.createLiteral('1'),
               ),
@@ -881,14 +722,10 @@ function wrapWithRethrow(
             ),
             ts.createBlock([
               ts.createExpressionStatement(
-                ts.createCall(
-                  ts.createPropertyAccess(
-                    ts.createIdentifier('Error'),
-                    'captureStackTrace',
-                  ),
-                  undefined,
-                  [ts.createIdentifier('error'), caller],
-                ),
+                ts.createCall(ts.createPropertyAccess(ts.createIdentifier('Error'), 'captureStackTrace'), undefined, [
+                  ts.createIdentifier('error'),
+                  caller,
+                ]),
               ),
             ]),
           ),

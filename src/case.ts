@@ -2,8 +2,8 @@ import * as Case from 'case';
 
 const withCache =
   (func: (text: string) => string): ((text: string) => string) =>
-    (text: string) =>
-      Cache.fetch(text, func);
+  (text: string) =>
+    Cache.fetch(text, func);
 
 export const camel = withCache(Case.camel);
 export const constant = withCache(Case.constant);

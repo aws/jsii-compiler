@@ -55,13 +55,8 @@ enum DocTag {
 /**
  * Parse all doc comments that apply to a symbol into JSIIDocs format
  */
-export function parseSymbolDocumentation(
-  sym: ts.Symbol,
-  typeChecker: ts.TypeChecker,
-): DocsParsingResult {
-  const comment = ts
-    .displayPartsToString(sym.getDocumentationComment(typeChecker))
-    .trim();
+export function parseSymbolDocumentation(sym: ts.Symbol, typeChecker: ts.TypeChecker): DocsParsingResult {
+  const comment = ts.displayPartsToString(sym.getDocumentationComment(typeChecker)).trim();
   const tags = reabsorbExampleTags(sym.getJsDocTags());
 
   // Right here we'll just guess that the first declaration site is the most important one.
@@ -82,10 +77,7 @@ export function getReferencedDocParams(sym: ts.Symbol): string[] {
   return ret;
 }
 
-function parseDocParts(
-  comments: string | undefined,
-  tags: ts.JSDocTagInfo[],
-): DocsParsingResult {
+function parseDocParts(comments: string | undefined, tags: ts.JSDocTagInfo[]): DocsParsingResult {
   const diagnostics = new Array<string>();
   const docs: spec.Docs = {};
   const hints: TypeSystemHints = {};
@@ -120,8 +112,7 @@ function parseDocParts(
   docs.example = eatTag(DocTag.EXAMPLE);
   docs.returns = eatTag(DocTag.RETURNS, DocTag.RETURN);
   docs.see = eatTag(DocTag.SEE);
-  docs.subclassable =
-    eatTag(DocTag.SUBCLASSABLE) !== undefined ? true : undefined;
+  docs.subclassable = eatTag(DocTag.SUBCLASSABLE) !== undefined ? true : undefined;
 
   docs.stability = parseStability(eatTag(DocTag.STABILITY), diagnostics);
   //  @experimental is a shorthand for '@stability experimental', same for '@stable'
@@ -140,13 +131,8 @@ function parseDocParts(
 
   // Can combine '@stability deprecated' with '@deprecated <reason>'
   if (docs.deprecated !== undefined) {
-    if (
-      docs.stability !== undefined &&
-      docs.stability !== spec.Stability.Deprecated
-    ) {
-      diagnostics.push(
-        "@deprecated tag requires '@stability deprecated' or no @stability at all.",
-      );
+    if (docs.stability !== undefined && docs.stability !== spec.Stability.Deprecated) {
+      diagnostics.push("@deprecated tag requires '@stability deprecated' or no @stability at all.");
     }
     docs.stability = spec.Stability.Deprecated;
   }
@@ -157,15 +143,11 @@ function parseDocParts(
     // which I tend to agree with, but that hasn't become a widely used standard yet.
     //
     // So we conform to existing reality.
-    diagnostics.push(
-      '@example must be code only, no code block fences allowed.',
-    );
+    diagnostics.push('@example must be code only, no code block fences allowed.');
   }
 
   if (docs.deprecated?.trim() === '') {
-    diagnostics.push(
-      '@deprecated tag needs a reason and/or suggested alternatives.',
-    );
+    diagnostics.push('@deprecated tag needs a reason and/or suggested alternatives.');
   }
 
   if (tagNames.size > 0) {
@@ -200,9 +182,7 @@ export interface TypeSystemHints {
  * the docstring. If we detect that situation, we will try and extract the first sentence (using
  * a period) as the summary.
  */
-export function splitSummary(
-  docBlock: string | undefined,
-): [string | undefined, string | undefined] {
+export function splitSummary(docBlock: string | undefined): [string | undefined, string | undefined] {
   if (!docBlock) {
     return [undefined, undefined];
   }
@@ -256,9 +236,7 @@ function summaryLine(str: string) {
 
 const PUNCTUATION = ['!', '?', '.', ';'].map((s) => `\\${s}`).join('');
 const ENDS_WITH_PUNCTUATION_REGEX = new RegExp(`[${PUNCTUATION}]$`);
-const FIRST_SENTENCE_REGEX = new RegExp(
-  `^([^${PUNCTUATION}]+[${PUNCTUATION}][ \n\r])`,
-); // Needs a whitespace after the punctuation.
+const FIRST_SENTENCE_REGEX = new RegExp(`^([^${PUNCTUATION}]+[${PUNCTUATION}][ \n\r])`); // Needs a whitespace after the punctuation.
 
 function intBool(x: boolean): number {
   return x ? 1 : 0;
@@ -268,10 +246,7 @@ function countBools(...x: boolean[]) {
   return x.map(intBool).reduce((a, b) => a + b, 0);
 }
 
-function parseStability(
-  s: string | undefined,
-  diagnostics: string[],
-): spec.Stability | undefined {
+function parseStability(s: string | undefined, diagnostics: string[]): spec.Stability | undefined {
   if (s === undefined) {
     return undefined;
   }
@@ -307,7 +282,10 @@ function reabsorbExampleTags(tags: ts.JSDocTagInfo[]): ts.JSDocTagInfo[] {
       while (i + 1 < ret.length && !recognizedTags.includes(ret[i + 1].name)) {
         // Incorrectly classified as @tag, absorb back into example
         ret[i].text ??= [];
-        ret[i].text!.push({ text: `@${ret[i + 1].name}${ret[i + 1].text}`, kind: '' });
+        ret[i].text!.push({
+          text: `@${ret[i + 1].name}${ret[i + 1].text}`,
+          kind: '',
+        });
         ret.splice(i + 1, 1);
       }
     }

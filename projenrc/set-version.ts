@@ -22,11 +22,7 @@ if (versionMajorMinor !== `${semver.major}.${semver.minor}`) {
 
 const { error, status, signal } = spawnSync(
   'yarn',
-  [
-    'version',
-    '--no-git-tag-version',
-    '--new-version', semver.version,
-  ],
+  ['version', '--no-git-tag-version', '--new-version', semver.version],
   { stdio: 'inherit' },
 );
 
@@ -35,9 +31,7 @@ if (error != null) {
 }
 
 if (status !== 0) {
-  const condition = signal != null
-    ? `signal ${signal}`
-    : `exit code ${status}`;
+  const condition = signal != null ? `signal ${signal}` : `exit code ${status}`;
   console.error(`yarn version failed with ${condition}`);
-  process.exit(status ?? (128 + os.constants.signals[signal!]));
+  process.exit(status ?? 128 + os.constants.signals[signal!]);
 }

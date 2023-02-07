@@ -21,34 +21,25 @@ const setter = <T>(object: T, node: ts.Node | undefined): T => {
   return setRelatedNode(object, node);
 };
 
-export function setRelatedNode<T, N extends ts.Node = ts.Node>(
-  object: T,
-  node: N | undefined,
-) {
+export function setRelatedNode<T, N extends ts.Node = ts.Node>(object: T, node: N | undefined) {
   if (node != null) {
     STORAGE.set(object, node);
   }
   return object;
 }
 
-export const setClassRelatedNode: (
-  object: spec.ClassType,
-  node: ts.ClassDeclaration | undefined,
-) => spec.ClassType = setter;
+export const setClassRelatedNode: (object: spec.ClassType, node: ts.ClassDeclaration | undefined) => spec.ClassType =
+  setter;
 
-export const setEnumRelatedNode: (
-  object: spec.EnumType,
-  node: ts.EnumDeclaration | undefined,
-) => spec.EnumType = setter;
+export const setEnumRelatedNode: (object: spec.EnumType, node: ts.EnumDeclaration | undefined) => spec.EnumType =
+  setter;
 
 export const setInterfaceRelatedNode: (
   object: spec.InterfaceType,
   node: ts.InterfaceDeclaration | undefined,
 ) => spec.InterfaceType = setter;
 
-export const setMethodRelatedNode: <
-  T extends ts.MethodDeclaration | ts.MethodSignature,
->(
+export const setMethodRelatedNode: <T extends ts.MethodDeclaration | ts.MethodSignature>(
   object: spec.Method,
   node: T | undefined,
 ) => spec.Method = setter;
@@ -61,69 +52,55 @@ export const setParameterRelatedNode: (
 export const setPropertyRelatedNode: (
   object: spec.Property,
   node:
-  | ts.AccessorDeclaration
-  | ts.ParameterPropertyDeclaration
-  | ts.PropertyDeclaration
-  | ts.PropertySignature
-  | undefined,
+    | ts.AccessorDeclaration
+    | ts.ParameterPropertyDeclaration
+    | ts.PropertyDeclaration
+    | ts.PropertySignature
+    | undefined,
 ) => spec.Parameter = setter;
 
 //#endregion
 
 //#region Inspecting attached nodes
 
-export function getRelatedNode<T extends ts.Node = ts.Node>(
-  object: any,
-): T | undefined {
+export function getRelatedNode<T extends ts.Node = ts.Node>(object: any): T | undefined {
   return STORAGE.get(object) as T;
 }
 
-export const getClassRelatedNode: (
-  object: spec.ClassType,
-) => ts.ClassDeclaration | undefined = getRelatedNode;
+export const getClassRelatedNode: (object: spec.ClassType) => ts.ClassDeclaration | undefined = getRelatedNode;
 
 export const getClassOrInterfaceRelatedNode: (
   object: spec.ClassType | spec.InterfaceType,
 ) => ts.ClassDeclaration | ts.InterfaceDeclaration | undefined = getRelatedNode;
 
-export const getEnumRelatedNode: (
-  object: spec.EnumType,
-) => ts.EnumDeclaration | undefined = getRelatedNode;
+export const getEnumRelatedNode: (object: spec.EnumType) => ts.EnumDeclaration | undefined = getRelatedNode;
 
-export const getInterfaceRelatedNode: (
-  object: spec.InterfaceType,
-) => ts.InterfaceDeclaration | undefined = getRelatedNode;
+export const getInterfaceRelatedNode: (object: spec.InterfaceType) => ts.InterfaceDeclaration | undefined =
+  getRelatedNode;
 
-export const getMethodRelatedNode: (
-  object: spec.Method,
-) => ts.MethodDeclaration | ts.MethodSignature | undefined = STORAGE.get.bind(
-  STORAGE,
-) as any;
+export const getMethodRelatedNode: (object: spec.Method) => ts.MethodDeclaration | ts.MethodSignature | undefined =
+  STORAGE.get.bind(STORAGE) as any;
 
 export const getParameterRelatedNode: (
   object: spec.Parameter,
 ) =>
-| ts.AccessorDeclaration
-| ts.ParameterPropertyDeclaration
-| ts.PropertyDeclaration
-| ts.PropertySignature
-| undefined = getRelatedNode;
+  | ts.AccessorDeclaration
+  | ts.ParameterPropertyDeclaration
+  | ts.PropertyDeclaration
+  | ts.PropertySignature
+  | undefined = getRelatedNode;
 
 export const getPropertyRelatedNode: (
   object: spec.Parameter,
 ) =>
-| ts.AccessorDeclaration
-| ts.ParameterPropertyDeclaration
-| ts.PropertyDeclaration
-| ts.PropertySignature
-| undefined = getRelatedNode;
+  | ts.AccessorDeclaration
+  | ts.ParameterPropertyDeclaration
+  | ts.PropertyDeclaration
+  | ts.PropertySignature
+  | undefined = getRelatedNode;
 
 export const getTypeRelatedNode: (
   object: spec.Type,
-) =>
-| ts.ClassDeclaration
-| ts.EnumDeclaration
-| ts.InterfaceDeclaration
-| undefined = getRelatedNode;
+) => ts.ClassDeclaration | ts.EnumDeclaration | ts.InterfaceDeclaration | undefined = getRelatedNode;
 
 //#endregion

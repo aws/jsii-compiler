@@ -1,4 +1,4 @@
-import { typescript } from 'projen';
+import { javascript, typescript } from 'projen';
 import { ReleaseWorkflow } from './projenrc/release';
 
 const project = new typescript.TypeScriptProject({
@@ -13,6 +13,8 @@ const project = new typescript.TypeScriptProject({
   homepage: 'https://aws.github.io/jsii',
   repository: 'https://github.com/aws/jsii-compiler.git',
 
+  autoDetectBin: true,
+
   minNodeVersion: '14.18.0',
   tsconfig: {
     compilerOptions: {
@@ -25,7 +27,19 @@ const project = new typescript.TypeScriptProject({
     },
   },
 
-  autoDetectBin: true,
+  prettier: true,
+  prettierOptions: {
+    ignoreFile: false,
+    settings: {
+      bracketSpacing: true,
+      printWidth: 120,
+      quoteProps: javascript.QuoteProps.CONSISTENT,
+      semi: true,
+      singleQuote: true,
+      tabWidth: 2,
+      trailingComma: javascript.TrailingComma.ALL,
+    },
+  },
 
   release: false, // We have our own release workflow
   defaultReleaseBranch: 'release',
@@ -60,15 +74,21 @@ project.addDevDeps(
   'eslint-plugin-unicorn',
 );
 
-project.preCompileTask.exec('ts-node build-tools/code-gen.ts', { name: 'code-gen' });
+project.preCompileTask.exec('ts-node build-tools/code-gen.ts', {
+  name: 'code-gen',
+});
 project.gitignore.addPatterns('src/version.ts');
+
+// Exclude negatives from tsconfig and eslint...
+project.tsconfigDev.addExclude('test/negatives/**/*.ts');
+project.eslint?.addIgnorePattern('test/negatives/**/*.ts');
 
 // Customize ESLint rules
 project.tsconfigDev.addInclude('build-tools/**/*.ts');
 project.eslint!.rules!['no-bitwise'] = ['off']; // The TypeScript compiler API leverages some bit-flags.
-
-// Add Unicorn rules (https://github.com/sindresorhus/eslint-plugin-unicorn#rules)
-project.eslint?.addPlugins('unicorn');
+(project.eslint!.rules!.quotes = ['error', 'single', { avoidEscape: true, allowTemplateLiterals: true }]),
+  // Add Unicorn rules (https://github.com/sindresorhus/eslint-plugin-unicorn#rules)
+  project.eslint?.addPlugins('unicorn');
 project.eslint?.addRules({
   'unicorn/prefer-node-protocol': ['error'],
   'unicorn/no-array-for-each': ['error'],

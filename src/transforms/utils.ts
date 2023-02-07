@@ -8,9 +8,7 @@ import { CustomTransformers } from 'typescript';
  *
  * @returns the combined transformer.
  */
-export function combinedTransformers(
-  ...transformers: readonly CustomTransformers[]
-): CustomTransformers {
+export function combinedTransformers(...transformers: readonly CustomTransformers[]): CustomTransformers {
   // Note the ! below are just to stop the type checker from seeing undefined as
   // a value for the whole map-filter-reduce chain, as this would require heavy
   // syntax that is not desirable. The filter step removes the `undefined`.
@@ -18,23 +16,14 @@ export function combinedTransformers(
     before: transformers
       .map((transformer) => transformer.before!)
       .filter((transform) => transform != null)
-      .reduce(
-        (acc, elt) => (acc ? [...acc, ...elt] : elt),
-        undefined as CustomTransformers['before'],
-      ),
+      .reduce((acc, elt) => (acc ? [...acc, ...elt] : elt), undefined as CustomTransformers['before']),
     after: transformers
       .map((transformer) => transformer.after!)
       .filter((transform) => transform != null)
-      .reduce(
-        (acc, elt) => (acc ? [...acc, ...elt] : elt),
-        undefined as CustomTransformers['after'],
-      ),
+      .reduce((acc, elt) => (acc ? [...acc, ...elt] : elt), undefined as CustomTransformers['after']),
     afterDeclarations: transformers
       .map((transformer) => transformer.afterDeclarations!)
       .filter((transform) => transform != null)
-      .reduce(
-        (acc, elt) => (acc ? [...acc, ...elt] : elt),
-        undefined as CustomTransformers['afterDeclarations'],
-      ),
+      .reduce((acc, elt) => (acc ? [...acc, ...elt] : elt), undefined as CustomTransformers['afterDeclarations']),
   };
 }
