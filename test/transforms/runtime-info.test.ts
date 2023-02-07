@@ -57,7 +57,7 @@ function transformedSource(source: string, ...classNames: string[]) {
   const transformed = ts.transform(ts.createSourceFile('source.ts', source, ts.ScriptTarget.Latest), [
     injector.runtimeTypeTransformer(),
   ]);
-  return ts.createPrinter().printBundle(ts.createBundle(transformed.transformed));
+  return ts.createPrinter().printBundle(ts.factory.createBundle(transformed.transformed));
 }
 
 /** Test subclass of RuntimeTypeInfoInjector that accepts overrides for type info */
@@ -135,7 +135,7 @@ import * as ts from 'typescript';
 
 const JSII_RTTI_SYMBOL_1 = 42;
 
-class Foo {
+export class Foo {
   constructor(public readonly bar: string) {}
 }
 `;

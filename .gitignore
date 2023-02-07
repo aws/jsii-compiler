@@ -31,8 +31,7 @@ jspm_packages/
 .yarn-integrity
 .cache
 !/.projenrc.js
-/test-reports/
-junit.xml
+!/jest.config.json
 /coverage/
 !/.github/workflows/build.yml
 !/.mergify.yml
@@ -47,5 +46,6 @@ junit.xml
 /dist/
 !/.eslintrc.json
 src/version.ts
+jsii-outdir
 !/.github/workflows/matrix-test.yml
 !/.github/workflows/release.yml

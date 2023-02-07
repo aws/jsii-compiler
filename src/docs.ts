@@ -52,6 +52,8 @@ enum DocTag {
   STRUCT = 'struct',
 }
 
+const RECOGNIZED_TAGS: ReadonlySet<String> = new Set(Object.values(DocTag));
+
 /**
  * Parse all doc comments that apply to a symbol into JSIIDocs format
  */
@@ -88,7 +90,7 @@ function parseDocParts(comments: string | undefined, tags: ts.JSDocTagInfo[]): D
   for (const tag of tags) {
     // 'param' gets parsed as a tag and as a comment for a method
     if (tag.name !== DocTag.PARAM) {
-      tagNames.set(tag.name, ts.displayPartsToString(tag.text));
+      tagNames.set(tag.name,tag.text&& ts.displayPartsToString(tag.text));
     }
   }
 
@@ -273,13 +275,12 @@ function parseStability(s: string | undefined, diagnostics: string[]): spec.Stab
  * We do this until we encounter a supported @ keyword.
  */
 function reabsorbExampleTags(tags: ts.JSDocTagInfo[]): ts.JSDocTagInfo[] {
-  const recognizedTags: string[] = Object.values(DocTag);
   const ret = [...tags];
 
   let i = 0;
   while (i < ret.length) {
     if (ret[i].name === 'example') {
-      while (i + 1 < ret.length && !recognizedTags.includes(ret[i + 1].name)) {
+      while (i + 1 < ret.length && !RECOGNIZED_TAGS.has(ret[i + 1].name)) {
         // Incorrectly classified as @tag, absorb back into example
         ret[i].text ??= [];
         ret[i].text!.push({

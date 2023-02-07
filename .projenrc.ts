@@ -42,12 +42,33 @@ const project = new typescript.TypeScriptProject({
     },
   },
 
+  jestOptions: {
+    configFilePath: 'jest.config.json',
+    jestConfig: {
+      moduleFileExtensions: ['ts', 'tsx', 'js', 'json'],
+    },
+    junitReporting: false,
+  },
+
   release: false, // We have our own release workflow
   defaultReleaseBranch: 'release',
 });
 
 // Remove TypeScript devDependency (it's a direct/normal dependency here)
 project.deps.removeDependency('typescript');
+
+// Modernize ts-jest configuration
+if (project.jest?.config?.globals?.['ts-jest']) {
+  delete project.jest.config.globals['ts-jest'];
+  project.jest.config.transform ??= {};
+  project.jest.config.transform['^.+\\.tsx?$'] = [
+    'ts-jest',
+    {
+      compiler: 'typescript',
+      tsconfig: 'tsconfig.dev.json',
+    },
+  ];
+}
 
 project.addDeps(
   '@jsii/check-node',
@@ -79,6 +100,8 @@ project.preCompileTask.exec('ts-node build-tools/code-gen.ts', {
   name: 'code-gen',
 });
 project.gitignore.addPatterns('src/version.ts');
+
+project.gitignore.addPatterns('jsii-outdir');
 
 // Exclude negatives from tsconfig and eslint...
 project.tsconfigDev.addExclude('test/negatives/**/*.ts');

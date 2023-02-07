@@ -39,8 +39,10 @@ export class RuntimeTypeInfoInjector {
 
   public runtimeTypeTransformer(): ts.TransformerFactory<ts.SourceFile> {
     return (context) => {
+      const { factory } = context;
+
       return (sourceFile) => {
-        const rttiSymbolIdentifier = ts.createUniqueName('JSII_RTTI_SYMBOL');
+        const rttiSymbolIdentifier = factory.createUniqueName('JSII_RTTI_SYMBOL');
 
         let classesAnnotated = false;
         const visitor = (node: ts.Node): ts.Node => {
@@ -48,7 +50,7 @@ export class RuntimeTypeInfoInjector {
             const fqn = this.getClassFqn(node);
             if (fqn) {
               classesAnnotated = true;
-              return this.addRuntimeInfoToClass(node, fqn, rttiSymbolIdentifier);
+              return this.addRuntimeInfoToClass(node, fqn, rttiSymbolIdentifier, factory);
             }
           }
           return ts.visitEachChild(node, visitor, context);
@@ -59,18 +61,18 @@ export class RuntimeTypeInfoInjector {
 
         // Only add the symbol definition if it's actually used.
         if (classesAnnotated) {
-          const rttiSymbol = ts.createCall(
-            ts.createPropertyAccess(ts.createIdentifier('Symbol'), ts.createIdentifier('for')),
+          const rttiSymbol = factory.createCallExpression(
+            factory.createPropertyAccessExpression(factory.createIdentifier('Symbol'), factory.createIdentifier('for')),
             undefined,
-            [ts.createStringLiteral('jsii.rtti')],
+            [factory.createStringLiteral('jsii.rtti')],
           );
-          const rttiSymbolDeclaration = ts.createVariableDeclaration(rttiSymbolIdentifier, undefined, rttiSymbol);
-          const variableDeclaration = ts.createVariableStatement(
+          const rttiSymbolDeclaration = factory.createVariableDeclaration(rttiSymbolIdentifier, undefined, undefined, rttiSymbol);
+          const variableDeclaration = factory.createVariableStatement(
             [],
-            ts.createVariableDeclarationList([rttiSymbolDeclaration], ts.NodeFlags.Const),
+            factory.createVariableDeclarationList([rttiSymbolDeclaration], ts.NodeFlags.Const),
           );
 
-          annotatedSourceFile = ts.updateSourceFileNode(annotatedSourceFile, [
+          annotatedSourceFile = factory.updateSourceFile(annotatedSourceFile, [
             variableDeclaration,
             ...annotatedSourceFile.statements,
           ]);
@@ -94,30 +96,28 @@ export class RuntimeTypeInfoInjector {
     node: ts.ClassDeclaration,
     fqn: string,
     rttiSymbol: ts.Identifier,
+    factory: ts.NodeFactory,
   ): ts.ClassDeclaration {
-    const runtimeInfo = ts.createObjectLiteral([
-      ts.createPropertyAssignment(ts.createIdentifier('fqn'), ts.createStringLiteral(fqn)),
-      ts.createPropertyAssignment(ts.createIdentifier('version'), ts.createStringLiteral(this.version)),
+    const runtimeInfo = factory.createObjectLiteralExpression([
+      factory.createPropertyAssignment(factory.createIdentifier('fqn'), factory.createStringLiteral(fqn)),
+      factory.createPropertyAssignment(factory.createIdentifier('version'), factory.createStringLiteral(this.version)),
     ]);
-    const runtimeProperty = ts.createProperty(
-      undefined,
-      ts.createModifiersFromModifierFlags(
-        // eslint-disable-next-line no-bitwise
-        ts.ModifierFlags.Private | ts.ModifierFlags.Static | ts.ModifierFlags.Readonly,
-      ),
-      ts.createComputedPropertyName(rttiSymbol),
+
+    const runtimeProperty = factory.createPropertyDeclaration(
+      [factory.createModifier(ts.SyntaxKind.PrivateKeyword), factory.createModifier(ts.SyntaxKind.StaticKeyword), factory.createModifier(ts.SyntaxKind.ReadonlyKeyword)],
+      factory.createComputedPropertyName(rttiSymbol),
       undefined,
       undefined,
       runtimeInfo,
     );
-    return ts.updateClassDeclaration(
+
+    return factory.updateClassDeclaration(
       node,
-      node.decorators,
-      ts.getModifiers(node),
+      node.modifiers,
       node.name,
       node.typeParameters,
       node.heritageClauses,
-      [runtimeProperty, ...node.members],
+      factory.createNodeArray([runtimeProperty, ...node.members]),
     );
   }
 }

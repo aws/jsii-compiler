@@ -373,10 +373,9 @@ class Transformation {
       );
       if (ts.isClassDeclaration(declaration)) {
         return {
-          node: ts.updateClassDeclaration(
+          node: ts.factory.updateClassDeclaration(
             declaration,
-            declaration.decorators,
-            ts.getModifiers(declaration),
+            declaration.modifiers,
             declaration.name,
             declaration.typeParameters,
             addInterfaceTo(ts.SyntaxKind.ImplementsKeyword, declaration.heritageClauses),
@@ -386,10 +385,9 @@ class Transformation {
         };
       }
       return {
-        node: ts.updateInterfaceDeclaration(
+        node: ts.factory.updateInterfaceDeclaration(
           declaration,
-          declaration.decorators,
-          ts.getModifiers(declaration),
+          declaration.modifiers,
           declaration.name,
           declaration.typeParameters,
           addInterfaceTo(ts.SyntaxKind.ExtendsKeyword, declaration.heritageClauses),
@@ -404,11 +402,11 @@ class Transformation {
       ): ts.HeritageClause[] {
         const existingClause = clauses.find((clause) => clause.token === token);
         if (existingClause == null) {
-          return [...clauses, ts.createHeritageClause(token, [newInterface])];
+          return [...clauses, ts.factory.createHeritageClause(token, [newInterface])];
         }
         return [
           ...clauses.filter((clause) => clause !== existingClause),
-          ts.updateHeritageClause(existingClause, [...existingClause.types, newInterface]),
+          ts.factory.updateHeritageClause(existingClause, [...existingClause.types, newInterface]),
         ];
       }
     });
@@ -432,17 +430,16 @@ class Transformation {
         (clause) => clause.token === ts.SyntaxKind.ExtendsKeyword,
       );
       return {
-        node: ts.updateClassDeclaration(
+        node: ts.factory.updateClassDeclaration(
           declaration,
-          declaration.decorators,
-          ts.getModifiers(declaration),
+          declaration.modifiers,
           declaration.name,
           declaration.typeParameters,
           [
             ...(declaration.heritageClauses ?? []).filter((clause) => clause !== existingClause),
             existingClause
-              ? ts.updateHeritageClause(existingClause, [newBaseClass])
-              : ts.createHeritageClause(ts.SyntaxKind.ExtendsKeyword, [newBaseClass]),
+              ? ts.factory.updateHeritageClause(existingClause, [newBaseClass])
+              : ts.factory.createHeritageClause(ts.SyntaxKind.ExtendsKeyword, [newBaseClass]),
           ],
           declaration.members,
         ),
@@ -457,10 +454,9 @@ class Transformation {
         throw new Error(`Expected a ClassDeclaration, found a ${ts.SyntaxKind[declaration.kind]}`);
       }
       return {
-        node: ts.updateClassDeclaration(
+        node: ts.factory.updateClassDeclaration(
           declaration,
-          declaration.decorators,
-          ts.getModifiers(declaration),
+          declaration.modifiers,
           declaration.name,
           declaration.typeParameters,
           declaration.heritageClauses?.filter((clause) => clause.token !== ts.SyntaxKind.ExtendsKeyword),
@@ -480,10 +476,9 @@ class Transformation {
     return new Transformation(typeChecker, node, (declaration) => {
       if (ts.isClassDeclaration(declaration)) {
         return {
-          node: ts.updateClassDeclaration(
+          node: ts.factory.updateClassDeclaration(
             declaration,
-            declaration.decorators,
-            ts.getModifiers(declaration),
+            declaration.modifiers,
             declaration.name,
             declaration.typeParameters,
             removeInterfaceHeritage(declaration.heritageClauses),
@@ -492,10 +487,9 @@ class Transformation {
         };
       } else if (ts.isInterfaceDeclaration(declaration)) {
         return {
-          node: ts.updateInterfaceDeclaration(
+          node: ts.factory.updateInterfaceDeclaration(
             declaration,
-            declaration.decorators,
-            ts.getModifiers(declaration),
+            declaration.modifiers,
             declaration.name,
             declaration.typeParameters,
             removeInterfaceHeritage(declaration.heritageClauses),
@@ -526,7 +520,7 @@ class Transformation {
           if (types.length === 0) {
             return undefined;
           }
-          return ts.updateHeritageClause(clause, types);
+          return ts.factory.updateHeritageClause(clause, types);
         })
         .filter((clause) => clause != null) as ts.HeritageClause[];
     }
@@ -560,14 +554,14 @@ class Transformation {
 
     if (typeof type === 'string') {
       const [root, ...tail] = type.split('.');
-      const syntheticImportName = ts.createUniqueName(root);
-      syntheticImport = ts.createImportDeclaration(
+      const syntheticImportName = ts.factory.createUniqueName(root);
+      syntheticImport = ts.factory.createImportDeclaration(
         undefined /* decorators */,
         undefined /* modifiers */,
-        ts.createImportClause(undefined, ts.createNamespaceImport(syntheticImportName)),
-        ts.createStringLiteral(root),
+        ts.factory.createImportClause(false, undefined, ts.factory.createNamespaceImport(syntheticImportName)),
+        ts.factory.createStringLiteral(root),
       );
-      expression = tail.reduce((curr, elt) => ts.createPropertyAccess(curr, elt), syntheticImportName as ts.Expression);
+      expression = tail.reduce((curr, elt) => ts.factory.createPropertyAccessExpression(curr, elt), syntheticImportName as ts.Expression);
     } else {
       const [, typeSource, qualifiedName] = /^"([^"]+)"\.(.*)$/.exec(
         typeChecker.getFullyQualifiedName(typeChecker.getSymbolAtLocation(ts.getNameOfDeclaration(type)!)!),
@@ -576,25 +570,25 @@ class Transformation {
       if (typeSource === contextSource) {
         const [root, ...tail] = qualifiedName.split('.');
         expression = tail.reduce(
-          (curr, elt) => ts.createPropertyAccess(curr, elt),
-          ts.createIdentifier(root) as ts.Expression,
+          (curr, elt) => ts.factory.createPropertyAccessExpression(curr, elt),
+          ts.factory.createIdentifier(root) as ts.Expression,
         );
       } else {
-        const syntheticImportName = ts.createUniqueName(basename(typeSource));
-        syntheticImport = ts.createImportDeclaration(
-          undefined /* decorators */,
+        const syntheticImportName = ts.factory.createUniqueName(basename(typeSource));
+        syntheticImport = ts.factory.createImportDeclaration(
           undefined /* modifiers */,
-          ts.createImportClause(undefined, ts.createNamespaceImport(syntheticImportName)),
-          ts.createStringLiteral(`./${relative(dirname(contextSource), typeSource)}`),
+          ts.factory.createImportClause(false, undefined, ts.factory.createNamespaceImport(syntheticImportName)),
+          ts.factory.createStringLiteral(`./${relative(dirname(contextSource), typeSource)}`),
+          undefined,
         );
         expression = qualifiedName
           .split('.')
-          .reduce((curr, elt) => ts.createPropertyAccess(curr, elt), syntheticImportName as ts.Expression);
+          .reduce((curr, elt) => ts.factory.createPropertyAccessExpression(curr, elt), syntheticImportName as ts.Expression);
       }
     }
 
     return {
-      typeExpression: ts.createExpressionWithTypeArguments(undefined, expression),
+      typeExpression: ts.factory.createExpressionWithTypeArguments(expression, undefined),
       syntheticImport,
     };
   }
@@ -651,7 +645,7 @@ class DeprecationRemovalTransformer {
 
     // If there are any synthetic imports, add them to the source file
     if (ts.isSourceFile(result) && this.syntheticImports.length > 0) {
-      result = ts.updateSourceFileNode(
+      result = this.context.factory.updateSourceFile(
         result,
         [...this.syntheticImports, ...result.statements],
         result.isDeclarationFile,
@@ -705,16 +699,15 @@ class DeprecationRemovalTransformer {
         return !exportedSymbol?.declarations?.some((decl) => this.isDeprecated(decl));
       });
       if (filteredElements.length !== node.importClause.namedBindings.elements.length) {
-        return ts.updateImportDeclaration(
+        return this.context.factory.updateImportDeclaration(
           node,
-          undefined,
-          undefined,
+          node.modifiers,
           node.importClause.name != null || filteredElements.length > 0
-            ? ts.updateImportClause(
+            ? this.context.factory.updateImportClause(
                 node.importClause,
-                node.importClause.name,
-                ts.updateNamedImports(node.importClause.namedBindings, filteredElements),
                 node.importClause.isTypeOnly,
+                node.importClause.name,
+                this.context.factory.updateNamedImports(node.importClause.namedBindings, filteredElements),
               )
             : undefined,
           node.moduleSpecifier,
@@ -735,8 +728,7 @@ class DeprecationRemovalTransformer {
           .getExportsOfModule(symbol)
           ?.filter((sym) => !sym.declarations?.some((decl) => this.isDeprecated(decl)));
       if ((node.exportClause == null || ts.isNamespaceExport(node.exportClause)) && moduleExports?.length === 0) {
-        return ts.createImportDeclaration(
-          undefined /* decorators */,
+        return this.context.factory.createImportDeclaration(
           undefined /* modifiers */,
           undefined /* importClause */,
           node.moduleSpecifier,
@@ -748,13 +740,13 @@ class DeprecationRemovalTransformer {
         const exportedNames = new Set(moduleExports.map((sym) => sym.name));
         const filteredElements = namedExports.elements?.filter((elt) => exportedNames.has(elt.name.text));
         if (filteredElements?.length !== namedExports.elements?.length) {
-          return ts.updateExportDeclaration(
+          return this.context.factory.updateExportDeclaration(
             node,
-            node.decorators,
             node.modifiers,
-            ts.updateNamedExports(namedExports, filteredElements),
-            node.moduleSpecifier,
             node.isTypeOnly,
+            this.context.factory.updateNamedExports(namedExports, filteredElements),
+            node.moduleSpecifier,
+            node.assertClause,
           ) as any;
         }
       }
