@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, rmSync, symlinkSync } from 'node:fs';
+import { existsSync, mkdirSync, symlinkSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 
 const fixtureRoot = join(__dirname, '..', 'fixtures');
