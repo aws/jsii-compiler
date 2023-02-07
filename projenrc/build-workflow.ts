@@ -2,10 +2,10 @@ import * as path from 'node:path';
 import type * as checkNode from '@jsii/check-node/lib/constants';
 import { github, typescript } from 'projen';
 
-export class MatrixTest {
+export class BuildWorkflow {
   public constructor(project: typescript.TypeScriptProject) {
-    const matrixTest = project.github!.addWorkflow('matrix-test');
-    matrixTest.on({
+    const wf = project.github!.addWorkflow('build');
+    wf.on({
       pullRequest: {},
       workflowDispatch: {},
     });
@@ -19,7 +19,7 @@ export class MatrixTest {
       'constants.js',
     )) as typeof checkNode;
 
-    matrixTest.addJobs({
+    wf.addJobs({
       'build': {
         env: { CI: 'true' },
         permissions: { contents: github.workflows.JobPermission.READ },
@@ -77,7 +77,7 @@ export class MatrixTest {
         },
         name: 'node ${{ matrix.node-version }}',
         needs: ['build'],
-        permissions: { contents: github.workflows.JobPermission.READ },
+        permissions: {},
         runsOn: ['ubuntu-latest'],
         steps: [
           {
@@ -97,6 +97,10 @@ export class MatrixTest {
             name: 'Install dependencies',
             run: 'yarn install --frozen-lockfile',
           },
+          {
+            name: 'Setup Node.js',
+            uses: 'npx projen post-compile',
+          },
           { name: 'Test', run: 'npx projen test' },
           {
             name: 'Assert clean working directory',
@@ -104,6 +108,44 @@ export class MatrixTest {
           },
         ],
       },
+      'package': {
+        env: { CI: 'true' },
+        name: 'package',
+        needs: ['build'],
+        permissions: {},
+        runsOn: ['ubuntu-latest'],
+        steps: [
+          {
+            name: 'Download artifact',
+            uses: 'actions/download-artifact@v3',
+            with: { name: 'build-output', path: '${{ github.workspace }}' },
+          },
+          {
+            name: 'Setup Node.js',
+            uses: 'actions/setup-node@v3',
+            with: {
+              'node-version': project.minNodeVersion,
+              'cache': 'yarn',
+            },
+          },
+          {
+            name: 'Install dependencies',
+            run: 'yarn install --frozen-lockfile',
+          },
+          {
+            name: 'Package',
+            run: 'npx projen package',
+          },
+          {
+            name: 'Upload artifact',
+            uses: 'actions/upload-artifact@v3',
+            with: {
+              name: 'release-package',
+              path: '${{ github.workspace }}/dist',
+            },
+          },
+        ],
+      }
     });
   }
 }

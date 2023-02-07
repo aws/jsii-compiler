@@ -1,6 +1,6 @@
 import { javascript, typescript } from 'projen';
 import { JsiiCalcFixtures } from './projenrc/fixtures';
-import { MatrixTest } from './projenrc/matrix-test';
+import { BuildWorkflow } from './projenrc/build-workflow';
 import { ReleaseWorkflow } from './projenrc/release';
 
 const project = new typescript.TypeScriptProject({
@@ -62,6 +62,7 @@ const project = new typescript.TypeScriptProject({
     junitReporting: false,
   },
 
+  buildWorkflow: false, // We have our own build workflow (need matrix test)
   release: false, // We have our own release workflow
   defaultReleaseBranch: 'release',
 });
@@ -138,7 +139,7 @@ project.eslint?.addRules({
 new JsiiCalcFixtures(project);
 
 // Add Node.js version matrix test
-new MatrixTest(project);
+new BuildWorkflow(project);
 
 // Add the custom release workflow
 new ReleaseWorkflow(project);
