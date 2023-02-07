@@ -1,4 +1,5 @@
 import { javascript, typescript } from 'projen';
+import { MatrixTest } from './projenrc/matrix-test';
 import { ReleaseWorkflow } from './projenrc/release';
 
 const project = new typescript.TypeScriptProject({
@@ -95,6 +96,10 @@ project.eslint?.addRules({
   'unicorn/no-unnecessary-await': ['error'],
 });
 
+// Add Node.js version matrix test
+new MatrixTest(project);
+
+// Add the custom release workflow
 new ReleaseWorkflow(project);
 
 project.synth();

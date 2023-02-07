@@ -47,4 +47,5 @@ junit.xml
 /dist/
 !/.eslintrc.json
 src/version.ts
+!/.github/workflows/matrix-test.yml
 !/.github/workflows/release.yml

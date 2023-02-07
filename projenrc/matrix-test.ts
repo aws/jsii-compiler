@@ -1,0 +1,98 @@
+import * as path from 'node:path';
+import type * as checkNode from '@jsii/check-node/lib/constants';
+import { github, typescript } from 'projen';
+
+export class MatrixTest {
+  public constructor(project: typescript.TypeScriptProject) {
+    const matrixTest = project.github!.addWorkflow('matrix-test');
+    matrixTest.on({
+      pullRequest: {},
+      workflowDispatch: {},
+    });
+
+    /* This is a hack because @jsii/check-node does not currently expose its constants... */
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { NodeRelease } = require(path.resolve(
+      require.resolve('@jsii/check-node/package.json'),
+      '..',
+      'lib',
+      'constants.js',
+    )) as typeof checkNode;
+
+    matrixTest.addJobs({
+      'build': {
+        env: { CI: 'true' },
+        permissions: { contents: github.workflows.JobPermission.READ },
+        runsOn: ['ubuntu-latest'],
+        steps: [
+          {
+            name: 'Checkout',
+            uses: 'actions/checkout@v3',
+            with: {
+              ref: '${{ github.event.pull_request.head.ref }}',
+              repository: '${{ github.event.pull_request.head.repo.full_name }}',
+            },
+          },
+          {
+            name: 'Setup Node.js',
+            uses: 'actions/setup-node@v3',
+            with: {
+              'node-version': project.minNodeVersion,
+              'cache': 'yarn',
+            },
+          },
+          {
+            name: 'Install dependencies',
+            run: 'yarn install --check-files',
+          },
+          { name: 'compile', run: 'npx projen pre-compile && npx projen compile && npx projen post-compile' },
+          {
+            name: 'Upload artifact',
+            uses: 'actions/upload-artifact@v3',
+            with: { name: 'build-output', path: '${{ github.workspace }}' },
+          },
+        ],
+      },
+      'matrix-test': {
+        env: { CI: 'true' },
+        strategy: {
+          failFast: false,
+          matrix: {
+            domain: {
+              'node-version': NodeRelease.ALL_RELEASES.flatMap((release) => {
+                if (!release.supported) {
+                  return [];
+                }
+                return [`${release.majorVersion}.x`];
+              }),
+            },
+          },
+        },
+        name: 'Test (node ${{ matrix.node-version }})',
+        needs: ['build'],
+        permissions: { contents: github.workflows.JobPermission.READ },
+        runsOn: ['ubuntu-latest'],
+        steps: [
+          {
+            name: 'Download artifact',
+            uses: 'actions/download-artifact@v3',
+            with: { name: 'build-output', path: '${{ github.workspace }}' },
+          },
+          {
+            name: 'Setup Node.js',
+            uses: 'actions/setup-node@v3',
+            with: {
+              'node-version': '${{ matrix.node-version }}',
+              'cache': 'yarn',
+            },
+          },
+          {
+            name: 'Install dependencies',
+            run: 'yarn install --frozen-lockfile',
+          },
+          { name: 'Test', run: 'npx projen test' },
+        ],
+      },
+    });
+  }
+}
