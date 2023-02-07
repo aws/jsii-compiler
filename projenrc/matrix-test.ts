@@ -75,7 +75,7 @@ export class MatrixTest {
             },
           },
         },
-        name: 'Test (node ${{ matrix.node-version }})',
+        name: 'node ${{ matrix.node-version }}',
         needs: ['build'],
         permissions: { contents: github.workflows.JobPermission.READ },
         runsOn: ['ubuntu-latest'],

@@ -34,7 +34,7 @@ jobs:
             ${{ github.workspace }}
             !${{ github.workspace }}/node_modules
   matrix-test:
-    name: Test (node ${{ matrix.node-version }})
+    name: node ${{ matrix.node-version }}
     needs: build
     runs-on: ubuntu-latest
     permissions:
