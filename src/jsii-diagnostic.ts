@@ -15,9 +15,6 @@ import { JSII_DIAGNOSTICS_CODE, _formatDiagnostic } from './utils';
 export class Code<
   T extends DiagnosticMessageFormatter = DiagnosticMessageFormatter,
 > {
-  private static readonly byCode: { [code: number]: Code } = {};
-  private static readonly byName: { [name: string]: Code } = {};
-
   /**
    * @internal
    */
@@ -94,6 +91,9 @@ export class Code<
     }
     return this.byName[codeOrName];
   }
+
+  private static readonly byCode: { [code: number]: Code } = {};
+  private static readonly byName: { [name: string]: Code } = {};
 
   // eslint-disable-next-line @typescript-eslint/explicit-member-accessibility
   readonly #defaultCategory: ts.DiagnosticCategory;
@@ -196,31 +196,26 @@ export class Code<
  * A jsii-specific diagnostic entry.
  */
 export class JsiiDiagnostic implements ts.Diagnostic {
-  /**
-   * This symbol unequivocally identifies the `JsiiDiagnostic` domain.
-   */
-  private static readonly DOMAIN = Symbol('jsii');
-
   //////////////////////////////////////////////////////////////////////////////
   // 0001 => 0999 -- PACKAGE METADATA PROBLEMS
 
   public static readonly JSII_0001_PKG_MISSING_DESCRIPTION = Code.suggestion({
     code: 1,
     formatter: () =>
-      `A "description" field should be specified in "package.json"`,
+      'A "description" field should be specified in "package.json"',
     name: 'metadata/package-json-missing-description',
   });
 
   public static readonly JSII_0002_PKG_MISSING_HOMEPAGE = Code.suggestion({
     code: 2,
-    formatter: () => `A "homepage" field should be specified in "package.json"`,
+    formatter: () => 'A "homepage" field should be specified in "package.json"',
     name: 'metadata/package-json-missing-homepage',
   });
 
   public static readonly JSII_0003_MISSING_README = Code.warning({
     code: 3,
     formatter: () =>
-      `There is no "README.md" file. It is required in order to generate valid PyPI (Python) packages.`,
+      'There is no "README.md" file. It is required in order to generate valid PyPI (Python) packages.',
     name: 'metadata/missing-readme',
   });
 
@@ -269,20 +264,20 @@ export class JsiiDiagnostic implements ts.Diagnostic {
 
   public static readonly JSII_1000_NO_CONST_ENUM = Code.error({
     code: 1000,
-    formatter: () => `Exported "const enum" declarations are not allowed`,
+    formatter: () => 'Exported "const enum" declarations are not allowed',
     name: 'typescript-restrictions/no-const-enum',
   });
 
   public static readonly JSII_1001_TYPE_HAS_NO_SYMBOL = Code.error({
     code: 1001,
     formatter: () =>
-      `Non-primitive types without a symbol cannot be processed.`,
+      'Non-primitive types without a symbol cannot be processed.',
     name: 'typescript-restrictions/type-has-no-symbol',
   });
 
   public static readonly JSII_1002_UNSPECIFIED_PROMISE = Code.error({
     code: 1002,
-    formatter: () => `Un-specified promise type. Specify it using "Promise<T>"`,
+    formatter: () => 'Un-specified promise type. Specify it using "Promise<T>"',
     name: 'typescript-restrictions/unspecified-promise',
   });
 
@@ -803,12 +798,6 @@ export class JsiiDiagnostic implements ts.Diagnostic {
     name: 'miscellaneous/unsupported-node',
   });
 
-  private static readonly JSII_9999_RELATED_INFO = Code.suggestion({
-    code: 9999,
-    formatter: (messageText) => messageText,
-    name: 'miscellaneous/related-info',
-  });
-
   //////////////////////////////////////////////////////////////////////////////
 
   /**
@@ -818,6 +807,21 @@ export class JsiiDiagnostic implements ts.Diagnostic {
   public static isJsiiDiagnostic(diag: ts.Diagnostic): diag is JsiiDiagnostic {
     return (diag as unknown as JsiiDiagnostic).domain === JsiiDiagnostic.DOMAIN;
   }
+
+  //////////////////////////////////////////////////////////////////////////////
+
+  private static readonly JSII_9999_RELATED_INFO = Code.suggestion({
+    code: 9999,
+    formatter: (messageText) => messageText,
+    name: 'miscellaneous/related-info',
+  });
+
+  //////////////////////////////////////////////////////////////////////////////
+
+  /**
+   * This symbol unequivocally identifies the `JsiiDiagnostic` domain.
+   */
+  private static readonly DOMAIN = Symbol('jsii');
 
   private readonly domain = JsiiDiagnostic.DOMAIN;
 

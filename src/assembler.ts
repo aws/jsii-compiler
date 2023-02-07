@@ -1,11 +1,11 @@
+import * as crypto from 'crypto';
+import * as fs from 'fs';
+import * as path from 'path';
 import * as spec from '@jsii/spec';
 import { writeAssembly, SPEC_FILE_NAME, PackageJson } from '@jsii/spec';
 import * as chalk from 'chalk';
-import * as crypto from 'crypto';
 import * as deepEqual from 'fast-deep-equal/es6';
-import * as fs from 'fs';
 import * as log4js from 'log4js';
-import * as path from 'path';
 import * as ts from 'typescript';
 
 import * as Case from './case';
@@ -52,8 +52,8 @@ export class Assembler implements Emitter {
   private _deferred = new Array<DeferredRecord>();
   private readonly _types = new Map<string, spec.Type>();
   private readonly _packageInfoCache = new Map<
-    string,
-    PackageJson | undefined
+  string,
+  PackageJson | undefined
   >();
 
   /** Map of Symbol to namespace export Symbol */
@@ -478,7 +478,7 @@ export class Assembler implements Emitter {
           typeUse,
         ).addRelatedInformationIf(
           typeDeclaration,
-          `The referenced type is declared here`,
+          'The referenced type is declared here',
         ),
       );
 
@@ -497,7 +497,7 @@ export class Assembler implements Emitter {
             typeUse,
           ).addRelatedInformationIf(
             typeDeclaration,
-            `The referenced type is declared here`,
+            'The referenced type is declared here',
           ),
         );
         hasError = true;
@@ -514,7 +514,7 @@ export class Assembler implements Emitter {
             modulePath,
           ).addRelatedInformationIf(
             typeDeclaration,
-            `The referenced type is declared here`,
+            'The referenced type is declared here',
           ),
         );
         hasError = true;
@@ -576,7 +576,7 @@ export class Assembler implements Emitter {
             pkg,
           ).addRelatedInformationIf(
             typeDeclaration,
-            `The referenced type is declared here`,
+            'The referenced type is declared here',
           ),
         );
         hasError = true;
@@ -726,9 +726,9 @@ export class Assembler implements Emitter {
       const readme =
         packageRoot === this.projectInfo.projectRoot
           ? loadSubmoduleReadMe(
-              sourceFile.fileName,
-              this.projectInfo.projectRoot,
-            )
+            sourceFile.fileName,
+            this.projectInfo.projectRoot,
+          )
           : undefined;
 
       this._submodules.set(symbol, {
@@ -797,7 +797,7 @@ export class Assembler implements Emitter {
     ): SubmoduleSpec['readme'] {
       const fileBase = path.basename(submoduleMain).replace(/(\.d)?\.ts$/, '');
       const readMeName =
-        fileBase === 'index' ? `README.md` : `${fileBase}.README.md`;
+        fileBase === 'index' ? 'README.md' : `${fileBase}.README.md`;
       const fullPath = path.join(path.dirname(submoduleMain), readMeName);
       return loadAndRenderReadme(fullPath, projectRoot);
     }
@@ -943,7 +943,7 @@ export class Assembler implements Emitter {
 
       const resolvedSymbol =
         this._typeChecker.getExportSpecifierLocalTargetSymbol(node);
-        const decl = resolvedSymbol?.valueDeclaration ?? resolvedSymbol?.declarations?.[0];
+      const decl = resolvedSymbol?.valueDeclaration ?? resolvedSymbol?.declarations?.[0];
       if (!decl) {
         // A grammar error, compilation will already have failed
         return [];
@@ -1058,7 +1058,7 @@ export class Assembler implements Emitter {
             candidates,
           ).addRelatedInformationIf(
             submoduleDeclName,
-            `This is the conflicting submodule declaration`,
+            'This is the conflicting submodule declaration',
           ),
         );
       }
@@ -1080,14 +1080,13 @@ export class Assembler implements Emitter {
       const visitedNodes = this._typeChecker
         .getExportsOfModule(type.symbol)
         .filter((s) => s.declarations)
-        .flatMap((exportedNode) =>
-        {
+        .flatMap((exportedNode) => {
           const decl = exportedNode.valueDeclaration ?? exportedNode.declarations?.[0];
           if (decl == null) {
             return [];
           }
           return [this._visitNode(decl, nestedContext)];
-        }
+        },
         );
       for (const nestedTypes of visitedNodes) {
         for (const nestedType of nestedTypes) {
@@ -1143,7 +1142,7 @@ export class Assembler implements Emitter {
               badDecl,
             ).addRelatedInformation(
               badDecl,
-              `The invalid super type is declared here.`,
+              'The invalid super type is declared here.',
             ),
           );
         }
@@ -1434,8 +1433,8 @@ export class Assembler implements Emitter {
         const member: ts.Symbol = ts.isConstructorDeclaration(memberDecl)
           ? (memberDecl as any).symbol
           : this._typeChecker.getSymbolAtLocation(
-              ts.getNameOfDeclaration(memberDecl)!,
-            )!;
+            ts.getNameOfDeclaration(memberDecl)!,
+          )!;
 
         if (
           !(declaringType.symbol.getDeclarations() ?? []).find(
@@ -1802,6 +1801,7 @@ export class Assembler implements Emitter {
         }`,
         kind: spec.TypeKind.Enum,
         members: members.map((m) => {
+          // eslint-disable-next-line @typescript-eslint/no-shadow
           const { docs } = this._visitDocumentation(m.symbol, typeContext);
           return { name: m.symbol.name, docs };
         }),
@@ -2009,7 +2009,7 @@ export class Assembler implements Emitter {
 
         if (
           decl &&(
-          ts.isMethodDeclaration(decl) ||
+            ts.isMethodDeclaration(decl) ||
           ts.isMethodSignature(decl))
         ) {
           // eslint-disable-next-line no-await-in-loop
@@ -2059,9 +2059,9 @@ export class Assembler implements Emitter {
               const node = bindings.getMethodRelatedNode(mthod);
               return node
                 ? diag.addRelatedInformation(
-                    ts.getNameOfDeclaration(node) ?? node,
-                    `A method is declared here`,
-                  )
+                  ts.getNameOfDeclaration(node) ?? node,
+                  'A method is declared here',
+                )
                 : diag;
             }, JsiiDiagnostic.JSII_7001_ILLEGAL_HINT.create(declaration && _findHint(declaration, 'struct')!, 'struct', 'interfaces with only readonly properties').addRelatedInformationIf(ts.getNameOfDeclaration(declaration) ?? declaration, 'The annotated declartion is here')),
           );
@@ -2093,7 +2093,7 @@ export class Assembler implements Emitter {
         if (expectedName !== type.symbol.name) {
           this._diagnostics.push(
             JsiiDiagnostic.JSII_8000_PASCAL_CASED_TYPE_NAMES.create(
-              (type.symbol.declarations?.[0] as ts.InterfaceDeclaration | undefined)?.name ,
+              (type.symbol.declarations?.[0] as ts.InterfaceDeclaration | undefined)?.name,
               type.symbol.name,
               expectedName,
             ),
@@ -2252,10 +2252,10 @@ export class Assembler implements Emitter {
         returns: _isVoid(returnType)
           ? undefined
           : this._optionalValue(
-              returnType,
-              declaration.type ?? declaration.name,
-              'return type',
-            ),
+            returnType,
+            declaration.type ?? declaration.name,
+            'return type',
+          ),
         async: _isPromise(returnType) || undefined,
         static: _isStatic(symbol) || undefined,
         locationInModule: this.declarationLocation(declaration),
@@ -2570,7 +2570,7 @@ export class Assembler implements Emitter {
     const fqn = this._getFQN(type, declaration, purpose, isThisType);
     if (fqn == null) {
       this._diagnostics.push(JsiiDiagnostic.JSII_9997_UNKNOWN_ERROR.create(declaration, new Error('Could not determine FQN')));
-      return { type: {fqn: ''}  };
+      return { type: { fqn: '' } };
     }
 
     return {
@@ -2818,14 +2818,14 @@ export class Assembler implements Emitter {
 
     function _findPackageInfo(
       this: Assembler,
-      fromDir: string,
+      dir: string,
     ): PackageJson | undefined {
-      const filePath = path.join(fromDir, 'package.json');
+      const filePath = path.join(dir, 'package.json');
       if (fs.existsSync(filePath)) {
         return JSON.parse(fs.readFileSync(filePath, 'utf-8'));
       }
-      const parent = path.dirname(fromDir);
-      if (parent === fromDir) {
+      const parent = path.dirname(dir);
+      if (parent === dir) {
         return undefined;
       }
       return this.findPackageInfo(parent);
@@ -3224,11 +3224,11 @@ function toDependencyClosure(assemblies: readonly spec.Assembly[]): {
     if (submodules == null) {
       return submodules;
     }
-    const result: spec.DependencyConfiguration['submodules'] = {};
+    const clean: spec.DependencyConfiguration['submodules'] = {};
     for (const [fqn, { targets }] of Object.entries(submodules)) {
-      result[fqn] = { targets };
+      clean[fqn] = { targets };
     }
-    return result;
+    return clean;
   }
 }
 
@@ -3477,13 +3477,13 @@ function symbolIdIndex(asm: spec.Assembly): Record<string, string> {
   return ret;
 
   function buildIndex() {
-    const ret: Record<string, string> = {};
+    const index: Record<string, string> = {};
     for (const [fqn, type] of Object.entries(asm.types ?? {})) {
       if (type.symbolId) {
-        ret[type.symbolId] = fqn;
+        index[type.symbolId] = fqn;
       }
     }
-    return ret;
+    return index;
   }
 }
 

@@ -61,11 +61,11 @@ export const setParameterRelatedNode: (
 export const setPropertyRelatedNode: (
   object: spec.Property,
   node:
-    | ts.AccessorDeclaration
-    | ts.ParameterPropertyDeclaration
-    | ts.PropertyDeclaration
-    | ts.PropertySignature
-    | undefined,
+  | ts.AccessorDeclaration
+  | ts.ParameterPropertyDeclaration
+  | ts.PropertyDeclaration
+  | ts.PropertySignature
+  | undefined,
 ) => spec.Parameter = setter;
 
 //#endregion
@@ -103,27 +103,27 @@ export const getMethodRelatedNode: (
 export const getParameterRelatedNode: (
   object: spec.Parameter,
 ) =>
-  | ts.AccessorDeclaration
-  | ts.ParameterPropertyDeclaration
-  | ts.PropertyDeclaration
-  | ts.PropertySignature
-  | undefined = getRelatedNode;
+| ts.AccessorDeclaration
+| ts.ParameterPropertyDeclaration
+| ts.PropertyDeclaration
+| ts.PropertySignature
+| undefined = getRelatedNode;
 
 export const getPropertyRelatedNode: (
   object: spec.Parameter,
 ) =>
-  | ts.AccessorDeclaration
-  | ts.ParameterPropertyDeclaration
-  | ts.PropertyDeclaration
-  | ts.PropertySignature
-  | undefined = getRelatedNode;
+| ts.AccessorDeclaration
+| ts.ParameterPropertyDeclaration
+| ts.PropertyDeclaration
+| ts.PropertySignature
+| undefined = getRelatedNode;
 
 export const getTypeRelatedNode: (
   object: spec.Type,
 ) =>
-  | ts.ClassDeclaration
-  | ts.EnumDeclaration
-  | ts.InterfaceDeclaration
-  | undefined = getRelatedNode;
+| ts.ClassDeclaration
+| ts.EnumDeclaration
+| ts.InterfaceDeclaration
+| undefined = getRelatedNode;
 
 //#endregion

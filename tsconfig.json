@@ -27,11 +27,7 @@
     "strictPropertyInitialization": true,
     "stripInternal": true,
     "target": "ES2020",
-    "skipLibCheck": true,
-    "types": [
-      "jest",
-      "node"
-    ]
+    "skipLibCheck": true
   },
   "include": [
     "src/**/*.ts"

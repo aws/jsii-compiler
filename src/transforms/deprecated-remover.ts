@@ -1,3 +1,4 @@
+import { basename, dirname, relative } from 'path';
 import {
   Assembly,
   ClassType,
@@ -17,7 +18,6 @@ import {
   Stability,
   TypeReference,
 } from '@jsii/spec';
-import { basename, dirname, relative } from 'path';
 import * as ts from 'typescript';
 
 import { JsiiDiagnostic } from '../jsii-diagnostic';
@@ -131,24 +131,24 @@ export class DeprecatedRemover {
       ) {
         while (typeInfo.base != null && strippedFqns.has(typeInfo.base)) {
           const oldBase = assembly.types[typeInfo.base] as ClassType;
-          oldBase.interfaces?.forEach((fqn) => additionalInterfaces.add(fqn));
+          oldBase.interfaces?.forEach((addFqn) => additionalInterfaces.add(addFqn));
           typeInfo.base = replaceWithClass.get(typeInfo.base);
         }
         this.transformations.push(
           typeInfo.base != null
             ? Transformation.replaceBaseClass(
-                this.typeChecker,
-                bindings.getClassRelatedNode(typeInfo)!,
-                typeInfo.base in assembly.types
-                  ? bindings.getClassRelatedNode(
-                      assembly.types[typeInfo.base] as ClassType,
-                    ) ?? typeInfo.base
-                  : typeInfo.base,
-              )
+              this.typeChecker,
+              bindings.getClassRelatedNode(typeInfo)!,
+              typeInfo.base in assembly.types
+                ? bindings.getClassRelatedNode(
+                  assembly.types[typeInfo.base] as ClassType,
+                ) ?? typeInfo.base
+                : typeInfo.base,
+            )
             : Transformation.removeBaseClass(
-                this.typeChecker,
-                bindings.getClassRelatedNode(typeInfo)!,
-              ),
+              this.typeChecker,
+              bindings.getClassRelatedNode(typeInfo)!,
+            ),
         );
       }
 
@@ -161,7 +161,7 @@ export class DeprecatedRemover {
 
       // Strip all `@deprecated` interfaces from the inheritance tree, replacing as needed
       if (
-        typeInfo.interfaces?.some((fqn) => strippedFqns.has(fqn)) ||
+        typeInfo.interfaces?.some((addFqn) => strippedFqns.has(addFqn)) ||
         additionalInterfaces.size > 0
       ) {
         const originalSet = new Set(typeInfo.interfaces ?? []);
@@ -171,36 +171,36 @@ export class DeprecatedRemover {
           new Set([...originalSet, ...additionalInterfaces]),
         );
         while (candidates.length > 0) {
-          const fqn = candidates.pop()!;
-          if (!strippedFqns.has(fqn)) {
-            newSet.add(fqn);
-            if (!originalSet.has(fqn)) {
+          const candidateFqn = candidates.pop()!;
+          if (!strippedFqns.has(candidateFqn)) {
+            newSet.add(candidateFqn);
+            if (!originalSet.has(candidateFqn)) {
               this.transformations.push(
                 Transformation.addInterface(
                   this.typeChecker,
                   bindings.getClassOrInterfaceRelatedNode(typeInfo)!,
-                  fqn in assembly.types
+                  candidateFqn in assembly.types
                     ? bindings.getInterfaceRelatedNode(
-                        assembly.types[fqn] as InterfaceType,
-                      ) ?? fqn
-                    : fqn,
+                      assembly.types[candidateFqn] as InterfaceType,
+                    ) ?? candidateFqn
+                    : candidateFqn,
                 ),
               );
             }
             continue;
           }
-          if (originalSet.has(fqn)) {
+          if (originalSet.has(candidateFqn)) {
             this.transformations.push(
               Transformation.removeInterface(
                 this.typeChecker,
                 bindings.getClassOrInterfaceRelatedNode(typeInfo)!,
                 bindings.getInterfaceRelatedNode(
-                  assembly.types[fqn] as InterfaceType,
+                  assembly.types[candidateFqn] as InterfaceType,
                 )!,
               ),
             );
           }
-          const replacement = replaceWithInterfaces.get(fqn);
+          const replacement = replaceWithInterfaces.get(candidateFqn);
           if (replacement != null) {
             candidates.push(...replacement);
           }
@@ -368,7 +368,7 @@ export class DeprecatedRemover {
     }
     return ref.union.types
       .map((type) => this.tryFindReference(type, fqns))
-      .find((ref) => ref != null);
+      .find((typeRef) => typeRef != null);
   }
 
   private shouldFqnBeStripped(fqn: string) {
@@ -400,12 +400,12 @@ export class DeprecatedRemover {
     assembly: Assembly,
   ): JsiiDiagnostic {
     const node = bindings.getRelatedNode<
-      | ts.AccessorDeclaration
-      | ts.MethodDeclaration
-      | ts.MethodSignature
-      | ts.ParameterDeclaration
-      | ts.PropertyDeclaration
-      | ts.PropertySignature
+    | ts.AccessorDeclaration
+    | ts.MethodDeclaration
+    | ts.MethodSignature
+    | ts.ParameterDeclaration
+    | ts.PropertyDeclaration
+    | ts.PropertySignature
     >(context);
     const diagnostic = JsiiDiagnostic.JSII_3999_INCOHERENT_TYPE_MODEL.create(
       node?.type ?? node!,
@@ -419,7 +419,7 @@ export class DeprecatedRemover {
     }
     return diagnostic.addRelatedInformation(
       ts.getNameOfDeclaration(typeNode) ?? typeNode,
-      `The @deprecated type is declared here`,
+      'The @deprecated type is declared here',
     );
   }
 }
@@ -528,8 +528,8 @@ class Transformation {
             existingClause
               ? ts.updateHeritageClause(existingClause, [newBaseClass])
               : ts.createHeritageClause(ts.SyntaxKind.ExtendsKeyword, [
-                  newBaseClass,
-                ]),
+                newBaseClass,
+              ]),
           ],
           declaration.members,
         ),
@@ -653,9 +653,9 @@ class Transformation {
     context: ts.ClassDeclaration | ts.InterfaceDeclaration,
     typeChecker: ts.TypeChecker,
   ): {
-    typeExpression: ts.ExpressionWithTypeArguments;
-    syntheticImport?: ts.ImportDeclaration;
-  } {
+      typeExpression: ts.ExpressionWithTypeArguments;
+      syntheticImport?: ts.ImportDeclaration;
+    } {
     context = ts.getOriginalNode(context) as any;
 
     const [, contextSource] = /^"([^"]+)"\..*$/.exec(
@@ -852,14 +852,14 @@ class DeprecationRemovalTransformer {
           undefined,
           node.importClause.name != null || filteredElements.length > 0
             ? ts.updateImportClause(
-                node.importClause,
-                node.importClause.name,
-                ts.updateNamedImports(
-                  node.importClause.namedBindings,
-                  filteredElements,
-                ),
-                node.importClause.isTypeOnly,
-              )
+              node.importClause,
+              node.importClause.name,
+              ts.updateNamedImports(
+                node.importClause.namedBindings,
+                filteredElements,
+              ),
+              node.importClause.isTypeOnly,
+            )
             : undefined,
           node.moduleSpecifier,
           node.assertClause,
@@ -894,17 +894,17 @@ class DeprecationRemovalTransformer {
       }
 
       if (node.exportClause != null && moduleExports) {
-        const bindings = node.exportClause as ts.NamedExports;
+        const namedExports = node.exportClause as ts.NamedExports;
         const exportedNames = new Set(moduleExports.map((sym) => sym.name));
-        const filteredElements = bindings.elements?.filter((elt) =>
+        const filteredElements = namedExports.elements?.filter((elt) =>
           exportedNames.has(elt.name.text),
         );
-        if (filteredElements?.length !== bindings.elements?.length) {
+        if (filteredElements?.length !== namedExports.elements?.length) {
           return ts.updateExportDeclaration(
             node,
             node.decorators,
             node.modifiers,
-            ts.updateNamedExports(bindings, filteredElements),
+            ts.updateNamedExports(namedExports, filteredElements),
             node.moduleSpecifier,
             node.isTypeOnly,
           ) as any;

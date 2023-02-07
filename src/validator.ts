@@ -1,5 +1,5 @@
-import * as spec from '@jsii/spec';
 import * as assert from 'node:assert';
+import * as spec from '@jsii/spec';
 import * as deepEqual from 'fast-deep-equal';
 import * as ts from 'typescript';
 
@@ -750,7 +750,7 @@ function _allTypeReferences(
     } else if (spec.isCollectionTypeReference(type)) {
       _collectTypeReferences(type.collection.elementtype, node);
     } else if (spec.isUnionTypeReference(type)) {
-      type.union.types.forEach((type) => _collectTypeReferences(type, node));
+      type.union.types.forEach((t) => _collectTypeReferences(t, node));
     }
   }
 }

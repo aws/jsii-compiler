@@ -1,6 +1,6 @@
-import { Assembly } from '@jsii/spec';
 import * as fs from 'fs';
 import * as path from 'path';
+import { Assembly } from '@jsii/spec';
 import * as ts from 'typescript';
 
 import { findUp } from './utils';
@@ -53,13 +53,17 @@ export function symbolIdentifier(
   options: SymbolIdOptions = {},
 ): string | undefined {
   // If this symbol happens to be an alias, resolve it first
+  // eslint-disable-next-line no-bitwise
   while ((sym.flags & ts.SymbolFlags.Alias) !== 0) {
     sym = typeChecker.getAliasedSymbol(sym);
   }
 
   const isMember =
+  // eslint-disable-next-line no-bitwise
     (sym.flags &
+      // eslint-disable-next-line no-bitwise
       (ts.SymbolFlags.Method |
+      // eslint-disable-next-line no-bitwise
         ts.SymbolFlags.Property |
         ts.SymbolFlags.EnumMember)) !==
     0;
@@ -91,8 +95,6 @@ export function symbolIdentifier(
 }
 
 class Helper {
-  private static readonly INSTANCES = new WeakMap<ts.TypeChecker, Helper>();
-
   public static for(typeChecker: ts.TypeChecker) {
     const cached = this.INSTANCES.get(typeChecker);
     if (cached != null) {
@@ -102,6 +104,8 @@ class Helper {
     this.INSTANCES.set(typeChecker, helper);
     return helper;
   }
+
+  private static readonly INSTANCES = new WeakMap<ts.TypeChecker, Helper>();
 
   private readonly packageInfo = new Map<string, PackageInfo | undefined>();
 

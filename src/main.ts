@@ -1,9 +1,9 @@
 import '@jsii/check-node/run';
 
-import * as log4js from 'log4js';
 import * as path from 'path';
-import { version as tsVersion } from 'typescript/package.json';
 import * as util from 'util';
+import * as log4js from 'log4js';
+import { version as tsVersion } from 'typescript/package.json';
 import * as yargs from 'yargs';
 
 import { Compiler } from './compiler';
@@ -16,7 +16,7 @@ import { enabledWarnings } from './warnings';
 const warningTypes = Object.keys(enabledWarnings);
 
 (async () => {
-  const argv = await yargs
+  await yargs
     .env('JSII')
     .command(
       ['$0 [PROJECT_ROOT]', 'compile [PROJECT_ROOT]'],
@@ -75,62 +75,64 @@ const warningTypes = Object.keys(enabledWarnings);
             type: 'boolean',
             default: false,
             desc: 'Emit a compressed version of the assembly',
+          })
+          .option('verbose', {
+            alias: 'v',
+            type: 'count',
+            desc: 'Increase the verbosity of output',
+            global: true,
           }),
+      async (argv) => {
+        _configureLog4js(argv.verbose);
+
+        const projectRoot = path.normalize(
+          path.resolve(process.cwd(), argv.PROJECT_ROOT),
+        );
+
+        const { projectInfo, diagnostics: projectInfoDiagnostics } =
+          loadProjectInfo(projectRoot);
+
+        // disable all silenced warnings
+        for (const key of argv['silence-warnings']) {
+          if (!(key in enabledWarnings)) {
+            throw new Error(
+              `Unknown warning type ${
+                key as any
+              }. Must be one of: ${warningTypes.join(', ')}`,
+            );
+          }
+
+          enabledWarnings[key] = false;
+        }
+
+        configureCategories(projectInfo.diagnostics ?? {});
+
+        const compiler = new Compiler({
+          projectInfo,
+          projectReferences: argv['project-references'],
+          failOnWarnings: argv['fail-on-warnings'],
+          stripDeprecated: argv['strip-deprecated'] != null,
+          stripDeprecatedAllowListFile: argv['strip-deprecated'],
+          addDeprecationWarnings: argv['add-deprecation-warnings'],
+          generateTypeScriptConfig: argv['generate-tsconfig'],
+          compressAssembly: argv['compress-assembly'],
+        });
+
+        const emitResult = argv.watch ? await compiler.watch() : compiler.emit();
+
+        const allDiagnostics = [...projectInfoDiagnostics, ...emitResult.diagnostics];
+
+        for (const diagnostic of allDiagnostics) {
+          utils.logDiagnostic(diagnostic, projectRoot);
+        }
+        if (emitResult.emitSkipped) {
+          process.exitCode = 1;
+        }
+      },
     )
-    .option('verbose', {
-      alias: 'v',
-      type: 'count',
-      desc: 'Increase the verbosity of output',
-      global: true,
-    })
     .help()
-    .version(`${VERSION}, typescript ${tsVersion}`).argv;
-
-  _configureLog4js(argv.verbose);
-
-  const projectRoot = path.normalize(
-    path.resolve(process.cwd(), argv.PROJECT_ROOT),
-  );
-
-  const { projectInfo, diagnostics: projectInfoDiagnostics } =
-    loadProjectInfo(projectRoot);
-
-  // disable all silenced warnings
-  for (const key of argv['silence-warnings']) {
-    if (!(key in enabledWarnings)) {
-      throw new Error(
-        `Unknown warning type ${
-          key as any
-        }. Must be one of: ${warningTypes.join(', ')}`,
-      );
-    }
-
-    enabledWarnings[key] = false;
-  }
-
-  configureCategories(projectInfo.diagnostics ?? {});
-
-  const compiler = new Compiler({
-    projectInfo,
-    projectReferences: argv['project-references'],
-    failOnWarnings: argv['fail-on-warnings'],
-    stripDeprecated: argv['strip-deprecated'] != null,
-    stripDeprecatedAllowListFile: argv['strip-deprecated'],
-    addDeprecationWarnings: argv['add-deprecation-warnings'],
-    generateTypeScriptConfig: argv['generate-tsconfig'],
-    compressAssembly: argv['compress-assembly'],
-  });
-
-  const emitResult = argv.watch ? await compiler.watch() : compiler.emit();
-
-  const allDiagnostics = [...projectInfoDiagnostics, ...emitResult.diagnostics];
-
-  for (const diagnostic of allDiagnostics) {
-    utils.logDiagnostic(diagnostic, projectRoot);
-  }
-  if (emitResult.emitSkipped) {
-    process.exitCode = 1;
-  }
+    .version(`${VERSION}, typescript ${tsVersion}`)
+    .parse();
 })().catch((e) => {
   console.error(`Error: ${e.stack}`);
   process.exitCode = -1;

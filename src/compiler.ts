@@ -1,7 +1,7 @@
-import * as chalk from 'chalk';
 import * as fs from 'fs';
-import * as log4js from 'log4js';
 import * as path from 'path';
+import * as chalk from 'chalk';
+import * as log4js from 'log4js';
 import * as ts from 'typescript';
 
 import { Assembler } from './assembler';
@@ -102,8 +102,8 @@ export class Compiler implements Emitter {
       options.projectReferences !== undefined
         ? options.projectReferences
         : options.projectInfo.projectReferences !== undefined
-        ? options.projectInfo.projectReferences
-        : false;
+          ? options.projectInfo.projectReferences
+          : false;
   }
 
   /**

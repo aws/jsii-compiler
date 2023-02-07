@@ -307,7 +307,7 @@ function reabsorbExampleTags(tags: ts.JSDocTagInfo[]): ts.JSDocTagInfo[] {
       while (i + 1 < ret.length && !recognizedTags.includes(ret[i + 1].name)) {
         // Incorrectly classified as @tag, absorb back into example
         ret[i].text ??= [];
-        ret[i].text!.push({text:`@${ret[i + 1].name}${ret[i + 1].text}`, kind: '' });
+        ret[i].text!.push({ text: `@${ret[i + 1].name}${ret[i + 1].text}`, kind: '' });
         ret.splice(i + 1, 1);
       }
     }

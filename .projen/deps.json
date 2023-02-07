@@ -91,11 +91,6 @@
       "type": "build"
     },
     {
-      "name": "typescript",
-      "version": "~4.9",
-      "type": "build"
-    },
-    {
       "name": "@jsii/check-node",
       "type": "runtime"
     },
@@ -134,6 +129,10 @@
     },
     {
       "name": "spdx-license-list",
+      "type": "runtime"
+    },
+    {
+      "name": "typescript",
       "type": "runtime"
     },
     {

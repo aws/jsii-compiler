@@ -1,7 +1,7 @@
-import * as spec from '@jsii/spec';
-import { Assembly } from '@jsii/spec';
 import * as fs from 'fs';
 import * as path from 'path';
+import * as spec from '@jsii/spec';
+import { Assembly } from '@jsii/spec';
 import * as ts from 'typescript';
 
 import { ProjectInfo } from '../project-info';
@@ -547,10 +547,10 @@ class Transformer {
    */
   private getStatementsForDeclaration(
     node:
-      | ts.MethodDeclaration
-      | ts.GetAccessorDeclaration
-      | ts.SetAccessorDeclaration
-      | ts.ConstructorDeclaration,
+    | ts.MethodDeclaration
+    | ts.GetAccessorDeclaration
+    | ts.SetAccessorDeclaration
+    | ts.ConstructorDeclaration,
   ): ts.Statement[] {
     const klass = node.parent;
     const classSymbolId = symbolIdentifier(
@@ -569,7 +569,7 @@ class Transformer {
 
       const methods = classType?.methods ?? [];
       const method = methods.find(
-        (method) => method.name === node.name?.getText(),
+        (m) => m.name === node.name?.getText(),
       );
       if (method) {
         return this.getStatements(classType, method);
@@ -577,7 +577,7 @@ class Transformer {
 
       const properties = classType?.properties ?? [];
       const property = properties.find(
-        (property) => property.name === node.name?.getText(),
+        (p) => p.name === node.name?.getText(),
       );
       if (property) {
         return createWarningStatementForElement(property, classType);

@@ -1,6 +1,6 @@
 import * as fs from 'fs';
-import * as log4js from 'log4js';
 import * as path from 'path';
+import * as log4js from 'log4js';
 import * as ts from 'typescript';
 
 import { JsiiDiagnostic } from './jsii-diagnostic';
@@ -93,9 +93,9 @@ export function _formatDiagnostic(
   const message =
     diagnostic.file != null
       ? ts.formatDiagnosticsWithColorAndContext(
-          [diagnostic],
-          formatDiagnosticsHost,
-        )
+        [diagnostic],
+        formatDiagnosticsHost,
+      )
       : ts.formatDiagnostic(diagnostic, formatDiagnosticsHost);
 
   if (!JsiiDiagnostic.isJsiiDiagnostic(diagnostic)) {

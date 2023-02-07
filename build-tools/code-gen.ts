@@ -1,8 +1,8 @@
-import * as gh from '@actions/github';
 import { spawnSync } from 'child_process';
 import { readFileSync, writeFileSync } from 'fs';
 import * as os from 'os';
 import { join } from 'path';
+import * as gh from '@actions/github';
 
 const { version } = JSON.parse(readFileSync(join(__dirname, '..', 'package.json'), 'utf-8'));
 

@@ -1,8 +1,8 @@
+import * as fs from 'fs';
+import * as path from 'path';
 import * as spec from '@jsii/spec';
 import { findAssemblyFile, loadAssemblyFromFile } from '@jsii/spec';
-import * as fs from 'fs';
 import * as log4js from 'log4js';
-import * as path from 'path';
 import * as semver from 'semver';
 import * as ts from 'typescript';
 
@@ -15,24 +15,24 @@ const spdx: Set<string> = require('spdx-license-list/simple');
 const LOG = log4js.getLogger('jsii/package-info');
 
 export type TSCompilerOptions = Partial<
-  Pick<
-    ts.CompilerOptions,
-    // Directory preferences
-    | 'outDir'
-    | 'rootDir'
-    // TypeScript path mapping
-    | 'baseUrl'
-    | 'paths'
-    // Style preferences
-    | 'forceConsistentCasingInFileNames'
-    // Source map preferences
-    | 'declarationMap'
-    | 'inlineSourceMap'
-    | 'inlineSources'
-    | 'sourceMap'
-    // Types limitations
-    | 'types'
-  >
+Pick<
+ts.CompilerOptions,
+// Directory preferences
+| 'outDir'
+| 'rootDir'
+// TypeScript path mapping
+| 'baseUrl'
+| 'paths'
+// Style preferences
+| 'forceConsistentCasingInFileNames'
+// Source map preferences
+| 'declarationMap'
+| 'inlineSourceMap'
+| 'inlineSources'
+| 'sourceMap'
+// Types limitations
+| 'types'
+>
 >;
 
 export interface ProjectInfo {
@@ -330,16 +330,16 @@ class DependencyResolver {
     const queue = Array.from(Object.values(resolved));
     while (queue.length > 0) {
       const next = queue.shift()!;
-      const resolved = this.cache.get(next);
-      if (!resolved) {
+      const depInfo = this.cache.get(next);
+      if (!depInfo) {
         throw new Error(`Path ${next} not seen before`);
       }
       if (closure.has(next)) {
         continue;
       }
 
-      closure.set(next, resolved.assembly);
-      queue.push(...Object.values(resolved.resolvedDependencies));
+      closure.set(next, depInfo.assembly);
+      queue.push(...Object.values(depInfo.resolvedDependencies));
     }
     return Array.from(closure.values());
   }
@@ -375,9 +375,9 @@ class DependencyResolver {
     // Continue loading any dependencies declared in the asm
     const resolvedDependencies = assembly.dependencies
       ? this.discoverDependencyTree(
-          path.dirname(jsiiFile),
-          assembly.dependencies,
-        )
+        path.dirname(jsiiFile),
+        assembly.dependencies,
+      )
       : {};
 
     const depInfo: DependencyInfo = {
@@ -545,15 +545,15 @@ function mergeMetadata(
   return mergeObjects(base, user);
 
   function mergeObjects(
-    base: Record<string, any>,
+    baseObj: Record<string, any>,
     override: Record<string, any>,
   ): Record<string, any> {
     const result: Record<string, any> = {};
     const allKeys = Array.from(
-      new Set([...Object.keys(base), ...Object.keys(override)]),
+      new Set([...Object.keys(baseObj), ...Object.keys(override)]),
     ).sort();
     for (const key of allKeys) {
-      const baseValue = base[key];
+      const baseValue = baseObj[key];
       const overrideValue = override[key];
 
       if (typeof baseValue === 'object' && typeof overrideValue === 'object') {
@@ -569,10 +569,10 @@ function mergeMetadata(
 }
 
 function _loadDiagnostics(entries?: { [key: string]: string }):
-  | {
-      [key: string]: ts.DiagnosticCategory;
-    }
-  | undefined {
+| {
+  [key: string]: ts.DiagnosticCategory;
+}
+| undefined {
   if (entries === undefined || Object.keys(entries).length === 0) {
     return undefined;
   }

@@ -122,6 +122,7 @@ export class RuntimeTypeInfoInjector {
     const runtimeProperty = ts.createProperty(
       undefined,
       ts.createModifiersFromModifierFlags(
+        // eslint-disable-next-line no-bitwise
         ts.ModifierFlags.Private |
           ts.ModifierFlags.Static |
           ts.ModifierFlags.Readonly,

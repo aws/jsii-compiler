@@ -6,11 +6,11 @@
  * well put it in one reusable place.
  */
 
-import * as spec from '@jsii/spec';
-import { PackageJson, loadAssemblyFromPath, writeAssembly } from '@jsii/spec';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
+import { PackageJson, loadAssemblyFromPath, writeAssembly } from '@jsii/spec';
+import * as spec from '@jsii/spec';
 import { DiagnosticCategory } from 'typescript';
 
 import { Compiler, CompilerOptions } from './compiler';
@@ -100,11 +100,11 @@ export function compileJsiiForTest(
       typeof options === 'function'
         ? options
         : (pi) => {
-            Object.assign(
-              pi,
-              options?.packageJson ?? options?.projectInfo ?? {},
-            );
-          },
+          Object.assign(
+            pi,
+            options?.packageJson ?? options?.projectInfo ?? {},
+          );
+        },
     );
     const compiler = new Compiler({
       projectInfo,
@@ -163,7 +163,7 @@ function inTempDir<T>(block: () => T): T {
   process.chdir(tmpDir);
   const ret = block();
   process.chdir(origDir);
-  fs.rmSync(tmpDir, { force: true , recursive: true});
+  fs.rmSync(tmpDir, { force: true, recursive: true });
   return ret;
 }
 
@@ -315,7 +315,7 @@ export class TestWorkspace {
     for (const [fileName, fileContents] of Object.entries(
       dependencyAssembly.files,
     )) {
-      fs.mkdirSync(path.dirname(path.join(modDir, fileName)), {recursive:true});
+      fs.mkdirSync(path.dirname(path.join(modDir, fileName)), { recursive: true });
       fs.writeFileSync(path.join(modDir, fileName), fileContents);
     }
   }
@@ -328,7 +328,7 @@ export class TestWorkspace {
   }
 
   public cleanup() {
-    fs.rmSync(this.rootDirectory, {force:true, recursive:true});
+    fs.rmSync(this.rootDirectory, { force: true, recursive: true });
   }
 }
 

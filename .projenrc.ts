@@ -14,7 +14,6 @@ const project = new typescript.TypeScriptProject({
   repository: 'https://github.com/aws/jsii-compiler.git',
 
   minNodeVersion: '14.6.0',
-  typescriptVersion: '~4.9',
   tsconfig: {
     compilerOptions: {
       // @see https://github.com/microsoft/TypeScript/wiki/Node-Target-Mapping
@@ -32,8 +31,8 @@ const project = new typescript.TypeScriptProject({
   defaultReleaseBranch: 'release',
 });
 
-(project.tsconfig!.compilerOptions! as any).types = ['jest', 'node'];
-(project.tsconfigDev!.compilerOptions! as any).types = ['jest', 'node'];
+// Remove TypeScript devDependency (it's a direct/normal dependency here)
+project.deps.removeDependency('typescript');
 
 project.addDeps(
   '@jsii/check-node',
@@ -46,6 +45,7 @@ project.addDeps(
   'semver-intersect',
   'sort-json',
   'spdx-license-list',
+  'typescript',
   'yargs',
 );
 
@@ -61,6 +61,10 @@ project.addDevDeps(
 
 project.preCompileTask.exec('ts-node build-tools/code-gen.ts', { name: 'code-gen' });
 project.gitignore.addPatterns('src/version.ts');
+
+// Customize ESLint rules
+project.tsconfigDev.addInclude('build-tools/**/*.ts');
+project.eslint!.rules!['no-bitwise'] = ['off']; // The TypeScript compiler API leverages some bit-flags.
 
 new ReleaseWorkflow(project);
 
