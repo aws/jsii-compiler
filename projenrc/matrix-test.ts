@@ -98,6 +98,10 @@ export class MatrixTest {
             run: 'yarn install --frozen-lockfile',
           },
           { name: 'Test', run: 'npx projen test' },
+          {
+            name: 'Assert clean working directory',
+            run: 'git diff --staged --exit-code',
+          },
         ],
       },
     });

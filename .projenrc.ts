@@ -80,6 +80,9 @@ if (project.jest?.config?.globals?.['ts-jest']) {
   ];
 }
 
+// Add fixtures to npmignore
+project.npmignore?.addPatterns('/fixtures/');
+
 project.addDeps(
   '@jsii/check-node',
   '@jsii/spec',
