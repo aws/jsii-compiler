@@ -83,9 +83,17 @@ export class Compiler implements Emitter {
   private readonly projectReferences: boolean;
 
   public constructor(private readonly options: CompilerOptions) {
+    const rootDir = this.options.projectInfo.projectRoot;
     this.compilerHost = ts.createIncrementalCompilerHost(BASE_COMPILER_OPTIONS, {
       ...ts.sys,
-      getCurrentDirectory: () => this.options.projectInfo.projectRoot,
+      getCurrentDirectory: () => rootDir,
+      createDirectory: (pth) => ts.sys.createDirectory(path.resolve(rootDir, pth)),
+      deleteFile: ts.sys.deleteFile && ((pth) => ts.sys.deleteFile!(path.join(rootDir, pth))),
+      fileExists: (pth) => ts.sys.fileExists(path.resolve(rootDir, pth)),
+      getFileSize: ts.sys.getFileSize && ((pth) => ts.sys.getFileSize!(path.resolve(rootDir, pth))),
+      readFile: (pth, encoding) => ts.sys.readFile(path.resolve(rootDir,pth), encoding),
+      watchFile: ts.sys.watchFile &&((pth, callback, pollingInterval, options) => ts.sys.watchFile!(path.resolve(rootDir,pth), callback, pollingInterval, options)),
+      writeFile: (pth, data, writeByteOrderMark) => ts.sys.writeFile(path.resolve(rootDir, pth), data, writeByteOrderMark),
     });
 
     const configFileName = options.generateTypeScriptConfig ?? 'tsconfig.json';

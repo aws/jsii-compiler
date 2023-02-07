@@ -430,7 +430,7 @@ function testpkg_Baz(p) {
 `);
   });
 
-  test.skip('generates calls for types in other assemblies', () => {
+  test('generates calls for types in other assemblies', () => {
     const calcBaseOfBaseRoot = resolveModuleDir('@scope/jsii-calc-base-of-base');
     const calcBaseRoot = resolveModuleDir('@scope/jsii-calc-base');
     const calcLibRoot = resolveModuleDir('@scope/jsii-calc-lib');
@@ -954,7 +954,7 @@ function createVmContext(compilation: HelperCompilationResult) {
 }
 
 function resolveModuleDir(name: string) {
-  return path.dirname(require.resolve(`${name}/package.json`));
+  return path.resolve(__dirname, '..', 'fixtures', name);
 }
 
 function compile(projectRoot: string, addDeprecationWarnings: boolean, stripDeprecated?: string) {

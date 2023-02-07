@@ -109,7 +109,13 @@
     },
     "post-compile": {
       "name": "post-compile",
-      "description": "Runs after successful compilation"
+      "description": "Runs after successful compilation",
+      "steps": [
+        {
+          "exec": "ts-node projenrc/prepare-fixtures.ts",
+          "name": "prepare-fixtures"
+        }
+      ]
     },
     "post-upgrade": {
       "name": "post-upgrade",

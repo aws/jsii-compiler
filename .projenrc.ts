@@ -1,4 +1,5 @@
 import { javascript, typescript } from 'projen';
+import { JsiiCalcFixtures } from './projenrc/fixtures';
 import { MatrixTest } from './projenrc/matrix-test';
 import { ReleaseWorkflow } from './projenrc/release';
 
@@ -56,6 +57,7 @@ const project = new typescript.TypeScriptProject({
     configFilePath: 'jest.config.json',
     jestConfig: {
       moduleFileExtensions: ['ts', 'tsx', 'js', 'json'],
+      watchPathIgnorePatterns: ['<rootDir>/fixtures/'],
     },
     junitReporting: false,
   },
@@ -131,6 +133,9 @@ project.eslint?.addRules({
   'unicorn/no-array-for-each': ['error'],
   'unicorn/no-unnecessary-await': ['error'],
 });
+
+// Register jsii-calc stuff in the work stream
+new JsiiCalcFixtures(project);
 
 // Add Node.js version matrix test
 new MatrixTest(project);

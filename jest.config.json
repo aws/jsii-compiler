@@ -5,6 +5,9 @@
     "js",
     "json"
   ],
+  "watchPathIgnorePatterns": [
+    "<rootDir>/fixtures/"
+  ],
   "testMatch": [
     "<rootDir>/src/**/__tests__/**/*.ts?(x)",
     "<rootDir>/(test|src)/**/*(*.)@(spec|test).ts?(x)"
@@ -23,9 +26,6 @@
     "/node_modules/"
   ],
   "testPathIgnorePatterns": [
-    "/node_modules/"
-  ],
-  "watchPathIgnorePatterns": [
     "/node_modules/"
   ],
   "reporters": [
