@@ -66,7 +66,12 @@ export class RuntimeTypeInfoInjector {
             undefined,
             [factory.createStringLiteral('jsii.rtti')],
           );
-          const rttiSymbolDeclaration = factory.createVariableDeclaration(rttiSymbolIdentifier, undefined, undefined, rttiSymbol);
+          const rttiSymbolDeclaration = factory.createVariableDeclaration(
+            rttiSymbolIdentifier,
+            undefined,
+            undefined,
+            rttiSymbol,
+          );
           const variableDeclaration = factory.createVariableStatement(
             [],
             factory.createVariableDeclarationList([rttiSymbolDeclaration], ts.NodeFlags.Const),
@@ -104,7 +109,11 @@ export class RuntimeTypeInfoInjector {
     ]);
 
     const runtimeProperty = factory.createPropertyDeclaration(
-      [factory.createModifier(ts.SyntaxKind.PrivateKeyword), factory.createModifier(ts.SyntaxKind.StaticKeyword), factory.createModifier(ts.SyntaxKind.ReadonlyKeyword)],
+      [
+        factory.createModifier(ts.SyntaxKind.PrivateKeyword),
+        factory.createModifier(ts.SyntaxKind.StaticKeyword),
+        factory.createModifier(ts.SyntaxKind.ReadonlyKeyword),
+      ],
       factory.createComputedPropertyName(rttiSymbol),
       undefined,
       undefined,

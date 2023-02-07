@@ -561,7 +561,10 @@ class Transformation {
         ts.factory.createImportClause(false, undefined, ts.factory.createNamespaceImport(syntheticImportName)),
         ts.factory.createStringLiteral(root),
       );
-      expression = tail.reduce((curr, elt) => ts.factory.createPropertyAccessExpression(curr, elt), syntheticImportName as ts.Expression);
+      expression = tail.reduce(
+        (curr, elt) => ts.factory.createPropertyAccessExpression(curr, elt),
+        syntheticImportName as ts.Expression,
+      );
     } else {
       const [, typeSource, qualifiedName] = /^"([^"]+)"\.(.*)$/.exec(
         typeChecker.getFullyQualifiedName(typeChecker.getSymbolAtLocation(ts.getNameOfDeclaration(type)!)!),
@@ -583,7 +586,10 @@ class Transformation {
         );
         expression = qualifiedName
           .split('.')
-          .reduce((curr, elt) => ts.factory.createPropertyAccessExpression(curr, elt), syntheticImportName as ts.Expression);
+          .reduce(
+            (curr, elt) => ts.factory.createPropertyAccessExpression(curr, elt),
+            syntheticImportName as ts.Expression,
+          );
       }
     }
 

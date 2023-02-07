@@ -36,9 +36,11 @@ export class DeprecationWarningsInjector {
       // This will add the parameter to the set of visited objects, to prevent infinite recursion
       statements.push(
         ts.factory.createExpressionStatement(
-          ts.factory.createCallExpression(ts.factory.createPropertyAccessExpression(ts.factory.createIdentifier(VISITED_OBJECTS_SET_NAME), 'add'), undefined, [
-            ts.factory.createIdentifier(PARAMETER_NAME),
-          ]),
+          ts.factory.createCallExpression(
+            ts.factory.createPropertyAccessExpression(ts.factory.createIdentifier(VISITED_OBJECTS_SET_NAME), 'add'),
+            undefined,
+            [ts.factory.createIdentifier(PARAMETER_NAME)],
+          ),
         ),
       );
 
@@ -95,7 +97,10 @@ export class DeprecationWarningsInjector {
           ts.factory.createBlock([
             ts.factory.createExpressionStatement(
               ts.factory.createCallExpression(
-                ts.factory.createPropertyAccessExpression(ts.factory.createIdentifier(VISITED_OBJECTS_SET_NAME), 'delete'),
+                ts.factory.createPropertyAccessExpression(
+                  ts.factory.createIdentifier(VISITED_OBJECTS_SET_NAME),
+                  'delete',
+                ),
                 undefined,
                 [ts.factory.createIdentifier(PARAMETER_NAME)],
               ),
@@ -104,7 +109,7 @@ export class DeprecationWarningsInjector {
         ),
       );
 
-      const paramValue = ts.factory.createParameterDeclaration( undefined, undefined, PARAMETER_NAME);
+      const paramValue = ts.factory.createParameterDeclaration(undefined, undefined, PARAMETER_NAME);
       const functionName = fnName(type.fqn);
       const functionDeclaration = ts.factory.createFunctionDeclaration(
         undefined,
@@ -240,7 +245,11 @@ function fnName(fqn: string): string {
 function createFunctionBlock(statements: ts.Statement[]): ts.Block {
   if (statements.length > 0) {
     const validation = ts.factory.createIfStatement(
-      ts.factory.createBinaryExpression(ts.factory.createIdentifier(PARAMETER_NAME), ts.SyntaxKind.EqualsEqualsToken, ts.factory.createNull()),
+      ts.factory.createBinaryExpression(
+        ts.factory.createIdentifier(PARAMETER_NAME),
+        ts.SyntaxKind.EqualsEqualsToken,
+        ts.factory.createNull(),
+      ),
       ts.factory.createReturnStatement(),
     );
     return ts.factory.createBlock([validation, ...statements], true);
@@ -257,7 +266,10 @@ function createWarningFunctionCall(
   const functionName = includeNamespace ? `${NAMESPACE}.${WARNING_FUNCTION_NAME}` : WARNING_FUNCTION_NAME;
 
   const mainStatement = ts.factory.createExpressionStatement(
-    ts.factory.createCallExpression(ts.factory.createIdentifier(functionName), undefined, [ts.factory.createStringLiteral(fqn), ts.factory.createStringLiteral(message)]),
+    ts.factory.createCallExpression(ts.factory.createIdentifier(functionName), undefined, [
+      ts.factory.createStringLiteral(fqn),
+      ts.factory.createStringLiteral(message),
+    ]),
   );
 
   return condition ? ts.factory.createIfStatement(condition, mainStatement) : mainStatement;
@@ -397,7 +409,10 @@ class Transformer {
             statements,
             ts.factory.createPropertyAccessExpression(
               ts.factory.createCallExpression(
-                ts.factory.createPropertyAccessExpression(ts.factory.createIdentifier(NAMESPACE), GET_PROPERTY_DESCRIPTOR),
+                ts.factory.createPropertyAccessExpression(
+                  ts.factory.createIdentifier(NAMESPACE),
+                  GET_PROPERTY_DESCRIPTOR,
+                ),
                 undefined,
                 [ts.factory.createThis(), ts.factory.createStringLiteral(node.name.getText(node.getSourceFile()))],
               ),
@@ -420,7 +435,10 @@ class Transformer {
             statements,
             ts.factory.createPropertyAccessExpression(
               ts.factory.createCallExpression(
-                ts.factory.createPropertyAccessExpression(ts.factory.createIdentifier(NAMESPACE), GET_PROPERTY_DESCRIPTOR),
+                ts.factory.createPropertyAccessExpression(
+                  ts.factory.createIdentifier(NAMESPACE),
+                  GET_PROPERTY_DESCRIPTOR,
+                ),
                 undefined,
                 [ts.factory.createThis(), ts.factory.createStringLiteral(node.name.getText(node.getSourceFile()))],
               ),
@@ -490,7 +508,9 @@ class Transformer {
         const functionName = `${NAMESPACE}.${fnName(parameterType.fqn)}`;
         statements.push(
           ts.factory.createExpressionStatement(
-            ts.factory.createCallExpression(ts.factory.createIdentifier(functionName), undefined, [ts.factory.createIdentifier(parameter.name)]),
+            ts.factory.createCallExpression(ts.factory.createIdentifier(functionName), undefined, [
+              ts.factory.createIdentifier(parameter.name),
+            ]),
           ),
         );
       }
@@ -553,7 +573,9 @@ function createRequireStatement(name: string, importPath: string): ts.Statement 
           name,
           undefined,
           undefined,
-          ts.factory.createCallExpression(ts.factory.createIdentifier('require'), undefined, [ts.factory.createStringLiteral(importPath)]),
+          ts.factory.createCallExpression(ts.factory.createIdentifier('require'), undefined, [
+            ts.factory.createStringLiteral(importPath),
+          ]),
         ),
       ],
       ts.NodeFlags.Const,
@@ -601,23 +623,39 @@ function createTypeHandlerCall(
   switch (collectionKind) {
     case spec.CollectionKind.Array:
       return ts.factory.createIfStatement(
-        ts.factory.createBinaryExpression(ts.factory.createIdentifier(parameter), ts.SyntaxKind.ExclamationEqualsToken, ts.factory.createNull()),
+        ts.factory.createBinaryExpression(
+          ts.factory.createIdentifier(parameter),
+          ts.SyntaxKind.ExclamationEqualsToken,
+          ts.factory.createNull(),
+        ),
         ts.factory.createForOfStatement(
           undefined,
-          ts.factory.createVariableDeclarationList([ts.factory.createVariableDeclaration(FOR_LOOP_ITEM_NAME)], ts.NodeFlags.Const),
+          ts.factory.createVariableDeclarationList(
+            [ts.factory.createVariableDeclaration(FOR_LOOP_ITEM_NAME)],
+            ts.NodeFlags.Const,
+          ),
           ts.factory.createIdentifier(parameter),
           createTypeHandlerCall(functionName, FOR_LOOP_ITEM_NAME),
         ),
       );
     case spec.CollectionKind.Map:
       return ts.factory.createIfStatement(
-        ts.factory.createBinaryExpression(ts.factory.createIdentifier(parameter), ts.SyntaxKind.ExclamationEqualsToken, ts.factory.createNull()),
+        ts.factory.createBinaryExpression(
+          ts.factory.createIdentifier(parameter),
+          ts.SyntaxKind.ExclamationEqualsToken,
+          ts.factory.createNull(),
+        ),
         ts.factory.createForOfStatement(
           undefined,
-          ts.factory.createVariableDeclarationList([ts.factory.createVariableDeclaration(FOR_LOOP_ITEM_NAME)], ts.NodeFlags.Const),
-          ts.factory.createCallExpression(ts.factory.createPropertyAccessExpression(ts.factory.createIdentifier('Object'), 'values'), undefined, [
-            ts.factory.createIdentifier(parameter),
-          ]),
+          ts.factory.createVariableDeclarationList(
+            [ts.factory.createVariableDeclaration(FOR_LOOP_ITEM_NAME)],
+            ts.NodeFlags.Const,
+          ),
+          ts.factory.createCallExpression(
+            ts.factory.createPropertyAccessExpression(ts.factory.createIdentifier('Object'), 'values'),
+            undefined,
+            [ts.factory.createIdentifier(parameter)],
+          ),
           createTypeHandlerCall(functionName, FOR_LOOP_ITEM_NAME),
         ),
       );
@@ -626,13 +664,18 @@ function createTypeHandlerCall(
         ts.factory.createPrefixUnaryExpression(
           ts.SyntaxKind.ExclamationToken,
           ts.factory.createCallExpression(
-            ts.factory.createPropertyAccessExpression(ts.factory.createIdentifier(VISITED_OBJECTS_SET_NAME), ts.factory.createIdentifier('has')),
+            ts.factory.createPropertyAccessExpression(
+              ts.factory.createIdentifier(VISITED_OBJECTS_SET_NAME),
+              ts.factory.createIdentifier('has'),
+            ),
             undefined,
             [ts.factory.createIdentifier(parameter)],
           ),
         ),
         ts.factory.createExpressionStatement(
-          ts.factory.createCallExpression(ts.factory.createIdentifier(functionName), undefined, [ts.factory.createIdentifier(parameter)]),
+          ts.factory.createCallExpression(ts.factory.createIdentifier(functionName), undefined, [
+            ts.factory.createIdentifier(parameter),
+          ]),
         ),
       );
   }
@@ -656,9 +699,11 @@ function createDuplicateEnumValuesCheck(type: spec.TypeBase & spec.EnumType): ts
       ts.factory.createPropertyAccessExpression(
         ts.factory.createCallExpression(
           ts.factory.createPropertyAccessExpression(
-            ts.factory.createCallExpression(ts.factory.createPropertyAccessExpression(ts.factory.createIdentifier('Object'), 'values'), undefined, [
-              ts.factory.createPropertyAccessExpression(ts.factory.createIdentifier(LOCAL_ENUM_NAMESPACE), type.name),
-            ]),
+            ts.factory.createCallExpression(
+              ts.factory.createPropertyAccessExpression(ts.factory.createIdentifier('Object'), 'values'),
+              undefined,
+              [ts.factory.createPropertyAccessExpression(ts.factory.createIdentifier(LOCAL_ENUM_NAMESPACE), type.name)],
+            ),
             ts.factory.createIdentifier('filter'),
           ),
           undefined,
@@ -666,7 +711,7 @@ function createDuplicateEnumValuesCheck(type: spec.TypeBase & spec.EnumType): ts
             ts.factory.createArrowFunction(
               undefined,
               undefined,
-              [ts.factory.createParameterDeclaration( undefined, undefined, 'x')],
+              [ts.factory.createParameterDeclaration(undefined, undefined, 'x')],
               undefined,
               ts.factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken),
               ts.factory.createBinaryExpression(
@@ -705,7 +750,10 @@ function wrapWithRethrow(statements: ts.Statement[], caller: ts.Expression): ts.
           ts.factory.createIfStatement(
             ts.factory.createBinaryExpression(
               ts.factory.createBinaryExpression(
-                ts.factory.createPropertyAccessExpression(ts.factory.createPropertyAccessExpression(ts.factory.createIdentifier('process'), 'env'), 'JSII_DEBUG'),
+                ts.factory.createPropertyAccessExpression(
+                  ts.factory.createPropertyAccessExpression(ts.factory.createIdentifier('process'), 'env'),
+                  'JSII_DEBUG',
+                ),
                 ts.SyntaxKind.ExclamationEqualsEqualsToken,
                 ts.factory.createStringLiteral('1'),
               ),
@@ -718,10 +766,11 @@ function wrapWithRethrow(statements: ts.Statement[], caller: ts.Expression): ts.
             ),
             ts.factory.createBlock([
               ts.factory.createExpressionStatement(
-                ts.factory.createCallExpression(ts.factory.createPropertyAccessExpression(ts.factory.createIdentifier('Error'), 'captureStackTrace'), undefined, [
-                  ts.factory.createIdentifier('error'),
-                  caller,
-                ]),
+                ts.factory.createCallExpression(
+                  ts.factory.createPropertyAccessExpression(ts.factory.createIdentifier('Error'), 'captureStackTrace'),
+                  undefined,
+                  [ts.factory.createIdentifier('error'), caller],
+                ),
               ),
             ]),
           ),

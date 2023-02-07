@@ -90,7 +90,7 @@ function parseDocParts(comments: string | undefined, tags: ts.JSDocTagInfo[]): D
   for (const tag of tags) {
     // 'param' gets parsed as a tag and as a comment for a method
     if (tag.name !== DocTag.PARAM) {
-      tagNames.set(tag.name,tag.text&& ts.displayPartsToString(tag.text));
+      tagNames.set(tag.name, tag.text && ts.displayPartsToString(tag.text));
     }
   }
 

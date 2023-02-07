@@ -30,7 +30,9 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: build-output
-          path: ${{ github.workspace }}
+          path: |-
+            ${{ github.workspace }}
+            !${{ github.workspace }}/node_modules
   matrix-test:
     name: Test (node ${{ matrix.node-version }})
     needs: build

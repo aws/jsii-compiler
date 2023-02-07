@@ -49,7 +49,14 @@ export class MatrixTest {
           {
             name: 'Upload artifact',
             uses: 'actions/upload-artifact@v3',
-            with: { name: 'build-output', path: '${{ github.workspace }}' },
+            with: {
+              name: 'build-output',
+              path: [
+                '${{ github.workspace }}',
+                // Exclude node_modules to reduce artifact size (we won't use those anyway)...
+                '!${{ github.workspace }}/node_modules',
+              ].join('\n'),
+            },
           },
         ],
       },
