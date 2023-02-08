@@ -1,0 +1,1441 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites name="jest tests" tests="88" failures="28" errors="0" time="10.082">
+  <testsuite name="undefined" errors="0" failures="24" skipped="0" timestamp="2023-02-07T12:25:39" time="9.648" tests="81">
+    <testcase classname=" behavior-requires-iprefix" name=" behavior-requires-iprefix" time="0.237">
+    </testcase>
+    <testcase classname=" class-name.1" name=" class-name.1" time="0.13">
+    </testcase>
+    <testcase classname=" class-name" name=" class-name" time="0.115">
+    </testcase>
+    <testcase classname=" compilation-error" name=" compilation-error" time="0.153">
+    </testcase>
+    <testcase classname=" const-enum" name=" const-enum" time="0.118">
+    </testcase>
+    <testcase classname=" double-interface-members-deeper" name=" double-interface-members-deeper" time="0.115">
+    </testcase>
+    <testcase classname=" double-interface-members-method" name=" double-interface-members-method" time="0.11">
+    </testcase>
+    <testcase classname=" double-interface-members" name=" double-interface-members" time="0.113">
+    </testcase>
+    <testcase classname=" downgrade-to-readonly" name=" downgrade-to-readonly" time="0.107">
+      <failure>Error: Debug Failure. Unexpected node.
+Node HeritageClause was unexpected.
+    at classElementVisitorWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93950:37)
+    at /Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93917:92
+    at saveStateAndInvoke (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93773:27)
+    at /Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93917:45
+    at visitArrayWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91402:48)
+    at Object.visitNodes (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91366:23)
+    at visitClassDeclaration (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:94199:117)
+    at visitTypeScript (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:94067:28)
+    at visitorWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93829:24)
+    at sourceElementVisitorWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93854:28)
+    at saveStateAndInvoke (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93773:27)
+    at sourceElementVisitor (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93839:20)
+    at visitArrayWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91402:48)
+    at visitNodes (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91366:23)
+    at Object.visitLexicalEnvironment (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91432:22)
+    at visitSourceFile (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:94161:54)
+    at saveStateAndInvoke (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93773:27)
+    at transformSourceFile (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93756:27)
+    at transformSourceFileOrBundle (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93736:20)
+    at transformation (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112235:24)
+    at transformRoot (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112262:82)
+    at Object.transformNodes (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112246:78)
+    at emitJsFileOrBundle (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112913:32)
+    at emitSourceFileOrBundle (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112858:13)
+    at forEachEmittedFile (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112599:34)
+    at Object.emitFiles (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112839:9)
+    at emitWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:120249:33)
+    at /Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:120226:72
+    at runWithCancellationToken (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:120321:24)
+    at Object.emit (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:120226:26)
+    at Compiler._consumeProgram (/Users/rmuller/Development/aws/jsii-compiler/src/compiler.ts:251:26)
+    at Compiler._buildOnce (/Users/rmuller/Development/aws/jsii-compiler/src/compiler.ts:215:17)
+    at Compiler.emit (/Users/rmuller/Development/aws/jsii-compiler/src/compiler.ts:110:17)
+    at Object.&lt;anonymous&gt; (/Users/rmuller/Development/aws/jsii-compiler/test/negatives.test.ts:34:35)
+    at Promise.then.completed (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/utils.js:290:28)
+    at new Promise (&lt;anonymous&gt;)
+    at callAsyncCircusFn (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/utils.js:223:10)
+    at _callCircusTest (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:248:40)
+    at processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at _runTest (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:184:3)
+    at _runTestsForDescribeBlock (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:86:9)
+    at run (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:26:3)
+    at runAndTransformResultsToJestFormat (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:120:21)
+    at jestAdapter (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+    at runTestInternal (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-runner/build/runTest.js:367:16)
+    at runTest (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-runner/build/runTest.js:444:34)</failure>
+    </testcase>
+    <testcase classname=" enum-duplicate-values" name=" enum-duplicate-values" time="0.111">
+    </testcase>
+    <testcase classname=" enum-members.1" name=" enum-members.1" time="0.111">
+    </testcase>
+    <testcase classname=" enum-name.1" name=" enum-name.1" time="0.11">
+    </testcase>
+    <testcase classname=" enum-name.2" name=" enum-name.2" time="0.115">
+    </testcase>
+    <testcase classname=" expose-unexported-type-constructor-param" name=" expose-unexported-type-constructor-param" time="0.121">
+    </testcase>
+    <testcase classname=" expose-unexported-type-external" name=" expose-unexported-type-external" time="0.113">
+    </testcase>
+    <testcase classname=" expose-unexported-type-internal-in-namespace" name=" expose-unexported-type-internal-in-namespace" time="0.114">
+    </testcase>
+    <testcase classname=" expose-unexported-type-internal" name=" expose-unexported-type-internal" time="0.113">
+    </testcase>
+    <testcase classname=" expose-unexported-type-this" name=" expose-unexported-type-this" time="0.109">
+      <failure>Error: Debug Failure. Unexpected node.
+Node HeritageClause was unexpected.
+    at classElementVisitorWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93950:37)
+    at /Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93917:92
+    at saveStateAndInvoke (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93773:27)
+    at /Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93917:45
+    at visitArrayWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91402:48)
+    at Object.visitNodes (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91366:23)
+    at visitClassDeclaration (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:94199:117)
+    at visitTypeScript (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:94067:28)
+    at visitorWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93829:24)
+    at sourceElementVisitorWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93854:28)
+    at saveStateAndInvoke (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93773:27)
+    at sourceElementVisitor (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93839:20)
+    at visitArrayWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91402:48)
+    at visitNodes (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91366:23)
+    at Object.visitLexicalEnvironment (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91432:22)
+    at visitSourceFile (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:94161:54)
+    at saveStateAndInvoke (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93773:27)
+    at transformSourceFile (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93756:27)
+    at transformSourceFileOrBundle (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93736:20)
+    at transformation (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112235:24)
+    at transformRoot (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112262:82)
+    at Object.transformNodes (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112246:78)
+    at emitJsFileOrBundle (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112913:32)
+    at emitSourceFileOrBundle (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112858:13)
+    at forEachEmittedFile (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112599:34)
+    at Object.emitFiles (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112839:9)
+    at emitWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:120249:33)
+    at /Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:120226:72
+    at runWithCancellationToken (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:120321:24)
+    at Object.emit (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:120226:26)
+    at Compiler._consumeProgram (/Users/rmuller/Development/aws/jsii-compiler/src/compiler.ts:251:26)
+    at Compiler._buildOnce (/Users/rmuller/Development/aws/jsii-compiler/src/compiler.ts:215:17)
+    at Compiler.emit (/Users/rmuller/Development/aws/jsii-compiler/src/compiler.ts:110:17)
+    at Object.&lt;anonymous&gt; (/Users/rmuller/Development/aws/jsii-compiler/test/negatives.test.ts:34:35)
+    at Promise.then.completed (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/utils.js:290:28)
+    at new Promise (&lt;anonymous&gt;)
+    at callAsyncCircusFn (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/utils.js:223:10)
+    at _callCircusTest (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:248:40)
+    at processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at _runTest (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:184:3)
+    at _runTestsForDescribeBlock (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:86:9)
+    at run (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:26:3)
+    at runAndTransformResultsToJestFormat (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:120:21)
+    at jestAdapter (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+    at runTestInternal (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-runner/build/runTest.js:367:16)
+    at runTest (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-runner/build/runTest.js:444:34)</failure>
+    </testcase>
+    <testcase classname=" extend-struct" name=" extend-struct" time="0.111">
+    </testcase>
+    <testcase classname=" implement-struct" name=" implement-struct" time="0.101">
+      <failure>Error: Debug Failure. Unexpected node.
+Node HeritageClause was unexpected.
+    at classElementVisitorWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93950:37)
+    at /Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93917:92
+    at saveStateAndInvoke (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93773:27)
+    at /Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93917:45
+    at visitArrayWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91402:48)
+    at Object.visitNodes (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91366:23)
+    at visitClassDeclaration (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:94199:117)
+    at visitTypeScript (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:94067:28)
+    at visitorWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93829:24)
+    at sourceElementVisitorWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93854:28)
+    at saveStateAndInvoke (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93773:27)
+    at sourceElementVisitor (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93839:20)
+    at visitArrayWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91402:48)
+    at visitNodes (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91366:23)
+    at Object.visitLexicalEnvironment (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91432:22)
+    at visitSourceFile (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:94161:54)
+    at saveStateAndInvoke (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93773:27)
+    at transformSourceFile (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93756:27)
+    at transformSourceFileOrBundle (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93736:20)
+    at transformation (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112235:24)
+    at transformRoot (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112262:82)
+    at Object.transformNodes (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112246:78)
+    at emitJsFileOrBundle (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112913:32)
+    at emitSourceFileOrBundle (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112858:13)
+    at forEachEmittedFile (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112599:34)
+    at Object.emitFiles (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112839:9)
+    at emitWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:120249:33)
+    at /Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:120226:72
+    at runWithCancellationToken (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:120321:24)
+    at Object.emit (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:120226:26)
+    at Compiler._consumeProgram (/Users/rmuller/Development/aws/jsii-compiler/src/compiler.ts:251:26)
+    at Compiler._buildOnce (/Users/rmuller/Development/aws/jsii-compiler/src/compiler.ts:215:17)
+    at Compiler.emit (/Users/rmuller/Development/aws/jsii-compiler/src/compiler.ts:110:17)
+    at Object.&lt;anonymous&gt; (/Users/rmuller/Development/aws/jsii-compiler/test/negatives.test.ts:34:35)
+    at Promise.then.completed (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/utils.js:290:28)
+    at new Promise (&lt;anonymous&gt;)
+    at callAsyncCircusFn (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/utils.js:223:10)
+    at _callCircusTest (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:248:40)
+    at processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at _runTest (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:184:3)
+    at _runTestsForDescribeBlock (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:86:9)
+    at run (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:26:3)
+    at runAndTransformResultsToJestFormat (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:120:21)
+    at jestAdapter (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+    at runTestInternal (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-runner/build/runTest.js:367:16)
+    at runTest (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-runner/build/runTest.js:444:34)</failure>
+    </testcase>
+    <testcase classname=" implementation-changes-types.1" name=" implementation-changes-types.1" time="0.102">
+      <failure>Error: Debug Failure. Unexpected node.
+Node HeritageClause was unexpected.
+    at classElementVisitorWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93950:37)
+    at /Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93917:92
+    at saveStateAndInvoke (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93773:27)
+    at /Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93917:45
+    at visitArrayWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91402:48)
+    at Object.visitNodes (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91366:23)
+    at visitClassDeclaration (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:94199:117)
+    at visitTypeScript (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:94067:28)
+    at visitorWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93829:24)
+    at sourceElementVisitorWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93854:28)
+    at saveStateAndInvoke (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93773:27)
+    at sourceElementVisitor (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93839:20)
+    at visitArrayWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91402:48)
+    at visitNodes (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91366:23)
+    at Object.visitLexicalEnvironment (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91432:22)
+    at visitSourceFile (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:94161:54)
+    at saveStateAndInvoke (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93773:27)
+    at transformSourceFile (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93756:27)
+    at transformSourceFileOrBundle (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93736:20)
+    at transformation (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112235:24)
+    at transformRoot (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112262:82)
+    at Object.transformNodes (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112246:78)
+    at emitJsFileOrBundle (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112913:32)
+    at emitSourceFileOrBundle (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112858:13)
+    at forEachEmittedFile (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112599:34)
+    at Object.emitFiles (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112839:9)
+    at emitWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:120249:33)
+    at /Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:120226:72
+    at runWithCancellationToken (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:120321:24)
+    at Object.emit (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:120226:26)
+    at Compiler._consumeProgram (/Users/rmuller/Development/aws/jsii-compiler/src/compiler.ts:251:26)
+    at Compiler._buildOnce (/Users/rmuller/Development/aws/jsii-compiler/src/compiler.ts:215:17)
+    at Compiler.emit (/Users/rmuller/Development/aws/jsii-compiler/src/compiler.ts:110:17)
+    at Object.&lt;anonymous&gt; (/Users/rmuller/Development/aws/jsii-compiler/test/negatives.test.ts:34:35)
+    at Promise.then.completed (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/utils.js:290:28)
+    at new Promise (&lt;anonymous&gt;)
+    at callAsyncCircusFn (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/utils.js:223:10)
+    at _callCircusTest (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:248:40)
+    at processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at _runTest (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:184:3)
+    at _runTestsForDescribeBlock (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:86:9)
+    at run (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:26:3)
+    at runAndTransformResultsToJestFormat (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:120:21)
+    at jestAdapter (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+    at runTestInternal (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-runner/build/runTest.js:367:16)
+    at runTest (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-runner/build/runTest.js:444:34)</failure>
+    </testcase>
+    <testcase classname=" implementation-changes-types.2" name=" implementation-changes-types.2" time="0.103">
+      <failure>Error: Debug Failure. Unexpected node.
+Node HeritageClause was unexpected.
+    at classElementVisitorWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93950:37)
+    at /Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93917:92
+    at saveStateAndInvoke (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93773:27)
+    at /Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93917:45
+    at visitArrayWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91402:48)
+    at Object.visitNodes (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91366:23)
+    at visitClassDeclaration (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:94199:117)
+    at visitTypeScript (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:94067:28)
+    at visitorWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93829:24)
+    at sourceElementVisitorWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93854:28)
+    at saveStateAndInvoke (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93773:27)
+    at sourceElementVisitor (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93839:20)
+    at visitArrayWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91402:48)
+    at visitNodes (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91366:23)
+    at Object.visitLexicalEnvironment (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91432:22)
+    at visitSourceFile (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:94161:54)
+    at saveStateAndInvoke (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93773:27)
+    at transformSourceFile (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93756:27)
+    at transformSourceFileOrBundle (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93736:20)
+    at transformation (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112235:24)
+    at transformRoot (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112262:82)
+    at Object.transformNodes (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112246:78)
+    at emitJsFileOrBundle (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112913:32)
+    at emitSourceFileOrBundle (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112858:13)
+    at forEachEmittedFile (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112599:34)
+    at Object.emitFiles (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112839:9)
+    at emitWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:120249:33)
+    at /Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:120226:72
+    at runWithCancellationToken (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:120321:24)
+    at Object.emit (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:120226:26)
+    at Compiler._consumeProgram (/Users/rmuller/Development/aws/jsii-compiler/src/compiler.ts:251:26)
+    at Compiler._buildOnce (/Users/rmuller/Development/aws/jsii-compiler/src/compiler.ts:215:17)
+    at Compiler.emit (/Users/rmuller/Development/aws/jsii-compiler/src/compiler.ts:110:17)
+    at Object.&lt;anonymous&gt; (/Users/rmuller/Development/aws/jsii-compiler/test/negatives.test.ts:34:35)
+    at Promise.then.completed (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/utils.js:290:28)
+    at new Promise (&lt;anonymous&gt;)
+    at callAsyncCircusFn (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/utils.js:223:10)
+    at _callCircusTest (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:248:40)
+    at processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at _runTest (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:184:3)
+    at _runTestsForDescribeBlock (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:86:9)
+    at run (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:26:3)
+    at runAndTransformResultsToJestFormat (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:120:21)
+    at jestAdapter (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+    at runTestInternal (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-runner/build/runTest.js:367:16)
+    at runTest (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-runner/build/runTest.js:444:34)</failure>
+    </testcase>
+    <testcase classname=" implementation-changes-types.3" name=" implementation-changes-types.3" time="0.103">
+      <failure>Error: Debug Failure. Unexpected node.
+Node HeritageClause was unexpected.
+    at classElementVisitorWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93950:37)
+    at /Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93917:92
+    at saveStateAndInvoke (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93773:27)
+    at /Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93917:45
+    at visitArrayWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91402:48)
+    at Object.visitNodes (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91366:23)
+    at visitClassDeclaration (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:94199:117)
+    at visitTypeScript (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:94067:28)
+    at visitorWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93829:24)
+    at sourceElementVisitorWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93854:28)
+    at saveStateAndInvoke (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93773:27)
+    at sourceElementVisitor (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93839:20)
+    at visitArrayWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91402:48)
+    at visitNodes (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91366:23)
+    at Object.visitLexicalEnvironment (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91432:22)
+    at visitSourceFile (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:94161:54)
+    at saveStateAndInvoke (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93773:27)
+    at transformSourceFile (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93756:27)
+    at transformSourceFileOrBundle (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93736:20)
+    at transformation (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112235:24)
+    at transformRoot (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112262:82)
+    at Object.transformNodes (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112246:78)
+    at emitJsFileOrBundle (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112913:32)
+    at emitSourceFileOrBundle (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112858:13)
+    at forEachEmittedFile (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112599:34)
+    at Object.emitFiles (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112839:9)
+    at emitWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:120249:33)
+    at /Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:120226:72
+    at runWithCancellationToken (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:120321:24)
+    at Object.emit (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:120226:26)
+    at Compiler._consumeProgram (/Users/rmuller/Development/aws/jsii-compiler/src/compiler.ts:251:26)
+    at Compiler._buildOnce (/Users/rmuller/Development/aws/jsii-compiler/src/compiler.ts:215:17)
+    at Compiler.emit (/Users/rmuller/Development/aws/jsii-compiler/src/compiler.ts:110:17)
+    at Object.&lt;anonymous&gt; (/Users/rmuller/Development/aws/jsii-compiler/test/negatives.test.ts:34:35)
+    at Promise.then.completed (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/utils.js:290:28)
+    at new Promise (&lt;anonymous&gt;)
+    at callAsyncCircusFn (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/utils.js:223:10)
+    at _callCircusTest (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:248:40)
+    at processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at _runTest (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:184:3)
+    at _runTestsForDescribeBlock (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:86:9)
+    at run (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:26:3)
+    at runAndTransformResultsToJestFormat (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:120:21)
+    at jestAdapter (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+    at runTestInternal (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-runner/build/runTest.js:367:16)
+    at runTest (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-runner/build/runTest.js:444:34)</failure>
+    </testcase>
+    <testcase classname=" implementation-changes-types.4" name=" implementation-changes-types.4" time="0.102">
+      <failure>Error: Debug Failure. Unexpected node.
+Node HeritageClause was unexpected.
+    at classElementVisitorWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93950:37)
+    at /Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93917:92
+    at saveStateAndInvoke (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93773:27)
+    at /Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93917:45
+    at visitArrayWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91402:48)
+    at Object.visitNodes (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91366:23)
+    at visitClassDeclaration (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:94199:117)
+    at visitTypeScript (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:94067:28)
+    at visitorWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93829:24)
+    at sourceElementVisitorWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93854:28)
+    at saveStateAndInvoke (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93773:27)
+    at sourceElementVisitor (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93839:20)
+    at visitArrayWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91402:48)
+    at visitNodes (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91366:23)
+    at Object.visitLexicalEnvironment (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91432:22)
+    at visitSourceFile (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:94161:54)
+    at saveStateAndInvoke (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93773:27)
+    at transformSourceFile (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93756:27)
+    at transformSourceFileOrBundle (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93736:20)
+    at transformation (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112235:24)
+    at transformRoot (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112262:82)
+    at Object.transformNodes (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112246:78)
+    at emitJsFileOrBundle (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112913:32)
+    at emitSourceFileOrBundle (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112858:13)
+    at forEachEmittedFile (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112599:34)
+    at Object.emitFiles (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112839:9)
+    at emitWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:120249:33)
+    at /Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:120226:72
+    at runWithCancellationToken (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:120321:24)
+    at Object.emit (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:120226:26)
+    at Compiler._consumeProgram (/Users/rmuller/Development/aws/jsii-compiler/src/compiler.ts:251:26)
+    at Compiler._buildOnce (/Users/rmuller/Development/aws/jsii-compiler/src/compiler.ts:215:17)
+    at Compiler.emit (/Users/rmuller/Development/aws/jsii-compiler/src/compiler.ts:110:17)
+    at Object.&lt;anonymous&gt; (/Users/rmuller/Development/aws/jsii-compiler/test/negatives.test.ts:34:35)
+    at Promise.then.completed (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/utils.js:290:28)
+    at new Promise (&lt;anonymous&gt;)
+    at callAsyncCircusFn (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/utils.js:223:10)
+    at _callCircusTest (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:248:40)
+    at processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at _runTest (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:184:3)
+    at _runTestsForDescribeBlock (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:86:9)
+    at run (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:26:3)
+    at runAndTransformResultsToJestFormat (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:120:21)
+    at jestAdapter (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+    at runTestInternal (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-runner/build/runTest.js:367:16)
+    at runTest (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-runner/build/runTest.js:444:34)</failure>
+    </testcase>
+    <testcase classname=" implementation-changes-types.5" name=" implementation-changes-types.5" time="0.102">
+      <failure>Error: Debug Failure. Unexpected node.
+Node HeritageClause was unexpected.
+    at classElementVisitorWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93950:37)
+    at /Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93917:92
+    at saveStateAndInvoke (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93773:27)
+    at /Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93917:45
+    at visitArrayWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91402:48)
+    at Object.visitNodes (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91366:23)
+    at visitClassDeclaration (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:94199:117)
+    at visitTypeScript (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:94067:28)
+    at visitorWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93829:24)
+    at sourceElementVisitorWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93854:28)
+    at saveStateAndInvoke (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93773:27)
+    at sourceElementVisitor (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93839:20)
+    at visitArrayWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91402:48)
+    at visitNodes (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91366:23)
+    at Object.visitLexicalEnvironment (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91432:22)
+    at visitSourceFile (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:94161:54)
+    at saveStateAndInvoke (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93773:27)
+    at transformSourceFile (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93756:27)
+    at transformSourceFileOrBundle (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93736:20)
+    at transformation (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112235:24)
+    at transformRoot (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112262:82)
+    at Object.transformNodes (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112246:78)
+    at emitJsFileOrBundle (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112913:32)
+    at emitSourceFileOrBundle (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112858:13)
+    at forEachEmittedFile (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112599:34)
+    at Object.emitFiles (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112839:9)
+    at emitWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:120249:33)
+    at /Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:120226:72
+    at runWithCancellationToken (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:120321:24)
+    at Object.emit (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:120226:26)
+    at Compiler._consumeProgram (/Users/rmuller/Development/aws/jsii-compiler/src/compiler.ts:251:26)
+    at Compiler._buildOnce (/Users/rmuller/Development/aws/jsii-compiler/src/compiler.ts:215:17)
+    at Compiler.emit (/Users/rmuller/Development/aws/jsii-compiler/src/compiler.ts:110:17)
+    at Object.&lt;anonymous&gt; (/Users/rmuller/Development/aws/jsii-compiler/test/negatives.test.ts:34:35)
+    at Promise.then.completed (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/utils.js:290:28)
+    at new Promise (&lt;anonymous&gt;)
+    at callAsyncCircusFn (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/utils.js:223:10)
+    at _callCircusTest (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:248:40)
+    at processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at _runTest (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:184:3)
+    at _runTestsForDescribeBlock (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:86:9)
+    at run (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:26:3)
+    at runAndTransformResultsToJestFormat (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:120:21)
+    at jestAdapter (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+    at runTestInternal (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-runner/build/runTest.js:367:16)
+    at runTest (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-runner/build/runTest.js:444:34)</failure>
+    </testcase>
+    <testcase classname=" implementing-method-changes-optionality.1" name=" implementing-method-changes-optionality.1" time="0.105">
+      <failure>Error: Debug Failure. Unexpected node.
+Node HeritageClause was unexpected.
+    at classElementVisitorWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93950:37)
+    at /Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93917:92
+    at saveStateAndInvoke (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93773:27)
+    at /Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93917:45
+    at visitArrayWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91402:48)
+    at Object.visitNodes (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91366:23)
+    at visitClassDeclaration (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:94199:117)
+    at visitTypeScript (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:94067:28)
+    at visitorWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93829:24)
+    at sourceElementVisitorWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93854:28)
+    at saveStateAndInvoke (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93773:27)
+    at sourceElementVisitor (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93839:20)
+    at visitArrayWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91402:48)
+    at visitNodes (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91366:23)
+    at Object.visitLexicalEnvironment (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91432:22)
+    at visitSourceFile (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:94161:54)
+    at saveStateAndInvoke (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93773:27)
+    at transformSourceFile (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93756:27)
+    at transformSourceFileOrBundle (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93736:20)
+    at transformation (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112235:24)
+    at transformRoot (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112262:82)
+    at Object.transformNodes (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112246:78)
+    at emitJsFileOrBundle (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112913:32)
+    at emitSourceFileOrBundle (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112858:13)
+    at forEachEmittedFile (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112599:34)
+    at Object.emitFiles (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112839:9)
+    at emitWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:120249:33)
+    at /Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:120226:72
+    at runWithCancellationToken (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:120321:24)
+    at Object.emit (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:120226:26)
+    at Compiler._consumeProgram (/Users/rmuller/Development/aws/jsii-compiler/src/compiler.ts:251:26)
+    at Compiler._buildOnce (/Users/rmuller/Development/aws/jsii-compiler/src/compiler.ts:215:17)
+    at Compiler.emit (/Users/rmuller/Development/aws/jsii-compiler/src/compiler.ts:110:17)
+    at Object.&lt;anonymous&gt; (/Users/rmuller/Development/aws/jsii-compiler/test/negatives.test.ts:34:35)
+    at Promise.then.completed (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/utils.js:290:28)
+    at new Promise (&lt;anonymous&gt;)
+    at callAsyncCircusFn (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/utils.js:223:10)
+    at _callCircusTest (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:248:40)
+    at processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at _runTest (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:184:3)
+    at _runTestsForDescribeBlock (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:86:9)
+    at run (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:26:3)
+    at runAndTransformResultsToJestFormat (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:120:21)
+    at jestAdapter (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+    at runTestInternal (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-runner/build/runTest.js:367:16)
+    at runTest (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-runner/build/runTest.js:444:34)</failure>
+    </testcase>
+    <testcase classname=" implementing-method-changes-optionality.2" name=" implementing-method-changes-optionality.2" time="0.101">
+      <failure>Error: Debug Failure. Unexpected node.
+Node HeritageClause was unexpected.
+    at classElementVisitorWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93950:37)
+    at /Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93917:92
+    at saveStateAndInvoke (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93773:27)
+    at /Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93917:45
+    at visitArrayWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91402:48)
+    at Object.visitNodes (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91366:23)
+    at visitClassDeclaration (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:94199:117)
+    at visitTypeScript (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:94067:28)
+    at visitorWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93829:24)
+    at sourceElementVisitorWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93854:28)
+    at saveStateAndInvoke (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93773:27)
+    at sourceElementVisitor (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93839:20)
+    at visitArrayWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91402:48)
+    at visitNodes (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91366:23)
+    at Object.visitLexicalEnvironment (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91432:22)
+    at visitSourceFile (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:94161:54)
+    at saveStateAndInvoke (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93773:27)
+    at transformSourceFile (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93756:27)
+    at transformSourceFileOrBundle (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93736:20)
+    at transformation (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112235:24)
+    at transformRoot (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112262:82)
+    at Object.transformNodes (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112246:78)
+    at emitJsFileOrBundle (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112913:32)
+    at emitSourceFileOrBundle (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112858:13)
+    at forEachEmittedFile (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112599:34)
+    at Object.emitFiles (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112839:9)
+    at emitWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:120249:33)
+    at /Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:120226:72
+    at runWithCancellationToken (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:120321:24)
+    at Object.emit (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:120226:26)
+    at Compiler._consumeProgram (/Users/rmuller/Development/aws/jsii-compiler/src/compiler.ts:251:26)
+    at Compiler._buildOnce (/Users/rmuller/Development/aws/jsii-compiler/src/compiler.ts:215:17)
+    at Compiler.emit (/Users/rmuller/Development/aws/jsii-compiler/src/compiler.ts:110:17)
+    at Object.&lt;anonymous&gt; (/Users/rmuller/Development/aws/jsii-compiler/test/negatives.test.ts:34:35)
+    at Promise.then.completed (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/utils.js:290:28)
+    at new Promise (&lt;anonymous&gt;)
+    at callAsyncCircusFn (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/utils.js:223:10)
+    at _callCircusTest (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:248:40)
+    at processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at _runTest (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:184:3)
+    at _runTestsForDescribeBlock (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:86:9)
+    at run (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:26:3)
+    at runAndTransformResultsToJestFormat (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:120:21)
+    at jestAdapter (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+    at runTestInternal (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-runner/build/runTest.js:367:16)
+    at runTest (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-runner/build/runTest.js:444:34)</failure>
+    </testcase>
+    <testcase classname=" implementing-method-changes-optionality" name=" implementing-method-changes-optionality" time="0.101">
+      <failure>Error: Debug Failure. Unexpected node.
+Node HeritageClause was unexpected.
+    at classElementVisitorWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93950:37)
+    at /Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93917:92
+    at saveStateAndInvoke (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93773:27)
+    at /Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93917:45
+    at visitArrayWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91402:48)
+    at Object.visitNodes (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91366:23)
+    at visitClassDeclaration (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:94199:117)
+    at visitTypeScript (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:94067:28)
+    at visitorWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93829:24)
+    at sourceElementVisitorWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93854:28)
+    at saveStateAndInvoke (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93773:27)
+    at sourceElementVisitor (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93839:20)
+    at visitArrayWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91402:48)
+    at visitNodes (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91366:23)
+    at Object.visitLexicalEnvironment (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91432:22)
+    at visitSourceFile (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:94161:54)
+    at saveStateAndInvoke (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93773:27)
+    at transformSourceFile (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93756:27)
+    at transformSourceFileOrBundle (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93736:20)
+    at transformation (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112235:24)
+    at transformRoot (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112262:82)
+    at Object.transformNodes (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112246:78)
+    at emitJsFileOrBundle (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112913:32)
+    at emitSourceFileOrBundle (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112858:13)
+    at forEachEmittedFile (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112599:34)
+    at Object.emitFiles (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112839:9)
+    at emitWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:120249:33)
+    at /Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:120226:72
+    at runWithCancellationToken (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:120321:24)
+    at Object.emit (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:120226:26)
+    at Compiler._consumeProgram (/Users/rmuller/Development/aws/jsii-compiler/src/compiler.ts:251:26)
+    at Compiler._buildOnce (/Users/rmuller/Development/aws/jsii-compiler/src/compiler.ts:215:17)
+    at Compiler.emit (/Users/rmuller/Development/aws/jsii-compiler/src/compiler.ts:110:17)
+    at Object.&lt;anonymous&gt; (/Users/rmuller/Development/aws/jsii-compiler/test/negatives.test.ts:34:35)
+    at Promise.then.completed (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/utils.js:290:28)
+    at new Promise (&lt;anonymous&gt;)
+    at callAsyncCircusFn (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/utils.js:223:10)
+    at _callCircusTest (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:248:40)
+    at processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at _runTest (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:184:3)
+    at _runTestsForDescribeBlock (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:86:9)
+    at run (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:26:3)
+    at runAndTransformResultsToJestFormat (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:120:21)
+    at jestAdapter (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+    at runTestInternal (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-runner/build/runTest.js:367:16)
+    at runTest (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-runner/build/runTest.js:444:34)</failure>
+    </testcase>
+    <testcase classname=" implementing-property-changes-optionality.1" name=" implementing-property-changes-optionality.1" time="0.105">
+      <failure>Error: Debug Failure. Unexpected node.
+Node HeritageClause was unexpected.
+    at classElementVisitorWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93950:37)
+    at /Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93917:92
+    at saveStateAndInvoke (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93773:27)
+    at /Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93917:45
+    at visitArrayWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91402:48)
+    at Object.visitNodes (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91366:23)
+    at visitClassDeclaration (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:94199:117)
+    at visitTypeScript (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:94067:28)
+    at visitorWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93829:24)
+    at sourceElementVisitorWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93854:28)
+    at saveStateAndInvoke (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93773:27)
+    at sourceElementVisitor (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93839:20)
+    at visitArrayWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91402:48)
+    at visitNodes (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91366:23)
+    at Object.visitLexicalEnvironment (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91432:22)
+    at visitSourceFile (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:94161:54)
+    at saveStateAndInvoke (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93773:27)
+    at transformSourceFile (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93756:27)
+    at transformSourceFileOrBundle (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93736:20)
+    at transformation (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112235:24)
+    at transformRoot (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112262:82)
+    at Object.transformNodes (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112246:78)
+    at emitJsFileOrBundle (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112913:32)
+    at emitSourceFileOrBundle (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112858:13)
+    at forEachEmittedFile (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112599:34)
+    at Object.emitFiles (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112839:9)
+    at emitWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:120249:33)
+    at /Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:120226:72
+    at runWithCancellationToken (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:120321:24)
+    at Object.emit (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:120226:26)
+    at Compiler._consumeProgram (/Users/rmuller/Development/aws/jsii-compiler/src/compiler.ts:251:26)
+    at Compiler._buildOnce (/Users/rmuller/Development/aws/jsii-compiler/src/compiler.ts:215:17)
+    at Compiler.emit (/Users/rmuller/Development/aws/jsii-compiler/src/compiler.ts:110:17)
+    at Object.&lt;anonymous&gt; (/Users/rmuller/Development/aws/jsii-compiler/test/negatives.test.ts:34:35)
+    at Promise.then.completed (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/utils.js:290:28)
+    at new Promise (&lt;anonymous&gt;)
+    at callAsyncCircusFn (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/utils.js:223:10)
+    at _callCircusTest (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:248:40)
+    at processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at _runTest (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:184:3)
+    at _runTestsForDescribeBlock (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:86:9)
+    at run (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:26:3)
+    at runAndTransformResultsToJestFormat (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:120:21)
+    at jestAdapter (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+    at runTestInternal (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-runner/build/runTest.js:367:16)
+    at runTest (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-runner/build/runTest.js:444:34)</failure>
+    </testcase>
+    <testcase classname=" implementing-property-changes-optionality.2" name=" implementing-property-changes-optionality.2" time="0.102">
+      <failure>Error: Debug Failure. Unexpected node.
+Node HeritageClause was unexpected.
+    at classElementVisitorWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93950:37)
+    at /Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93917:92
+    at saveStateAndInvoke (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93773:27)
+    at /Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93917:45
+    at visitArrayWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91402:48)
+    at Object.visitNodes (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91366:23)
+    at visitClassDeclaration (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:94199:117)
+    at visitTypeScript (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:94067:28)
+    at visitorWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93829:24)
+    at sourceElementVisitorWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93854:28)
+    at saveStateAndInvoke (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93773:27)
+    at sourceElementVisitor (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93839:20)
+    at visitArrayWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91402:48)
+    at visitNodes (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91366:23)
+    at Object.visitLexicalEnvironment (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91432:22)
+    at visitSourceFile (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:94161:54)
+    at saveStateAndInvoke (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93773:27)
+    at transformSourceFile (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93756:27)
+    at transformSourceFileOrBundle (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93736:20)
+    at transformation (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112235:24)
+    at transformRoot (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112262:82)
+    at Object.transformNodes (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112246:78)
+    at emitJsFileOrBundle (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112913:32)
+    at emitSourceFileOrBundle (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112858:13)
+    at forEachEmittedFile (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112599:34)
+    at Object.emitFiles (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112839:9)
+    at emitWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:120249:33)
+    at /Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:120226:72
+    at runWithCancellationToken (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:120321:24)
+    at Object.emit (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:120226:26)
+    at Compiler._consumeProgram (/Users/rmuller/Development/aws/jsii-compiler/src/compiler.ts:251:26)
+    at Compiler._buildOnce (/Users/rmuller/Development/aws/jsii-compiler/src/compiler.ts:215:17)
+    at Compiler.emit (/Users/rmuller/Development/aws/jsii-compiler/src/compiler.ts:110:17)
+    at Object.&lt;anonymous&gt; (/Users/rmuller/Development/aws/jsii-compiler/test/negatives.test.ts:34:35)
+    at Promise.then.completed (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/utils.js:290:28)
+    at new Promise (&lt;anonymous&gt;)
+    at callAsyncCircusFn (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/utils.js:223:10)
+    at _callCircusTest (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:248:40)
+    at processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at _runTest (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:184:3)
+    at _runTestsForDescribeBlock (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:86:9)
+    at run (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:26:3)
+    at runAndTransformResultsToJestFormat (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:120:21)
+    at jestAdapter (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+    at runTestInternal (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-runner/build/runTest.js:367:16)
+    at runTest (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-runner/build/runTest.js:444:34)</failure>
+    </testcase>
+    <testcase classname=" implementing-property-changes-optionality" name=" implementing-property-changes-optionality" time="0.102">
+      <failure>Error: Debug Failure. Unexpected node.
+Node HeritageClause was unexpected.
+    at classElementVisitorWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93950:37)
+    at /Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93917:92
+    at saveStateAndInvoke (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93773:27)
+    at /Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93917:45
+    at visitArrayWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91402:48)
+    at Object.visitNodes (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91366:23)
+    at visitClassDeclaration (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:94199:117)
+    at visitTypeScript (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:94067:28)
+    at visitorWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93829:24)
+    at sourceElementVisitorWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93854:28)
+    at saveStateAndInvoke (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93773:27)
+    at sourceElementVisitor (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93839:20)
+    at visitArrayWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91402:48)
+    at visitNodes (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91366:23)
+    at Object.visitLexicalEnvironment (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91432:22)
+    at visitSourceFile (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:94161:54)
+    at saveStateAndInvoke (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93773:27)
+    at transformSourceFile (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93756:27)
+    at transformSourceFileOrBundle (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93736:20)
+    at transformation (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112235:24)
+    at transformRoot (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112262:82)
+    at Object.transformNodes (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112246:78)
+    at emitJsFileOrBundle (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112913:32)
+    at emitSourceFileOrBundle (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112858:13)
+    at forEachEmittedFile (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112599:34)
+    at Object.emitFiles (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112839:9)
+    at emitWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:120249:33)
+    at /Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:120226:72
+    at runWithCancellationToken (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:120321:24)
+    at Object.emit (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:120226:26)
+    at Compiler._consumeProgram (/Users/rmuller/Development/aws/jsii-compiler/src/compiler.ts:251:26)
+    at Compiler._buildOnce (/Users/rmuller/Development/aws/jsii-compiler/src/compiler.ts:215:17)
+    at Compiler.emit (/Users/rmuller/Development/aws/jsii-compiler/src/compiler.ts:110:17)
+    at Object.&lt;anonymous&gt; (/Users/rmuller/Development/aws/jsii-compiler/test/negatives.test.ts:34:35)
+    at Promise.then.completed (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/utils.js:290:28)
+    at new Promise (&lt;anonymous&gt;)
+    at callAsyncCircusFn (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/utils.js:223:10)
+    at _callCircusTest (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:248:40)
+    at processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at _runTest (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:184:3)
+    at _runTestsForDescribeBlock (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:86:9)
+    at run (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:26:3)
+    at runAndTransformResultsToJestFormat (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:120:21)
+    at jestAdapter (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+    at runTestInternal (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-runner/build/runTest.js:367:16)
+    at runTest (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-runner/build/runTest.js:444:34)</failure>
+    </testcase>
+    <testcase classname=" implements-class" name=" implements-class" time="0.102">
+      <failure>Error: Debug Failure. Unexpected node.
+Node HeritageClause was unexpected.
+    at classElementVisitorWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93950:37)
+    at /Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93917:92
+    at saveStateAndInvoke (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93773:27)
+    at /Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93917:45
+    at visitArrayWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91402:48)
+    at Object.visitNodes (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91366:23)
+    at visitClassDeclaration (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:94199:117)
+    at visitTypeScript (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:94067:28)
+    at visitorWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93829:24)
+    at sourceElementVisitorWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93854:28)
+    at saveStateAndInvoke (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93773:27)
+    at sourceElementVisitor (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93839:20)
+    at visitArrayWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91402:48)
+    at visitNodes (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91366:23)
+    at Object.visitLexicalEnvironment (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91432:22)
+    at visitSourceFile (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:94161:54)
+    at saveStateAndInvoke (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93773:27)
+    at transformSourceFile (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93756:27)
+    at transformSourceFileOrBundle (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93736:20)
+    at transformation (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112235:24)
+    at transformRoot (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112262:82)
+    at Object.transformNodes (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112246:78)
+    at emitJsFileOrBundle (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112913:32)
+    at emitSourceFileOrBundle (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112858:13)
+    at forEachEmittedFile (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112599:34)
+    at Object.emitFiles (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112839:9)
+    at emitWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:120249:33)
+    at /Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:120226:72
+    at runWithCancellationToken (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:120321:24)
+    at Object.emit (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:120226:26)
+    at Compiler._consumeProgram (/Users/rmuller/Development/aws/jsii-compiler/src/compiler.ts:251:26)
+    at Compiler._buildOnce (/Users/rmuller/Development/aws/jsii-compiler/src/compiler.ts:215:17)
+    at Compiler.emit (/Users/rmuller/Development/aws/jsii-compiler/src/compiler.ts:110:17)
+    at Object.&lt;anonymous&gt; (/Users/rmuller/Development/aws/jsii-compiler/test/negatives.test.ts:34:35)
+    at Promise.then.completed (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/utils.js:290:28)
+    at new Promise (&lt;anonymous&gt;)
+    at callAsyncCircusFn (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/utils.js:223:10)
+    at _callCircusTest (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:248:40)
+    at processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at _runTest (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:184:3)
+    at _runTestsForDescribeBlock (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:86:9)
+    at run (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:26:3)
+    at runAndTransformResultsToJestFormat (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:120:21)
+    at jestAdapter (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+    at runTestInternal (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-runner/build/runTest.js:367:16)
+    at runTest (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-runner/build/runTest.js:444:34)</failure>
+    </testcase>
+    <testcase classname=" inheritance-changes-types.1" name=" inheritance-changes-types.1" time="0.103">
+      <failure>Error: Debug Failure. Unexpected node.
+Node HeritageClause was unexpected.
+    at classElementVisitorWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93950:37)
+    at /Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93917:92
+    at saveStateAndInvoke (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93773:27)
+    at /Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93917:45
+    at visitArrayWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91402:48)
+    at Object.visitNodes (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91366:23)
+    at visitClassDeclaration (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:94199:117)
+    at visitTypeScript (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:94067:28)
+    at visitorWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93829:24)
+    at sourceElementVisitorWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93854:28)
+    at saveStateAndInvoke (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93773:27)
+    at sourceElementVisitor (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93839:20)
+    at visitArrayWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91402:48)
+    at visitNodes (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91366:23)
+    at Object.visitLexicalEnvironment (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91432:22)
+    at visitSourceFile (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:94161:54)
+    at saveStateAndInvoke (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93773:27)
+    at transformSourceFile (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93756:27)
+    at transformSourceFileOrBundle (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93736:20)
+    at transformation (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112235:24)
+    at transformRoot (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112262:82)
+    at Object.transformNodes (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112246:78)
+    at emitJsFileOrBundle (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112913:32)
+    at emitSourceFileOrBundle (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112858:13)
+    at forEachEmittedFile (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112599:34)
+    at Object.emitFiles (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112839:9)
+    at emitWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:120249:33)
+    at /Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:120226:72
+    at runWithCancellationToken (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:120321:24)
+    at Object.emit (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:120226:26)
+    at Compiler._consumeProgram (/Users/rmuller/Development/aws/jsii-compiler/src/compiler.ts:251:26)
+    at Compiler._buildOnce (/Users/rmuller/Development/aws/jsii-compiler/src/compiler.ts:215:17)
+    at Compiler.emit (/Users/rmuller/Development/aws/jsii-compiler/src/compiler.ts:110:17)
+    at Object.&lt;anonymous&gt; (/Users/rmuller/Development/aws/jsii-compiler/test/negatives.test.ts:34:35)
+    at Promise.then.completed (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/utils.js:290:28)
+    at new Promise (&lt;anonymous&gt;)
+    at callAsyncCircusFn (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/utils.js:223:10)
+    at _callCircusTest (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:248:40)
+    at processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at _runTest (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:184:3)
+    at _runTestsForDescribeBlock (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:86:9)
+    at run (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:26:3)
+    at runAndTransformResultsToJestFormat (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:120:21)
+    at jestAdapter (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+    at runTestInternal (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-runner/build/runTest.js:367:16)
+    at runTest (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-runner/build/runTest.js:444:34)</failure>
+    </testcase>
+    <testcase classname=" inheritance-changes-types.2" name=" inheritance-changes-types.2" time="0.104">
+      <failure>Error: Debug Failure. Unexpected node.
+Node HeritageClause was unexpected.
+    at classElementVisitorWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93950:37)
+    at /Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93917:92
+    at saveStateAndInvoke (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93773:27)
+    at /Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93917:45
+    at visitArrayWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91402:48)
+    at Object.visitNodes (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91366:23)
+    at visitClassDeclaration (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:94199:117)
+    at visitTypeScript (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:94067:28)
+    at visitorWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93829:24)
+    at sourceElementVisitorWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93854:28)
+    at saveStateAndInvoke (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93773:27)
+    at sourceElementVisitor (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93839:20)
+    at visitArrayWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91402:48)
+    at visitNodes (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91366:23)
+    at Object.visitLexicalEnvironment (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91432:22)
+    at visitSourceFile (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:94161:54)
+    at saveStateAndInvoke (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93773:27)
+    at transformSourceFile (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93756:27)
+    at transformSourceFileOrBundle (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93736:20)
+    at transformation (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112235:24)
+    at transformRoot (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112262:82)
+    at Object.transformNodes (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112246:78)
+    at emitJsFileOrBundle (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112913:32)
+    at emitSourceFileOrBundle (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112858:13)
+    at forEachEmittedFile (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112599:34)
+    at Object.emitFiles (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112839:9)
+    at emitWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:120249:33)
+    at /Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:120226:72
+    at runWithCancellationToken (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:120321:24)
+    at Object.emit (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:120226:26)
+    at Compiler._consumeProgram (/Users/rmuller/Development/aws/jsii-compiler/src/compiler.ts:251:26)
+    at Compiler._buildOnce (/Users/rmuller/Development/aws/jsii-compiler/src/compiler.ts:215:17)
+    at Compiler.emit (/Users/rmuller/Development/aws/jsii-compiler/src/compiler.ts:110:17)
+    at Object.&lt;anonymous&gt; (/Users/rmuller/Development/aws/jsii-compiler/test/negatives.test.ts:34:35)
+    at Promise.then.completed (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/utils.js:290:28)
+    at new Promise (&lt;anonymous&gt;)
+    at callAsyncCircusFn (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/utils.js:223:10)
+    at _callCircusTest (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:248:40)
+    at processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at _runTest (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:184:3)
+    at _runTestsForDescribeBlock (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:86:9)
+    at run (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:26:3)
+    at runAndTransformResultsToJestFormat (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:120:21)
+    at jestAdapter (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+    at runTestInternal (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-runner/build/runTest.js:367:16)
+    at runTest (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-runner/build/runTest.js:444:34)</failure>
+    </testcase>
+    <testcase classname=" inheritance-changes-types.3" name=" inheritance-changes-types.3" time="0.103">
+      <failure>Error: Debug Failure. Unexpected node.
+Node HeritageClause was unexpected.
+    at classElementVisitorWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93950:37)
+    at /Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93917:92
+    at saveStateAndInvoke (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93773:27)
+    at /Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93917:45
+    at visitArrayWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91402:48)
+    at Object.visitNodes (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91366:23)
+    at visitClassDeclaration (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:94199:117)
+    at visitTypeScript (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:94067:28)
+    at visitorWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93829:24)
+    at sourceElementVisitorWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93854:28)
+    at saveStateAndInvoke (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93773:27)
+    at sourceElementVisitor (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93839:20)
+    at visitArrayWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91402:48)
+    at visitNodes (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91366:23)
+    at Object.visitLexicalEnvironment (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91432:22)
+    at visitSourceFile (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:94161:54)
+    at saveStateAndInvoke (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93773:27)
+    at transformSourceFile (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93756:27)
+    at transformSourceFileOrBundle (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93736:20)
+    at transformation (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112235:24)
+    at transformRoot (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112262:82)
+    at Object.transformNodes (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112246:78)
+    at emitJsFileOrBundle (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112913:32)
+    at emitSourceFileOrBundle (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112858:13)
+    at forEachEmittedFile (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112599:34)
+    at Object.emitFiles (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112839:9)
+    at emitWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:120249:33)
+    at /Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:120226:72
+    at runWithCancellationToken (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:120321:24)
+    at Object.emit (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:120226:26)
+    at Compiler._consumeProgram (/Users/rmuller/Development/aws/jsii-compiler/src/compiler.ts:251:26)
+    at Compiler._buildOnce (/Users/rmuller/Development/aws/jsii-compiler/src/compiler.ts:215:17)
+    at Compiler.emit (/Users/rmuller/Development/aws/jsii-compiler/src/compiler.ts:110:17)
+    at Object.&lt;anonymous&gt; (/Users/rmuller/Development/aws/jsii-compiler/test/negatives.test.ts:34:35)
+    at Promise.then.completed (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/utils.js:290:28)
+    at new Promise (&lt;anonymous&gt;)
+    at callAsyncCircusFn (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/utils.js:223:10)
+    at _callCircusTest (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:248:40)
+    at processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at _runTest (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:184:3)
+    at _runTestsForDescribeBlock (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:86:9)
+    at run (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:26:3)
+    at runAndTransformResultsToJestFormat (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:120:21)
+    at jestAdapter (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+    at runTestInternal (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-runner/build/runTest.js:367:16)
+    at runTest (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-runner/build/runTest.js:444:34)</failure>
+    </testcase>
+    <testcase classname=" inheritance-changes-types.4" name=" inheritance-changes-types.4" time="0.107">
+      <failure>Error: Debug Failure. Unexpected node.
+Node HeritageClause was unexpected.
+    at classElementVisitorWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93950:37)
+    at /Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93917:92
+    at saveStateAndInvoke (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93773:27)
+    at /Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93917:45
+    at visitArrayWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91402:48)
+    at Object.visitNodes (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91366:23)
+    at visitClassDeclaration (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:94199:117)
+    at visitTypeScript (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:94067:28)
+    at visitorWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93829:24)
+    at sourceElementVisitorWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93854:28)
+    at saveStateAndInvoke (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93773:27)
+    at sourceElementVisitor (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93839:20)
+    at visitArrayWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91402:48)
+    at visitNodes (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91366:23)
+    at Object.visitLexicalEnvironment (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91432:22)
+    at visitSourceFile (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:94161:54)
+    at saveStateAndInvoke (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93773:27)
+    at transformSourceFile (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93756:27)
+    at transformSourceFileOrBundle (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93736:20)
+    at transformation (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112235:24)
+    at transformRoot (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112262:82)
+    at Object.transformNodes (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112246:78)
+    at emitJsFileOrBundle (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112913:32)
+    at emitSourceFileOrBundle (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112858:13)
+    at forEachEmittedFile (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112599:34)
+    at Object.emitFiles (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112839:9)
+    at emitWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:120249:33)
+    at /Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:120226:72
+    at runWithCancellationToken (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:120321:24)
+    at Object.emit (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:120226:26)
+    at Compiler._consumeProgram (/Users/rmuller/Development/aws/jsii-compiler/src/compiler.ts:251:26)
+    at Compiler._buildOnce (/Users/rmuller/Development/aws/jsii-compiler/src/compiler.ts:215:17)
+    at Compiler.emit (/Users/rmuller/Development/aws/jsii-compiler/src/compiler.ts:110:17)
+    at Object.&lt;anonymous&gt; (/Users/rmuller/Development/aws/jsii-compiler/test/negatives.test.ts:34:35)
+    at Promise.then.completed (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/utils.js:290:28)
+    at new Promise (&lt;anonymous&gt;)
+    at callAsyncCircusFn (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/utils.js:223:10)
+    at _callCircusTest (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:248:40)
+    at processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at _runTest (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:184:3)
+    at _runTestsForDescribeBlock (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:86:9)
+    at run (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:26:3)
+    at runAndTransformResultsToJestFormat (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:120:21)
+    at jestAdapter (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+    at runTestInternal (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-runner/build/runTest.js:367:16)
+    at runTest (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-runner/build/runTest.js:444:34)</failure>
+    </testcase>
+    <testcase classname=" inheritance-changes-types.5" name=" inheritance-changes-types.5" time="0.106">
+      <failure>Error: Debug Failure. Unexpected node.
+Node HeritageClause was unexpected.
+    at classElementVisitorWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93950:37)
+    at /Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93917:92
+    at saveStateAndInvoke (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93773:27)
+    at /Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93917:45
+    at visitArrayWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91402:48)
+    at Object.visitNodes (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91366:23)
+    at visitClassDeclaration (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:94199:117)
+    at visitTypeScript (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:94067:28)
+    at visitorWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93829:24)
+    at sourceElementVisitorWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93854:28)
+    at saveStateAndInvoke (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93773:27)
+    at sourceElementVisitor (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93839:20)
+    at visitArrayWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91402:48)
+    at visitNodes (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91366:23)
+    at Object.visitLexicalEnvironment (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91432:22)
+    at visitSourceFile (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:94161:54)
+    at saveStateAndInvoke (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93773:27)
+    at transformSourceFile (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93756:27)
+    at transformSourceFileOrBundle (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93736:20)
+    at transformation (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112235:24)
+    at transformRoot (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112262:82)
+    at Object.transformNodes (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112246:78)
+    at emitJsFileOrBundle (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112913:32)
+    at emitSourceFileOrBundle (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112858:13)
+    at forEachEmittedFile (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112599:34)
+    at Object.emitFiles (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112839:9)
+    at emitWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:120249:33)
+    at /Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:120226:72
+    at runWithCancellationToken (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:120321:24)
+    at Object.emit (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:120226:26)
+    at Compiler._consumeProgram (/Users/rmuller/Development/aws/jsii-compiler/src/compiler.ts:251:26)
+    at Compiler._buildOnce (/Users/rmuller/Development/aws/jsii-compiler/src/compiler.ts:215:17)
+    at Compiler.emit (/Users/rmuller/Development/aws/jsii-compiler/src/compiler.ts:110:17)
+    at Object.&lt;anonymous&gt; (/Users/rmuller/Development/aws/jsii-compiler/test/negatives.test.ts:34:35)
+    at Promise.then.completed (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/utils.js:290:28)
+    at new Promise (&lt;anonymous&gt;)
+    at callAsyncCircusFn (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/utils.js:223:10)
+    at _callCircusTest (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:248:40)
+    at processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at _runTest (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:184:3)
+    at _runTestsForDescribeBlock (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:86:9)
+    at run (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:26:3)
+    at runAndTransformResultsToJestFormat (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:120:21)
+    at jestAdapter (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+    at runTestInternal (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-runner/build/runTest.js:367:16)
+    at runTest (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-runner/build/runTest.js:444:34)</failure>
+    </testcase>
+    <testcase classname=" inheritance-changes-types.from-base" name=" inheritance-changes-types.from-base" time="0.103">
+      <failure>Error: Debug Failure. Unexpected node.
+Node HeritageClause was unexpected.
+    at classElementVisitorWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93950:37)
+    at /Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93917:92
+    at saveStateAndInvoke (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93773:27)
+    at /Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93917:45
+    at visitArrayWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91402:48)
+    at Object.visitNodes (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91366:23)
+    at visitClassDeclaration (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:94199:117)
+    at visitTypeScript (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:94067:28)
+    at visitorWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93829:24)
+    at sourceElementVisitorWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93854:28)
+    at saveStateAndInvoke (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93773:27)
+    at sourceElementVisitor (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93839:20)
+    at visitArrayWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91402:48)
+    at visitNodes (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91366:23)
+    at Object.visitLexicalEnvironment (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91432:22)
+    at visitSourceFile (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:94161:54)
+    at saveStateAndInvoke (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93773:27)
+    at transformSourceFile (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93756:27)
+    at transformSourceFileOrBundle (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93736:20)
+    at transformation (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112235:24)
+    at transformRoot (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112262:82)
+    at Object.transformNodes (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112246:78)
+    at emitJsFileOrBundle (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112913:32)
+    at emitSourceFileOrBundle (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112858:13)
+    at forEachEmittedFile (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112599:34)
+    at Object.emitFiles (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112839:9)
+    at emitWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:120249:33)
+    at /Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:120226:72
+    at runWithCancellationToken (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:120321:24)
+    at Object.emit (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:120226:26)
+    at Compiler._consumeProgram (/Users/rmuller/Development/aws/jsii-compiler/src/compiler.ts:251:26)
+    at Compiler._buildOnce (/Users/rmuller/Development/aws/jsii-compiler/src/compiler.ts:215:17)
+    at Compiler.emit (/Users/rmuller/Development/aws/jsii-compiler/src/compiler.ts:110:17)
+    at Object.&lt;anonymous&gt; (/Users/rmuller/Development/aws/jsii-compiler/test/negatives.test.ts:34:35)
+    at Promise.then.completed (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/utils.js:290:28)
+    at new Promise (&lt;anonymous&gt;)
+    at callAsyncCircusFn (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/utils.js:223:10)
+    at _callCircusTest (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:248:40)
+    at processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at _runTest (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:184:3)
+    at _runTestsForDescribeBlock (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:86:9)
+    at run (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:26:3)
+    at runAndTransformResultsToJestFormat (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:120:21)
+    at jestAdapter (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+    at runTestInternal (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-runner/build/runTest.js:367:16)
+    at runTest (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-runner/build/runTest.js:444:34)</failure>
+    </testcase>
+    <testcase classname=" internal-underscore-class.5" name=" internal-underscore-class.5" time="0.112">
+    </testcase>
+    <testcase classname=" internal-underscore-class.6" name=" internal-underscore-class.6" time="0.113">
+    </testcase>
+    <testcase classname=" internal-underscore-class.7" name=" internal-underscore-class.7" time="0.117">
+    </testcase>
+    <testcase classname=" internal-underscore-class.8" name=" internal-underscore-class.8" time="0.114">
+    </testcase>
+    <testcase classname=" internal-underscore-interface.1" name=" internal-underscore-interface.1" time="0.113">
+    </testcase>
+    <testcase classname=" internal-underscore-interface.2" name=" internal-underscore-interface.2" time="0.113">
+    </testcase>
+    <testcase classname=" internal-underscore-interface.3" name=" internal-underscore-interface.3" time="0.113">
+    </testcase>
+    <testcase classname=" internal-underscore-interface.4" name=" internal-underscore-interface.4" time="0.154">
+    </testcase>
+    <testcase classname=" member-named-after-type" name=" member-named-after-type" time="0.165">
+    </testcase>
+    <testcase classname=" method-name.1" name=" method-name.1" time="0.107">
+    </testcase>
+    <testcase classname=" method-name.2" name=" method-name.2" time="0.106">
+    </testcase>
+    <testcase classname=" method-name.3" name=" method-name.3" time="0.109">
+    </testcase>
+    <testcase classname=" method-name.4" name=" method-name.4" time="0.108">
+    </testcase>
+    <testcase classname=" mix-datatype-and-arg-name" name=" mix-datatype-and-arg-name" time="0.112">
+    </testcase>
+    <testcase classname=" mutable-datatype" name=" mutable-datatype" time="0.106">
+    </testcase>
+    <testcase classname=" non-optional-after-optional-ctor" name=" non-optional-after-optional-ctor" time="0.108">
+    </testcase>
+    <testcase classname=" non-optional-after-optional-method" name=" non-optional-after-optional-method" time="0.112">
+    </testcase>
+    <testcase classname=" omit.1" name=" omit.1" time="0.112">
+    </testcase>
+    <testcase classname=" omit.2" name=" omit.2" time="0.098">
+      <failure>Error: Debug Failure. Unexpected node.
+Node HeritageClause was unexpected.
+    at classElementVisitorWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93950:37)
+    at /Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93917:92
+    at saveStateAndInvoke (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93773:27)
+    at /Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93917:45
+    at visitArrayWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91402:48)
+    at Object.visitNodes (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91366:23)
+    at visitClassDeclaration (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:94199:117)
+    at visitTypeScript (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:94067:28)
+    at visitorWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93829:24)
+    at sourceElementVisitorWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93854:28)
+    at saveStateAndInvoke (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93773:27)
+    at sourceElementVisitor (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93839:20)
+    at visitArrayWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91402:48)
+    at visitNodes (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91366:23)
+    at Object.visitLexicalEnvironment (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91432:22)
+    at visitSourceFile (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:94161:54)
+    at saveStateAndInvoke (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93773:27)
+    at transformSourceFile (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93756:27)
+    at transformSourceFileOrBundle (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93736:20)
+    at transformation (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112235:24)
+    at transformRoot (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112262:82)
+    at Object.transformNodes (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112246:78)
+    at emitJsFileOrBundle (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112913:32)
+    at emitSourceFileOrBundle (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112858:13)
+    at forEachEmittedFile (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112599:34)
+    at Object.emitFiles (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112839:9)
+    at emitWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:120249:33)
+    at /Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:120226:72
+    at runWithCancellationToken (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:120321:24)
+    at Object.emit (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:120226:26)
+    at Compiler._consumeProgram (/Users/rmuller/Development/aws/jsii-compiler/src/compiler.ts:251:26)
+    at Compiler._buildOnce (/Users/rmuller/Development/aws/jsii-compiler/src/compiler.ts:215:17)
+    at Compiler.emit (/Users/rmuller/Development/aws/jsii-compiler/src/compiler.ts:110:17)
+    at Object.&lt;anonymous&gt; (/Users/rmuller/Development/aws/jsii-compiler/test/negatives.test.ts:34:35)
+    at Promise.then.completed (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/utils.js:290:28)
+    at new Promise (&lt;anonymous&gt;)
+    at callAsyncCircusFn (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/utils.js:223:10)
+    at _callCircusTest (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:248:40)
+    at processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at _runTest (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:184:3)
+    at _runTestsForDescribeBlock (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:86:9)
+    at run (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:26:3)
+    at runAndTransformResultsToJestFormat (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:120:21)
+    at jestAdapter (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+    at runTestInternal (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-runner/build/runTest.js:367:16)
+    at runTest (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-runner/build/runTest.js:444:34)</failure>
+    </testcase>
+    <testcase classname=" omit.3" name=" omit.3" time="0.107">
+    </testcase>
+    <testcase classname=" omit.4" name=" omit.4" time="0.11">
+    </testcase>
+    <testcase classname=" override-changes-visibility" name=" override-changes-visibility" time="0.1">
+      <failure>Error: Debug Failure. Unexpected node.
+Node HeritageClause was unexpected.
+    at classElementVisitorWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93950:37)
+    at /Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93917:92
+    at saveStateAndInvoke (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93773:27)
+    at /Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93917:45
+    at visitArrayWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91402:48)
+    at Object.visitNodes (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91366:23)
+    at visitClassDeclaration (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:94199:117)
+    at visitTypeScript (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:94067:28)
+    at visitorWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93829:24)
+    at sourceElementVisitorWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93854:28)
+    at saveStateAndInvoke (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93773:27)
+    at sourceElementVisitor (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93839:20)
+    at visitArrayWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91402:48)
+    at visitNodes (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91366:23)
+    at Object.visitLexicalEnvironment (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91432:22)
+    at visitSourceFile (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:94161:54)
+    at saveStateAndInvoke (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93773:27)
+    at transformSourceFile (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93756:27)
+    at transformSourceFileOrBundle (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93736:20)
+    at transformation (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112235:24)
+    at transformRoot (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112262:82)
+    at Object.transformNodes (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112246:78)
+    at emitJsFileOrBundle (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112913:32)
+    at emitSourceFileOrBundle (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112858:13)
+    at forEachEmittedFile (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112599:34)
+    at Object.emitFiles (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112839:9)
+    at emitWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:120249:33)
+    at /Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:120226:72
+    at runWithCancellationToken (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:120321:24)
+    at Object.emit (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:120226:26)
+    at Compiler._consumeProgram (/Users/rmuller/Development/aws/jsii-compiler/src/compiler.ts:251:26)
+    at Compiler._buildOnce (/Users/rmuller/Development/aws/jsii-compiler/src/compiler.ts:215:17)
+    at Compiler.emit (/Users/rmuller/Development/aws/jsii-compiler/src/compiler.ts:110:17)
+    at Object.&lt;anonymous&gt; (/Users/rmuller/Development/aws/jsii-compiler/test/negatives.test.ts:34:35)
+    at Promise.then.completed (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/utils.js:290:28)
+    at new Promise (&lt;anonymous&gt;)
+    at callAsyncCircusFn (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/utils.js:223:10)
+    at _callCircusTest (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:248:40)
+    at processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at _runTest (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:184:3)
+    at _runTestsForDescribeBlock (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:86:9)
+    at run (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:26:3)
+    at runAndTransformResultsToJestFormat (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:120:21)
+    at jestAdapter (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+    at runTestInternal (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-runner/build/runTest.js:367:16)
+    at runTest (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-runner/build/runTest.js:444:34)</failure>
+    </testcase>
+    <testcase classname=" prohibited-member-name" name=" prohibited-member-name" time="0.112">
+    </testcase>
+    <testcase classname=" property-name.1" name=" property-name.1" time="0.108">
+    </testcase>
+    <testcase classname=" property-name.2" name=" property-name.2" time="0.109">
+    </testcase>
+    <testcase classname=" property-name.3" name=" property-name.3" time="0.108">
+    </testcase>
+    <testcase classname=" reserved.emits-warning" name=" reserved.emits-warning" time="0.113">
+    </testcase>
+    <testcase classname=" static-const-name" name=" static-const-name" time="0.109">
+    </testcase>
+    <testcase classname=" static-member-mixing.1" name=" static-member-mixing.1" time="0.1">
+      <failure>Error: Debug Failure. Unexpected node.
+Node HeritageClause was unexpected.
+    at classElementVisitorWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93950:37)
+    at /Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93917:92
+    at saveStateAndInvoke (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93773:27)
+    at /Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93917:45
+    at visitArrayWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91402:48)
+    at Object.visitNodes (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91366:23)
+    at visitClassDeclaration (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:94199:117)
+    at visitTypeScript (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:94067:28)
+    at visitorWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93829:24)
+    at sourceElementVisitorWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93854:28)
+    at saveStateAndInvoke (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93773:27)
+    at sourceElementVisitor (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93839:20)
+    at visitArrayWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91402:48)
+    at visitNodes (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91366:23)
+    at Object.visitLexicalEnvironment (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:91432:22)
+    at visitSourceFile (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:94161:54)
+    at saveStateAndInvoke (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93773:27)
+    at transformSourceFile (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93756:27)
+    at transformSourceFileOrBundle (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:93736:20)
+    at transformation (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112235:24)
+    at transformRoot (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112262:82)
+    at Object.transformNodes (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112246:78)
+    at emitJsFileOrBundle (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112913:32)
+    at emitSourceFileOrBundle (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112858:13)
+    at forEachEmittedFile (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112599:34)
+    at Object.emitFiles (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:112839:9)
+    at emitWorker (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:120249:33)
+    at /Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:120226:72
+    at runWithCancellationToken (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:120321:24)
+    at Object.emit (/Users/rmuller/Development/aws/jsii-compiler/node_modules/typescript/lib/typescript.js:120226:26)
+    at Compiler._consumeProgram (/Users/rmuller/Development/aws/jsii-compiler/src/compiler.ts:251:26)
+    at Compiler._buildOnce (/Users/rmuller/Development/aws/jsii-compiler/src/compiler.ts:215:17)
+    at Compiler.emit (/Users/rmuller/Development/aws/jsii-compiler/src/compiler.ts:110:17)
+    at Object.&lt;anonymous&gt; (/Users/rmuller/Development/aws/jsii-compiler/test/negatives.test.ts:34:35)
+    at Promise.then.completed (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/utils.js:290:28)
+    at new Promise (&lt;anonymous&gt;)
+    at callAsyncCircusFn (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/utils.js:223:10)
+    at _callCircusTest (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:248:40)
+    at processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at _runTest (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:184:3)
+    at _runTestsForDescribeBlock (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:86:9)
+    at run (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:26:3)
+    at runAndTransformResultsToJestFormat (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:120:21)
+    at jestAdapter (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+    at runTestInternal (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-runner/build/runTest.js:367:16)
+    at runTest (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-runner/build/runTest.js:444:34)</failure>
+    </testcase>
+    <testcase classname=" static-member-mixing.2" name=" static-member-mixing.2" time="0.11">
+    </testcase>
+    <testcase classname=" static-method-name.1" name=" static-method-name.1" time="0.11">
+    </testcase>
+    <testcase classname=" static-method-name" name=" static-method-name" time="0.115">
+    </testcase>
+    <testcase classname=" static-nested-conflict" name=" static-nested-conflict" time="0.11">
+    </testcase>
+    <testcase classname=" static-prop-name.1" name=" static-prop-name.1" time="0.114">
+    </testcase>
+    <testcase classname=" static-prop-name.2" name=" static-prop-name.2" time="0.111">
+    </testcase>
+    <testcase classname=" stripped-deprecated" name=" stripped-deprecated" time="0.116">
+    </testcase>
+    <testcase classname=" struct-extends-interface" name=" struct-extends-interface" time="0.11">
+    </testcase>
+    <testcase classname=" struct-hint-on-class" name=" struct-hint-on-class" time="0.11">
+    </testcase>
+    <testcase classname=" struct-hint-on-enum" name=" struct-hint-on-enum" time="0.111">
+    </testcase>
+    <testcase classname=" struct-hint-with-methods" name=" struct-hint-with-methods" time="0.11">
+    </testcase>
+    <testcase classname=" submodules-cannot-have-colliding-names" name=" submodules-cannot-have-colliding-names" time="0.12">
+    </testcase>
+    <testcase classname=" submodules-cannot-share-symbols" name=" submodules-cannot-share-symbols" time="0.119">
+    </testcase>
+    <testcase classname=" submodules-must-be-camel-cased" name=" submodules-must-be-camel-cased" time="0.116">
+    </testcase>
+  </testsuite>
+  <testsuite name="undefined" errors="0" failures="4" skipped="0" timestamp="2023-02-07T12:25:48" time="0.29" tests="7">
+    <testcase classname=" leaves files without classes unaltered" name=" leaves files without classes unaltered" time="0.007">
+    </testcase>
+    <testcase classname=" leaves files without classes with metadata unaltered" name=" leaves files without classes with metadata unaltered" time="0.002">
+    </testcase>
+    <testcase classname=" adds jsii.rtti symbol at the top of each file when classes are present" name=" adds jsii.rtti symbol at the top of each file when classes are present" time="0.005">
+    </testcase>
+    <testcase classname=" adds runtime info for a class" name=" adds runtime info for a class" time="0.001">
+      <failure>Error: expect(received).toContain(expected) // indexOf
+
+Expected substring: &quot;private static readonly [JSII_RTTI_SYMBOL_1] = { fqn: \&quot;RuntimeInfoTest.Foo\&quot;, version: \&quot;1.2.3\&quot; }&quot;
+Received string:    &quot;const JSII_RTTI_SYMBOL_1 = Symbol.for(\&quot;jsii.rtti\&quot;);
+import * as ts from \&quot;typescript\&quot;;
+class&lt;&gt; {
+}
+&quot;
+    at Object.&lt;anonymous&gt; (/Users/rmuller/Development/aws/jsii-compiler/test/transforms/runtime-info.test.ts:20:58)
+    at Promise.then.completed (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/utils.js:290:28)
+    at new Promise (&lt;anonymous&gt;)
+    at callAsyncCircusFn (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/utils.js:223:10)
+    at _callCircusTest (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:248:40)
+    at _runTest (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:184:3)
+    at _runTestsForDescribeBlock (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:86:9)
+    at run (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:26:3)
+    at runAndTransformResultsToJestFormat (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:120:21)
+    at jestAdapter (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+    at runTestInternal (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-runner/build/runTest.js:367:16)
+    at runTest (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-runner/build/runTest.js:444:34)</failure>
+    </testcase>
+    <testcase classname=" adds runtime info for each class" name=" adds runtime info for each class" time="0.002">
+      <failure>Error: expect(received).toContain(expected) // indexOf
+
+Expected substring: &quot;private static readonly [JSII_RTTI_SYMBOL_1] = { fqn: \&quot;RuntimeInfoTest.Foo\&quot;, version: \&quot;1.2.3\&quot; }&quot;
+Received string:    &quot;const JSII_RTTI_SYMBOL_1 = Symbol.for(\&quot;jsii.rtti\&quot;);
+class&lt;&gt; {
+}
+interface FooBar {
+    readonly answer: number;
+}
+/**
+ * A bar.
+ */
+class&lt;&gt; {
+}
+export default class {
+    constructor() { }
+}
+&quot;
+    at Object.&lt;anonymous&gt; (/Users/rmuller/Development/aws/jsii-compiler/test/transforms/runtime-info.test.ts:27:23)
+    at Promise.then.completed (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/utils.js:290:28)
+    at new Promise (&lt;anonymous&gt;)
+    at callAsyncCircusFn (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/utils.js:223:10)
+    at _callCircusTest (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:248:40)
+    at _runTest (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:184:3)
+    at _runTestsForDescribeBlock (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:86:9)
+    at run (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:26:3)
+    at runAndTransformResultsToJestFormat (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:120:21)
+    at jestAdapter (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+    at runTestInternal (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-runner/build/runTest.js:367:16)
+    at runTest (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-runner/build/runTest.js:444:34)</failure>
+    </testcase>
+    <testcase classname=" skips runtime info if not available" name=" skips runtime info if not available" time="0.002">
+      <failure>Error: expect(received).toContain(expected) // indexOf
+
+Expected substring: &quot;private static readonly [JSII_RTTI_SYMBOL_1] = { fqn: \&quot;RuntimeInfoTest.Foo\&quot;, version: \&quot;1.2.3\&quot; }&quot;
+Received string:    &quot;const JSII_RTTI_SYMBOL_1 = Symbol.for(\&quot;jsii.rtti\&quot;);
+class&lt;&gt; {
+}
+interface FooBar {
+    readonly answer: number;
+}
+/**
+ * A bar.
+ */
+class Bar {
+    public doStuffToo() {
+        return new class implements FooBar {
+            public readonly answer = 21;
+        }();
+    }
+}
+export default class {
+    constructor() { }
+}
+&quot;
+    at Object.&lt;anonymous&gt; (/Users/rmuller/Development/aws/jsii-compiler/test/transforms/runtime-info.test.ts:37:23)
+    at Promise.then.completed (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/utils.js:290:28)
+    at new Promise (&lt;anonymous&gt;)
+    at callAsyncCircusFn (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/utils.js:223:10)
+    at _callCircusTest (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:248:40)
+    at _runTest (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:184:3)
+    at _runTestsForDescribeBlock (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:86:9)
+    at run (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:26:3)
+    at runAndTransformResultsToJestFormat (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:120:21)
+    at jestAdapter (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+    at runTestInternal (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-runner/build/runTest.js:367:16)
+    at runTest (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-runner/build/runTest.js:444:34)</failure>
+    </testcase>
+    <testcase classname=" creates a unique name if the default is taken" name=" creates a unique name if the default is taken" time="0.001">
+      <failure>Error: expect(received).toContain(expected) // indexOf
+
+Expected substring: &quot;private static readonly [JSII_RTTI_SYMBOL_2] = { fqn: \&quot;RuntimeInfoTest.Foo\&quot;, version: \&quot;1.2.3\&quot; }&quot;
+Received string:    &quot;const JSII_RTTI_SYMBOL_2 = Symbol.for(\&quot;jsii.rtti\&quot;);
+import * as ts from \&quot;typescript\&quot;;
+const JSII_RTTI_SYMBOL_1 = 42;
+class&lt;&gt; {
+}
+&quot;
+    at Object.&lt;anonymous&gt; (/Users/rmuller/Development/aws/jsii-compiler/test/transforms/runtime-info.test.ts:49:23)
+    at Promise.then.completed (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/utils.js:290:28)
+    at new Promise (&lt;anonymous&gt;)
+    at callAsyncCircusFn (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/utils.js:223:10)
+    at _callCircusTest (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:248:40)
+    at _runTest (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:184:3)
+    at _runTestsForDescribeBlock (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:86:9)
+    at run (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/run.js:26:3)
+    at runAndTransformResultsToJestFormat (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:120:21)
+    at jestAdapter (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+    at runTestInternal (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-runner/build/runTest.js:367:16)
+    at runTest (/Users/rmuller/Development/aws/jsii-compiler/node_modules/jest-runner/build/runTest.js:444:34)</failure>
+    </testcase>
+  </testsuite>
+</testsuites>

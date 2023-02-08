@@ -1,0 +1,74 @@
+{
+  "name": "@scope/jsii-calc-lib",
+  "version": "0.0.0",
+  "private": true,
+  "description": "A simple calcuator library built on JSII.",
+  "deprecated": "Really just deprecated for shows...",
+  "stability": "deprecated",
+  "license": "Apache-2.0",
+  "author": {
+    "name": "Amazon Web Services",
+    "url": "https://aws.amazon.com",
+    "organization": true
+  },
+  "homepage": "https://github.com/aws/jsii",
+  "bugs": {
+    "url": "https://github.com/aws/jsii/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/aws/jsii.git",
+    "directory": "packages/@scope/jsii-calc-lib"
+  },
+  "engines": {
+    "node": ">= 14.6.0"
+  },
+  "main": "build/index.js",
+  "types": "build/index.d.ts",
+  "dependencies": {
+    "@scope/jsii-calc-base": "^0.0.0"
+  },
+  "peerDependencies": {
+    "@scope/jsii-calc-base": "^0.0.0",
+    "@scope/jsii-calc-base-of-base": "^2.1.1"
+  },
+  "jsii": {
+    "outdir": "dist",
+    "targets": {
+      "go": {
+        "moduleName": "github.com/aws/jsii/jsii-calc/go",
+        "versionSuffix": "-devpreview"
+      },
+      "java": {
+        "package": "software.amazon.jsii.tests.calculator.lib",
+        "maven": {
+          "groupId": "software.amazon.jsii.tests",
+          "artifactId": "calculator-lib",
+          "versionSuffix": ".DEVPREVIEW"
+        }
+      },
+      "dotnet": {
+        "namespace": "Amazon.JSII.Tests.CalculatorNamespace.LibNamespace",
+        "packageId": "Amazon.JSII.Tests.CalculatorPackageId.LibPackageId",
+        "versionSuffix": "-devpreview"
+      },
+      "python": {
+        "distName": "scope.jsii-calc-lib",
+        "module": "scope.jsii_calc_lib"
+      }
+    },
+    "tsc": {
+      "outDir": "build",
+      "sourceMap": false,
+      "types": []
+    },
+    "versionFormat": "short",
+    "metadata": {
+      "jsii": {
+        "rosetta": {
+          "strict": true
+        }
+      }
+    }
+  }
+}
