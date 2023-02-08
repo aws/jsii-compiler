@@ -49,11 +49,6 @@ jobs:
       CI: "true"
     if: fromJSON(needs.build.outputs.github-release)
     steps:
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          cache: yarn
-          node-version: 14.18.0
       - name: Download artifact
         uses: actions/download-artifact@v3
         with:
@@ -91,7 +86,6 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
-          cache: yarn
           node-version: 14.18.0
           registry-url: https://${{ needs.build.outputs.registry }}
       - name: Determine Authentication

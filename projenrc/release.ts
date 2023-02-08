@@ -16,14 +16,6 @@ export class ReleaseWorkflow {
 
     release.on({ push: { tags: ['v*.*.*'] } });
 
-    const setupNodeStep: github.workflows.JobStep = {
-      name: 'Setup Node.js',
-      uses: 'actions/setup-node@v3',
-      with: {
-        'cache': 'yarn',
-        'node-version': project.minNodeVersion,
-      },
-    };
     const installDepsStep: github.workflows.JobStep = {
       name: 'Install dependencies',
       run: 'yarn install --frozen-lockfile',
@@ -53,7 +45,14 @@ export class ReleaseWorkflow {
           name: 'Checkout',
           uses: 'actions/checkout@v3',
         },
-        setupNodeStep,
+        {
+          name: 'Setup Node.js',
+          uses: 'actions/setup-node@v3',
+          with: {
+            'cache': 'yarn',
+            'node-version': project.minNodeVersion,
+          },
+        },
         installDepsStep,
         {
           name: 'Prepare Release',
@@ -95,7 +94,6 @@ export class ReleaseWorkflow {
       },
       runsOn: ['ubuntu-latest'],
       steps: [
-        setupNodeStep,
         downloadArtifactStep,
         {
           id: 'release-exists',
@@ -157,9 +155,10 @@ export class ReleaseWorkflow {
       steps: [
         downloadArtifactStep,
         {
-          ...setupNodeStep,
+          name: 'Setup Node.js',
+          uses: 'actions/setup-node@v3',
           with: {
-            ...setupNodeStep.with,
+            'node-version': project.minNodeVersion,
             'registry-url': `https://\${{ needs.build.outputs.${PublishTargetOutput.REGISTRY} }}`,
           },
         },
