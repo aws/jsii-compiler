@@ -1,3 +1,6 @@
 {
-  "typescript.tsdk": "node_modules/typescript/lib"
+  // Don't show .gitignore files in the explorer
+  "explorer.excludeGitIgnore": true,
+  // Use the TypeScript compiler release used by the project
+  "typescript.tsdk": "node_modules/typescript/lib",
 }
