@@ -97,7 +97,7 @@ jobs:
             echo "NODE_AUTH_TOKEN=${{ secrets.GITHUB_TOKEN }}" > $GITHUB_ENV
           fi
       - name: Publish
-        run: npm publish dist/js/jsii-*.tgz --access=public --tag=${{ needs.build.outputs.dist-tag }}
+        run: npm publish js/jsii-*.tgz --access=public --tag=${{ needs.build.outputs.dist-tag }}
       - name: Tag "latest"
         if: fromJSON(needs.build.outputs.latest)
         run: npm dist-tag add jsii@${{ github.ref_name }} latest

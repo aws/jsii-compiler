@@ -181,7 +181,7 @@ export class ReleaseWorkflow {
         {
           name: 'Publish',
           run: [
-            'npm publish dist/js/jsii-*.tgz',
+            'npm publish js/jsii-*.tgz',
             '--access=public',
             `--tag=\${{ needs.build.outputs.${PublishTargetOutput.DIST_TAG} }}`,
           ].join(' '),
