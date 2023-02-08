@@ -16,7 +16,6 @@ import { PublishTargetOutput } from './release';
   }
 
   const prerelease = semver.prerelease.length > 0;
-  core.setOutput(PublishTargetOutput.IS_PRERELEASE, prerelease);
 
   // We follow TypeScript versions, so major.minor is the effective "major".
   const defaultTag = `v${semver.major}.${semver.minor}`;
@@ -46,28 +45,17 @@ import { PublishTargetOutput } from './release';
           : // Otherwise, it's the new "latest" if it's SemVer-greater than the current one.
             semver.compare(latestRelease) >= 0;
       })();
-  core.setOutput(PublishTargetOutput.IS_LATEST, latest);
 
-  const { distTag, registry } = prerelease
+  const distTag = prerelease
     ? // Pre-release, publish to next
-      {
-        distTag: `${defaultTag}-next`,
-        registry:
-          semver.prerelease[0] === 'dev'
-            ? // Dev releases are published (only) to GitHub Packages
-              'npm.pkg.github.com'
-            : // Other pre-releases go to npmjs.com
-              'registry.npmjs.org',
-      }
+      `${defaultTag}-next`
     : // Not a pre-releaase, publish to latest on npmjs.com
-      {
-        distTag: defaultTag,
-        registry: 'registry.npmjs.org',
-      };
+      defaultTag;
 
   core.setOutput(PublishTargetOutput.DIST_TAG, distTag);
+  core.setOutput(PublishTargetOutput.IS_LATEST, latest);
+  core.setOutput(PublishTargetOutput.IS_PRERELEASE, prerelease);
   core.setOutput(PublishTargetOutput.GITHUB_RELEASE, semver.prerelease?.[0] !== 'dev');
-  core.setOutput(PublishTargetOutput.REGISTRY, registry);
 })().catch((err) => {
   console.error(err);
   process.exit(255);

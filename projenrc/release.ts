@@ -5,7 +5,6 @@ export const enum PublishTargetOutput {
   GITHUB_RELEASE = 'github-release',
   IS_LATEST = 'latest',
   IS_PRERELEASE = 'prerelease',
-  REGISTRY = 'registry',
 }
 
 export class ReleaseWorkflow {
@@ -35,7 +34,6 @@ export class ReleaseWorkflow {
         [PublishTargetOutput.DIST_TAG]: { stepId: publishTarget, outputName: PublishTargetOutput.DIST_TAG },
         [PublishTargetOutput.IS_LATEST]: { stepId: publishTarget, outputName: PublishTargetOutput.IS_LATEST },
         [PublishTargetOutput.GITHUB_RELEASE]: { stepId: publishTarget, outputName: PublishTargetOutput.GITHUB_RELEASE },
-        [PublishTargetOutput.REGISTRY]: { stepId: publishTarget, outputName: PublishTargetOutput.REGISTRY },
         [PublishTargetOutput.IS_PRERELEASE]: { stepId: publishTarget, outputName: PublishTargetOutput.IS_PRERELEASE },
       },
       permissions: {
@@ -65,7 +63,7 @@ export class ReleaseWorkflow {
           uses: 'actions/upload-artifact@v3',
           with: {
             name: releasePackageName,
-            path: 'dist',
+            path: '${{ github.workspace }}/dist',
           },
         },
         {
@@ -138,22 +136,19 @@ export class ReleaseWorkflow {
             'gh release upload ${{ github.ref_name }}',
             '--repo=${{ github.repository }}',
             '--clobber',
-            'dist/js/jsii-*.tgz',
+            '${{ github.workspace }}/js/jsii-*.tgz',
           ].join(' '),
         },
       ],
     });
 
     release.addJob('release-npm-package', {
-      name: `Release to \${{ needs.build.outputs.${PublishTargetOutput.REGISTRY} }}`,
+      name: `Release to registry.npmjs.org`,
       env: {
         CI: 'true',
       },
       needs: ['build'],
-      permissions: {
-        contents: github.workflows.JobPermission.READ,
-        packages: github.workflows.JobPermission.WRITE,
-      },
+      permissions: {},
       runsOn: ['ubuntu-latest'],
       steps: [
         downloadArtifactStep,
@@ -163,30 +158,14 @@ export class ReleaseWorkflow {
           with: {
             'always-auth': true,
             'node-version': project.minNodeVersion,
-            'registry-url': `https://\${{ needs.build.outputs.${PublishTargetOutput.REGISTRY} }}/`,
+            'registry-url': `https://registry.npmjs.org/`,
           },
-        },
-        ////////////////////////////////////////////////////////////////////////////////////////////
-        // WARNING: all steps after this will have access to the NODE_AUTH_TOKEN, which means they
-        // will be able to publish packages to the selected registry. Be sure to not run any
-        // un-trusted code from now on!!
-        ////////////////////////////////////////////////////////////////////////////////////////////
-        {
-          name: 'Determine Authentication',
-          run: [
-            `if [[ "\${{ needs.build.outputs.${PublishTargetOutput.REGISTRY} }}" == "registry.npmjs.org" ]];`,
-            'then',
-            '  echo "NODE_AUTH_TOKEN=${{ secrets.NPM_TOKEN }}" >> $GITHUB_ENV',
-            'else',
-            '  echo "NODE_AUTH_TOKEN=${{ secrets.GITHUB_TOKEN }}" >> $GITHUB_ENV',
-            // actions/setup-node only sets registry for the @aws scope here, so we need to set it outselves.
-            `  npm config set "registry=https://\${{ needs.build.outputs.${PublishTargetOutput.REGISTRY} }}"`,
-            '  npm config list',
-            'fi',
-          ].join('\n'),
         },
         {
           name: 'Publish',
+          env: {
+            NODE_AUTH_TOKEN: '${{ secrets.NPM_TOKEN }}',
+          },
           run: [
             'npm publish ${{ github.workspace }}/js/jsii-*.tgz',
             '--access=public',
@@ -196,6 +175,9 @@ export class ReleaseWorkflow {
         {
           name: 'Tag "latest"',
           if: `fromJSON(needs.build.outputs.${PublishTargetOutput.IS_LATEST})`,
+          env: {
+            NODE_AUTH_TOKEN: '${{ secrets.NPM_TOKEN }}',
+          },
           run: 'npm dist-tag add jsii@${{ github.ref_name }} latest',
         },
       ],
