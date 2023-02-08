@@ -1,6 +1,7 @@
 import * as core from '@actions/core';
 import * as gh from '@actions/github';
 import { parse } from 'semver';
+import { PublishTargetOutput } from './release';
 
 (async function () {
   if (process.argv.length !== 3) {
@@ -15,7 +16,7 @@ import { parse } from 'semver';
   }
 
   const prerelease = semver.prerelease.length > 0;
-  core.setOutput('prerelease', prerelease);
+  core.setOutput(PublishTargetOutput.IS_PRERELEASE, prerelease);
 
   // We follow TypeScript versions, so major.minor is the effective "major".
   const defaultTag = `v${semver.major}.${semver.minor}`;
@@ -45,7 +46,7 @@ import { parse } from 'semver';
           : // Otherwise, it's the new "latest" if it's SemVer-greater than the current one.
             semver.compare(latestRelease) >= 0;
       })();
-  core.setOutput('latest', latest);
+  core.setOutput(PublishTargetOutput.IS_LATEST, latest);
 
   const { distTag, registry } = prerelease
     ? // Pre-release, publish to next
@@ -64,8 +65,9 @@ import { parse } from 'semver';
         registry: 'registry.npmjs.org',
       };
 
-  core.setOutput('dist-tag', distTag);
-  core.setOutput('registry', registry);
+  core.setOutput(PublishTargetOutput.DIST_TAG, distTag);
+  core.setOutput(PublishTargetOutput.GITHUB_RELEASE, semver.prerelease?.[0] !== 'dev');
+  core.setOutput(PublishTargetOutput.REGISTRY, registry);
 })().catch((err) => {
   console.error(err);
   process.exit(255);

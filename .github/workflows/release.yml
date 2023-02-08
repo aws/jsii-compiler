@@ -4,7 +4,7 @@ name: release
 on:
   push:
     tags:
-      - v*.*.*-*.*
+      - v*.*.*
 jobs:
   build:
     name: Build release package
@@ -13,6 +13,8 @@ jobs:
       contents: read
     outputs:
       dist-tag: ${{ steps.publish-target.outputs.dist-tag }}
+      latest: ${{ steps.publish-target.outputs.latest }}
+      github-release: ${{ steps.publish-target.outputs.github-release }}
       registry: ${{ steps.publish-target.outputs.registry }}
       prerelease: ${{ steps.publish-target.outputs.prerelease }}
     env:
@@ -41,9 +43,11 @@ jobs:
     name: Create GitHub Release
     needs: build
     runs-on: ubuntu-latest
-    permissions: {}
+    permissions:
+      contents: write
     env:
       CI: "true"
+    if: fromJSON(needs.build.outputs.github-release)
     steps:
       - name: Setup Node.js
         uses: actions/setup-node@v3
@@ -63,38 +67,43 @@ jobs:
           else
           echo "result=false" >> $GITHUB_OUTPUT
           fi
+      - name: Create PreRelease
+        if: "!fromJSON(steps.release-exists.outputs.result) && fromJSON(needs.build.outputs.prerelease)"
+        run: gh release create ${{ github.ref_name }} --repo=${{ github.repository }} --generate-notes --title=${{ github.ref_name }} --verify-tag --prerelease
       - name: Create Release
-        if: steps.release-exists.outputs.result == 'false'
+        if: "!fromJSON(steps.release-exists.outputs.result) && !fromJSON(needs.build.outputs.prerelease)"
         run: gh release create ${{ github.ref_name }} --repo=${{ github.repository }} --generate-notes --title=${{ github.ref_name }} --verify-tag
       - name: Attach assets
         run: gh release upload ${{ github.ref_name }} --repo=${{ github.repository }} --clobber dist/js/jsii-*.tgz
-  release-to-npmjs:
-    name: Release to npmjs.com
+  release-npm-package:
+    name: Release to ${{ needs.build.outputs.registry }}
     needs: build
     runs-on: ubuntu-latest
     permissions:
-      contents: write
       packages: write
     env:
       CI: "true"
     steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: release-package
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
           cache: yarn
           node-version: 14.18.0
-      - name: Download artifact
-        uses: actions/download-artifact@v3
-        with:
-          name: release-package
-      - name: Install dependencies
-        run: yarn install --frozen-lockfile
-      - name: Release
-        env:
-          NPM_DIST_TAG: ${{ needs.build.outputs.dist-tag }}
-          NPM_REGISTRY: ${{ needs.build.outputs.registry }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: npx -p publib@latest publib-npm
+          registry-url: https://${{ needs.build.outputs.registry }}
+      - name: Determine Authentication
+        run: |-
+          if [[ "${{ needs.build.outputs.registry }}" == "registry.npmjs.org" ]];
+          then
+            echo "NODE_AUTH_TOKEN=${{ secrets.NPM_TOKEN }}" > $GITHUB_ENV
+          else
+            echo "NODE_AUTH_TOKEN=${{ secrets.GITHUB_TOKEN }}" > $GITHUB_ENV
+          fi
+      - name: Publish
+        run: npm publish dist/js/jsii-*.tgz --access=public --tag=${{ needs.build.outputs.dist-tag }}
       - name: Tag "latest"
-        if: needs.build.outputs.latest == 'true'
+        if: fromJSON(needs.build.outputs.latest)
         run: npm dist-tag add jsii@${{ github.ref_name }} latest
