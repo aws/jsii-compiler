@@ -67,6 +67,12 @@ const project = new typescript.TypeScriptProject({
   defaultReleaseBranch: 'release',
 });
 
+// Exports map...
+project.package.addField('exports', {
+  '.': `./${project.package.entrypoint}`,
+  './package.json': './package.json',
+});
+
 // Remove TypeScript devDependency (it's a direct/normal dependency here)
 project.deps.removeDependency('typescript');
 
