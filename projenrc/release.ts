@@ -14,6 +14,8 @@ export class ReleaseWorkflow {
 
     let release = project.github!.addWorkflow('release');
 
+    release.runName = 'Release ${{ github.ref_name }}';
+
     release.on({ push: { tags: ['v*.*.*'] } });
 
     const installDepsStep: github.workflows.JobStep = {
@@ -178,7 +180,8 @@ export class ReleaseWorkflow {
             'else',
             '  echo "NODE_AUTH_TOKEN=${{ secrets.GITHUB_TOKEN }}" >> $GITHUB_ENV',
             // actions/setup-node only sets registry for the @aws scope here, so we need to set it outselves.
-            `  echo "registry=https://\${{ needs.build.outputs.${PublishTargetOutput.REGISTRY} }}" >> $NPM_CONFIG_USERCONFIG`,
+            `  npm config set "registry=https://\${{ needs.build.outputs.${PublishTargetOutput.REGISTRY} }}"`,
+            '  npm config list',
             'fi',
           ].join('\n'),
         },
