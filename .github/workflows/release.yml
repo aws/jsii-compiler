@@ -31,20 +31,25 @@ jobs:
         run: yarn install --frozen-lockfile
       - name: Prepare Release
         run: yarn release ${{ github.ref_name }}
+      - name: Determine Target
+        id: publish-target
+        run: yarn ts-node projenrc/publish-target.ts ${{ github.ref_name }}
       - name: Federate to AWS
+        if: fromJSON(steps.publish-target.outputs.github-release)
         uses: aws-actions/configure-aws-credentials@v1
         with:
           aws-region: us-east-1
           role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
           role-session-name: GHA-aws-jsii-compiler@${{ github.ref_name }}
       - name: Sign Tarball
+        if: fromJSON(steps.publish-target.outputs.github-release)
         run: |-
           export GNUPGHOME=$(mktemp -d)
           echo "charset utf-8"   >  ${GNUPGHOME}/gpg.conf
           echo "no-comments"     >> ${GNUPGHOME}/gpg.conf
           echo "no-emit-version" >> ${GNUPGHOME}/gpg.conf
           echo "no-greeting"     >> ${GNUPGHOME}/gpg.conf
-          secret=$(aws secretsmanager get-secret-value --secret-id="arn:aws:secretsmanager:us-east-1:260708760616:secret:CodeSigning-JSII/OpenPGP-ARI51n" --query=SecretString --output=text)
+          secret=$(aws secretsmanager get-secret-value --secret-id=${{ secrets.OPEN_PGP_KEY_ARN }} --query=SecretString --output=text)
           privatekey=$(node -p "(${secret}).PrivateKey")
           passphrase=$(node -p "(${secret}).Passphrase")
           echo "::add-mask::${passphrase}"
@@ -61,9 +66,6 @@ jobs:
         with:
           name: release-package
           path: ${{ github.workspace }}/dist
-      - name: Determine Target
-        id: publish-target
-        run: yarn ts-node projenrc/publish-target.ts ${{ github.ref_name }}
   release-to-github:
     name: Create GitHub Release
     needs: build
@@ -94,7 +96,7 @@ jobs:
         if: "!fromJSON(steps.release-exists.outputs.result) && !fromJSON(needs.build.outputs.prerelease)"
         run: gh release create ${{ github.ref_name }} --repo=${{ github.repository }} --generate-notes --title=${{ github.ref_name }} --verify-tag
       - name: Attach assets
-        run: gh release upload ${{ github.ref_name }} --repo=${{ github.repository }} --clobber ${{ github.workspace }}/js/jsii-*.tgz
+        run: gh release upload ${{ github.ref_name }} --repo=${{ github.repository }} --clobber ${{ github.workspace }}/**/*
   release-npm-package:
     name: Release to registry.npmjs.org
     needs: build
@@ -113,12 +115,22 @@ jobs:
           always-auth: true
           node-version: 14.18.0
           registry-url: https://registry.npmjs.org/
+      - name: Federate to AWS
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-region: us-east-1
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          role-session-name: GHA-aws-jsii-compiler@${{ github.ref_name }}
+      - name: Set NODE_AUTH_TOKEN
+        run: |-
+          secret=$(aws secretsmanager get-secret-value --secret-id=${{ secrets.NPM_TOKEN_ARN }} --query=SecretString --output=text)
+          token=$(node -p "(${secret}).token")
+          unset secret
+          echo "::add-mask::${token}"
+          echo "NODE_AUTH_TOKEN=${token}" >> $GITHUB_ENV
+          unset token
       - name: Publish
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: npm publish ${{ github.workspace }}/js/jsii-*.tgz --access=public --tag=${{ needs.build.outputs.dist-tag }}
       - name: Tag "latest"
         if: fromJSON(needs.build.outputs.latest)
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: npm dist-tag add jsii@${{ github.ref_name }} latest

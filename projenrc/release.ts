@@ -8,7 +8,6 @@ export const enum PublishTargetOutput {
 }
 
 // The ARN of the OpenPGP key used to sign release artifacts uploaded to GH Releases.
-const CODE_SIGNING_OPENPGP_ARN = 'arn:aws:secretsmanager:us-east-1:260708760616:secret:CodeSigning-JSII/OpenPGP-ARI51n';
 const CODE_SIGNING_USER_ID = 'aws-jsii@amazon.com';
 
 export class ReleaseWorkflow {
@@ -70,9 +69,19 @@ export class ReleaseWorkflow {
           name: 'Prepare Release',
           run: 'yarn release ${{ github.ref_name }}',
         },
-        federateToAwsStep,
+        {
+          name: 'Determine Target',
+          id: publishTarget,
+          run: 'yarn ts-node projenrc/publish-target.ts ${{ github.ref_name }}',
+        },
+        {
+          ...federateToAwsStep,
+          // Only necessary if we're going to be publishing assets to GitHub Releases.
+          if: `fromJSON(steps.publish-target.outputs.${PublishTargetOutput.GITHUB_RELEASE})`,
+        },
         {
           name: 'Sign Tarball',
+          if: `fromJSON(steps.publish-target.outputs.${PublishTargetOutput.GITHUB_RELEASE})`,
           run: [
             // First, we're going to be configuring GPG "correctly"
             'export GNUPGHOME=$(mktemp -d)',
@@ -81,16 +90,18 @@ export class ReleaseWorkflow {
             'echo "no-emit-version" >> ${GNUPGHOME}/gpg.conf',
             'echo "no-greeting"     >> ${GNUPGHOME}/gpg.conf',
             // Now, we need to import the OpenPGP private key into the keystore
-            `secret=$(aws secretsmanager get-secret-value --secret-id=${JSON.stringify(CODE_SIGNING_OPENPGP_ARN)} --query=SecretString --output=text)`,
+            'secret=$(aws secretsmanager get-secret-value --secret-id=${{ secrets.OPEN_PGP_KEY_ARN }} --query=SecretString --output=text)',
             'privatekey=$(node -p "(${secret}).PrivateKey")',
             'passphrase=$(node -p "(${secret}).Passphrase")',
-            'echo "::add-mask::${passphrase}"',
+            'echo "::add-mask::${passphrase}"', // !!! IMPORTANT !!! (Ensures the value does not leak into public logs)
             'unset secret',
             'echo ${passphrase} | gpg --batch --yes --import --armor --passphrase-fd=0 <(echo "${privatekey}")',
             'unset privatekey',
             // Now we can actually detach-sign the artifacts
             'for file in $(find dist -type f -not -iname "*.asc"); do',
-            `  echo \${passphrase} | gpg --batch --yes --local-user=${JSON.stringify(CODE_SIGNING_USER_ID)} --detach-sign --armor --passphrase-fd=0 \${file}`,
+            `  echo \${passphrase} | gpg --batch --yes --local-user=${JSON.stringify(
+              CODE_SIGNING_USER_ID,
+            )} --detach-sign --armor --passphrase-fd=0 \${file}`,
             'done',
             'unset passphrase',
             // Clean up the GnuPG home directory (secure-wipe)
@@ -104,11 +115,6 @@ export class ReleaseWorkflow {
             name: releasePackageName,
             path: '${{ github.workspace }}/dist',
           },
-        },
-        {
-          name: 'Determine Target',
-          id: publishTarget,
-          run: 'yarn ts-node projenrc/publish-target.ts ${{ github.ref_name }}',
         },
       ],
     });
@@ -175,7 +181,7 @@ export class ReleaseWorkflow {
             'gh release upload ${{ github.ref_name }}',
             '--repo=${{ github.repository }}',
             '--clobber',
-            '${{ github.workspace }}/js/jsii-*.tgz',
+            '${{ github.workspace }}/**/*',
           ].join(' '),
         },
       ],
@@ -200,11 +206,20 @@ export class ReleaseWorkflow {
             'registry-url': `https://registry.npmjs.org/`,
           },
         },
+        federateToAwsStep,
+        {
+          name: 'Set NODE_AUTH_TOKEN',
+          run: [
+            'secret=$(aws secretsmanager get-secret-value --secret-id=${{ secrets.NPM_TOKEN_ARN }} --query=SecretString --output=text)',
+            'token=$(node -p "(${secret}).token")',
+            'unset secret',
+            'echo "::add-mask::${token}"', // !!! IMPORTANT !!! (Ensures the value does not leak into public logs)
+            'echo "NODE_AUTH_TOKEN=${token}" >> $GITHUB_ENV',
+            'unset token',
+          ].join('\n'),
+        },
         {
           name: 'Publish',
-          env: {
-            NODE_AUTH_TOKEN: '${{ secrets.NPM_TOKEN }}',
-          },
           run: [
             'npm publish ${{ github.workspace }}/js/jsii-*.tgz',
             '--access=public',
@@ -214,9 +229,6 @@ export class ReleaseWorkflow {
         {
           name: 'Tag "latest"',
           if: `fromJSON(needs.build.outputs.${PublishTargetOutput.IS_LATEST})`,
-          env: {
-            NODE_AUTH_TOKEN: '${{ secrets.NPM_TOKEN }}',
-          },
           run: 'npm dist-tag add jsii@${{ github.ref_name }} latest',
         },
       ],
