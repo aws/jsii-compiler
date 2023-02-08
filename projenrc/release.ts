@@ -7,6 +7,10 @@ export const enum PublishTargetOutput {
   IS_PRERELEASE = 'prerelease',
 }
 
+// The ARN of the OpenPGP key used to sign release artifacts uploaded to GH Releases.
+const CODE_SIGNING_OPENPGP_ARN = 'arn:aws:secretsmanager:us-east-1:260708760616:secret:CodeSigning-JSII/OpenPGP-ARI51n';
+const CODE_SIGNING_USER_ID = 'aws-jsii@amazon.com';
+
 export class ReleaseWorkflow {
   public constructor(project: typescript.TypeScriptProject) {
     new ReleaseTask(project);
@@ -22,8 +26,16 @@ export class ReleaseWorkflow {
       run: 'yarn install --frozen-lockfile',
     };
     const releasePackageName = 'release-package';
-
     const publishTarget = 'publish-target';
+    const federateToAwsStep: github.workflows.JobStep = {
+      name: 'Federate to AWS',
+      uses: 'aws-actions/configure-aws-credentials@v1',
+      with: {
+        'aws-region': 'us-east-1',
+        'role-to-assume': '${{ secrets.AWS_ROLE_TO_ASSUME }}',
+        'role-session-name': 'GHA-aws-jsii-compiler@${{ github.ref_name }}',
+      },
+    };
 
     release.addJob('build', {
       name: 'Build release package',
@@ -57,6 +69,33 @@ export class ReleaseWorkflow {
         {
           name: 'Prepare Release',
           run: 'yarn release ${{ github.ref_name }}',
+        },
+        federateToAwsStep,
+        {
+          name: 'Sign Tarball',
+          run: [
+            // First, we're going to be configuring GPG "correctly"
+            'export GNUPGHOME=$(mktemp -d)',
+            'echo "charset utf-8"   >  ${GNUPGHOME}/gpg.conf',
+            'echo "no-comments"     >> ${GNUPGHOME}/gpg.conf',
+            'echo "no-emit-version" >> ${GNUPGHOME}/gpg.conf',
+            'echo "no-greeting"     >> ${GNUPGHOME}/gpg.conf',
+            // Now, we need to import the OpenPGP private key into the keystore
+            `secret=$(aws secretsmanager get-secret-value --secret-id=${JSON.stringify(CODE_SIGNING_OPENPGP_ARN)} --query=SecretString --output=text)`,
+            'privatekey=$(node -p "(${secret}).PrivateKey")',
+            'passphrase=$(node -p "(${secret}).Passphrase")',
+            'echo "::add-mask::${passphrase}"',
+            'unset secret',
+            'echo ${passphrase} | gpg --batch --yes --import --armor --passphrase-fd=0 <(echo "${privatekey}")',
+            'unset privatekey',
+            // Now we can actually detach-sign the artifacts
+            'for file in $(find dist -type f -not -iname "*.asc"); do',
+            `  echo \${passphrase} | gpg --batch --yes --local-user=${JSON.stringify(CODE_SIGNING_USER_ID)} --detach-sign --armor --passphrase-fd=0 \${file}`,
+            'done',
+            'unset passphrase',
+            // Clean up the GnuPG home directory (secure-wipe)
+            'find ${GNUPGHOME} -type f -exec shred --remove {} \\;',
+          ].join('\n'),
         },
         {
           name: 'Upload artifact',
