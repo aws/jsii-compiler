@@ -212,6 +212,8 @@ class ReleaseTask {
     task.spawn(project.compileTask);
     task.spawn(project.postCompileTask);
 
+    task.spawn(project.testTask);
+
     task.spawn(project.packageTask);
 
     task.exec('yarn version --no-git-tag-version --new-version 0.0.0', {
