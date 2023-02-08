@@ -38,7 +38,7 @@ jobs:
           path: dist
       - name: Determine Target
         id: publish-target
-        run: yarn ts-node projen/publish-target.ts ${{ github.ref_name }}
+        run: yarn ts-node projenrc/publish-target.ts ${{ github.ref_name }}
   release-to-github:
     name: Create GitHub Release
     needs: build

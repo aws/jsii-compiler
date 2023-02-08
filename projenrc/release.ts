@@ -70,7 +70,7 @@ export class ReleaseWorkflow {
         {
           name: 'Determine Target',
           id: publishTarget,
-          run: 'yarn ts-node projen/publish-target.ts ${{ github.ref_name }}',
+          run: 'yarn ts-node projenrc/publish-target.ts ${{ github.ref_name }}',
         },
       ],
     });
