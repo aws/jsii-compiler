@@ -1,4 +1,4 @@
-# ![jsii](./logo/png/128.png)
+# ![jsii](https://raw.githubusercontent.com/aws/jsii/main/logo/png/128.png)
 
 [![Join the chat at https://cdk.Dev](https://img.shields.io/static/v1?label=Slack&message=cdk.dev&color=brightgreen&logo=slack)](https://cdk.dev)
 [![All Contributors](https://img.shields.io/github/all-contributors/aws/jsii/main?label=%E2%9C%A8%20All%20Contributors)](#contributors-)
