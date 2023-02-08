@@ -181,7 +181,7 @@ export class ReleaseWorkflow {
         {
           name: 'Publish',
           run: [
-            'npm publish js/jsii-*.tgz',
+            'npm publish ${{ github.workspace }}/js/jsii-*.tgz',
             '--access=public',
             `--tag=\${{ needs.build.outputs.${PublishTargetOutput.DIST_TAG} }}`,
           ].join(' '),
