@@ -75,6 +75,7 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     permissions:
+      contents: read
       packages: write
     env:
       CI: "true"
@@ -86,15 +87,17 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
+          always-auth: true
           node-version: 14.18.0
-          registry-url: https://${{ needs.build.outputs.registry }}
+          registry-url: https://${{ needs.build.outputs.registry }}/
       - name: Determine Authentication
         run: |-
           if [[ "${{ needs.build.outputs.registry }}" == "registry.npmjs.org" ]];
           then
-            echo "NODE_AUTH_TOKEN=${{ secrets.NPM_TOKEN }}" > $GITHUB_ENV
+            echo "NODE_AUTH_TOKEN=${{ secrets.NPM_TOKEN }}" >> $GITHUB_ENV
           else
-            echo "NODE_AUTH_TOKEN=${{ secrets.GITHUB_TOKEN }}" > $GITHUB_ENV
+            echo "NODE_AUTH_TOKEN=${{ secrets.GITHUB_TOKEN }}" >> $GITHUB_ENV
+            echo "registry=https://${{ needs.build.outputs.registry }}" >> $NPM_CONFIG_USERCONFIG
           fi
       - name: Publish
         run: npm publish ${{ github.workspace }}/js/jsii-*.tgz --access=public --tag=${{ needs.build.outputs.dist-tag }}

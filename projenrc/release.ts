@@ -149,6 +149,7 @@ export class ReleaseWorkflow {
       },
       needs: ['build'],
       permissions: {
+        contents: github.workflows.JobPermission.READ,
         packages: github.workflows.JobPermission.WRITE,
       },
       runsOn: ['ubuntu-latest'],
@@ -158,8 +159,9 @@ export class ReleaseWorkflow {
           name: 'Setup Node.js',
           uses: 'actions/setup-node@v3',
           with: {
+            'always-auth': true,
             'node-version': project.minNodeVersion,
-            'registry-url': `https://\${{ needs.build.outputs.${PublishTargetOutput.REGISTRY} }}`,
+            'registry-url': `https://\${{ needs.build.outputs.${PublishTargetOutput.REGISTRY} }}/`,
           },
         },
         ////////////////////////////////////////////////////////////////////////////////////////////
@@ -172,9 +174,11 @@ export class ReleaseWorkflow {
           run: [
             `if [[ "\${{ needs.build.outputs.${PublishTargetOutput.REGISTRY} }}" == "registry.npmjs.org" ]];`,
             'then',
-            '  echo "NODE_AUTH_TOKEN=${{ secrets.NPM_TOKEN }}" > $GITHUB_ENV',
+            '  echo "NODE_AUTH_TOKEN=${{ secrets.NPM_TOKEN }}" >> $GITHUB_ENV',
             'else',
-            '  echo "NODE_AUTH_TOKEN=${{ secrets.GITHUB_TOKEN }}" > $GITHUB_ENV',
+            '  echo "NODE_AUTH_TOKEN=${{ secrets.GITHUB_TOKEN }}" >> $GITHUB_ENV',
+            // actions/setup-node only sets registry for the @aws scope here, so we need to set it outselves.
+            `  echo "registry=https://\${{ needs.build.outputs.${PublishTargetOutput.REGISTRY} }}" >> $NPM_CONFIG_USERCONFIG`,
             'fi',
           ].join('\n'),
         },
