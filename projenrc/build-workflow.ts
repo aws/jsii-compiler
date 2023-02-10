@@ -6,6 +6,7 @@ export class BuildWorkflow {
   public constructor(project: typescript.TypeScriptProject) {
     const wf = project.github!.addWorkflow('build');
     wf.on({
+      mergeGroup: {},
       pullRequest: {},
       workflowDispatch: {},
     });
