@@ -52,7 +52,7 @@
     "jest": "^29.4.2",
     "npm-check-updates": "^16",
     "prettier": "^2.8.4",
-    "projen": "^0.67.46",
+    "projen": "^0.67.50",
     "ts-jest": "^29.0.5",
     "ts-node": "^10.9.1"
   },
