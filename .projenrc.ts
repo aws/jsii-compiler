@@ -65,6 +65,11 @@ const project = new typescript.TypeScriptProject({
   buildWorkflow: false, // We have our own build workflow (need matrix test)
   release: false, // We have our own release workflow
   defaultReleaseBranch: 'release',
+
+  autoApproveUpgrades: true,
+  autoApproveOptions: {
+    allowedUsernames: ['aws-cdk-automation', 'github-bot'],
+  },
 });
 
 // Exports map...

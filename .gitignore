@@ -4,6 +4,7 @@
 !/.projen/deps.json
 !/.projen/files.json
 !/.github/workflows/pull-request-lint.yml
+!/.github/workflows/auto-approve.yml
 !/package.json
 !/LICENSE
 !/.npmignore
@@ -46,4 +47,5 @@ jspm_packages/
 src/version.ts
 jsii-outdir
 !/.github/workflows/build.yml
+!/.github/workflows/auto-merge.yml
 !/.github/workflows/release.yml

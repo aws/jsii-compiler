@@ -18,18 +18,20 @@ test('test parsing string literal type with enum interpolation', () => {
     datatype: true,
     fqn: 'testpkg.UsesSTT',
     kind: 'interface',
-    properties: [{
-      abstract: true,
-      immutable: true,
-      locationInModule: {
-        filename: 'index.ts',
-        line: 8,
+    properties: [
+      {
+        abstract: true,
+        immutable: true,
+        locationInModule: {
+          filename: 'index.ts',
+          line: 8,
+        },
+        name: 'foo',
+        type: {
+          primitive: 'string',
+        },
       },
-      name: 'foo',
-      type: {
-        primitive: 'string',
-      },
-    }],
+    ],
     locationInModule: { filename: 'index.ts', line: 7 },
     name: 'UsesSTT',
     symbolId: 'index:UsesSTT',
@@ -50,18 +52,20 @@ test('test parsing string literal type with number interpolation', () => {
     datatype: true,
     fqn: 'testpkg.UsesSTT',
     kind: 'interface',
-    properties: [{
-      abstract: true,
-      immutable: true,
-      locationInModule: {
-        filename: 'index.ts',
-        line: 3,
+    properties: [
+      {
+        abstract: true,
+        immutable: true,
+        locationInModule: {
+          filename: 'index.ts',
+          line: 3,
+        },
+        name: 'foo',
+        type: {
+          primitive: 'string',
+        },
       },
-      name: 'foo',
-      type: {
-        primitive: 'string',
-      },
-    }],
+    ],
     locationInModule: { filename: 'index.ts', line: 2 },
     name: 'UsesSTT',
     symbolId: 'index:UsesSTT',
