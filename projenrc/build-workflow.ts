@@ -12,6 +12,15 @@ export interface BuildWorkflowOptions {
    * @default true
    */
   readonly autoMerge?: boolean;
+
+  /**
+   * The default branch for the repository. The build automation will run for
+   * `push` events on this branch. If set to `null`, the `push` event will not
+   * trigger any workflow.
+   *
+   * @default 'main'
+   */
+  readonly defaultBranch?: string | null;
 }
 
 export class BuildWorkflow {
@@ -22,6 +31,14 @@ export class BuildWorkflow {
       pullRequest: {},
       workflowDispatch: {},
     });
+
+    if (opts.defaultBranch !== null) {
+      wf.on({
+        push: {
+          branches: [opts.defaultBranch ?? 'main'],
+        },
+      });
+    }
 
     /* This is a hack because @jsii/check-node does not currently expose its constants... */
     // eslint-disable-next-line @typescript-eslint/no-require-imports

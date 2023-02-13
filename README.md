@@ -2,7 +2,7 @@
 
 [![Join the chat at https://cdk.Dev](https://img.shields.io/static/v1?label=Slack&message=cdk.dev&color=brightgreen&logo=slack)](https://cdk.dev)
 [![All Contributors](https://img.shields.io/github/all-contributors/aws/jsii/main?label=%E2%9C%A8%20All%20Contributors)](#contributors-)
-[![Build Status](https://github.com/aws/jsii/workflows/Main/badge.svg)](https://github.com/aws/jsii/actions?query=workflow%3AMain+branch%3Amain)
+[![Build Status](https://github.com/aws/jsii-compiler/workflows/build/badge.svg)](https://github.com/aws/jsii-compiler/actions?query=workflow%3Abuild+branch%3Amain)
 [![npm](https://img.shields.io/npm/v/jsii?logo=npm)](https://www.npmjs.com/package/jsii)
 [![docker](https://img.shields.io/badge/docker-jsii%2Fsuperchain-brightgreen?logo=docker)](https://hub.docker.com/r/jsii/superchain)
 
@@ -19,6 +19,19 @@ usual), but also in **Python**, **Java**, **C#** (and other languages from the _
 ## :question: Documentation
 
 Head over to our [documentation website](https://aws.github.io/jsii)!
+
+The jsii toolchain is spread out on multiple repositories:
+- [aws/jsii-compiler](https://github.com/aws/jsii-compiler) is where the `jsii` compiler is maintained (except releases
+  in the `1.x` line)
+- [aws/jsii-rosetta](https://github.com/aws/jsii-rosetta) is where the `jsii-rosetta` sample code transliteration tool
+  is maintained (except releases in the `1.x` line)
+- [aws/jsii](https://github.com/aws/jsii) is where the rest of the toolchain is maintained, including:
+  - `@jsii/spec`, the package that defines the *`.jsii` assembly* specification
+  - `jsii-config`, an interactive tool to help configure your jsii package
+  - `jsii-pacmak`, the bindings generator for jsii packages
+  - `jsii-reflect`, a higher-level way to process *`.jsii` assemblies*
+  - The jsii runtime libraries for the supported jsii target languages
+  - `1.x` release lines of `jsii` and `jsii-rosetta`
 
 # :book: Blog Posts
 

@@ -44,6 +44,7 @@ jspm_packages/
 /lib
 /dist/
 !/.eslintrc.json
+!/.vscode/settings.json
 src/version.ts
 jsii-outdir
 !/.github/workflows/build.yml

@@ -70,7 +70,14 @@ const project = new typescript.TypeScriptProject({
   autoApproveOptions: {
     allowedUsernames: ['aws-cdk-automation', 'github-bot'],
   },
+
+  vscode: true,
 });
+
+// Don't show .gitignore'd files in the VSCode explorer
+project.vscode!.settings.addSetting('explorer.excludeGitIgnore', true);
+// Use the TypeScript SDK from the project dependencies
+project.vscode!.settings.addSetting('typescript.tsdk', 'node_modules/typescript/lib');
 
 // Exports map...
 project.package.addField('exports', {
