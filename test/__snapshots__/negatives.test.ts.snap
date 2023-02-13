@@ -174,10 +174,10 @@ neg.expose-unexported-type-external.ts:7:14 - error JSII3000: Exported APIs cann
 `;
 
 exports[`expose-unexported-type-internal 1`] = `
-neg.expose-unexported-type-internal.ts:7:10 - error JSII3001: Type "UnexportedType" cannot be used as the property type because it is private or @internal
+neg.expose-unexported-type-internal.ts:7:14 - error JSII3001: Type "UnexportedType" cannot be used as the property type because it is private or @internal
 
 7   public p?: UnexportedType;
-           ~
+               ~~~~~~~~~~~~~~
 
   neg.expose-unexported-type-internal.ts:4:1
     4 class UnexportedType {}
@@ -187,10 +187,10 @@ neg.expose-unexported-type-internal.ts:7:10 - error JSII3001: Type "UnexportedTy
 `;
 
 exports[`expose-unexported-type-internal-in-namespace 1`] = `
-neg.expose-unexported-type-internal-in-namespace.ts:9:10 - error JSII3001: Type "UnexportedType" cannot be used as the property type because it is private or @internal
+neg.expose-unexported-type-internal-in-namespace.ts:9:14 - error JSII3001: Type "UnexportedType" cannot be used as the property type because it is private or @internal
 
 9   public p?: MyNamespace.UnexportedType;
-           ~
+               ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
   neg.expose-unexported-type-internal-in-namespace.ts:5:3
     5   export class UnexportedType {}
@@ -938,6 +938,30 @@ neg.submodules-must-be-camel-cased.ts:1:13 - error JSII8004: Submodule namespace
 
 1 export * as Ns1 from './namespaced';
               ~~~
+
+
+`;
+
+exports[`tuple 1`] = `
+neg.tuple.ts:2:26 - error JSII1999: Tuple types are not supported in jsii APIs. Consider using arrays instead.
+
+2   readonly stringNumber: [string, number];
+                           ~~~~~~~~~~~~~~~~
+
+neg.tuple.ts:3:26 - error JSII1999: Tuple types are not supported in jsii APIs. Consider using arrays instead.
+
+3   readonly stringString: [string, string];
+                           ~~~~~~~~~~~~~~~~
+
+neg.tuple.ts:4:27 - error JSII1999: Tuple types are not supported in jsii APIs. Consider using arrays instead.
+
+4   readonly stringNumbers: [string, ...number[]];
+                            ~~~~~~~~~~~~~~~~~~~~~
+
+neg.tuple.ts:5:24 - error JSII1999: Tuple types are not supported in jsii APIs. Consider using arrays instead.
+
+5   readonly namedTuple: [first: string, second: number, ...rest: boolean[]];
+                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
 `;

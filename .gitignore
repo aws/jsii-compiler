@@ -47,6 +47,8 @@ jspm_packages/
 !/.vscode/settings.json
 src/version.ts
 jsii-outdir
+test/negatives/.jsii
+test/negatives/.build
 !/.github/workflows/build.yml
 !/.github/workflows/auto-merge.yml
 !/.github/workflows/release.yml
