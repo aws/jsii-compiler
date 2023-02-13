@@ -52,6 +52,12 @@ export class BuildWorkflow {
     wf.addJobs({
       'build': {
         env: { CI: 'true' },
+        outputs: {
+          'self-mutation-needed': {
+            stepId: 'self-mutation',
+            outputName: 'needed',
+          },
+        },
         permissions: { contents: github.workflows.JobPermission.READ },
         runsOn: ['ubuntu-latest'],
         steps: [
@@ -76,6 +82,35 @@ export class BuildWorkflow {
             run: 'yarn install --check-files',
           },
           { name: 'compile', run: 'npx projen pre-compile && npx projen compile && npx projen post-compile' },
+
+          // Run tests to allow self-mutation to be performed if needed...
+          { name: 'test', run: 'npx projen test' },
+          {
+            name: 'Find mutations',
+            id: 'self-mutation',
+            run: [
+              'git add .',
+              'git diff --staged --patch --exit-code > .repo.patch || echo "needed=true" >> $GITHUB_OUTPUT',
+            ].join('\n'),
+          },
+          {
+            name: 'Upload patch',
+            uses: 'actions/upload-artifact@v3',
+            with: {
+              name: '.repo.patch',
+              path: '.repo.patch',
+            },
+          },
+          {
+            name: 'Fail if self-mutation is needed',
+            if: 'steps.self-mutation.outputs.needed',
+            run: [
+              'echo "::error::Files were changed during build (see build log). If this was triggered from a fork, you will need to update your branch."',
+              'cat .repo.patch',
+              'exit 1',
+            ].join('\n'),
+          },
+
           {
             name: 'Upload artifact',
             uses: 'actions/upload-artifact@v3',
@@ -91,8 +126,53 @@ export class BuildWorkflow {
           },
         ],
       },
+      'self-mutation': {
+        env: { CI: 'true' },
+        needs: ['build'],
+        runsOn: ['ubuntu-latest'],
+        permissions: { contents: github.workflows.JobPermission.WRITE },
+        if: "failure() && (github.event_name == 'pull_request') && needs.build.output.self-mutation-needed && (github.event.pull_request.head.repo.full_name == github.repository)",
+        steps: [
+          {
+            name: 'Checkout',
+            uses: 'actions/checkout@v3',
+            with: {
+              ref: '${{ github.event.pull_request.head.ref }}',
+              repository: '${{ github.event.pull_request.head.repo.full_name }}',
+              token: '${{ secrets.PROJEN_GITHUB_TOKEN }}',
+            },
+          },
+          {
+            name: 'Download patch',
+            uses: 'actions/download-artifact@v3',
+            with: {
+              name: '.repo.patch',
+              path: '${{ runner.temp }}',
+            },
+          },
+          {
+            name: 'Apply patch',
+            run: '[ -s ${{ runner.temp }}/.repo.patch ] && git apply ${{ runner.temp }}/.repo.patch || echo "Empty patch. Skipping."',
+          },
+          {
+            name: 'Set git identity',
+            run: ['git config user.name "github-actions', 'git config user.email "github-actions@github.com"'].join(
+              '\n',
+            ),
+          },
+          {
+            name: 'Push changes',
+            run: [
+              'git add .',
+              'git commit -s -m "chore: self-mutation"',
+              'git push origin HEAD:${{ github.event.pull_request.head.ref }}',
+            ].join('\n'),
+          },
+        ],
+      },
       'matrix-test': {
         env: { CI: 'true' },
+        if: 'success()',
         strategy: {
           failFast: false,
           matrix: {
