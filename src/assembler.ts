@@ -1968,7 +1968,7 @@ export class Assembler implements Emitter {
       {
         ...this._optionalValue(
           this._typeChecker.getTypeOfSymbolAtLocation(symbol, signature),
-          signature.name,
+          signature.type ?? signature.name,
           'property type',
         ),
         abstract: _isAbstract(symbol, type) || undefined,
@@ -2159,6 +2159,12 @@ export class Assembler implements Emitter {
     function _tryMakePrimitiveType(this: Assembler): spec.PrimitiveTypeReference | undefined {
       if (!type.symbol) {
         if (type.flags & ts.TypeFlags.Object) {
+          if (isTupleType(type as ts.ObjectType)) {
+            this._diagnostics.push(
+              JsiiDiagnostic.JSII_1999_UNSUPPORTED.create(declaration, { what: 'Tuple types', alternative: 'arrays' }),
+            );
+          }
+
           return { primitive: spec.PrimitiveType.Json };
         }
         if (type.flags & (ts.TypeFlags.Any | ts.TypeFlags.Unknown)) {
@@ -2922,6 +2928,18 @@ function symbolIdIndex(asm: spec.Assembly): Record<string, string> {
 function getSymbolFromDeclaration(decl: ts.Declaration, typeChecker: ts.TypeChecker): ts.Symbol | undefined {
   const name = ts.getNameOfDeclaration(decl);
   return name ? typeChecker.getSymbolAtLocation(name) : undefined;
+}
+
+function isTupleType(type: ts.ObjectType): type is ts.TupleType {
+  if (type.objectFlags & ts.ObjectFlags.Tuple) {
+    return true;
+  }
+
+  if (type.objectFlags & ts.ObjectFlags.Reference) {
+    return isTupleType((type as ts.TypeReference).target);
+  }
+
+  return false;
 }
 
 function isUnder(file: string, dir: string): boolean {

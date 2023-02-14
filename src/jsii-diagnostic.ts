@@ -280,6 +280,13 @@ export class JsiiDiagnostic implements ts.Diagnostic {
     name: 'typescript-restrictions/duplicate-enum-value',
   });
 
+  public static readonly JSII_1999_UNSUPPORTED = Code.error({
+    code: 1999,
+    formatter: ({ what, alternative }: { what: string; alternative?: string }) =>
+      `${what} are not supported in jsii APIs.${alternative ? ` Consider using ${alternative} instead.` : ''}`,
+    name: 'typescript-restrictions/unsupported',
+  });
+
   //////////////////////////////////////////////////////////////////////////////
   // 2000 => 2999 -- RESERVED
 

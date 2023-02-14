@@ -48,8 +48,10 @@ jspm_packages/
 /projenrc/tsconfig.json
 /test/tsconfig.json
 !/.vscode/settings.json
-/src/version.ts
-jsii-outdir/
+src/version.ts
+jsii-outdir
+test/negatives/.jsii
+test/negatives/.build
 !/.github/workflows/build.yml
 !/.github/workflows/auto-merge.yml
 !/.github/workflows/release.yml
