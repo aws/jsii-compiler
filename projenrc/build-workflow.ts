@@ -84,7 +84,7 @@ export class BuildWorkflow {
             with: {
               'key':
                 "build-outputs-${{ hashFiles('tsconfig.json', 'build-tools/**/*.ts', 'src/**/*.ts', 'package.json', 'yarn.lock') }}",
-              'path': ['tsconfig.tsbuildinfo', 'lib'].join('\n'),
+              'path': ['tsconfig.tsbuildinfo', 'lib/**/*'].join('\n'),
               'restore-keys': 'build-outputs-',
             },
           },
