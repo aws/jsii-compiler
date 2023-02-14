@@ -35,7 +35,7 @@ jobs:
           key: build-outputs-${{ hashFiles('tsconfig.json', 'build-tools/**/*.ts', 'src/**/*.ts', 'package.json', 'yarn.lock') }}
           path: |-
             tsconfig.tsbuildinfo
-            lib
+            lib/**/*
           restore-keys: build-outputs-
       - name: Install dependencies
         run: yarn install --check-files
