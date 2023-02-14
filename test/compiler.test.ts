@@ -37,9 +37,6 @@ describe(Compiler, () => {
   });
 
   test('"watch" mode', async () => {
-    // This can be a little slow, allowing 15 seconds maximum here (default is 5 seconds)
-    jest.setTimeout(15_000);
-
     const sourceDir = mkdtempSync(join(tmpdir(), 'jsii-compiler-watch-mode-'));
 
     try {
@@ -74,7 +71,7 @@ describe(Compiler, () => {
             if (firstCompilation) {
               firstCompilation = false;
               expect(output).toContain('"MarkerA"');
-              writeFileSync(join(sourceDir, 'index.ts'), 'export class MarkerB {}');
+              setImmediate(() => writeFileSync(join(sourceDir, 'index.ts'), 'export class MarkerB {}'));
               return;
             }
             expect(output).toContain('"MarkerB"');
@@ -91,7 +88,7 @@ describe(Compiler, () => {
     } finally {
       rmSync(sourceDir, { force: true, recursive: true });
     }
-  });
+  }, 15_000);
 
   test('rootDir is added to assembly', () => {
     const outDir = 'jsii-outdir';

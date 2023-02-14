@@ -1,44 +1,49 @@
-import * as path from 'node:path';
 import { Assembly, loadAssemblyFromPath } from '@jsii/spec';
-import { Compiler } from '../src/compiler';
-import { loadProjectInfo } from '../src/project-info';
+import { compile, Lock } from './fixtures';
 
-test('integration', () => {
-  const calcBaseOfBaseRoot = resolveModuleDir('@scope/jsii-calc-base-of-base');
-  const calcBaseRoot = resolveModuleDir('@scope/jsii-calc-base');
-  const calcLibRoot = resolveModuleDir('@scope/jsii-calc-lib');
-  const calcRoot = resolveModuleDir('jsii-calc');
+let lock: Lock | undefined;
 
-  compile(calcBaseOfBaseRoot, false);
-  compile(calcBaseRoot, true);
-  compile(calcLibRoot, true, path.join(calcLibRoot, 'deprecated-to-strip.txt'));
-  compile(calcRoot, true);
+beforeEach(async () => {
+  lock = await Lock.acquire();
+}, 120_000);
 
-  expect(neutralize(loadAssemblyFromPath(calcBaseOfBaseRoot))).toMatchSnapshot();
-  expect(neutralize(loadAssemblyFromPath(calcBaseRoot))).toMatchSnapshot();
-  expect(neutralize(loadAssemblyFromPath(calcLibRoot))).toMatchSnapshot();
-  expect(neutralize(loadAssemblyFromPath(calcRoot))).toMatchSnapshot();
-});
+afterEach(async () => {
+  await lock?.release();
+  lock = undefined;
+}, 120_000);
 
-function compile(projectRoot: string, addDeprecationWarnings: boolean, stripDeprecated?: string) {
-  const { projectInfo } = loadProjectInfo(projectRoot);
+test('integration', async () => {
+  const calcBaseOfBaseRoot = compile(lock!, '@scope/jsii-calc-base-of-base', false);
+  const calcBaseRoot = compile(lock!, '@scope/jsii-calc-base', true);
+  const calcLibRoot = compile(lock!, '@scope/jsii-calc-lib', true, 'deprecated-to-strip.txt');
+  const calcRoot = compile(lock!, 'jsii-calc', true);
 
-  const compiler = new Compiler({
-    projectInfo,
-    addDeprecationWarnings,
-    stripDeprecated: stripDeprecated != null,
-    stripDeprecatedAllowListFile: stripDeprecated,
-  });
+  expect(loadAssemblyFromPath(calcBaseOfBaseRoot)).toMatchSnapshot(
+    { ...DEFAULT_MATCHER },
+    '@scope/jsii-calc-base-of-base',
+  );
+  expect(loadAssemblyFromPath(calcBaseRoot)).toMatchSnapshot(
+    { ...DEFAULT_MATCHER, ...HAS_DEPRECATION_WARNINGS },
+    '@scope/jsii-calc-base',
+  );
+  expect(loadAssemblyFromPath(calcLibRoot)).toMatchSnapshot(
+    { ...DEFAULT_MATCHER, ...HAS_DEPRECATION_WARNINGS },
+    '@scope/jsii-calc-lib',
+  );
+  expect(loadAssemblyFromPath(calcRoot)).toMatchSnapshot(
+    { ...DEFAULT_MATCHER, ...HAS_DEPRECATION_WARNINGS },
+    'jsii-calc',
+  );
+}, 120_000);
 
-  compiler.emit();
-}
-
-function neutralize(assm: Assembly): Omit<Assembly, 'jsiiVersion' | 'fingerprint'> {
-  delete (assm as any).jsiiVersion;
-  delete (assm as any).fingerprint;
-  return assm;
-}
-
-function resolveModuleDir(name: string) {
-  return path.resolve(__dirname, '..', 'fixtures', name);
-}
+const DEFAULT_MATCHER: Partial<Assembly> = {
+  fingerprint: expect.any(String),
+  jsiiVersion: expect.any(String),
+};
+const HAS_DEPRECATION_WARNINGS: Partial<Assembly> = {
+  metadata: {
+    jsii: {
+      compiledWithDeprecationWarnings: true,
+    },
+  },
+};

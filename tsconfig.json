@@ -7,7 +7,7 @@
     "declaration": true,
     "esModuleInterop": false,
     "experimentalDecorators": true,
-    "inlineSourceMap": true,
+    "inlineSourceMap": false,
     "inlineSources": true,
     "lib": [
       "es2020",
@@ -27,7 +27,11 @@
     "strictPropertyInitialization": true,
     "stripInternal": true,
     "target": "ES2020",
-    "skipLibCheck": true
+    "noImplicitOverride": true,
+    "skipLibCheck": true,
+    "sourceMap": true,
+    "composite": true,
+    "declarationMap": true
   },
   "include": [
     "src/**/*.ts"

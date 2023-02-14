@@ -16,4 +16,11 @@ dist
 /.projenrc.js
 tsconfig.tsbuildinfo
 /.eslintrc.json
+/.*
+/CODE_OF_CONDUCT.md
+/CONTRIBUTING.md
+/build-tools/
 /fixtures/
+/projenrc/
+*.tsbuildinfo
+*.d.ts.map

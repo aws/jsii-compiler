@@ -69,6 +69,7 @@ export class Assembler implements Emitter {
    */
   public constructor(
     public readonly projectInfo: ProjectInfo,
+    private readonly system: ts.System,
     public readonly program: ts.Program,
     public readonly stdlib: string,
     options: AssemblerOptions = {},
@@ -588,7 +589,7 @@ export class Assembler implements Emitter {
       moduleSpecifier.text,
       declaration.getSourceFile().fileName,
       this.program.getCompilerOptions(),
-      ts.sys,
+      this.system,
     );
     if (resolution.resolvedModule == null) {
       // Unresolvable module... We'll let tsc report this for us.

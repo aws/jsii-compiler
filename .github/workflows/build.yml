@@ -28,10 +28,19 @@ jobs:
         with:
           node-version: 14.18.0
           cache: yarn
+      - name: Cache build outputs
+        if: github.event_name == 'pull_request'
+        uses: actions/cache@v3
+        with:
+          key: build-outputs-${{ hashFiles('tsconfig.json', 'build-tools/**/*.ts', 'src/**/*.ts', 'package.json', 'yarn.lock') }}
+          path: |-
+            tsconfig.tsbuildinfo
+            lib/**/*
+          restore-keys: build-outputs-
       - name: Install dependencies
         run: yarn install --check-files
       - name: compile
-        run: npx projen pre-compile && npx projen compile && npx projen post-compile
+        run: npx projen && npx projen pre-compile && npx projen compile && npx projen post-compile
       - name: test
         run: npx projen test
       - name: Find mutations
@@ -65,7 +74,7 @@ jobs:
       contents: write
     env:
       CI: "true"
-    if: failure() && (github.event_name == 'pull_request') && needs.build.output.self-mutation-needed && (github.event.pull_request.head.repo.full_name == github.repository)
+    if: always() && (github.event_name == 'pull_request') && needs.build.outputs.self-mutation-needed && (github.event.pull_request.head.repo.full_name == github.repository)
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -82,7 +91,7 @@ jobs:
         run: '[ -s ${{ runner.temp }}/.repo.patch ] && git apply ${{ runner.temp }}/.repo.patch || echo "Empty patch. Skipping."'
       - name: Set git identity
         run: |-
-          git config user.name "github-actions
+          git config user.name "github-actions"
           git config user.email "github-actions@github.com"
       - name: Push changes
         run: |-

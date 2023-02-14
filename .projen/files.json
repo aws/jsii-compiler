@@ -16,8 +16,11 @@
     ".projen/files.json",
     ".projen/tasks.json",
     ".vscode/settings.json",
+    "build-tools/tsconfig.json",
     "jest.config.json",
     "LICENSE",
+    "projenrc/tsconfig.json",
+    "test/tsconfig.json",
     "tsconfig.dev.json",
     "tsconfig.json"
   ],

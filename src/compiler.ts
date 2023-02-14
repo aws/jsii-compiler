@@ -76,6 +76,7 @@ export interface TypescriptConfig {
 }
 
 export class Compiler implements Emitter {
+  private readonly system: ts.System;
   private readonly compilerHost: ts.CompilerHost;
   private typescriptConfig?: TypescriptConfig;
   private rootFiles: string[] = [];
@@ -84,7 +85,7 @@ export class Compiler implements Emitter {
 
   public constructor(private readonly options: CompilerOptions) {
     const rootDir = this.options.projectInfo.projectRoot;
-    this.compilerHost = ts.createIncrementalCompilerHost(BASE_COMPILER_OPTIONS, {
+    this.system = {
       ...ts.sys,
       getCurrentDirectory: () => rootDir,
       createDirectory: (pth) => ts.sys.createDirectory(path.resolve(rootDir, pth)),
@@ -98,7 +99,8 @@ export class Compiler implements Emitter {
           ts.sys.watchFile!(path.resolve(rootDir, pth), callback, pollingInterval, watchOptions)),
       writeFile: (pth, data, writeByteOrderMark) =>
         ts.sys.writeFile(path.resolve(rootDir, pth), data, writeByteOrderMark),
-    });
+    };
+    this.compilerHost = ts.createIncrementalCompilerHost(BASE_COMPILER_OPTIONS, this.system);
 
     const configFileName = options.generateTypeScriptConfig ?? 'tsconfig.json';
 
@@ -146,12 +148,7 @@ export class Compiler implements Emitter {
         ...BASE_COMPILER_OPTIONS,
         noEmitOnError: false,
       },
-      {
-        ...ts.sys,
-        getCurrentDirectory() {
-          return projectRoot;
-        },
-      },
+      this.system,
       ts.createEmitAndSemanticDiagnosticsBuilderProgram,
       opts?.reportDiagnostics,
       opts?.reportWatchStatus,
@@ -238,7 +235,7 @@ export class Compiler implements Emitter {
 
     // Do the "Assembler" part first because we need some of the analysis done in there
     // to post-process the AST
-    const assembler = new Assembler(this.options.projectInfo, program, stdlib, {
+    const assembler = new Assembler(this.options.projectInfo, this.system, program, stdlib, {
       stripDeprecated: this.options.stripDeprecated,
       stripDeprecatedAllowListFile: this.options.stripDeprecatedAllowListFile,
       addDeprecationWarnings: this.options.addDeprecationWarnings,
@@ -428,7 +425,7 @@ export class Compiler implements Emitter {
         continue;
       }
 
-      const { config: tsconfig } = ts.readConfigFile(tsconfigFile, ts.sys.readFile);
+      const { config: tsconfig } = ts.readConfigFile(tsconfigFile, this.system.readFile);
 
       // Add references to any TypeScript package we find that is 'composite' enabled.
       // Make it relative.

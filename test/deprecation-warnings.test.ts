@@ -3,9 +3,8 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as vm from 'node:vm';
 
+import { compile, Lock } from './fixtures';
 import { compileJsiiForTest, HelperCompilationResult } from '../lib';
-import { Compiler } from '../src/compiler';
-import { loadProjectInfo } from '../src/project-info';
 
 const DEPRECATED = '/** @deprecated Use something else */';
 
@@ -430,27 +429,35 @@ function testpkg_Baz(p) {
 `);
   });
 
-  test('generates calls for types in other assemblies', () => {
-    const calcBaseOfBaseRoot = resolveModuleDir('@scope/jsii-calc-base-of-base');
-    const calcBaseRoot = resolveModuleDir('@scope/jsii-calc-base');
-    const calcLibRoot = resolveModuleDir('@scope/jsii-calc-lib');
-    const calcLibStripDeprecated = path.join(calcLibRoot, 'deprecated-to-strip.txt');
+  describe('using fixtures', () => {
+    let lock: Lock | undefined;
 
-    compile(calcBaseOfBaseRoot, false);
-    compile(calcBaseRoot, true);
-    compile(calcLibRoot, true, calcLibStripDeprecated);
-    const warningsFile = loadWarningsFile(calcBaseRoot);
+    beforeEach(async () => {
+      lock = await Lock.acquire();
+    }, 120_000);
 
-    // jsii-calc-base was compiled with warnings. So we expect to see handlers for its types in the warnings file
-    expect(warningsFile).toMatch('_scope_jsii_calc_base');
+    afterEach(async () => {
+      await lock?.release();
+      lock = undefined;
+    }, 120_000);
 
-    // jsii-calc-base-of-base was not compiled with warnings. Its types shouldn't be in the warnings file
-    expect(warningsFile).not.toMatch('_scope_jsii_calc_base_of_base');
+    test('generates calls for types in other assemblies', async () => {
+      compile(lock!, '@scope/jsii-calc-base-of-base', false);
+      const calcBaseRoot = compile(lock!, '@scope/jsii-calc-base', true);
+      compile(lock!, '@scope/jsii-calc-lib', true, 'deprecated-to-strip.txt');
+      const warningsFile = loadWarningsFile(calcBaseRoot);
 
-    // Recompiling without deprecation warning to leave the packages in a clean state
-    compile(calcBaseRoot, false);
-    compile(calcLibRoot, false, calcLibStripDeprecated);
-  }, 120000);
+      // jsii-calc-base was compiled with warnings. So we expect to see handlers for its types in the warnings file
+      expect(warningsFile).toMatch('_scope_jsii_calc_base');
+
+      // jsii-calc-base-of-base was not compiled with warnings. Its types shouldn't be in the warnings file
+      expect(warningsFile).not.toMatch('_scope_jsii_calc_base_of_base');
+
+      // Recompiling without deprecation warning to leave the packages in a clean state
+      compile(lock!, '@scope/jsii-calc-base', false);
+      compile(lock!, '@scope/jsii-calc-lib', false, 'deprecated-to-strip.txt');
+    }, 120_000);
+  });
 });
 
 describe('Call injections', () => {
@@ -951,23 +958,6 @@ function createVmContext(compilation: HelperCompilationResult) {
   vm.runInContext('Error.stackTraceLimit = 2;', context);
 
   return context;
-}
-
-function resolveModuleDir(name: string) {
-  return path.resolve(__dirname, '..', 'fixtures', name);
-}
-
-function compile(projectRoot: string, addDeprecationWarnings: boolean, stripDeprecated?: string) {
-  const { projectInfo } = loadProjectInfo(projectRoot);
-
-  const compiler = new Compiler({
-    projectInfo,
-    addDeprecationWarnings,
-    stripDeprecated: stripDeprecated != null,
-    stripDeprecatedAllowListFile: stripDeprecated,
-  });
-
-  compiler.emit();
 }
 
 function loadWarningsFile(projectRoot: string) {

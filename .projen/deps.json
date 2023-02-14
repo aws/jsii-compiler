@@ -21,6 +21,10 @@
       "type": "build"
     },
     {
+      "name": "@types/lockfile",
+      "type": "build"
+    },
+    {
       "name": "@types/node",
       "version": "^14",
       "type": "build"
@@ -78,6 +82,10 @@
     },
     {
       "name": "jest",
+      "type": "build"
+    },
+    {
+      "name": "lockfile",
       "type": "build"
     },
     {

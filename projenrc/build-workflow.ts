@@ -78,10 +78,24 @@ export class BuildWorkflow {
             },
           },
           {
+            name: 'Cache build outputs',
+            if: "github.event_name == 'pull_request'",
+            uses: 'actions/cache@v3',
+            with: {
+              'key':
+                "build-outputs-${{ hashFiles('tsconfig.json', 'build-tools/**/*.ts', 'src/**/*.ts', 'package.json', 'yarn.lock') }}",
+              'path': ['tsconfig.tsbuildinfo', 'lib/**/*'].join('\n'),
+              'restore-keys': 'build-outputs-',
+            },
+          },
+          {
             name: 'Install dependencies',
             run: 'yarn install --check-files',
           },
-          { name: 'compile', run: 'npx projen pre-compile && npx projen compile && npx projen post-compile' },
+          {
+            name: 'compile',
+            run: ['npx projen', 'npx projen pre-compile', 'npx projen compile', 'npx projen post-compile'].join(' && '),
+          },
 
           // Run tests to allow self-mutation to be performed if needed...
           { name: 'test', run: 'npx projen test' },
@@ -131,7 +145,7 @@ export class BuildWorkflow {
         needs: ['build'],
         runsOn: ['ubuntu-latest'],
         permissions: { contents: github.workflows.JobPermission.WRITE },
-        if: "failure() && (github.event_name == 'pull_request') && needs.build.output.self-mutation-needed && (github.event.pull_request.head.repo.full_name == github.repository)",
+        if: "always() && (github.event_name == 'pull_request') && needs.build.outputs.self-mutation-needed && (github.event.pull_request.head.repo.full_name == github.repository)",
         steps: [
           {
             name: 'Checkout',
@@ -156,7 +170,7 @@ export class BuildWorkflow {
           },
           {
             name: 'Set git identity',
-            run: ['git config user.name "github-actions', 'git config user.email "github-actions@github.com"'].join(
+            run: ['git config user.name "github-actions"', 'git config user.email "github-actions@github.com"'].join(
               '\n',
             ),
           },

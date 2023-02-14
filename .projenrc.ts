@@ -1,4 +1,4 @@
-import { javascript, typescript } from 'projen';
+import { javascript, JsonFile, JsonPatch, typescript } from 'projen';
 import { BuildWorkflow } from './projenrc/build-workflow';
 import { JsiiCalcFixtures } from './projenrc/fixtures';
 import { ReleaseWorkflow } from './projenrc/release';
@@ -35,7 +35,12 @@ const project = new typescript.TypeScriptProject({
       target: 'ES2020',
 
       esModuleInterop: false,
+      noImplicitOverride: true,
       skipLibCheck: true,
+
+      sourceMap: true,
+      inlineSourceMap: false,
+      inlineSources: true,
     },
   },
 
@@ -74,6 +79,27 @@ const project = new typescript.TypeScriptProject({
   vscode: true,
 });
 
+// VSCode will look at the "closest" file named "tsconfig.json" when deciding on which config to use
+// for a given TypeScript file with the TypeScript language server. In order to make this "seamless"
+// we'll be dropping `tsconfig.json` files at strategic locations in the project. These will not be
+// committed as they are only here for VSCode comfort.
+for (const dir of ['build-tools', 'projenrc', 'test']) {
+  new JsonFile(project, `${dir}/tsconfig.json`, {
+    allowComments: true,
+    committed: false,
+    marker: true,
+    obj: {
+      extends: '../tsconfig.dev.json',
+      references: [{ path: '../tsconfig.json' }],
+    },
+    readonly: true,
+  });
+}
+project.tsconfig?.file?.patch(
+  JsonPatch.add('/compilerOptions/composite', true),
+  JsonPatch.add('/compilerOptions/declarationMap', true),
+);
+
 // Don't show .gitignore'd files in the VSCode explorer
 project.vscode!.settings.addSetting('explorer.excludeGitIgnore', true);
 // Use the TypeScript SDK from the project dependencies
@@ -101,8 +127,17 @@ if (project.jest?.config?.globals?.['ts-jest']) {
   ];
 }
 
-// Add fixtures to npmignore
-project.npmignore?.addPatterns('/fixtures/');
+// Add fixtures & other exemptions to npmignore
+project.npmignore?.addPatterns(
+  '/.*',
+  '/CODE_OF_CONDUCT.md',
+  '/CONTRIBUTING.md',
+  '/build-tools/',
+  '/fixtures/',
+  '/projenrc/',
+  '*.tsbuildinfo',
+  '*.d.ts.map', // Declarations map aren't useful in published packages.
+);
 
 project.addDeps(
   '@jsii/check-node',
@@ -124,19 +159,18 @@ project.addDevDeps(
   '@actions/github',
   '@types/clone',
   '@types/deep-equal',
+  '@types/lockfile',
   '@types/semver',
   'all-contributors-cli',
   'clone',
   'eslint-plugin-unicorn',
+  'lockfile',
 );
 
 project.preCompileTask.exec('ts-node build-tools/code-gen.ts', {
   name: 'code-gen',
 });
-project.gitignore.addPatterns('src/version.ts');
-project.gitignore.addPatterns('jsii-outdir');
-project.gitignore.addPatterns('test/negatives/.jsii');
-project.gitignore.addPatterns('test/negatives/.build');
+project.gitignore.addPatterns('/src/version.ts', '/jsii-outdir/', '/test/negatives/.*');
 
 // Exclude negatives from tsconfig and eslint...
 project.tsconfigDev.addExclude('test/negatives/**/*.ts');

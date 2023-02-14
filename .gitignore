@@ -44,11 +44,13 @@ jspm_packages/
 /lib
 /dist/
 !/.eslintrc.json
+/build-tools/tsconfig.json
+/projenrc/tsconfig.json
+/test/tsconfig.json
 !/.vscode/settings.json
-src/version.ts
-jsii-outdir
-test/negatives/.jsii
-test/negatives/.build
+/src/version.ts
+/jsii-outdir/
+/test/negatives/.*
 !/.github/workflows/build.yml
 !/.github/workflows/auto-merge.yml
 !/.github/workflows/release.yml
