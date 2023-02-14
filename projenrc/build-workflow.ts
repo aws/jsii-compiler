@@ -82,7 +82,8 @@ export class BuildWorkflow {
             if: "github.event_name == 'pull_request'",
             uses: 'actions/cache@v3',
             with: {
-              'key': "build-outputs-${{ hashFiles('tsconfig.json', 'build-tools/**/*.ts', 'src/**/*.ts', 'package.json', 'yarn.lock') }}",
+              'key':
+                "build-outputs-${{ hashFiles('tsconfig.json', 'build-tools/**/*.ts', 'src/**/*.ts', 'package.json', 'yarn.lock') }}",
               'path': ['tsconfig.tsbuildinfo', 'lib'].join('\n'),
               'restore-keys': 'build-outputs-',
             },
