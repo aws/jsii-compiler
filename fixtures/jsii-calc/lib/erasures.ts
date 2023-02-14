@@ -22,7 +22,7 @@ class JSII417PrivateBase extends JSII417PublicBaseOfBase {
   }
 }
 export class JSII417Derived extends JSII417PrivateBase {
-  public bar(): void {
+  public override bar(): void {
     return super.bar();
   }
   public baz(): void {

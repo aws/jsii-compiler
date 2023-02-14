@@ -25,6 +25,9 @@ export type TSCompilerOptions = Partial<
     | 'paths'
     // Style preferences
     | 'forceConsistentCasingInFileNames'
+    | 'noImplicitOverride'
+    | 'noPropertyAccessFromIndexSignature'
+    | 'noUncheckedIndexedAccess'
     // Source map preferences
     | 'declarationMap'
     | 'inlineSourceMap'
@@ -195,6 +198,9 @@ export function loadProjectInfo(projectRoot: string): ProjectInfoResult {
       baseUrl: pkg.jsii?.tsc?.baseUrl,
       paths: pkg.jsii?.tsc?.paths,
       forceConsistentCasingInFileNames: pkg.jsii?.tsc?.forceConsistentCasingInFileNames,
+      noImplicitOverride: pkg.jsii?.tsc?.noImplicitOverride,
+      noPropertyAccessFromIndexSignature: pkg.jsii?.tsc?.noPropertyAccessFromIndexSignature,
+      noUncheckedIndexedAccess: pkg.jsii?.tsc?.noUncheckedIndexedAccess,
       ..._sourceMapPreferences(pkg.jsii?.tsc),
       types: pkg.jsii?.tsc?.types,
     },
