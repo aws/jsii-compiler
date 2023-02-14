@@ -66,7 +66,7 @@ class TestRuntimeTypeInfoInjector extends RuntimeTypeInfoInjector {
     super('1.2.3');
   }
 
-  protected getClassFqn(clazz: ts.ClassDeclaration): string | undefined {
+  protected override getClassFqn(clazz: ts.ClassDeclaration): string | undefined {
     return clazz.name ? this.typeInfo.get(clazz.name.text) : undefined;
   }
 }
