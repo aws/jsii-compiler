@@ -54,13 +54,13 @@
     "lockfile": "^1.0.4",
     "npm-check-updates": "^16",
     "prettier": "^2.8.4",
-    "projen": "^0.67.52",
+    "projen": "^0.67.53",
     "ts-jest": "^29.0.5",
     "ts-node": "^10.9.1"
   },
   "dependencies": {
-    "@jsii/check-node": "^1.74.0",
-    "@jsii/spec": "^1.74.0",
+    "@jsii/check-node": "^1.75.0",
+    "@jsii/spec": "^1.75.0",
     "case": "^1.6.3",
     "chalk": "^4",
     "fast-deep-equal": "^3.1.3",
