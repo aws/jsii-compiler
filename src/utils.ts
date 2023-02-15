@@ -220,3 +220,8 @@ const ANSI_REGEX =
 export function stripAnsi(x: string): string {
   return x.replace(ANSI_REGEX, '');
 }
+
+/**
+ * Maps the provided type to stip all `readonly` modifiers from its properties.
+ */
+export type Mutable<T> = { -readonly [K in keyof T]: Mutable<T[K]> };

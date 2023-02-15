@@ -6,6 +6,7 @@ import * as ts from 'typescript';
 
 import { Assembler } from './assembler';
 import * as Case from './case';
+import { emitDownleveledDeclarations } from './downlevel-dts';
 import { Emitter } from './emitter';
 import { JsiiDiagnostic } from './jsii-diagnostic';
 import { ProjectInfo } from './project-info';
@@ -269,6 +270,10 @@ export class Compiler implements Emitter {
     if (!hasErrors && (emit.emitSkipped || this.diagsHaveAbortableErrors(emit.diagnostics))) {
       hasErrors = true;
       LOG.error('Compilation errors prevented the JSII assembly from being created');
+    }
+
+    if (!hasErrors) {
+      emitDownleveledDeclarations(this.options.projectInfo);
     }
 
     // Some extra validation on the config.

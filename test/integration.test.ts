@@ -1,18 +1,25 @@
+import { mkdtempSync, rmSync } from 'node:fs';
+import { join } from 'node:path';
 import { Assembly, loadAssemblyFromPath } from '@jsii/spec';
-import { compile, Lock } from './fixtures';
+import { compileJsiiForTest as compileJsiiV1 } from 'jsii-1.x';
+
+import { compile, FIXTURES_ROOT, Lock } from './fixtures';
 
 let lock: Lock | undefined;
 
-beforeEach(async () => {
+beforeAll(async () => {
   lock = await Lock.acquire();
 }, 120_000);
 
-afterEach(async () => {
+afterAll(async () => {
   await lock?.release();
   lock = undefined;
 }, 120_000);
 
-test('integration', async () => {
+// Note: Tests will run in this order, which is required for the v1
+// compatibility test to succeed...
+
+test('integration test', () => {
   const calcBaseOfBaseRoot = compile(lock!, '@scope/jsii-calc-base-of-base', false);
   const calcBaseRoot = compile(lock!, '@scope/jsii-calc-base', true);
   const calcLibRoot = compile(lock!, '@scope/jsii-calc-lib', true, 'deprecated-to-strip.txt');
@@ -35,6 +42,46 @@ test('integration', async () => {
     'jsii-calc',
   );
 }, 120_000);
+
+test('v1 compatibility check', () => {
+  const compilationDirectory = mkdtempSync(join(FIXTURES_ROOT, '.jsii-v1.'));
+  try {
+    const result = compileJsiiV1(
+      [
+        // Import the `jsii-calc` library... Which includes TypeScript 3.9
+        // unsupported syntax, such as the `type` modifier on import elements,
+        // etc...
+        'import * as calc from "jsii-calc";',
+        '',
+        // Export some class so the assembly isn't empty (not that it matters,
+        // really), but most use stuff from `calc` so it's not elided by the
+        // compiler.
+        'export class SomeClass {',
+        '  private constructor() {',
+        '    const calculator = new calc.Calculator();',
+        '    calculator.add(42);',
+        '    calculator.mul(1337);',
+        '    console.debug(calculator.expression);',
+        '  }',
+        '}',
+      ].join('\n'),
+      {
+        compilationDirectory,
+        packageJson: {
+          jsii: {
+            tsc: {
+              types: ['node'],
+            },
+          },
+        },
+      },
+    );
+
+    expect(result.assembly).toMatchSnapshot(DEFAULT_MATCHER, 'test output assembly');
+  } finally {
+    rmSync(compilationDirectory, { force: true, recursive: true });
+  }
+});
 
 const DEFAULT_MATCHER: Partial<Assembly> = {
   fingerprint: expect.any(String),

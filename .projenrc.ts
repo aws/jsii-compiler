@@ -62,7 +62,14 @@ const project = new typescript.TypeScriptProject({
     configFilePath: 'jest.config.json',
     jestConfig: {
       moduleFileExtensions: ['ts', 'tsx', 'js', 'json'],
-      watchPathIgnorePatterns: ['<rootDir>/fixtures/'],
+      watchPathIgnorePatterns: [
+        // NB: Those are regexes...
+        '<rootDir>/fixtures/\\..*',
+        '<rootDir>/fixtures/node_modules',
+        '<rootDir>/fixtures/.*\\.d\\.ts',
+        '<rootDir>/fixtures/.*\\.js',
+        '<rootDir>/fixtures/.*\\.map',
+      ],
     },
     junitReporting: false,
   },
@@ -144,6 +151,7 @@ project.addDeps(
   '@jsii/spec',
   'case',
   'chalk@^4',
+  'downlevel-dts',
   'fast-deep-equal',
   'log4js',
   'semver',
@@ -164,6 +172,7 @@ project.addDevDeps(
   'all-contributors-cli',
   'clone',
   'eslint-plugin-unicorn',
+  'jsii-1.x@npm:jsii@1',
   'lockfile',
 );
 

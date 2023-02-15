@@ -1,6 +1,9 @@
+// NOTE: Intentionally mixing type imports with value imports. This syntax form
+//       was added in TypeScript 4.5, and requires declarations down-leveling to
+//       be supported by TypeScript 3.9 / jsii 1.x.
 import {
-  IVeryBaseInterface,
-  VeryBaseProps,
+  type IVeryBaseInterface,
+  type VeryBaseProps,
   StaticConsumer as StaticConsumerBase,
 } from '@scope/jsii-calc-base-of-base';
 

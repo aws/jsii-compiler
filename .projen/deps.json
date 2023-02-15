@@ -85,6 +85,11 @@
       "type": "build"
     },
     {
+      "name": "jsii-1.x",
+      "version": "npm:jsii@1",
+      "type": "build"
+    },
+    {
       "name": "lockfile",
       "type": "build"
     },
@@ -124,6 +129,10 @@
     {
       "name": "chalk",
       "version": "^4",
+      "type": "runtime"
+    },
+    {
+      "name": "downlevel-dts",
       "type": "runtime"
     },
     {

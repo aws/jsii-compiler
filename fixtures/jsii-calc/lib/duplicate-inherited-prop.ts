@@ -1,4 +1,4 @@
-import { DiamondLeft, DiamondRight } from '@scope/jsii-calc-lib';
+import { DiamondLeft, type DiamondRight } from '@scope/jsii-calc-lib';
 
 // This is half of the contraption, the rest is in @scope/jsii-calc-lib.
 //

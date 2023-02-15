@@ -1,6 +1,6 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`integration: @scope/jsii-calc-base 1`] = `
+exports[`integration test: @scope/jsii-calc-base 1`] = `
 {
   "author": {
     "name": "Amazon Web Services",
@@ -100,7 +100,7 @@ exports[`integration: @scope/jsii-calc-base 1`] = `
       "kind": "class",
       "locationInModule": {
         "filename": "lib/index.ts",
-        "line": 10,
+        "line": 13,
       },
       "methods": [
         {
@@ -109,7 +109,7 @@ exports[`integration: @scope/jsii-calc-base 1`] = `
           },
           "locationInModule": {
             "filename": "lib/index.ts",
-            "line": 14,
+            "line": 17,
           },
           "name": "typeName",
           "returns": {
@@ -132,7 +132,7 @@ exports[`integration: @scope/jsii-calc-base 1`] = `
       "kind": "interface",
       "locationInModule": {
         "filename": "lib/index.ts",
-        "line": 19,
+        "line": 22,
       },
       "name": "BaseProps",
       "properties": [
@@ -141,7 +141,7 @@ exports[`integration: @scope/jsii-calc-base 1`] = `
           "immutable": true,
           "locationInModule": {
             "filename": "lib/index.ts",
-            "line": 20,
+            "line": 23,
           },
           "name": "bar",
           "type": {
@@ -160,14 +160,14 @@ exports[`integration: @scope/jsii-calc-base 1`] = `
       "kind": "interface",
       "locationInModule": {
         "filename": "lib/index.ts",
-        "line": 23,
+        "line": 26,
       },
       "methods": [
         {
           "abstract": true,
           "locationInModule": {
             "filename": "lib/index.ts",
-            "line": 24,
+            "line": 27,
           },
           "name": "bar",
         },
@@ -185,13 +185,13 @@ exports[`integration: @scope/jsii-calc-base 1`] = `
       "kind": "class",
       "locationInModule": {
         "filename": "lib/index.ts",
-        "line": 30,
+        "line": 33,
       },
       "methods": [
         {
           "locationInModule": {
             "filename": "lib/index.ts",
-            "line": 31,
+            "line": 34,
           },
           "name": "consume",
           "parameters": [
@@ -215,7 +215,7 @@ exports[`integration: @scope/jsii-calc-base 1`] = `
 }
 `;
 
-exports[`integration: @scope/jsii-calc-base-of-base 1`] = `
+exports[`integration test: @scope/jsii-calc-base-of-base 1`] = `
 {
   "author": {
     "name": "Amazon Web Services",
@@ -388,7 +388,7 @@ exports[`integration: @scope/jsii-calc-base-of-base 1`] = `
 }
 `;
 
-exports[`integration: @scope/jsii-calc-lib 1`] = `
+exports[`integration test: @scope/jsii-calc-lib 1`] = `
 {
   "author": {
     "name": "Amazon Web Services",
@@ -1425,7 +1425,7 @@ far enough up the tree.",
 }
 `;
 
-exports[`integration: jsii-calc 1`] = `
+exports[`integration test: jsii-calc 1`] = `
 {
   "author": {
     "name": "Amazon Web Services",
@@ -20369,5 +20369,53 @@ library, regardless of whether they were explicitly referenced or not.",
     },
   },
   "version": "3.20.120",
+}
+`;
+
+exports[`v1 compatibility check: test output assembly 1`] = `
+{
+  "author": {
+    "name": "John Doe",
+    "roles": [
+      "author",
+    ],
+  },
+  "description": "testpkg",
+  "fingerprint": Any<String>,
+  "homepage": "https://github.com/aws/jsii.git",
+  "jsiiVersion": Any<String>,
+  "license": "Apache-2.0",
+  "metadata": {
+    "jsii": {
+      "pacmak": {
+        "hasDefaultInterfaces": true,
+      },
+    },
+  },
+  "name": "testpkg",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/aws/jsii.git",
+  },
+  "schema": "jsii/0.10.0",
+  "targets": {
+    "js": {
+      "npm": "testpkg",
+    },
+  },
+  "types": {
+    "testpkg.SomeClass": {
+      "assembly": "testpkg",
+      "fqn": "testpkg.SomeClass",
+      "kind": "class",
+      "locationInModule": {
+        "filename": "index.ts",
+        "line": 3,
+      },
+      "name": "SomeClass",
+      "symbolId": "index:SomeClass",
+    },
+  },
+  "version": "0.0.1",
 }
 `;
