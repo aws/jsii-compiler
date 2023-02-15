@@ -66,8 +66,6 @@ export class BuildWorkflow {
             uses: 'actions/checkout@v3',
             with: {
               ref: '${{ github.event.pull_request.head.ref }}',
-              //// Suspect this does not work with PRs from forks of private repos (the fork must be private, too).
-              // repository: '${{ github.event.pull_request.head.repo.full_name }}',
             },
           },
           {
