@@ -37,7 +37,7 @@ export type TSCompilerOptions = Partial<
 
 export interface ProjectInfo {
   readonly projectRoot: string;
-  readonly packageJson: any;
+  readonly packageJson: PackageJson;
 
   readonly name: string;
   readonly version: string;
@@ -50,7 +50,7 @@ export interface ProjectInfo {
     readonly url: string;
     readonly directory?: string;
   };
-  readonly keywords?: string[];
+  readonly keywords?: readonly string[];
 
   readonly main: string;
   readonly types: string;
@@ -60,19 +60,67 @@ export interface ProjectInfo {
   readonly dependencyClosure: readonly spec.Assembly[];
   readonly bundleDependencies?: { readonly [name: string]: string };
   readonly targets: spec.AssemblyTargets;
-  readonly metadata?: { [key: string]: any };
+  readonly metadata?: { readonly [key: string]: any };
   readonly jsiiVersionFormat: 'short' | 'full';
   readonly diagnostics?: { readonly [code: string]: ts.DiagnosticCategory };
   readonly description?: string;
   readonly homepage?: string;
   readonly contributors?: readonly spec.Person[];
-  readonly excludeTypescript: string[];
+  readonly excludeTypescript: readonly string[];
   readonly projectReferences?: boolean;
   readonly tsc?: TSCompilerOptions;
   readonly bin?: { readonly [name: string]: string };
   readonly exports?: {
     readonly [name: string]: string | { readonly [name: string]: string };
   };
+}
+
+export interface PackageJson {
+  readonly description?: string;
+  readonly homepage?: string;
+  readonly name?: string;
+  readonly version?: string;
+  readonly keywords?: readonly string[];
+  readonly license?: string;
+  readonly private?: boolean;
+
+  readonly exports?: { readonly [path: string]: string | { readonly [name: string]: string } };
+  readonly main?: string;
+  readonly types?: string;
+  /**
+   * @example { "<4.0": { "*": ["ts3.9/*"] } }
+   * @example { "<4.0": { "index.d.ts": ["index.ts3-9.d.ts"] } }
+   */
+  readonly typesVersions?: {
+    readonly [versionRange: string]: { readonly [pattern: string]: readonly string[] };
+  };
+
+  readonly bin?: { readonly [name: string]: string };
+
+  readonly stability?: string;
+  readonly deprecated?: string;
+
+  readonly dependencies?: { readonly [name: string]: string };
+  readonly devDependencies?: { readonly [name: string]: string };
+  readonly peerDependencies?: { readonly [name: string]: string };
+
+  readonly bundleDependencies?: readonly string[];
+  readonly bundledDependencies?: readonly string[];
+
+  readonly jsii?: {
+    readonly diagnostics?: { readonly [id: string]: 'error' | 'warning' | 'suggestion' | 'message' };
+    readonly metadata?: { readonly [key: string]: unknown };
+    readonly targets?: { readonly [name: string]: unknown };
+    readonly versionFormat?: 'short' | 'full';
+
+    readonly excludeTypescript?: readonly string[];
+    readonly projectReferences?: boolean;
+    readonly tsc?: TSCompilerOptions;
+
+    readonly [key: string]: unknown;
+  };
+
+  readonly [key: string]: unknown;
 }
 
 export interface ProjectInfoResult {
@@ -82,8 +130,7 @@ export interface ProjectInfoResult {
 
 export function loadProjectInfo(projectRoot: string): ProjectInfoResult {
   const packageJsonPath = path.join(projectRoot, 'package.json');
-  // eslint-disable-next-line @typescript-eslint/no-var-requires,@typescript-eslint/no-require-imports
-  const pkg = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
+  const pkg: PackageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
 
   const diagnostics: ts.Diagnostic[] = [];
 
@@ -152,7 +199,7 @@ export function loadProjectInfo(projectRoot: string): ProjectInfoResult {
     pkg.jsii?.metadata,
   );
 
-  const projectInfo = {
+  const projectInfo: ProjectInfo = {
     projectRoot,
     packageJson: pkg,
 
@@ -179,7 +226,7 @@ export function loadProjectInfo(projectRoot: string): ProjectInfoResult {
       js: { npm: pkg.name },
     },
     metadata,
-    jsiiVersionFormat: _validateVersionFormat(pkg.jsii.versionFormat ?? 'full'),
+    jsiiVersionFormat: _validateVersionFormat(pkg.jsii?.versionFormat ?? 'full'),
 
     description: pkg.description,
     homepage: pkg.homepage,
@@ -334,7 +381,7 @@ class DependencyResolver {
   }
 }
 
-function _required<T>(value: T, message: string): T {
+function _required<T>(value: T | undefined, message: string): T {
   if (value == null) {
     throw new Error(message);
   }
@@ -387,7 +434,12 @@ function _tryResolveAssembly(mod: string, localPackage: string | undefined, sear
   }
 }
 
-function _validateLicense(id: string): string {
+function _validateLicense(id: string | undefined): string {
+  if (id == null) {
+    throw new Error(
+      'No "license" was specified in "package.json", see valid license identifiers at https://spdx.org/licenses/',
+    );
+  }
   if (id === 'UNLICENSED') {
     return id;
   }
@@ -480,7 +532,7 @@ function mergeMetadata(
 
 function _loadDiagnostics(entries?: { [key: string]: string }):
   | {
-      [key: string]: ts.DiagnosticCategory;
+      readonly [key: string]: ts.DiagnosticCategory;
     }
   | undefined {
   if (entries === undefined || Object.keys(entries).length === 0) {

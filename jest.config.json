@@ -6,7 +6,11 @@
     "json"
   ],
   "watchPathIgnorePatterns": [
-    "<rootDir>/fixtures/"
+    "<rootDir>/fixtures/\\..*",
+    "<rootDir>/fixtures/node_modules",
+    "<rootDir>/fixtures/.*\\.d\\.ts",
+    "<rootDir>/fixtures/.*\\.js",
+    "<rootDir>/fixtures/.*\\.map"
   ],
   "testMatch": [
     "<rootDir>/src/**/__tests__/**/*.ts?(x)",
