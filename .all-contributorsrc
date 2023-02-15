@@ -1522,6 +1522,15 @@
       "contributions": [
         "bug"
       ]
+    },
+    {
+      "login": "HBobertz",
+      "name": "Hogan Bobertz",
+      "avatar_url": "https://avatars.githubusercontent.com/u/18233297?v=4",
+      "profile": "https://github.com/HBobertz",
+      "contributions": [
+        "code"
+      ]
     }
   ],
   "repoType": "github",

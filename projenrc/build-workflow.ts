@@ -66,7 +66,6 @@ export class BuildWorkflow {
             uses: 'actions/checkout@v3',
             with: {
               ref: '${{ github.event.pull_request.head.ref }}',
-              repository: '${{ github.event.pull_request.head.repo.full_name }}',
             },
           },
           {
@@ -109,6 +108,7 @@ export class BuildWorkflow {
           },
           {
             name: 'Upload patch',
+            if: 'steps.self-mutation.outputs.needed',
             uses: 'actions/upload-artifact@v3',
             with: {
               name: '.repo.patch',
