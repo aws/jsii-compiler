@@ -108,6 +108,7 @@ export class BuildWorkflow {
           },
           {
             name: 'Upload patch',
+            if: 'steps.self-mutation.outputs.needed',
             uses: 'actions/upload-artifact@v3',
             with: {
               name: '.repo.patch',
