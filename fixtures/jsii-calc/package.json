@@ -68,6 +68,9 @@
       }
     },
     "tsc": {
+      "noImplicitOverride": true,
+      "noPropertyAccessFromIndexSignature": true,
+      "noUncheckedIndexedAccess": true,
       "types": [
         "node"
       ]
