@@ -55,7 +55,7 @@
     "lockfile": "^1.0.4",
     "npm-check-updates": "^16",
     "prettier": "^2.8.4",
-    "projen": "^0.67.57",
+    "projen": "^0.67.58",
     "ts-jest": "^29.0.5",
     "ts-node": "^10.9.1"
   },
