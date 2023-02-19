@@ -79,8 +79,8 @@ sum.parts = [
   new Multiply(new calcLib.Number(2), new calcLib.Number(3)),
 ];
 assert.equal(10 + 5 + 2 * 3, sum.value);
-assert.equal(sum.parts[0].value, 5);
-assert.equal(sum.parts[2].value, 6);
+assert.equal(sum.parts[0]!.value, 5);
+assert.equal(sum.parts[2]!.value, 6);
 assert.equal(sum.toString(), '(((0 + 5) + 10) + (2 * 3))');
 
 //
@@ -91,9 +91,9 @@ const calc2 = new Calculator(); // Initializer overload (props is optional)
 calc2.add(10);
 calc2.add(20);
 calc2.mul(2);
-assert.equal(calc2.operationsMap.add.length, 2);
-assert.equal(calc2.operationsMap.mul.length, 1);
-assert.equal(calc2.operationsMap.add[1].value, 30);
+assert.equal(calc2.operationsMap['add']!.length, 2);
+assert.equal(calc2.operationsMap['mul']!.length, 1);
+assert.equal(calc2.operationsMap['add']?.[1]!.value, 30);
 
 //
 // Initializer overloads

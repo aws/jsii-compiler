@@ -279,7 +279,7 @@ export class ObjectRefsInCollections {
   public sumFromMap(values: { [key: string]: NumericValue }) {
     let sum = 0;
     for (const key of Object.keys(values)) {
-      sum += values[key].value;
+      sum += values[key]!.value;
     }
     return sum;
   }
@@ -682,7 +682,7 @@ export class VariadicInvoker {
 
   public asArray(...values: number[]): number[] {
     const [first, ...rest] = values;
-    return this.method.asArray(first, ...rest);
+    return this.method.asArray(first!, ...rest);
   }
 }
 
@@ -1591,7 +1591,7 @@ export class JsiiAgent {
    * Returns the value of the JSII_AGENT environment variable.
    */
   public static get value(): string | undefined {
-    return process.env.JSII_AGENT;
+    return process.env['JSII_AGENT'];
   }
 }
 
@@ -1795,14 +1795,14 @@ export class ImplementsInterfaceWithInternal implements IInterfaceWithInternal {
 
 export class ImplementsInterfaceWithInternalSubclass extends ImplementsInterfaceWithInternal {
   /** @internal */
-  public _alsoHidden() {
+  public override _alsoHidden() {
     return;
   }
 
   /**
    * @internal
    */
-  public _propertiesToo?: string;
+  public override _propertiesToo?: string;
 }
 
 //
@@ -2242,7 +2242,7 @@ export class SupportsNiceJavaBuilder extends SupportsNiceJavaBuilderWithRequired
    * @param rest       a variadic continuation
    */
   public constructor(
-    public readonly id: number,
+    public override readonly id: number,
     defaultBar = 1337,
     props?: SupportsNiceJavaBuilderProps,
     ...rest: string[]
@@ -2936,11 +2936,11 @@ export class StaticHelloParent {
   }
 }
 export class StaticHelloChild extends StaticHelloParent {
-  public static get property(): number {
+  public static override get property(): number {
     return 42;
   }
 
-  public static method(): void {
+  public static override method(): void {
     /* An ES6 Override */
   }
 

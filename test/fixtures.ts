@@ -1,10 +1,15 @@
 import { existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { lock, unlock } from 'lockfile';
+import { DiagnosticCategory } from 'typescript';
 import { Compiler } from '../src/compiler';
 import { loadProjectInfo } from '../src/project-info';
+import { formatDiagnostic } from '../src/utils';
 
-const FIXTURES_ROOT = resolve(__dirname, '..', 'fixtures');
+/**
+ * The root directory in which fixtures are located.
+ */
+export const FIXTURES_ROOT = resolve(__dirname, '..', 'fixtures');
 
 /**
  * Compiles the specified fixture module.
@@ -31,6 +36,12 @@ export function compile(_lock: Lock, name: string, addDeprecationWarnings: boole
   });
 
   const result = compiler.emit();
+  expect(
+    result.diagnostics
+      .filter((diag) => diag.category === DiagnosticCategory.Error)
+      .map((diag) => formatDiagnostic(diag, projectRoot))
+      .join('\n'),
+  ).toEqual('');
   expect(result).toHaveProperty('emitSkipped', false);
 
   return projectRoot;
