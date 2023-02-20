@@ -367,12 +367,12 @@ neg.implements-class.ts:1:1 - error JSII3005: Type "jsii.NotAnInterface" cannot 
 exports[`index-signatures 1`] = `
 neg.index-signatures.ts:4:3 - error JSII1999: Index signatures are not supported in jsii APIs.
 
-4   readonly [key: string]: number;
+4   readonly [key: symbol]: number;
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 neg.index-signatures.ts:9:3 - error JSII1999: Index signatures are not supported in jsii APIs.
 
-9   static readonly [key: string]: string;
+9   static readonly [key: symbol]: string;
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
