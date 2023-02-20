@@ -5560,9 +5560,9 @@ typedarray-to-buffer@^3.1.5:
     is-typedarray "^1.0.0"
 
 typescript@next:
-  version "5.0.0-dev.20230218"
-  resolved "https://registry.yarnpkg.com/typescript/-/typescript-5.0.0-dev.20230218.tgz#aec5613468b3ed38cfff25700ab7a2bf38cb42fb"
-  integrity sha512-SCUCUbzAQ9Nvl+V4qBLh1z6cWYDt6uM8gywhmrQrYdpbrZss3L8MBhZy1CfZFe6K1ApsbW0cBT8HVoTC0/WkEg==
+  version "5.0.0-dev.20230219"
+  resolved "https://registry.yarnpkg.com/typescript/-/typescript-5.0.0-dev.20230219.tgz#981462cd32475f552945c5bf06101e966e350d6e"
+  integrity sha512-CjlwGu0BGvavGAPs7/2sng1K0EYubaZc3irzGboNBs83OI2+ij4QixjS8+nXcoR4H3uumDnyd7Vo/LoIgdSa7Q==
 
 typescript@~3.9.10:
   version "3.9.10"
