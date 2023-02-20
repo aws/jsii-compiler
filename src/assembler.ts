@@ -1215,6 +1215,12 @@ export class Assembler implements Emitter {
           continue;
         }
 
+        if (ts.isIndexSignatureDeclaration(memberDecl)) {
+          // Index signatures (static or not) are not supported in the jsii type model.
+          this._diagnostics.push(JsiiDiagnostic.JSII_1999_UNSUPPORTED.create(memberDecl, { what: 'Index signatures' }));
+          continue;
+        }
+
         const member: ts.Symbol = ts.isConstructorDeclaration(memberDecl)
           ? (memberDecl as any).symbol
           : this._typeChecker.getSymbolAtLocation(ts.getNameOfDeclaration(memberDecl)!)!;
@@ -1649,6 +1655,11 @@ export class Assembler implements Emitter {
       | ts.ClassLikeDeclaration
       | ts.InterfaceDeclaration
       | undefined;
+
+    for (const decl of (typeDecl?.members as readonly ts.Node[] | undefined)?.filter((mem) => ts.isIndexSignatureDeclaration(mem)) ?? []) {
+        // Index signatures (static or not) are not supported in the jsii type model.
+        this._diagnostics.push(JsiiDiagnostic.JSII_1999_UNSUPPORTED.create(decl, { what: 'Index signatures' }));
+    }
 
     for (const declaringType of [type, ...erasedBases]) {
       for (const member of declaringType.getProperties()) {
