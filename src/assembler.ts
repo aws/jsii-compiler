@@ -2483,6 +2483,11 @@ function _isExported(node: ts.Declaration): boolean {
  * @return `true` if the symbol should be hidden
  */
 function _isPrivate(symbol: ts.Symbol): boolean {
+  // Private identifiers are always private...
+  if (symbol.name.startsWith('#')) {
+    return true;
+  }
+
   const TYPE_DECLARATION_KINDS = new Set([
     ts.SyntaxKind.ClassDeclaration,
     ts.SyntaxKind.InterfaceDeclaration,

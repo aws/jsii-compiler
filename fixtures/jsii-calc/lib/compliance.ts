@@ -63,17 +63,17 @@ export class EnumDispenser {
 export class AllTypes {
   // boolean
 
-  private boolValue = false;
+  #boolValue = false;
 
   public get booleanProperty() {
-    return this.boolValue;
+    return this.#boolValue;
   }
 
   public set booleanProperty(value: boolean) {
     if (typeof value !== 'boolean') {
       throw new Error('not a boolean');
     }
-    this.boolValue = value;
+    this.#boolValue = value;
   }
 
   // string
@@ -659,13 +659,13 @@ export class Thrower {
 }
 
 export class VariadicMethod {
-  private readonly prefix: number[];
+  readonly #prefix: number[];
 
   /**
    * @param prefix a prefix that will be use for all values returned by `#asArray`.
    */
   public constructor(...prefix: number[]) {
-    this.prefix = prefix;
+    this.#prefix = prefix;
   }
 
   /**
@@ -673,7 +673,7 @@ export class VariadicMethod {
    * @param others other elements to be included in the array.
    */
   public asArray(first: number, ...others: number[]): number[] {
-    return [...this.prefix, first, ...others];
+    return [...this.#prefix, first, ...others];
   }
 }
 
@@ -2584,19 +2584,19 @@ export interface ChildStruct982 extends ParentStruct982 {
  * 2. call #takeThisToo() -> The ObjectRef from before will need to be down-cased to the ParentStruct982 type
  */
 export class Demonstrate982 {
-  private static readonly value = {
+  static readonly #value = {
     foo: 'foo',
     bar: 1337,
   };
 
   /** It's dangerous to go alone! */
   public static takeThis(): ChildStruct982 {
-    return this.value;
+    return this.#value;
   }
 
   /** It's dangerous to go alone! */
   public static takeThisToo(): ParentStruct982 {
-    return this.value;
+    return this.#value;
   }
 }
 
@@ -3119,10 +3119,10 @@ export class ParamShadowsBuiltins {
     str: string,
     props: ParamShadowsBuiltinsProps,
   ) {
-    this.consumeArgs(builtins, str, props);
+    this.#consumeArgs(builtins, str, props);
   }
 
-  private consumeArgs(..._args: unknown[]) {
+  #consumeArgs(..._args: unknown[]) {
     return;
   }
 }
