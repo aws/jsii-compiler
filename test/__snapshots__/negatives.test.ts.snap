@@ -698,6 +698,19 @@ neg.reserved.emits-warning.ts:5:10 - warning JSII5018: "assert" is a reserved wo
 
 `;
 
+exports[`separate-write-type 1`] = `
+neg.separate-write-type.ts:8:26 - error JSII1005: Visible property signatures cannot use a separate write type. Use the same type as the getter.
+
+8   public set size(value: string | number | boolean) {
+                           ~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  neg.separate-write-type.ts:4:22
+    4   public get size(): number {
+                           ~~~~~~
+    The getter signature is declared here
+
+`;
+
 exports[`static-const-name 1`] = `
 error JSII8003: Static constant names must use ALL_CAPS, PascalCase, or camelCase. Rename "MyClass.snake_case" to "SNAKE_CASE"
 
