@@ -364,6 +364,20 @@ neg.implements-class.ts:1:1 - error JSII3005: Type "jsii.NotAnInterface" cannot 
 
 `;
 
+exports[`index-signatures 1`] = `
+neg.index-signatures.ts:4:3 - error JSII1999: Index signatures are not supported in jsii APIs.
+
+4   readonly [key: symbol]: number;
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+neg.index-signatures.ts:9:3 - error JSII1999: Index signatures are not supported in jsii APIs.
+
+9   static readonly [key: symbol]: string;
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+`;
+
 exports[`inheritance-changes-types.1 1`] = `
 error JSII5003: "jsii.SomethingSpecific#returnSomething" changes the return type to "jsii.Subclass" when overriding jsii.Something. Change it to "jsii.Superclass"
 
