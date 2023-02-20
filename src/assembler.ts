@@ -2143,10 +2143,27 @@ export class Assembler implements Emitter {
       if (objectType) {
         elementtype = this._typeReference(objectType, declaration, 'map element type');
       } else {
-        this._diagnostics.push(
-          JsiiDiagnostic.JSII_1003_UNSUPPORTED_TYPE.create(declaration, 'Only string-indexed map types are supported'),
-        );
-        elementtype = spec.CANONICAL_ANY;
+        const typeDecl = type.symbol.declarations?.[0];
+        if (
+          typeDecl != null &&
+          ts.isTypeLiteralNode(typeDecl) &&
+          typeDecl.members.length == 1 &&
+          ts.isIndexSignatureDeclaration(typeDecl.members[0]) &&
+          typeDecl.members[0].parameters[0].type != null &&
+          ts.isTemplateLiteralTypeNode(typeDecl.members[0].parameters[0].type)
+        ) {
+          const indexTypeNode = typeDecl.members[0].type;
+          const indexType = this._typeChecker.getTypeFromTypeNode(indexTypeNode);
+          elementtype = this._typeReference(indexType, indexTypeNode, 'map element type');
+        } else {
+          this._diagnostics.push(
+            JsiiDiagnostic.JSII_1003_UNSUPPORTED_TYPE.create(
+              declaration,
+              'Only string-indexed map types are supported',
+            ),
+          );
+          elementtype = spec.CANONICAL_ANY;
+        }
       }
       return {
         collection: {
