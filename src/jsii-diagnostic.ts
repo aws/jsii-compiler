@@ -280,6 +280,12 @@ export class JsiiDiagnostic implements ts.Diagnostic {
     name: 'typescript-restrictions/duplicate-enum-value',
   });
 
+  public static readonly JSII_1005_SEPARATE_WRITE_TYPE = Code.error({
+    code: 1005,
+    formatter: () => 'Visible property signatures cannot use a separate write type. Use the same type as the getter.',
+    name: 'typescript-restrictions/separate-write-type',
+  });
+
   public static readonly JSII_1999_UNSUPPORTED = Code.error({
     code: 1999,
     formatter: ({ what, alternative }: { what: string; alternative?: string }) =>

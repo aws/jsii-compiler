@@ -2,7 +2,7 @@ import * as crypto from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as spec from '@jsii/spec';
-import { writeAssembly, SPEC_FILE_NAME, PackageJson } from '@jsii/spec';
+import { describeTypeReference, writeAssembly, SPEC_FILE_NAME, PackageJson } from '@jsii/spec';
 import * as chalk from 'chalk';
 import * as deepEqual from 'fast-deep-equal/es6';
 import * as log4js from 'log4js';
@@ -1981,8 +1981,34 @@ export class Assembler implements Emitter {
     );
 
     if (ts.isGetAccessor(signature)) {
-      const decls = symbol.getDeclarations() ?? [];
-      property.immutable = !decls.some((decl) => ts.isSetAccessor(decl)) || undefined;
+      property.immutable = true;
+      for (const decl of symbol.getDeclarations() ?? []) {
+        if (!ts.isSetAccessor(decl)) {
+          continue;
+        }
+        delete property.immutable;
+
+        // Verify the setter doesn't have a Separate Write Type (SWT)
+        const valueParam = decl.parameters[0];
+        if (valueParam?.type == null) {
+          // If there is no type node, there can't be a SWT
+          continue;
+        }
+        const paramType = this._typeChecker.getTypeFromTypeNode(valueParam.type);
+        const paramOptionalValue = this._optionalValue(paramType, valueParam.type, 'parameter type');
+
+        if (
+          property.optional !== paramOptionalValue.optional ||
+          describeTypeReference(property.type) !== describeTypeReference(paramOptionalValue.type)
+        ) {
+          this._diagnostics.push(
+            JsiiDiagnostic.JSII_1005_SEPARATE_WRITE_TYPE.create(valueParam.type).addRelatedInformation(
+              signature.type ?? signature.name,
+              'The getter signature is declared here',
+            ),
+          );
+        }
+      }
     } else {
       property.immutable = (ts.getCombinedModifierFlags(signature) & ts.ModifierFlags.Readonly) !== 0 || undefined;
     }

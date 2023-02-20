@@ -40,7 +40,6 @@ test('test parsing string literal type with enum interpolation', () => {
 
 // ----------------------------------------------------------------------
 test('test parsing string literal type with number interpolation', () => {
-  debugger;
   const assembly = sourceToAssemblyHelper(`
     export interface UsesSTT {
       readonly foo: \`foo - \${number}\`
