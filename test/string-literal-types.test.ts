@@ -1,3 +1,4 @@
+import { CollectionKind, PrimitiveType, Type, TypeKind } from '@jsii/spec';
 import { sourceToAssemblyHelper } from '../lib';
 
 // ----------------------------------------------------------------------
@@ -17,7 +18,7 @@ test('test parsing string literal type with enum interpolation', () => {
     assembly: 'testpkg',
     datatype: true,
     fqn: 'testpkg.UsesSTT',
-    kind: 'interface',
+    kind: TypeKind.Interface,
     properties: [
       {
         abstract: true,
@@ -28,19 +29,18 @@ test('test parsing string literal type with enum interpolation', () => {
         },
         name: 'foo',
         type: {
-          primitive: 'string',
+          primitive: PrimitiveType.String,
         },
       },
     ],
     locationInModule: { filename: 'index.ts', line: 7 },
     name: 'UsesSTT',
     symbolId: 'index:UsesSTT',
-  });
+  } satisfies Type);
 });
 
 // ----------------------------------------------------------------------
 test('test parsing string literal type with number interpolation', () => {
-  debugger;
   const assembly = sourceToAssemblyHelper(`
     export interface UsesSTT {
       readonly foo: \`foo - \${number}\`
@@ -51,7 +51,7 @@ test('test parsing string literal type with number interpolation', () => {
     assembly: 'testpkg',
     datatype: true,
     fqn: 'testpkg.UsesSTT',
-    kind: 'interface',
+    kind: TypeKind.Interface,
     properties: [
       {
         abstract: true,
@@ -62,12 +62,50 @@ test('test parsing string literal type with number interpolation', () => {
         },
         name: 'foo',
         type: {
-          primitive: 'string',
+          primitive: PrimitiveType.String,
         },
       },
     ],
     locationInModule: { filename: 'index.ts', line: 2 },
     name: 'UsesSTT',
     symbolId: 'index:UsesSTT',
-  });
+  } satisfies Type);
+});
+
+// ----------------------------------------------------------------------
+test('test parsing string literal type in index signature', () => {
+  const assembly = sourceToAssemblyHelper(`
+    export interface UsesSTT {
+      readonly foo: { [key: \`foo - \${number}\`]: boolean };
+    }
+  `);
+
+  expect(assembly.types!['testpkg.UsesSTT']).toEqual({
+    assembly: 'testpkg',
+    datatype: true,
+    fqn: 'testpkg.UsesSTT',
+    kind: TypeKind.Interface,
+    properties: [
+      {
+        abstract: true,
+        immutable: true,
+        locationInModule: {
+          filename: 'index.ts',
+          line: 3,
+        },
+        name: 'foo',
+        type: {
+          collection: {
+            kind: CollectionKind.Map,
+            elementtype: {
+              primitive: PrimitiveType.Boolean,
+            },
+          },
+        },
+      },
+    ],
+    locationInModule: { filename: 'index.ts', line: 2 },
+    name: 'UsesSTT',
+    symbolId: 'index:UsesSTT',
+  } satisfies Type);
 });
