@@ -1656,9 +1656,11 @@ export class Assembler implements Emitter {
       | ts.InterfaceDeclaration
       | undefined;
 
-    for (const decl of (typeDecl?.members as readonly ts.Node[] | undefined)?.filter((mem) => ts.isIndexSignatureDeclaration(mem)) ?? []) {
-        // Index signatures (static or not) are not supported in the jsii type model.
-        this._diagnostics.push(JsiiDiagnostic.JSII_1999_UNSUPPORTED.create(decl, { what: 'Index signatures' }));
+    for (const decl of (typeDecl?.members as readonly ts.Node[] | undefined)?.filter((mem) =>
+      ts.isIndexSignatureDeclaration(mem),
+    ) ?? []) {
+      // Index signatures (static or not) are not supported in the jsii type model.
+      this._diagnostics.push(JsiiDiagnostic.JSII_1999_UNSUPPORTED.create(decl, { what: 'Index signatures' }));
     }
 
     for (const declaringType of [type, ...erasedBases]) {
