@@ -11,6 +11,7 @@ jobs:
     name: Build release package
     runs-on: ubuntu-latest
     permissions:
+      id-token: write
       contents: read
     outputs:
       dist-tag: ${{ steps.publish-target.outputs.dist-tag }}
@@ -101,7 +102,9 @@ jobs:
     name: Release to registry.npmjs.org
     needs: build
     runs-on: ubuntu-latest
-    permissions: {}
+    permissions:
+      id-token: write
+      contents: read
     env:
       CI: "true"
     steps:

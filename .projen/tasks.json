@@ -161,6 +161,17 @@
         }
       ]
     },
+    "tag-release": {
+      "name": "tag-release",
+      "description": "Tag this commit for release",
+      "steps": [
+        {
+          "exec": "ts-node projenrc/tag-release.ts",
+          "name": "tag-release",
+          "receiveArgs": true
+        }
+      ]
+    },
     "test": {
       "name": "test",
       "description": "Run tests",

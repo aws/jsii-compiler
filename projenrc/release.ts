@@ -13,6 +13,7 @@ const CODE_SIGNING_USER_ID = 'aws-jsii@amazon.com';
 export class ReleaseWorkflow {
   public constructor(project: typescript.TypeScriptProject) {
     new ReleaseTask(project);
+    new TagReleaseTask(project);
 
     let release = project.github!.addWorkflow('release');
 
@@ -48,6 +49,7 @@ export class ReleaseWorkflow {
         [PublishTargetOutput.IS_PRERELEASE]: { stepId: publishTarget, outputName: PublishTargetOutput.IS_PRERELEASE },
       },
       permissions: {
+        idToken: github.workflows.JobPermission.WRITE,
         contents: github.workflows.JobPermission.READ,
       },
       runsOn: ['ubuntu-latest'],
@@ -193,7 +195,10 @@ export class ReleaseWorkflow {
         CI: 'true',
       },
       needs: ['build'],
-      permissions: {},
+      permissions: {
+        idToken: github.workflows.JobPermission.WRITE,
+        contents: github.workflows.JobPermission.READ,
+      },
       runsOn: ['ubuntu-latest'],
       steps: [
         downloadArtifactStep,
@@ -257,6 +262,19 @@ class ReleaseTask {
 
     task.exec('yarn version --no-git-tag-version --new-version 0.0.0', {
       name: 'reset-version',
+    });
+  }
+}
+
+class TagReleaseTask {
+  public constructor(project: typescript.TypeScriptProject) {
+    const task = project.addTask('tag-release', {
+      description: 'Tag this commit for release',
+    });
+
+    task.exec('ts-node projenrc/tag-release.ts', {
+      name: 'tag-release',
+      receiveArgs: true,
     });
   }
 }
