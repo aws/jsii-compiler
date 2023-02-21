@@ -49,6 +49,7 @@ export class ReleaseWorkflow {
         [PublishTargetOutput.IS_PRERELEASE]: { stepId: publishTarget, outputName: PublishTargetOutput.IS_PRERELEASE },
       },
       permissions: {
+        idToken: github.workflows.JobPermission.WRITE,
         contents: github.workflows.JobPermission.READ,
       },
       runsOn: ['ubuntu-latest'],
@@ -194,7 +195,10 @@ export class ReleaseWorkflow {
         CI: 'true',
       },
       needs: ['build'],
-      permissions: {},
+      permissions: {
+        idToken: github.workflows.JobPermission.WRITE,
+        contents: github.workflows.JobPermission.READ,
+      },
       runsOn: ['ubuntu-latest'],
       steps: [
         downloadArtifactStep,
