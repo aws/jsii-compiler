@@ -1,5 +1,4 @@
-import * as path from 'node:path';
-import type * as checkNode from '@jsii/check-node/lib/constants';
+import { NodeRelease } from '@jsii/check-node';
 import { github, typescript } from 'projen';
 
 export interface BuildWorkflowOptions {
@@ -39,15 +38,6 @@ export class BuildWorkflow {
         },
       });
     }
-
-    /* This is a hack because @jsii/check-node does not currently expose its constants... */
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { NodeRelease } = require(path.resolve(
-      require.resolve('@jsii/check-node/package.json'),
-      '..',
-      'lib',
-      'constants.js',
-    )) as typeof checkNode;
 
     wf.addJobs({
       'build': {
