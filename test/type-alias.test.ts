@@ -1,3 +1,4 @@
+import { PrimitiveType, Type, TypeKind } from '@jsii/spec';
 import { sourceToAssemblyHelper } from '../lib';
 
 // ----------------------------------------------------------------------
@@ -11,8 +12,8 @@ test('type aliases with awaited and promise types', () => {
         bar: AwaitedPromiseString;
         buzz: AwaitedPromisePromiseNumber;
         bam: AwaitedBooleanOrPromiseNumber;
-        constructor(foo: AwaitedPromiseString, 
-                    fizz: AwaitedPromisePromiseNumber, 
+        constructor(foo: AwaitedPromiseString,
+                    fizz: AwaitedPromisePromiseNumber,
                     flam: AwaitedBooleanOrPromiseNumber) {
             this.bar = foo;
             this.buzz = fizz;
@@ -23,59 +24,59 @@ test('type aliases with awaited and promise types', () => {
   expect(assembly.types!['testpkg.AwaitedPromiseTypes']).toEqual({
     assembly: 'testpkg',
     fqn: 'testpkg.AwaitedPromiseTypes',
-    kind: 'class',
+    kind: TypeKind.Class,
     initializer: {
-        locationInModule: { filename: 'index.ts', line: 10 },
-        parameters: [
-            {
-                name: 'foo',
-                type: {
-                    "primitive": "string",
-                },
+      locationInModule: { filename: 'index.ts', line: 10 },
+      parameters: [
+        {
+          name: 'foo',
+          type: {
+            primitive: PrimitiveType.String,
+          },
+        },
+        {
+          name: 'fizz',
+          type: {
+            primitive: PrimitiveType.Number,
+          },
+        },
+        {
+          name: 'flam',
+          type: {
+            union: {
+              types: [{ primitive: PrimitiveType.Number }, { primitive: PrimitiveType.Boolean }],
             },
-            {
-                name: 'fizz',
-                type: {
-                    "primitive": "number",
-                },
-            },
-            {
-                name: 'flam',
-                type: {
-                    "union": {
-                        "types": [{"primitive": "number",}, {"primitive": "boolean",} ]
-                    }
-                },
-            },
-        ],
+          },
+        },
+      ],
     },
     locationInModule: { filename: 'index.ts', line: 6 },
     name: 'AwaitedPromiseTypes',
     properties: [
-        {
-            locationInModule: { filename: 'index.ts', line: 9 },
-            name: 'bam',
-            type: {
-                "union": {
-                    "types": [{"primitive": "number",}, {"primitive": "boolean",} ]
-                }
-            },
+      {
+        locationInModule: { filename: 'index.ts', line: 9 },
+        name: 'bam',
+        type: {
+          union: {
+            types: [{ primitive: PrimitiveType.Number }, { primitive: PrimitiveType.Boolean }],
+          },
         },
-        {
-            locationInModule: { filename: 'index.ts', line: 7 },
-            name: 'bar',
-            type: {
-                "primitive": "string",
-            },
+      },
+      {
+        locationInModule: { filename: 'index.ts', line: 7 },
+        name: 'bar',
+        type: {
+          primitive: PrimitiveType.String,
         },
-        {
-            locationInModule: { filename: 'index.ts', line: 8 },
-            name: 'buzz',
-            type: {
-                "primitive": "number",
-            },
+      },
+      {
+        locationInModule: { filename: 'index.ts', line: 8 },
+        name: 'buzz',
+        type: {
+          primitive: PrimitiveType.Number,
         },
+      },
     ],
     symbolId: 'index:AwaitedPromiseTypes',
-    });
+  } satisfies Type);
 });
