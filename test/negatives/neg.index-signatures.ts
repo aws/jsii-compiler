@@ -10,3 +10,31 @@ export class WithStaticIndex {
 
   private constructor() { }
 }
+
+export interface InternalIsIgnoredOnInterface {
+  readonly hello: number;
+
+  /**
+   * There should NOT be an error marker on this index signature, as it's marked
+   * internal.
+   *
+   *  @internal
+   */
+  readonly [key: string]: number;
+}
+
+export class InternalIsIgnoredOnClass {
+  readonly hello: number;
+
+  /**
+   * There should NOT be an error marker on this index signature, as it's marked
+   * internal.
+   *
+   *  @internal
+   */
+  readonly [key: string]: number;
+
+  private constructor() {
+    this.hello = 1337;
+  }
+}

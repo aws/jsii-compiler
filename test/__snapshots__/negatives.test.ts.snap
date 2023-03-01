@@ -365,12 +365,12 @@ neg.implements-class.ts:1:1 - error JSII3005: Type "jsii.NotAnInterface" cannot 
 `;
 
 exports[`index-signatures 1`] = `
-neg.index-signatures.ts:4:3 - error JSII1999: Index signatures are not supported in jsii APIs.
+neg.index-signatures.ts:4:3 - error JSII1999: Index signatures are not supported in jsii APIs. This declaration must be marked @internal.
 
 4   readonly [key: symbol]: number;
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-neg.index-signatures.ts:9:3 - error JSII1999: Index signatures are not supported in jsii APIs.
+neg.index-signatures.ts:9:3 - error JSII1999: Index signatures are not supported in jsii APIs. This declaration must be marked @internal.
 
 9   static readonly [key: symbol]: string;
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -609,14 +609,6 @@ neg.omit.1.ts:7:33 - error JSII3004: Illegal extends clause for an exported API:
 7 export interface BarBaz extends Omit<FooBar, 'foo'> {
                                   ~~~~~~~~~~~~~~~~~~~
 
-  ../../node_modules/typescript/lib/lib.es5.d.ts:1583:35
-    1583 type Pick<T, K extends keyof T> = {
-                                           ~
-    1584     [P in K]: T[P];
-         ~~~~~~~~~~~~~~~~~~~
-    1585 };
-         ~
-    The invalid super type is declared here.
 
 `;
 
@@ -626,14 +618,6 @@ neg.omit.2.ts:7:32 - error JSII3004: Illegal implements clause for an exported A
 7 export class BarBaz implements Omit<FooBar, 'foo'> {
                                  ~~~~~~~~~~~~~~~~~~~
 
-  ../../node_modules/typescript/lib/lib.es5.d.ts:1583:35
-    1583 type Pick<T, K extends keyof T> = {
-                                           ~
-    1584     [P in K]: T[P];
-         ~~~~~~~~~~~~~~~~~~~
-    1585 };
-         ~
-    The invalid super type is declared here.
 
 `;
 

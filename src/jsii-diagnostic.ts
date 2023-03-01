@@ -288,8 +288,18 @@ export class JsiiDiagnostic implements ts.Diagnostic {
 
   public static readonly JSII_1999_UNSUPPORTED = Code.error({
     code: 1999,
-    formatter: ({ what, alternative }: { what: string; alternative?: string }) =>
-      `${what} are not supported in jsii APIs.${alternative ? ` Consider using ${alternative} instead.` : ''}`,
+    formatter: ({
+      what,
+      alternative,
+      suggestInternal,
+    }: {
+      what: string;
+      alternative?: string;
+      suggestInternal?: boolean;
+    }) =>
+      `${what} are not supported in jsii APIs.${alternative ? ` Consider using ${alternative} instead.` : ''}${
+        suggestInternal ? ` This declaration must${alternative ? ' otherwise' : ''} be marked @internal.` : ''
+      }`,
     name: 'typescript-restrictions/unsupported',
   });
 
@@ -775,7 +785,10 @@ export class JsiiDiagnostic implements ts.Diagnostic {
   }
 
   public addRelatedInformation(node: ts.Node, message: JsiiDiagnostic['messageText']): this {
-    this.relatedInformation.push(JsiiDiagnostic.JSII_9999_RELATED_INFO.create(node, message));
+    // Don't relate info into the TypeScript standard library
+    if (!/[\\/]typescript[\\/]lib[\\/]lib\..+\.d\.ts$/.test(node.getSourceFile().fileName)) {
+      this.relatedInformation.push(JsiiDiagnostic.JSII_9999_RELATED_INFO.create(node, message));
+    }
     // Clearing out #formatted, as this would no longer be the correct string.
     this.#formatted = undefined;
     return this;

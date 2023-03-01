@@ -6,7 +6,7 @@ import * as ts from 'typescript';
 
 import { Assembler } from './assembler';
 import * as Case from './case';
-import { emitDownleveledDeclarations } from './downlevel-dts';
+import { emitDownleveledDeclarations, TYPES_COMPAT } from './downlevel-dts';
 import { Emitter } from './emitter';
 import { JsiiDiagnostic } from './jsii-diagnostic';
 import { ProjectInfo } from './project-info';
@@ -323,6 +323,7 @@ export class Compiler implements Emitter {
       include: [pi.tsc?.rootDir != null ? path.join(pi.tsc.rootDir, '**', '*.ts') : path.join('**', '*.ts')],
       exclude: [
         'node_modules',
+        pi.tsc?.outDir != null ? path.resolve(pi.tsc.outDir, TYPES_COMPAT) : TYPES_COMPAT,
         ...(pi.excludeTypescript ?? []),
         ...(pi.tsc?.outDir != null &&
         (pi.tsc?.rootDir == null || path.resolve(pi.tsc.outDir).startsWith(path.resolve(pi.tsc.rootDir) + path.sep))
