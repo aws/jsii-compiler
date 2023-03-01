@@ -115,6 +115,7 @@ project.vscode!.settings.addSetting('typescript.tsdk', 'node_modules/typescript/
 // Exports map...
 project.package.addField('exports', {
   '.': `./${project.package.entrypoint}`,
+  './bin/jsii': './bin/jsii',
   './package.json': './package.json',
 });
 
