@@ -17,6 +17,8 @@ import * as ts from 'typescript';
 import type { PackageJson, ProjectInfo } from './project-info';
 import type { Mutable } from './utils';
 
+export const TYPES_COMPAT = '.types-compat';
+
 const LOG = log4js.getLogger('jsii/compiler');
 
 const TS_VERSION = new SemVer(`${ts.versionMajorMinor}.0`);
@@ -83,14 +85,17 @@ export function emitDownleveledDeclarations({ packageJson, projectRoot, tsc }: P
 
   let typesVersions: Mutable<PackageJson['typesVersions']>;
 
-  const typesCompat = '.types-compat';
   for (const [version, rewriteSet] of rewrites) {
     const versionSuffix = `ts${version}`;
-    const compatDir = join(projectRoot, ...(tsc?.outDir != null ? [tsc?.outDir] : []), typesCompat, versionSuffix);
+    const compatDir = join(projectRoot, ...(tsc?.outDir != null ? [tsc?.outDir] : []), TYPES_COMPAT, versionSuffix);
     if (!existsSync(compatDir)) {
       mkdirSync(compatDir, { recursive: true });
-      // Make sure all of this is gitignored, out of courtesy...
-      writeFileSync(join(projectRoot, typesCompat, '.gitignore'), '*\n', 'utf-8');
+      try {
+        // Make sure all of this is gitignored, out of courtesy...
+        writeFileSync(join(projectRoot, TYPES_COMPAT, '.gitignore'), '*\n', 'utf-8');
+      } catch {
+        // Ignore any error here... This is inconsequential.
+      }
     }
 
     for (const [dts, downleveled] of rewriteSet) {
@@ -104,7 +109,7 @@ export function emitDownleveledDeclarations({ packageJson, projectRoot, tsc }: P
     // Register the type redirect in the typesVersions configuration
     typesVersions ??= {};
     const from = [...(tsc?.outDir != null ? [tsc?.outDir] : []), '*'].join('/');
-    const to = [...(tsc?.outDir != null ? [tsc?.outDir] : []), typesCompat, versionSuffix, '*'].join('/');
+    const to = [...(tsc?.outDir != null ? [tsc?.outDir] : []), TYPES_COMPAT, versionSuffix, '*'].join('/');
     typesVersions[`<=${version}`] = { [from]: [to] };
   }
 

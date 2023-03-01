@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { loadAssemblyFromPath, SPEC_FILE_NAME, SPEC_FILE_NAME_COMPRESSED } from '@jsii/spec';
 
 import { Compiler } from '../src/compiler';
+import { TYPES_COMPAT } from '../src/downlevel-dts';
 import { ProjectInfo } from '../src/project-info';
 
 describe(Compiler, () => {
@@ -265,7 +266,7 @@ function expectedTypeScriptConfig() {
       target: 'ES2020',
       tsBuildInfoFile: 'tsconfig.tsbuildinfo',
     },
-    exclude: ['node_modules'],
+    exclude: ['node_modules', TYPES_COMPAT],
     include: [join('**', '*.ts')],
   };
 }

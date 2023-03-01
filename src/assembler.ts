@@ -987,11 +987,13 @@ export class Assembler implements Emitter {
     const processBaseTypes = (types: ts.Type[]) => {
       for (const iface of types) {
         // base is private/internal, so we continue recursively with it's own bases
-        if (this._isPrivateOrInternal(iface.symbol)) {
+        if (this._isPrivateOrInternal(iface.symbol) || isInternalSymbol(iface.symbol)) {
           erasedBases.push(iface);
-          const bases = iface.getBaseTypes();
-          if (bases) {
-            processBaseTypes(bases);
+          if (!isInternalSymbol(iface.symbol)) {
+            const bases = iface.getBaseTypes();
+            if (bases) {
+              processBaseTypes(bases);
+            }
           }
           continue;
         }
@@ -1090,7 +1092,7 @@ export class Assembler implements Emitter {
         erasedBases.push(base);
         base = (base.getBaseTypes() ?? [])[0];
       }
-      if (!base) {
+      if (!base || isInternalSymbol(base.symbol)) {
         // There is no exported base class to be found, pretend this class has no base class.
         continue;
       }
@@ -1215,21 +1217,28 @@ export class Assembler implements Emitter {
           continue;
         }
 
+        const member = ts.isConstructorDeclaration(memberDecl)
+          ? getConstructor(this._typeChecker.getTypeAtLocation(memberDecl.parent))
+          : ts.isIndexSignatureDeclaration(memberDecl)
+          ? this._typeChecker.getTypeAtLocation(memberDecl.parent).symbol.members?.get(ts.InternalSymbolName.Index)
+          : this._typeChecker.getSymbolAtLocation(ts.getNameOfDeclaration(memberDecl) ?? memberDecl);
+
+        if (member && this._isPrivateOrInternal(member, memberDecl as ts.ClassElement)) {
+          continue;
+        }
+
         if (ts.isIndexSignatureDeclaration(memberDecl)) {
           // Index signatures (static or not) are not supported in the jsii type model.
-          this._diagnostics.push(JsiiDiagnostic.JSII_1999_UNSUPPORTED.create(memberDecl, { what: 'Index signatures' }));
+          this._diagnostics.push(
+            JsiiDiagnostic.JSII_1999_UNSUPPORTED.create(memberDecl, {
+              what: 'Index signatures',
+              suggestInternal: true,
+            }),
+          );
           continue;
         }
-
-        const member: ts.Symbol = ts.isConstructorDeclaration(memberDecl)
-          ? (memberDecl as any).symbol
-          : this._typeChecker.getSymbolAtLocation(ts.getNameOfDeclaration(memberDecl)!)!;
 
         if (!(declaringType.symbol.getDeclarations() ?? []).find((d) => d === memberDecl.parent)) {
-          continue;
-        }
-
-        if (this._isPrivateOrInternal(member, memberDecl as ts.ClassElement)) {
           continue;
         }
 
@@ -1241,14 +1250,14 @@ export class Assembler implements Emitter {
         // eslint-disable-next-line no-await-in-loop
         if (ts.isMethodDeclaration(memberDecl) || ts.isMethodSignature(memberDecl)) {
           // eslint-disable-next-line no-await-in-loop
-          this._visitMethod(member, jsiiType, ctx.replaceStability(jsiiType.docs?.stability), classDecl);
+          this._visitMethod(member!, jsiiType, ctx.replaceStability(jsiiType.docs?.stability), classDecl);
         } else if (
           ts.isPropertyDeclaration(memberDecl) ||
           ts.isPropertySignature(memberDecl) ||
           ts.isAccessor(memberDecl)
         ) {
           // eslint-disable-next-line no-await-in-loop
-          this._visitProperty(member, jsiiType, ctx.replaceStability(jsiiType.docs?.stability), classDecl);
+          this._visitProperty(member!, jsiiType, ctx.replaceStability(jsiiType.docs?.stability), classDecl);
         } else {
           this._diagnostics.push(
             JsiiDiagnostic.JSII_9998_UNSUPPORTED_NODE.create(
@@ -1408,7 +1417,8 @@ export class Assembler implements Emitter {
    */
   private _isPrivateOrInternal(symbol: ts.Symbol, validateDeclaration?: ts.Declaration): boolean {
     const hasInternalJsDocTag = _hasInternalJsDocTag(symbol);
-    const hasUnderscorePrefix = symbol.name !== '__constructor' && symbol.name.startsWith('_');
+    const hasInternalSymbolName = isInternalSymbol(symbol);
+    const hasUnderscorePrefix = !hasInternalSymbolName && symbol.name.startsWith('_');
 
     if (_isPrivate(symbol)) {
       LOG.trace(`${chalk.cyan(symbol.name)} is marked "private", or is an unexported type declaration`);
@@ -1419,8 +1429,8 @@ export class Assembler implements Emitter {
       return false;
     }
 
-    // we only validate if we have a declaration
-    if (validateDeclaration) {
+    // We only validate if we have a declaration and the symbol doesn't have an internal name.
+    if (validateDeclaration && !hasInternalSymbolName) {
       if (!hasUnderscorePrefix) {
         this._diagnostics.push(
           JsiiDiagnostic.JSII_8005_INTERNAL_UNDERSCORE.create(
@@ -1656,11 +1666,18 @@ export class Assembler implements Emitter {
       | ts.InterfaceDeclaration
       | undefined;
 
-    for (const decl of (typeDecl?.members as readonly ts.Node[] | undefined)?.filter((mem) =>
-      ts.isIndexSignatureDeclaration(mem),
+    for (const decl of (typeDecl?.members as ReadonlyArray<ts.ClassElement | ts.TypeElement> | undefined)?.filter(
+      (mem) => ts.isIndexSignatureDeclaration(mem),
     ) ?? []) {
+      const sym = type.symbol.members?.get(ts.InternalSymbolName.Index);
+      if (sym != null && this._isPrivateOrInternal(sym, decl)) {
+        continue;
+      }
+
       // Index signatures (static or not) are not supported in the jsii type model.
-      this._diagnostics.push(JsiiDiagnostic.JSII_1999_UNSUPPORTED.create(decl, { what: 'Index signatures' }));
+      this._diagnostics.push(
+        JsiiDiagnostic.JSII_1999_UNSUPPORTED.create(decl, { what: 'Index signatures', suggestInternal: true }),
+      );
     }
 
     for (const declaringType of [type, ...erasedBases]) {
@@ -2509,7 +2526,10 @@ function _isPrivate(symbol: ts.Symbol): boolean {
 
   // if the symbol doesn't have a value declaration, we are assuming it's a type (enum/interface/class)
   // and check that it has an "export" modifier
-  if (!symbol.valueDeclaration || TYPE_DECLARATION_KINDS.has(symbol.valueDeclaration.kind)) {
+  if (
+    !isInternalSymbol(symbol) &&
+    (!symbol.valueDeclaration || TYPE_DECLARATION_KINDS.has(symbol.valueDeclaration.kind))
+  ) {
     let hasExport = false;
     for (const decl of symbol.declarations ?? []) {
       if (ts.getCombinedModifierFlags(decl) & ts.ModifierFlags.Export) {
@@ -2530,9 +2550,9 @@ function _isPrivate(symbol: ts.Symbol): boolean {
     return !hasExport;
   }
 
-  return (
-    symbol.valueDeclaration && (ts.getCombinedModifierFlags(symbol.valueDeclaration) & ts.ModifierFlags.Private) !== 0
-  );
+  const decl = symbol.valueDeclaration ?? symbol.declarations?.[0];
+
+  return decl != null && (ts.getCombinedModifierFlags(decl) & ts.ModifierFlags.Private) !== 0;
 }
 
 function _hasInternalJsDocTag(symbol: ts.Symbol) {
@@ -3022,4 +3042,9 @@ function loadAndRenderReadme(readmePath: string, projectRoot: string) {
       )
       .join('\n'),
   };
+}
+
+const INTERNAL_SYMBOLS = new Set(Object.values(ts.InternalSymbolName));
+function isInternalSymbol(symbol: ts.Symbol): boolean {
+  return INTERNAL_SYMBOLS.has(symbol.name as ts.InternalSymbolName);
 }
