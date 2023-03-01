@@ -58,7 +58,7 @@ export function emitDownleveledDeclarations({ packageJson, projectRoot, tsc }: P
     // We'll emit down-leveled declarations in a temporary directory...
     const workdir = mkdtempSync(join(tmpdir(), `downlevel-dts-${breakpoint}-${basename(projectRoot)}-`));
     try {
-      downlevel(projectRoot, workdir, breakpoint);
+      downlevel(projectRoot, workdir, breakpoint.version);
       for (const dts of walkDirectory(workdir)) {
         const original = readFileSync(join(projectRoot, dts), 'utf-8');
         const downleveled = readFileSync(join(workdir, dts), 'utf-8');
