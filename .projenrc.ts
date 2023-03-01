@@ -111,6 +111,10 @@ project.tsconfig?.file?.patch(
 project.vscode!.settings.addSetting('explorer.excludeGitIgnore', true);
 // Use the TypeScript SDK from the project dependencies
 project.vscode!.settings.addSetting('typescript.tsdk', 'node_modules/typescript/lib');
+// Format-on-save using ESLint
+project.vscode!.extensions.addRecommendations('dbaeumer.vscode-eslint');
+project.vscode!.settings.addSetting('editor.codeActionsOnSave', { 'source.fixAll.eslint': true });
+project.vscode!.settings.addSetting('eslint.validate', ['typescript']);
 
 // Exports map...
 project.package.addField('exports', {

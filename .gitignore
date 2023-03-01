@@ -48,6 +48,7 @@ jspm_packages/
 /projenrc/tsconfig.json
 /test/tsconfig.json
 !/.vscode/settings.json
+!/.vscode/extensions.json
 /src/version.ts
 /jsii-outdir/
 /test/negatives/.*
