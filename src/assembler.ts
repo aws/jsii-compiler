@@ -9,6 +9,7 @@ import * as log4js from 'log4js';
 import * as ts from 'typescript';
 
 import * as Case from './case';
+import { Directives } from './directives';
 import { getReferencedDocParams, parseSymbolDocumentation, TypeSystemHints } from './docs';
 import { Emitter } from './emitter';
 import { JsiiDiagnostic } from './jsii-diagnostic';
@@ -1220,7 +1221,8 @@ export class Assembler implements Emitter {
         const member = ts.isConstructorDeclaration(memberDecl)
           ? getConstructor(this._typeChecker.getTypeAtLocation(memberDecl.parent))
           : ts.isIndexSignatureDeclaration(memberDecl)
-          ? this._typeChecker.getTypeAtLocation(memberDecl.parent).symbol.members?.get(ts.InternalSymbolName.Index)
+          ? type.symbol.members?.get(ts.InternalSymbolName.Index) ??
+            type.symbol.exports?.get(ts.InternalSymbolName.Index)
           : this._typeChecker.getSymbolAtLocation(ts.getNameOfDeclaration(memberDecl) ?? memberDecl);
 
         if (member && this._isPrivateOrInternal(member, memberDecl as ts.ClassElement)) {
@@ -1422,6 +1424,13 @@ export class Assembler implements Emitter {
 
     if (_isPrivate(symbol)) {
       LOG.trace(`${chalk.cyan(symbol.name)} is marked "private", or is an unexported type declaration`);
+      return true;
+    }
+
+    // If all the declarations are marked with `@jsii ignore`, then this is effetcively private as far as jsii is concerned.
+    if (
+      symbol.declarations?.every((decl) => Directives.of(decl, (diag) => this._diagnostics.push(diag)).ignore != null)
+    ) {
       return true;
     }
 
@@ -1669,7 +1678,8 @@ export class Assembler implements Emitter {
     for (const decl of (typeDecl?.members as ReadonlyArray<ts.ClassElement | ts.TypeElement> | undefined)?.filter(
       (mem) => ts.isIndexSignatureDeclaration(mem),
     ) ?? []) {
-      const sym = type.symbol.members?.get(ts.InternalSymbolName.Index);
+      const sym =
+        type.symbol.members?.get(ts.InternalSymbolName.Index) ?? type.symbol.exports?.get(ts.InternalSymbolName.Index);
       if (sym != null && this._isPrivateOrInternal(sym, decl)) {
         continue;
       }
