@@ -50,6 +50,9 @@ enum DocTag {
   EXAMPLE = 'example',
   STABILITY = 'stability',
   STRUCT = 'struct',
+
+  // Not forwarded, this is compiler-internal.
+  JSII = 'jsii',
 }
 
 const RECOGNIZED_TAGS: ReadonlySet<String> = new Set(Object.values(DocTag));
@@ -89,7 +92,8 @@ function parseDocParts(comments: string | undefined, tags: ts.JSDocTagInfo[]): D
   const tagNames = new Map<string, string | undefined>();
   for (const tag of tags) {
     // 'param' gets parsed as a tag and as a comment for a method
-    if (tag.name !== DocTag.PARAM) {
+    // 'jsii' is internal-only and shouldn't surface in the API doc
+    if (tag.name !== DocTag.PARAM && tag.name !== DocTag.JSII) {
       tagNames.set(tag.name, tag.text && ts.displayPartsToString(tag.text));
     }
   }

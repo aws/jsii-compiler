@@ -16,9 +16,9 @@ export interface InternalIsIgnoredOnInterface {
 
   /**
    * There should NOT be an error marker on this index signature, as it's marked
-   * internal.
+   * jsii-ignore.
    *
-   *  @internal
+   * @jsii ignore
    */
   readonly [key: string]: number;
 }
@@ -28,9 +28,9 @@ export class InternalIsIgnoredOnClass {
 
   /**
    * There should NOT be an error marker on this index signature, as it's marked
-   * internal.
+   * jsii-ignore.
    *
-   *  @internal
+   *  @jsii ignore
    */
   readonly [key: string]: number;
 

@@ -298,13 +298,36 @@ export class JsiiDiagnostic implements ts.Diagnostic {
       suggestInternal?: boolean;
     }) =>
       `${what} are not supported in jsii APIs.${alternative ? ` Consider using ${alternative} instead.` : ''}${
-        suggestInternal ? ` This declaration must${alternative ? ' otherwise' : ''} be marked @internal.` : ''
+        suggestInternal
+          ? ` This declaration must${alternative ? ' otherwise' : ''} be marked "@internal" or "@jsii ignore".`
+          : ''
       }`,
     name: 'typescript-restrictions/unsupported',
   });
 
   //////////////////////////////////////////////////////////////////////////////
-  // 2000 => 2999 -- RESERVED
+  // 2000 => 2999 -- INCORRECT USE OF THE @jsii DIRECTIVE
+  public static readonly JSII_2000_MISSING_DIRECTIVE_ARGUMENT = Code.warning({
+    code: 2000,
+    formatter: () =>
+      'Missing argument to @jsii directive. Refer to the jsii compiler documentation for more information.',
+    name: 'jsii-directive/missing-argument',
+  });
+
+  public static readonly JSII_2100_STRUCT_ON_NON_INTERFACE = Code.warning({
+    code: 2100,
+    formatter: () => 'The "@jsii struct" directive is only applicable to interface declarations.',
+    name: 'jsii-directive/struct-on-non-interface',
+  });
+
+  public static readonly JSII_2999_UNKNOWN_DIRECTIVE = Code.warning({
+    code: 2999,
+    formatter: (text: string) =>
+      `Unknown @jsii directive: ${JSON.stringify(
+        text,
+      )}. Refer to the jsii compiler documentation for more information.`,
+    name: 'jsii-directive/unknown',
+  });
 
   //////////////////////////////////////////////////////////////////////////////
   // 3000 => 3999 -- TYPE MODEL COHERENCE

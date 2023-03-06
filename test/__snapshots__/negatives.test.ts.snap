@@ -365,12 +365,12 @@ neg.implements-class.ts:1:1 - error JSII3005: Type "jsii.NotAnInterface" cannot 
 `;
 
 exports[`index-signatures 1`] = `
-neg.index-signatures.ts:4:3 - error JSII1999: Index signatures are not supported in jsii APIs. This declaration must be marked @internal.
+neg.index-signatures.ts:4:3 - error JSII1999: Index signatures are not supported in jsii APIs. This declaration must be marked "@internal" or "@jsii ignore".
 
 4   readonly [key: symbol]: number;
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-neg.index-signatures.ts:9:3 - error JSII1999: Index signatures are not supported in jsii APIs. This declaration must be marked @internal.
+neg.index-signatures.ts:9:3 - error JSII1999: Index signatures are not supported in jsii APIs. This declaration must be marked "@internal" or "@jsii ignore".
 
 9   static readonly [key: symbol]: string;
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
