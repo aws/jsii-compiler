@@ -9,6 +9,7 @@ import * as yargs from 'yargs';
 import { Compiler } from './compiler';
 import { configureCategories } from './jsii-diagnostic';
 import { loadProjectInfo } from './project-info';
+import { emitSupportPolicyInformation } from './support';
 import * as utils from './utils';
 import { VERSION } from './version';
 import { enabledWarnings } from './warnings';
@@ -16,6 +17,8 @@ import { enabledWarnings } from './warnings';
 const warningTypes = Object.keys(enabledWarnings);
 
 (async () => {
+  await emitSupportPolicyInformation();
+
   await yargs
     .env('JSII')
     .command(
