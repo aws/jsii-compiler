@@ -77,12 +77,12 @@ indefinitely.
 ### Timelines & Communication
 
 The `typescript` compiler maintainers start a new release line on a quarterly
-basis, and users should expect the `jsii` compiler maintainers to do the same. Users should
-expect some small code changes may be necessary when upgrading from one release
-line to another, as a result of breaking changes introduced by the `typescript`
-compiler or `jsii` itself. In either case, the release notes for the first
-release in a line includes the relevant information about the breaking changes
-and instructions for users to fix their codebase.
+basis, and users should expect the `jsii` compiler maintainers to do the same.
+Users should expect some small code changes may be necessary when upgrading from
+one release line to another, as a result of breaking changes introduced by the
+`typescript` compiler or `jsii` itself. In either case, the release notes for
+the first release in a line includes the relevant information about the breaking
+changes and instructions for users to fix their codebase.
 
 The `jsii` compiler has a built-in mechanism to inform users that they are using
 an unsupported or soon-to-become unsupported release line. A message is emitted
