@@ -2,6 +2,7 @@ import { javascript, JsonFile, JsonPatch, typescript } from 'projen';
 import { BuildWorkflow } from './projenrc/build-workflow';
 import { JsiiCalcFixtures } from './projenrc/fixtures';
 import { ReleaseWorkflow } from './projenrc/release';
+import { SupportPolicy } from './projenrc/support';
 
 const project = new typescript.TypeScriptProject({
   projenrcTs: true,
@@ -106,6 +107,9 @@ project.tsconfig?.file?.patch(
   JsonPatch.add('/compilerOptions/composite', true),
   JsonPatch.add('/compilerOptions/declarationMap', true),
 );
+
+// Add support policy documents
+new SupportPolicy(project);
 
 // Don't show .gitignore'd files in the VSCode explorer
 project.vscode!.settings.addSetting('explorer.excludeGitIgnore', true);
