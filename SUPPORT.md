@@ -35,7 +35,7 @@ to each in-scope `jsii` release line in existence:
 
 1. **Maintenace**: Release lines in **Maintenance** stage are no longer
    considered in active development, and no new features will be added to these.
-   They however continue tor eceive bug fixes and security updates. Users can
+   They however continue to receive bug fixes and security updates. Users can
    continue to use release lines in **Maintenance** stage indefinitely, but we
    recommend they regularly upgrade to the **Current** release lines in order to
    keep the necessary effort low.
@@ -76,12 +76,12 @@ indefinitely.
 
 ### Timelines & Communication
 
-The `typescript` compiler mainteners start a new release line on a quarterly
-basis, and users should expect the `jsii` compiler does the same. Users should
+The `typescript` compiler maintainers start a new release line on a quarterly
+basis, and users should expect the `jsii` compiler maintainers to do the same. Users should
 expect some small code changes may be necessary when upgrading from one release
 line to another, as a result of breaking changes introduced by the `typescript`
 compiler or `jsii` itself. In either case, the release notes for the first
-release in a line includes all relevant information about the breaking changes
+release in a line includes the relevant information about the breaking changes
 and instructions for users to fix their codebase.
 
 The `jsii` compiler has a built-in mechanism to inform users that they are using
@@ -116,13 +116,13 @@ policy through the same process.
 Under _exceptional_ circumstances, the project maintainers may elect to derogate
 from this Support & Maintenance Policy. In cases where the decisision to
 derogate extends supplemental maintenance & support coverage for a release line,
-the increased coverage will simply be documented in the
+the increased coverage will be documented in the
 [repository's `README.md` document][readme].
 
 However, in situations where the derogation results in reduced support for one
 or more release lines, the decision to derogate is considered a "break glass"
 event and maintainers will document the motivation for the derogation, as well
-as provide extensive post-mortem analysis to determine and address the reason
+as provide the post-mortem analysis to determine and address the reason
 why this decision has to be taken, including an action plan put in place to
 ensure the same situation does not occur again in the future.
 
