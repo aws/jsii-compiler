@@ -281,6 +281,17 @@ Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/d
 This project follows the [all-contributors](https://github.com/all-contributors/all-contributors) specification.
 Contributions of any kind welcome!
 
+## :gear: Maintenance & Support
+
+The applicable _Maintenance & Support policy_ can be reviewed in [SUPPORT.md](./SUPPORT.md).
+
+The current status of `jsii` compiler releases is:
+
+Release | Status  | Comment
+--------|---------|-----------------------------
+`1.x`   | Current | https://github.com/aws/jsii
+`4.9.x` | Preview | ![](https://img.shields.io/npm/v/jsii/v4.9-next?label=jsii%40v4.9-next&logo=npm)
+
 ## :balance_scale: License
 
 **jsii** is distributed under the [Apache License, Version 2.0][apache-2.0].
