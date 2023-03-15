@@ -1,4 +1,5 @@
 import { github, typescript } from 'projen';
+import { ACTIONS_CHECKOUT, ACTIONS_SETUP_NODE, YARN_INSTALL } from './common';
 
 export const enum PublishTargetOutput {
   DIST_TAG = 'dist-tag',
@@ -11,7 +12,7 @@ export const enum PublishTargetOutput {
 const CODE_SIGNING_USER_ID = 'aws-jsii@amazon.com';
 
 export class ReleaseWorkflow {
-  public constructor(project: typescript.TypeScriptProject) {
+  public constructor(private readonly project: typescript.TypeScriptProject) {
     new ReleaseTask(project);
     new TagReleaseTask(project);
 
@@ -21,10 +22,6 @@ export class ReleaseWorkflow {
 
     release.on({ push: { tags: ['v*.*.*'] } });
 
-    const installDepsStep: github.workflows.JobStep = {
-      name: 'Install dependencies',
-      run: 'yarn install --frozen-lockfile',
-    };
     const releasePackageName = 'release-package';
     const publishTarget = 'publish-target';
     const federateToAwsStep: github.workflows.JobStep = {
@@ -54,19 +51,9 @@ export class ReleaseWorkflow {
       },
       runsOn: ['ubuntu-latest'],
       steps: [
-        {
-          name: 'Checkout',
-          uses: 'actions/checkout@v3',
-        },
-        {
-          name: 'Setup Node.js',
-          uses: 'actions/setup-node@v3',
-          with: {
-            'cache': 'yarn',
-            'node-version': project.minNodeVersion,
-          },
-        },
-        installDepsStep,
+        ACTIONS_CHECKOUT,
+        ACTIONS_SETUP_NODE(project.minNodeVersion),
+        YARN_INSTALL,
         {
           name: 'Prepare Release',
           run: 'yarn release ${{ github.ref_name }}',
@@ -203,8 +190,7 @@ export class ReleaseWorkflow {
       steps: [
         downloadArtifactStep,
         {
-          name: 'Setup Node.js',
-          uses: 'actions/setup-node@v3',
+          ...ACTIONS_SETUP_NODE(),
           with: {
             'always-auth': true,
             'node-version': project.minNodeVersion,
@@ -238,6 +224,11 @@ export class ReleaseWorkflow {
         },
       ],
     });
+  }
+
+  public autoTag(opts: AutoTagWorkflowProps): this {
+    new AutoTagWorkflow(this.project, `auto-tag-releases${opts.branch ? `-${opts.branch}` : ''}`, opts);
+    return this;
   }
 }
 
@@ -275,6 +266,104 @@ class TagReleaseTask {
     task.exec('ts-node projenrc/tag-release.ts', {
       name: 'tag-release',
       receiveArgs: true,
+    });
+  }
+}
+
+interface AutoTagWorkflowProps {
+  /**
+   * The branch on which to trigger this AutoTagWorkflow.
+   *
+   * @default - the repository's default branch
+   */
+  readonly branch?: string;
+
+  /**
+   * The schedule on which to run this AutoTagWorkflow instance.
+   *
+   * @see https://pubs.opengroup.org/onlinepubs/9699919799/utilities/crontab.html#tag_20_25_07
+   *
+   * @default none
+   */
+  readonly schedule?: string;
+
+  /**
+   * The run name to use for this workflow.
+   *
+   * @default - GitHub's default run name will be used.
+   */
+  readonly runName?: string;
+
+  /**
+   * The pre-release identifier to be used.
+   *
+   * @default - a regular release will be tagged.
+   */
+  readonly preReleaseId?: string;
+}
+
+class AutoTagWorkflow {
+  public constructor(project: typescript.TypeScriptProject, name: string, props: AutoTagWorkflowProps) {
+    const workflow = project.github!.addWorkflow(name);
+    workflow.runName = props.runName;
+    workflow.on({
+      schedule:
+        props.schedule != null
+          ? [
+              {
+                cron: props.schedule,
+              },
+            ]
+          : undefined,
+      workflowDispatch: {},
+    });
+    workflow.addJob('pre-flight', {
+      name: 'Pre-Flight Checks',
+      runsOn: ['ubuntu-latest'],
+      outputs: {
+        sha: {
+          stepId: 'git',
+          outputName: 'sha',
+        },
+      },
+      permissions: { contents: github.workflows.JobPermission.READ },
+      steps: [
+        { ...ACTIONS_CHECKOUT, with: { ...ACTIONS_CHECKOUT.with, ref: props.branch } },
+        ACTIONS_SETUP_NODE(project.minNodeVersion),
+        YARN_INSTALL,
+        { name: 'Build', run: 'yarn build' },
+        { id: 'git', name: 'Identify git SHA', run: 'echo sha=$(git rev-parse HEAD) >> $GITHUB_OUTPUT' },
+      ],
+    });
+    workflow.addJob('auto-tag', {
+      name: 'Auto-Tag Release',
+      needs: ['pre-flight'],
+      runsOn: ['ubuntu-latest'],
+      permissions: {},
+      steps: [
+        {
+          ...ACTIONS_CHECKOUT,
+          with: {
+            ...ACTIONS_CHECKOUT.with,
+            ref: '${{ needs.pre-flight.outputs.sha }}',
+            token: '${{ secrets.PROJEN_GITHUB_TOKEN }}',
+          },
+        },
+        ACTIONS_SETUP_NODE(project.minNodeVersion),
+        YARN_INSTALL,
+        {
+          name: 'Set git identity',
+          run: ['git config user.name "github-actions"', 'git config user.email "github-actions@github.com"'].join(
+            '\n',
+          ),
+        },
+        {
+          name: `Tag ${props.preReleaseId ? 'PreRelease' : 'Release'}`,
+          run: `yarn tag-release --idempotent --no-sign --push ${
+            props.preReleaseId ? `--prerelease=${props.preReleaseId}` : ''
+          }`,
+        },
+      ],
     });
   }
 }
