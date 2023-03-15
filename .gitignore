@@ -55,3 +55,4 @@ jspm_packages/
 !/.github/workflows/build.yml
 !/.github/workflows/auto-merge.yml
 !/.github/workflows/release.yml
+!/.github/workflows/auto-tag-releases.yml
