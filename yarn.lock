@@ -1050,10 +1050,10 @@
   dependencies:
     "@types/istanbul-lib-report" "*"
 
-"@types/jest@^29.4.1":
-  version "29.4.1"
-  resolved "https://registry.yarnpkg.com/@types/jest/-/jest-29.4.1.tgz#d76cbd07e5a24c0f4e86c2c0f9ed9e4ed33af3c8"
-  integrity sha512-zDQSWXG+ZkEvs2zFFMszePhx4euKz+Yt3Gg1P+RHjfJBinTTr6L2DEyovO4V/WrKXuF0Dgn56GWGZPDa6TW9eQ==
+"@types/jest@^29.4.4":
+  version "29.4.4"
+  resolved "https://registry.yarnpkg.com/@types/jest/-/jest-29.4.4.tgz#ba257bd7b1876dec9e0b4fb82fa60eec5505e5f1"
+  integrity sha512-qezb65VIH7X1wobSnd6Lvdve7PXSyQRa3dljTkhTtDhi603RvHQCshSlJcuyMLHJpeHgY3NKwvDJWxMOOHxGDQ==
   dependencies:
     expect "^29.0.0"
     pretty-format "^29.0.0"
@@ -4691,10 +4691,10 @@ progress@^2.0.3:
   resolved "https://registry.yarnpkg.com/progress/-/progress-2.0.3.tgz#7e8cf8d8f5b8f239c1bc68beb4eb78567d572ef8"
   integrity sha512-7PiHtLll5LdnKIMw100I+8xJXR5gW2QwWYkT6iJva0bXitZKa/XMrSbdmg3r2Xnaidz9Qumd0VPaMrZlF9V9sA==
 
-projen@^0.68.1:
-  version "0.68.1"
-  resolved "https://registry.yarnpkg.com/projen/-/projen-0.68.1.tgz#294e8e1f9033a560d4f439bd6bf4ca4c4ad99528"
-  integrity sha512-1ewsrr1jG31ecQYEAFz8iEEskRmYdrMT+XN3hvcdGOWIvWKVqwMJzJyHhZinmj+81YNOOvbmzwSRpGqX3XqKMw==
+projen@^0.68.5:
+  version "0.68.5"
+  resolved "https://registry.yarnpkg.com/projen/-/projen-0.68.5.tgz#543a50e9826f68a1d0d8a2c208239b7dead65a75"
+  integrity sha512-57LICn/A89xkVAgZ5p7ZcClJzF6A7vGdqShLf+kMaK22GFhs8PfCfOFvJKl6FZOoY0PZaxCtuCkHnwq1hCX0Mw==
   dependencies:
     "@iarna/toml" "^2.2.5"
     case "^1.6.3"
@@ -5624,9 +5624,9 @@ typedarray-to-buffer@^3.1.5:
     is-typedarray "^1.0.0"
 
 typescript@next:
-  version "5.1.0-dev.20230313"
-  resolved "https://registry.yarnpkg.com/typescript/-/typescript-5.1.0-dev.20230313.tgz#393282026171897a71398b9f4b2a7a527729fd5f"
-  integrity sha512-vveGdy/uNUyKJ/JbXsJTSP8Z8gfCRsiXdHBMbvJ2XzuzHsDQC3mR+ZPvIGrXoTWMn5XNbyJ8ufYuqGiCGTi6tg==
+  version "5.1.0-dev.20230315"
+  resolved "https://registry.yarnpkg.com/typescript/-/typescript-5.1.0-dev.20230315.tgz#dfdfa15b4bf6298740e319deb414b8d715baa7a7"
+  integrity sha512-lHUjpyLQRGRdkxHROCqNyAeoq8ytzxFqAY2nCOTiI/sSygZsAsTyUS521ldoNcjym/DiR+rmaNG6mpt29enm9g==
 
 typescript@~3.9.10:
   version "3.9.10"
