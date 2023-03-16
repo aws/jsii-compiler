@@ -39,14 +39,13 @@
   },
   "ignorePatterns": [
     "*.js",
-    "!.projenrc.ts",
     "*.d.ts",
     "node_modules/",
     "*.generated.ts",
     "coverage",
+    "test/negatives/**/*.ts",
     "!.projenrc.ts",
-    "!projenrc/**/*.ts",
-    "test/negatives/**/*.ts"
+    "!projenrc/**/*.ts"
   ],
   "rules": {
     "prettier/prettier": [
@@ -61,7 +60,6 @@
         "devDependencies": [
           "**/test/**",
           "**/build-tools/**",
-          "**/projenrc/**",
           ".projenrc.ts",
           "projenrc/**/*.ts"
         ],
