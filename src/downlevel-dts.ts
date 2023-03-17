@@ -94,6 +94,8 @@ export function emitDownleveledDeclarations({ packageJson, projectRoot, tsc }: P
     if (!existsSync(compatDir)) {
       mkdirSync(compatDir, { recursive: true });
       try {
+        // Write an empty .npmignore file so that npm pack doesn't use the .gitignore file...
+        writeFileSync(join(compatRoot, '.npmignore'), '\n', 'utf-8');
         // Make sure all of this is gitignored, out of courtesy...
         writeFileSync(join(compatRoot, '.gitignore'), '*\n', 'utf-8');
       } catch {
