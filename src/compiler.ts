@@ -15,13 +15,11 @@ import * as utils from './utils';
 
 const BASE_COMPILER_OPTIONS: ts.CompilerOptions = {
   alwaysStrict: true,
-  charset: 'utf8',
   declaration: true,
   experimentalDecorators: true,
   incremental: true,
   lib: ['lib.es2020.d.ts'],
   module: ts.ModuleKind.CommonJS,
-  newLine: ts.NewLineKind.LineFeed,
   noEmitOnError: true,
   noFallthroughCasesInSwitch: true,
   noImplicitAny: true,
