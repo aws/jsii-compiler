@@ -557,7 +557,6 @@ class Transformation {
       const syntheticImportName = ts.factory.createUniqueName(root);
       syntheticImport = ts.factory.createImportDeclaration(
         undefined /* decorators */,
-        undefined /* modifiers */,
         ts.factory.createImportClause(false, undefined, ts.factory.createNamespaceImport(syntheticImportName)),
         ts.factory.createStringLiteral(root),
       );
@@ -673,7 +672,7 @@ class DeprecationRemovalTransformer {
   private visitor<T extends ts.Node>(node: T): ts.VisitResult<T> {
     if (this.isDeprecated(node)) {
       // Removing deprecated members by substituting "nothing" to them
-      return undefined;
+      return [];
     }
 
     if (ts.isClassDeclaration(node) || ts.isInterfaceDeclaration(node)) {

@@ -45,6 +45,9 @@ const DOWNLEVEL_BREAKPOINTS: readonly SemVer[] = ['3.9'].map((ver) => new SemVer
  * @returns the `typesVersions` object that should be recorded in `package.json`
  */
 export function emitDownleveledDeclarations({ packageJson, projectRoot, tsc }: ProjectInfo) {
+  const compatRoot = join(projectRoot, ...(tsc?.outDir != null ? [tsc?.outDir] : []), TYPES_COMPAT);
+  rmSync(compatRoot, { force: true, recursive: true });
+
   const rewrites = new Map<`${number}.${number}`, Map<string, string>>();
 
   for (const breakpoint of DOWNLEVEL_BREAKPOINTS) {
@@ -87,12 +90,12 @@ export function emitDownleveledDeclarations({ packageJson, projectRoot, tsc }: P
 
   for (const [version, rewriteSet] of rewrites) {
     const versionSuffix = `ts${version}`;
-    const compatDir = join(projectRoot, ...(tsc?.outDir != null ? [tsc?.outDir] : []), TYPES_COMPAT, versionSuffix);
+    const compatDir = join(compatRoot, versionSuffix);
     if (!existsSync(compatDir)) {
       mkdirSync(compatDir, { recursive: true });
       try {
         // Make sure all of this is gitignored, out of courtesy...
-        writeFileSync(join(projectRoot, TYPES_COMPAT, '.gitignore'), '*\n', 'utf-8');
+        writeFileSync(join(compatRoot, '.gitignore'), '*\n', 'utf-8');
       } catch {
         // Ignore any error here... This is inconsequential.
       }
