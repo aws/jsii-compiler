@@ -41,7 +41,7 @@ export class RuntimeTypeInfoInjector {
     return (context) => {
       const { factory } = context;
 
-      return (sourceFile) => {
+      return (sourceFile): ts.SourceFile => {
         const rttiSymbolIdentifier = factory.createUniqueName('JSII_RTTI_SYMBOL');
 
         let classesAnnotated = false;
@@ -57,7 +57,7 @@ export class RuntimeTypeInfoInjector {
         };
 
         // Visit the source file, annotating the classes.
-        let annotatedSourceFile = ts.visitNode(sourceFile, visitor);
+        let annotatedSourceFile = ts.visitNode(sourceFile, visitor) as ts.SourceFile;
 
         // Only add the symbol definition if it's actually used.
         if (classesAnnotated) {
