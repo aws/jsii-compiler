@@ -36,7 +36,7 @@
     "@actions/github": "^5.1.1",
     "@types/clone": "^2.1.1",
     "@types/deep-equal": "^1.0.1",
-    "@types/jest": "^29.4.4",
+    "@types/jest": "^29.5.0",
     "@types/lockfile": "^1.0.2",
     "@types/node": "^14",
     "@types/semver": "^7.3.13",
@@ -61,8 +61,8 @@
     "ts-node": "^10.9.1"
   },
   "dependencies": {
-    "@jsii/check-node": "1.77.0",
-    "@jsii/spec": "^1.77.0",
+    "@jsii/check-node": "1.78.1",
+    "@jsii/spec": "^1.78.1",
     "case": "^1.6.3",
     "chalk": "^4",
     "downlevel-dts": "^0.11.0",
