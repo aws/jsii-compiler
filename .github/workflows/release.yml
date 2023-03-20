@@ -37,6 +37,8 @@ jobs:
         run: yarn release ${{ github.ref_name }}
       - name: Determine Target
         id: publish-target
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: yarn ts-node projenrc/publish-target.ts ${{ github.ref_name }}
       - name: Federate to AWS
         if: fromJSON(steps.publish-target.outputs.github-release)

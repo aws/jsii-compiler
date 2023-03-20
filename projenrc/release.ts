@@ -62,6 +62,10 @@ export class ReleaseWorkflow {
           name: 'Determine Target',
           id: publishTarget,
           run: 'yarn ts-node projenrc/publish-target.ts ${{ github.ref_name }}',
+          env: {
+            // A GitHub token is required to list GitHub Releases, so we can tell if the `latest` dist-tag is needed.
+            GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}',
+          },
         },
         {
           ...federateToAwsStep,
