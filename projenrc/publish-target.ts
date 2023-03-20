@@ -18,7 +18,7 @@ import { PublishTargetOutput } from './release';
   const prerelease = semver.prerelease.length > 0;
 
   // We follow TypeScript versions, so major.minor is the effective "major".
-  const defaultTag = `v${semver.major}.${semver.minor}`;
+  const tagBase = `v${semver.major}.${semver.minor}`;
 
   const latest = prerelease
     ? false
@@ -46,11 +46,12 @@ import { PublishTargetOutput } from './release';
             semver.compare(latestRelease) >= 0;
       })();
 
+  // NB: Tag names can't be valid SemVer ranges (v#.# would be one).
   const distTag = prerelease
     ? // Pre-release, publish to next
-      `${defaultTag}-next`
+      `${tagBase}-next`
     : // Not a pre-releaase, publish to latest on npmjs.com
-      defaultTag;
+      `${tagBase}-latest`;
 
   core.setOutput(PublishTargetOutput.DIST_TAG, distTag);
   core.setOutput(PublishTargetOutput.IS_LATEST, latest);

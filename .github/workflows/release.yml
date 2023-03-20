@@ -38,7 +38,7 @@ jobs:
       - name: Determine Target
         id: publish-target
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ github.token }}
         run: yarn ts-node projenrc/publish-target.ts ${{ github.ref_name }}
       - name: Federate to AWS
         if: fromJSON(steps.publish-target.outputs.github-release)
@@ -50,6 +50,7 @@ jobs:
       - name: Sign Tarball
         if: fromJSON(steps.publish-target.outputs.github-release)
         run: |-
+          set -eo pipefail
           export GNUPGHOME=$(mktemp -d)
           echo "charset utf-8"   >  ${GNUPGHOME}/gpg.conf
           echo "no-comments"     >> ${GNUPGHOME}/gpg.conf
@@ -63,7 +64,7 @@ jobs:
           echo ${passphrase} | gpg --batch --yes --import --armor --passphrase-fd=0 <(echo "${privatekey}")
           unset privatekey
           for file in $(find dist -type f -not -iname "*.asc"); do
-            echo ${passphrase} | gpg --batch --yes --local-user="aws-jsii@amazon.com" --detach-sign --armor --passphrase-fd=0 ${file}
+            echo ${passphrase} | gpg --batch --yes --local-user="aws-jsii@amazon.com" --detach-sign --armor --pinentry-mode=loopback --passphrase-fd=0 ${file}
           done
           unset passphrase
           find ${GNUPGHOME} -type f -exec shred --remove {} \;
@@ -88,6 +89,8 @@ jobs:
           name: release-package
       - name: Verify if release exists
         id: release-exists
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |-
           if gh release view ${{ github.ref_name }} --repo=${{ github.repository }} &>/dev/null
           then
@@ -97,11 +100,17 @@ jobs:
           fi
       - name: Create PreRelease
         if: "!fromJSON(steps.release-exists.outputs.result) && fromJSON(needs.build.outputs.prerelease)"
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: gh release create ${{ github.ref_name }} --repo=${{ github.repository }} --generate-notes --title=${{ github.ref_name }} --verify-tag --prerelease
       - name: Create Release
         if: "!fromJSON(steps.release-exists.outputs.result) && !fromJSON(needs.build.outputs.prerelease)"
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: gh release create ${{ github.ref_name }} --repo=${{ github.repository }} --generate-notes --title=${{ github.ref_name }} --verify-tag
       - name: Attach assets
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: gh release upload ${{ github.ref_name }} --repo=${{ github.repository }} --clobber ${{ github.workspace }}/**/*
   release-npm-package:
     name: Release to registry.npmjs.org

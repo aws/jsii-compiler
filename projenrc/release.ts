@@ -64,7 +64,7 @@ export class ReleaseWorkflow {
           run: 'yarn ts-node projenrc/publish-target.ts ${{ github.ref_name }}',
           env: {
             // A GitHub token is required to list GitHub Releases, so we can tell if the `latest` dist-tag is needed.
-            GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}',
+            GITHUB_TOKEN: '${{ github.token }}',
           },
         },
         {
@@ -76,6 +76,7 @@ export class ReleaseWorkflow {
           name: 'Sign Tarball',
           if: `fromJSON(steps.publish-target.outputs.${PublishTargetOutput.GITHUB_RELEASE})`,
           run: [
+            'set -eo pipefail',
             // First, we're going to be configuring GPG "correctly"
             'export GNUPGHOME=$(mktemp -d)',
             'echo "charset utf-8"   >  ${GNUPGHOME}/gpg.conf',
@@ -94,7 +95,7 @@ export class ReleaseWorkflow {
             'for file in $(find dist -type f -not -iname "*.asc"); do',
             `  echo \${passphrase} | gpg --batch --yes --local-user=${JSON.stringify(
               CODE_SIGNING_USER_ID,
-            )} --detach-sign --armor --passphrase-fd=0 \${file}`,
+            )} --detach-sign --armor --pinentry-mode=loopback --passphrase-fd=0 \${file}`,
             'done',
             'unset passphrase',
             // Clean up the GnuPG home directory (secure-wipe)
@@ -144,6 +145,9 @@ export class ReleaseWorkflow {
             'echo "result=false" >> $GITHUB_OUTPUT',
             'fi',
           ].join('\n'),
+          env: {
+            GH_TOKEN: '${{ github.token }}',
+          },
         },
         {
           name: 'Create PreRelease',
@@ -156,6 +160,9 @@ export class ReleaseWorkflow {
             '--verify-tag',
             '--prerelease',
           ].join(' '),
+          env: {
+            GH_TOKEN: '${{ github.token }}',
+          },
         },
         {
           name: 'Create Release',
@@ -167,6 +174,9 @@ export class ReleaseWorkflow {
             '--title=${{ github.ref_name }}',
             '--verify-tag',
           ].join(' '),
+          env: {
+            GH_TOKEN: '${{ github.token }}',
+          },
         },
         {
           name: 'Attach assets',
@@ -176,6 +186,9 @@ export class ReleaseWorkflow {
             '--clobber',
             '${{ github.workspace }}/**/*',
           ].join(' '),
+          env: {
+            GH_TOKEN: '${{ github.token }}',
+          },
         },
       ],
     });
