@@ -2,14 +2,14 @@
 
 This document describes the Maintenance & Support Policy applicable to releases
 of the `jsii` compiler ([`npm:jsii`](https://npmjs.com/packages/jsii)) with
-versions `4.9.x` and newer.
+versions `5.0.x` and newer.
 
 ### Versioning Scheme
 
 In-scope `jsii` release lines use the same `major.minor` version as the
 TypeScript compiler ([`npm:typescript`](https://npmjs.com/packages/typescript))
-they are built with. This means that `jsii@4.9.x` is built on top of
-`typescript@4.9.x`.
+they are built with. This means that `jsii@5.0.x` is built on top of
+`typescript@5.0.x`.
 
 Since the `typescript` package does not follow [Semantic Versioning][semver],
 the `jsii` package does not eiher. The `typescript` compiler guarantees no
