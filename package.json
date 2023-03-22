@@ -55,8 +55,8 @@
     "jsii-1.x": "npm:jsii@1",
     "lockfile": "^1.0.4",
     "npm-check-updates": "^16",
-    "prettier": "^2.8.5",
-    "projen": "^0.68.15",
+    "prettier": "^2.8.6",
+    "projen": "^0.69.3",
     "ts-jest": "^29.0.5",
     "ts-node": "^10.9.1"
   },
