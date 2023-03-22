@@ -5,6 +5,7 @@ import * as yargs from 'yargs';
 
 async function main(): Promise<void> {
   const {
+    dryRun,
     idempotent,
     'ignore-dirty': ignoreDirty,
     prerelease,
@@ -52,6 +53,11 @@ async function main(): Promise<void> {
       alias: 'v',
       type: 'boolean',
       desc: 'Turn on verbose logging',
+      default: false,
+    })
+    .option('dry-run', {
+      type: 'boolean',
+      desc: 'Do not actually create a tag, just determine what it would be',
       default: false,
     })
     .help().argv;
@@ -205,8 +211,16 @@ async function main(): Promise<void> {
   // The latest release in this versionMajorMinor:
   const latestRelease = tags.find(({ tag }) => tag.prerelease.length === 0)?.tag;
   // The latest pre-release in this versionMajorMinor with the requested identifier:
-  const latestPrerelease =
-    prerelease != null ? tags.find(({ tag }) => tag.prerelease[0] === prerelease)?.tag : undefined;
+  let latestPrerelease =
+    prerelease != null
+      ? tags.find(({ tag }) => {
+          // If there's an "actual" release, and the pre-release is older than it, ignore it.
+          if (latestRelease != null && latestRelease.compare(tag) > 0) {
+            return false;
+          }
+          return tag.prerelease[0] === prerelease;
+        })?.tag
+      : undefined;
 
   if (verbose) {
     console.debug(`Latest release in line: ${latestRelease?.version ?? '<none>'}`);
@@ -224,6 +238,12 @@ async function main(): Promise<void> {
   if (verbose) {
     console.debug(`Determined version number: ${version}`);
   }
+
+  if (dryRun) {
+    console.log(`[DRY RUN] Would have tagged HEAD as: v${version}`);
+    return;
+  }
+
   await git('tag', '-a', `v${version}`, '-m', `Release ${version}`, ...(sign ? ['--sign'] : []), 'HEAD');
 
   if (!push) {
