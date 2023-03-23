@@ -282,17 +282,31 @@ export class BuildWorkflow {
           },
           {
             name: 'Install from tarball (npm)',
-            if: "matrix.package-manager == 'npm'",
-            run: ['npm init -y', 'npm install $(find ${{ runner.temp }}/release-package/js -iname "jsii-*.tgz")'].join(
-              ' && ',
-            ),
+            if: "runner.os != 'Windows' && matrix.package-manager == 'npm'",
+            run: ['npm init -y', 'npm install ${{ runner.temp }}/release-package/js/jsii-*.tgz'].join('\n'),
           },
           {
             name: 'Install from tarball (yarn)',
-            if: "matrix.package-manager == 'yarn'",
-            run: ['yarn init -y', 'yarn add $(find ${{ runner.temp }}/release-package/js -iname "jsii-*.tgz")'].join(
-              ' && ',
-            ),
+            if: "runner.os != 'Windows' && matrix.package-manager == 'yarn'",
+            run: ['yarn init -y', 'yarn add ${{ runner.temp }}/release-package/js/jsii-*.tgz'].join('\n'),
+          },
+          {
+            name: 'Install from tarball (Windows, npm)',
+            if: "runner.os == 'Windows' && matrix.package-manager == 'npm'",
+            run: [
+              'npm init -y',
+              '$TARBALL = Get-ChildItem -Path "${{ runner.temp }}/release-package/js/jsii-*.tgz"',
+              'npm install $TARBALL',
+            ].join('\n'),
+          },
+          {
+            name: 'Install from tarball (Windows, yarn)',
+            if: "runner.os == 'Windows' && matrix.package-manager == 'yarn'",
+            run: [
+              'yarn init -y',
+              '$TARBALL = Get-ChildItem -Path "${{ runner.temp }}/release-package/js/jsii-*.tgz"',
+              'yarn add $TARBALL',
+            ].join('\n'),
           },
           {
             name: 'Simple command',
