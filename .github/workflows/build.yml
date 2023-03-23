@@ -181,13 +181,11 @@ jobs:
       - name: Install from tarball (npm)
         if: matrix.package-manager == 'npm'
         run: |-
-          set -x
           npm init -y
           npm install $(find ${{ runner.temp }}/release-package/js -iname "jsii-*.tgz")
       - name: Install from tarball (yarn)
         if: matrix.package-manager == 'yarn'
         run: |-
-          set -x
           yarn init -y
           yarn add $(find ${{ runner.temp }}/release-package/js -iname "jsii-*.tgz")
       - name: Simple command
@@ -227,7 +225,6 @@ jobs:
           npm init -y
           npm install jsii-pacmak@1.x $(find ${{ runner.temp }}/release-package/private -iname "*.tgz")
           npm ls --depth=0
-          set -x
           ./node_modules/.bin/jsii-pacmak --version
       - name: Run jsii-pacmak
         run: ./node_modules/.bin/jsii-pacmak --verbose --recurse ./node_modules/jsii-calc
