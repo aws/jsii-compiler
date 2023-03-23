@@ -83,12 +83,12 @@ export class BuildWorkflow {
             run: 'yarn install --check-files',
           },
           {
-            name: 'compile',
+            name: 'Compile',
             run: ['npx projen', 'npx projen pre-compile', 'npx projen compile', 'npx projen post-compile'].join(' && '),
           },
 
           // Run tests to allow self-mutation to be performed if needed...
-          { name: 'test', run: 'npx projen test' },
+          { name: 'Test', run: 'npx projen test' },
           {
             name: 'Find mutations',
             id: 'self-mutation',
