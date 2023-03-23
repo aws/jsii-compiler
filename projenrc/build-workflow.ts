@@ -1,6 +1,6 @@
 import { NodeRelease } from '@jsii/check-node';
 import { github, typescript } from 'projen';
-import { ACTIONS_SETUP_NODE, YARN_INSTALL } from './common';
+import { ACTIONS_CHECKOUT, ACTIONS_SETUP_NODE, YARN_INSTALL } from './common';
 
 export interface BuildWorkflowOptions {
   /**
@@ -52,13 +52,7 @@ export class BuildWorkflow {
         permissions: { contents: github.workflows.JobPermission.READ },
         runsOn: ['ubuntu-latest'],
         steps: [
-          {
-            name: 'Checkout',
-            uses: 'actions/checkout@v3',
-            with: {
-              ref: '${{ github.event.pull_request.head.ref }}',
-            },
-          },
+          ACTIONS_CHECKOUT,
           ACTIONS_SETUP_NODE(),
           {
             name: 'Cache build outputs',
