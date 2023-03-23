@@ -261,6 +261,14 @@ export class BuildWorkflow {
               path: '${{ github.workspace }}/dist',
             },
           },
+          {
+            name: 'Upload private package artifacts',
+            uses: 'actions/upload-artifact@v3',
+            with: {
+              name: 'private-packages',
+              path: '${{ github.workspace }}/dist/private',
+            },
+          },
         ],
       },
       //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -297,12 +305,12 @@ export class BuildWorkflow {
           {
             name: 'Install from tarball (npm)',
             if: "matrix.package-manager == 'npm'",
-            run: 'npm install --no-save ${{ runner.temp }}/release-package/js/jsii-*.tgz',
+            run: 'npm install --no-save $(find ${{ runner.temp }}/release-package/js -iname "jsii-*.tgz")',
           },
           {
             name: 'Install from tarball (yarn)',
             if: "matrix.package-manager == 'yarn'",
-            run: 'yarn add --no-save ${{ runner.temp }}/release-package/js/jsii-*.tgz',
+            run: 'yarn add --no-save $(find ${{ runner.temp }}/release-package/js -iname "jsii-*.tgz")',
           },
           {
             name: 'Simple command',
@@ -314,7 +322,7 @@ export class BuildWorkflow {
         // Verifies compilation artifacts can be processed by jsii-pacmak@1.X
         env: { CI: 'true' },
         name: 'Pacmak Test',
-        needs: ['package'],
+        needs: ['build'],
         permissions: {},
         runsOn: ['ubuntu-latest'],
         steps: [
@@ -323,14 +331,14 @@ export class BuildWorkflow {
             name: 'Download Artifact',
             uses: 'actions/download-artifact@v3',
             with: {
-              name: 'release-package',
-              path: '${{ runner.temp }}/release-package',
+              name: 'private-packages',
+              path: '${{ runner.temp }}/private-packages',
             },
           },
           {
             name: 'Install from tarball',
             run: [
-              'npm install --no-save jsii-pacmak@1.x ${{ runner.temp }}/release-package/private/*.tgz',
+              'npm install --no-save jsii-pacmak@1.x $(find ${{ runner.temp }}/private-packages -iname "*.tgz")',
               './node_modules/.bin/jsii-pacmak --version',
             ].join('\n'),
           },

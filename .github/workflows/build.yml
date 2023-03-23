@@ -160,6 +160,11 @@ jobs:
         with:
           name: release-package
           path: ${{ github.workspace }}/dist
+      - name: Upload private package artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: private-packages
+          path: ${{ github.workspace }}/dist/private
   install-test:
     name: Install Test (${{ matrix.runs-on }} | node ${{ matrix.node-version }} | ${{ matrix.package-manager }})
     needs: package
@@ -179,10 +184,10 @@ jobs:
           path: ${{ runner.temp }}/release-package
       - name: Install from tarball (npm)
         if: matrix.package-manager == 'npm'
-        run: npm install --no-save ${{ runner.temp }}/release-package/js/jsii-*.tgz
+        run: npm install --no-save $(find ${{ runner.temp }}/release-package/js -iname "jsii-*.tgz")
       - name: Install from tarball (yarn)
         if: matrix.package-manager == 'yarn'
-        run: yarn add --no-save ${{ runner.temp }}/release-package/js/jsii-*.tgz
+        run: yarn add --no-save $(find ${{ runner.temp }}/release-package/js -iname "jsii-*.tgz")
       - name: Simple command
         run: ./node_modules/.bin/jsii --version
     strategy:
@@ -201,7 +206,7 @@ jobs:
           - macos-latest
   pacmak-test:
     name: Pacmak Test
-    needs: package
+    needs: build
     runs-on: ubuntu-latest
     permissions: {}
     env:
@@ -213,11 +218,11 @@ jobs:
       - name: Download Artifact
         uses: actions/download-artifact@v3
         with:
-          name: release-package
-          path: ${{ runner.temp }}/release-package
+          name: private-packages
+          path: ${{ runner.temp }}/private-packages
       - name: Install from tarball
         run: |-
-          npm install --no-save jsii-pacmak@1.x ${{ runner.temp }}/release-package/private/*.tgz
+          npm install --no-save jsii-pacmak@1.x $(find ${{ runner.temp }}/private-packages -iname "*.tgz")
           ./node_modules/.bin/jsii-pacmak --version
       - name: Run jsii-pacmak
         run: ./node_modules/.bin/jsii-pacmak --recurse ./node_modules/jsii-calc
