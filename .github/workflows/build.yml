@@ -221,3 +221,15 @@ jobs:
           ./node_modules/.bin/jsii-pacmak --version
       - name: Run jsii-pacmak
         run: ./node_modules/.bin/jsii-pacmak --recurse ./node_modules/jsii-calc
+  integ-clear:
+    name: Integration Tests
+    needs:
+      - install-test
+      - pacmak-test
+    runs-on: ubuntu-latest
+    permissions: {}
+    env:
+      CI: "true"
+    steps:
+      - name: Done
+        run: echo OK

@@ -340,6 +340,15 @@ export class BuildWorkflow {
           },
         ],
       },
+      'integ-clear': {
+        // This is a simple "join target" to simplify branch protection rules.
+        env: { CI: 'true' },
+        name: 'Integration Tests',
+        needs: ['install-test', 'pacmak-test'],
+        permissions: {},
+        runsOn: ['ubuntu-latest'],
+        steps: [{ name: 'Done', run: 'echo OK' }],
+      },
     });
 
     if (opts.autoMerge ?? true) {
