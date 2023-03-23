@@ -3,6 +3,7 @@ import { BuildWorkflow } from './projenrc/build-workflow';
 import { JsiiCalcFixtures } from './projenrc/fixtures';
 import { ReleaseWorkflow } from './projenrc/release';
 import { SupportPolicy } from './projenrc/support';
+import { UpdateIntegPackage } from './projenrc/update-integ-package';
 
 const project = new typescript.TypeScriptProject({
   projenrcTs: true,
@@ -218,5 +219,7 @@ new ReleaseWorkflow(project).autoTag({
   runName: 'Auto-Tag Prerelease (default branch)',
   schedule: '0 0 * * *',
 });
+
+new UpdateIntegPackage(project);
 
 project.synth();

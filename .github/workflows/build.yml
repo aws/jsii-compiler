@@ -252,3 +252,55 @@ jobs:
     steps:
       - name: Done
         run: echo OK
+  benchmark:
+    name: Benchmark (${{ matrix.compiler }})
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      jsii: ${{ steps.run.outputs.jsii }}
+      tsc: ${{ steps.run.outputs.tsc }}
+    env:
+      CI: "true"
+    steps:
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          cache: yarn
+      - name: Download artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: build-output
+      - name: Install dependencies
+        run: yarn install --check-files
+      - name: Benchmark
+        id: run
+        run: |-
+          RESULT=$(yarn test:benchmark --silent --compiler=${{ matrix.compiler }})
+          echo "${{ matrix.compiler }}=${RESULT}" >> $GITHUB_OUTPUT
+    strategy:
+      matrix:
+        compiler:
+          - jsii
+          - tsc
+  benchmark_summary:
+    name: Benchmark Summary
+    needs: benchmark
+    runs-on: ubuntu-latest
+    permissions: {}
+    env:
+      CI: "true"
+    steps:
+      - name: Output Summary
+        run: |-
+          node <<(EOF)
+          const results = {
+            jsii: ${{ needs.benchmark.outputs.jsii }},
+            tsc: ${{ needs.benchmark.outputs.tsc }},
+          };
+          const delta = (results.jsii.time - results.tsc.time) / results.tsc.time;
+          console.log(`Time for jsii: ${results.jsii.time} ms`);
+          console.log(`Time for tsc:  ${results.tsc.time} ms`);
+          console.log(`Slowdown:      ${(100 * delta).toFixed(1)}%`);
+          EOF

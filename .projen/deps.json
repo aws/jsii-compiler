@@ -17,6 +17,10 @@
       "type": "build"
     },
     {
+      "name": "@types/glob",
+      "type": "build"
+    },
+    {
       "name": "@types/jest",
       "type": "build"
     },
@@ -31,6 +35,10 @@
     },
     {
       "name": "@types/semver",
+      "type": "build"
+    },
+    {
+      "name": "@types/tar",
       "type": "build"
     },
     {
@@ -81,6 +89,10 @@
       "type": "build"
     },
     {
+      "name": "glob",
+      "type": "build"
+    },
+    {
       "name": "jest",
       "type": "build"
     },
@@ -94,6 +106,10 @@
       "type": "build"
     },
     {
+      "name": "npm",
+      "type": "build"
+    },
+    {
       "name": "npm-check-updates",
       "version": "^16",
       "type": "build"
@@ -104,6 +120,10 @@
     },
     {
       "name": "projen",
+      "type": "build"
+    },
+    {
+      "name": "tar",
       "type": "build"
     },
     {
