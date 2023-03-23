@@ -297,12 +297,12 @@ export class BuildWorkflow {
           {
             name: 'Install from tarball (npm)',
             if: "matrix.package-manager == 'npm'",
-            run: 'npm install --no-save ${{ runner.temp }}/release-package/js/jsii-*.tgz',
+            run: 'npm install --no-save ${{ runner.temp }}/release-package/dist/js/jsii-*.tgz',
           },
           {
             name: 'Install from tarball (yarn)',
             if: "matrix.package-manager == 'yarn'",
-            run: 'yarn add --no-save ${{ runner.temp }}/release-package/js/jsii-*.tgz',
+            run: 'yarn add --no-save ${{ runner.temp }}/release-package/dist/js/jsii-*.tgz',
           },
           {
             name: 'Simple command',
@@ -311,7 +311,7 @@ export class BuildWorkflow {
         ],
       },
       'pacmak-test': {
-        // Verifies compilation artifacts can be processed by jsii-pacmak@latest
+        // Verifies compilation artifacts can be processed by jsii-pacmak@1.X
         env: { CI: 'true' },
         name: 'Pacmak Test',
         needs: ['package'],
@@ -330,7 +330,7 @@ export class BuildWorkflow {
           {
             name: 'Install from tarball',
             run: [
-              'npm install --no-save jsii-pacmak@latest ${{ runner.temp }}/release-package/private/*.tgz',
+              'npm install --no-save jsii-pacmak@1.x ${{ runner.temp }}/release-package/dist/private/*.tgz',
               './node_modules/.bin/jsii-pacmak --version',
             ].join('\n'),
           },
