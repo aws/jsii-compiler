@@ -1,6 +1,6 @@
 import { NodeRelease } from '@jsii/check-node';
 import { github, typescript } from 'projen';
-import { ACTIONS_CHECKOUT, ACTIONS_SETUP_NODE } from './common';
+import { ACTIONS_SETUP_NODE } from './common';
 
 export interface BuildWorkflowOptions {
   /**
@@ -263,53 +263,46 @@ export class BuildWorkflow {
           },
         ],
       },
-      'prepare-benchmark': {
+      'install-test': {
         env: { CI: 'true' },
-        name: 'prepare-benchmark',
-        outputs: {
-          'release-list': {
-            stepId: 'list',
-            outputName: 'value',
-          },
-        },
-        permissions: { contents: github.workflows.JobPermission.READ },
-        runsOn: ['ubuntu-latest'],
-        steps: [
-          ACTIONS_CHECKOUT,
-          ACTIONS_SETUP_NODE(project.minNodeVersion),
-          {
-            id: 'list',
-            name: 'List supported releases',
-            run: [
-              'echo -n "value=" >> $GITHUB_OUTPUT',
-              `node -p "JSON.stringify(['1.x', require('./releases.json').current + '.x', ...Object.keys(require('./releases.json').maintenance).map((v) => v + '.x'), 'local'])" >> $GITHUB_OUTPUT`,
-            ].join('\n'),
-          },
-        ],
-      },
-      'benchmark': {
-        env: { CI: 'true' },
-        name: 'benchmark',
-        needs: ['prepare-benchmark', 'package'],
+        name: 'Install Test (${{ matrix.runs-on }} | node ${{ matrix.node-version }} | ${{ matrix.package-manager }})',
+        needs: ['package'],
         permissions: {},
         runsOn: ['${{ matrix.runs-on }}'],
         strategy: {
           matrix: {
             domain: {
+              'node-version': NodeRelease.ALL_RELEASES.filter((release) => release.supported).map(
+                (release) => `${release.majorVersion}.x`,
+              ),
+              'package-manager': ['npm', 'yarn'],
               'runs-on': ['ubuntu-latest', 'windows-latest', 'macos-latest'],
-              'jsii-version': 'fromJSON(${{ needs.benchmark.outputs.release-list }})' as any,
             },
           },
         },
         steps: [
-          ACTIONS_SETUP_NODE(),
+          ACTIONS_SETUP_NODE('${{ matrix.node-version }}', '${{ matrix.package-manager }}'),
           {
-            name: 'Check out the aws/aws-cdk "v2-release" branch',
-            uses: 'actions/checkout@v3',
+            name: 'Download Artifact',
+            uses: 'actions/download-artifact@v3',
             with: {
-              repository: 'aws/aws-cdk',
-              ref: 'v2-release',
+              name: 'release-package',
+              path: '${{ runner.temp }}/release-package',
             },
+          },
+          {
+            name: 'Install from tarball (npm)',
+            if: "matrix.package-manager == 'npm'",
+            run: 'npm install --no-save ${{ runner.temp }}/release-package/js/jsii-*.tgz',
+          },
+          {
+            name: 'Install from tarball (yarn)',
+            if: "matrix.package-manager == 'yarn'",
+            run: 'yarn add --no-save ${{ runner.temp }}/release-package/js/jsii-*.tgz',
+          },
+          {
+            name: 'Simple command',
+            run: `./node_modules/.bin/jsii --version`,
           },
         ],
       },
