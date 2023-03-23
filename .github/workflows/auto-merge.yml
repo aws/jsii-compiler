@@ -17,6 +17,7 @@ jobs:
       contents: write
     env:
       CI: "true"
+    if: "!github.event.pull_request.draft"
     steps:
       - uses: peter-evans/enable-pull-request-automerge@v2
         with:

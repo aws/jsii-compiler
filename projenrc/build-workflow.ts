@@ -1,5 +1,6 @@
 import { NodeRelease } from '@jsii/check-node';
 import { github, typescript } from 'projen';
+import { ACTIONS_CHECKOUT, ACTIONS_SETUP_NODE, YARN_INSTALL } from './common';
 
 export interface BuildWorkflowOptions {
   /**
@@ -28,7 +29,6 @@ export class BuildWorkflow {
     wf.on({
       mergeGroup: {},
       pullRequest: {},
-      workflowDispatch: {},
     });
 
     if (opts.defaultBranch !== null) {
@@ -51,21 +51,8 @@ export class BuildWorkflow {
         permissions: { contents: github.workflows.JobPermission.READ },
         runsOn: ['ubuntu-latest'],
         steps: [
-          {
-            name: 'Checkout',
-            uses: 'actions/checkout@v3',
-            with: {
-              ref: '${{ github.event.pull_request.head.ref }}',
-            },
-          },
-          {
-            name: 'Setup Node.js',
-            uses: 'actions/setup-node@v3',
-            with: {
-              'node-version': project.minNodeVersion,
-              'cache': 'yarn',
-            },
-          },
+          ACTIONS_CHECKOUT(),
+          ACTIONS_SETUP_NODE(),
           {
             name: 'Cache build outputs',
             if: "github.event_name == 'pull_request'",
@@ -77,23 +64,20 @@ export class BuildWorkflow {
               'restore-keys': 'build-outputs-',
             },
           },
+          YARN_INSTALL('--check-files'),
           {
-            name: 'Install dependencies',
-            run: 'yarn install --check-files',
-          },
-          {
-            name: 'compile',
+            name: 'Compile',
             run: ['npx projen', 'npx projen pre-compile', 'npx projen compile', 'npx projen post-compile'].join(' && '),
           },
 
           // Run tests to allow self-mutation to be performed if needed...
-          { name: 'test', run: 'npx projen test' },
+          { name: 'Test', run: 'npx projen test' },
           {
             name: 'Find mutations',
             id: 'self-mutation',
             run: [
               'git add .',
-              'git diff --staged --patch --exit-code > .repo.patch || echo "needed=true" >> $GITHUB_OUTPUT',
+              'git diff --cached --patch --exit-code > .repo.patch || echo "needed=true" >> $GITHUB_OUTPUT',
             ].join('\n'),
           },
           {
@@ -115,6 +99,7 @@ export class BuildWorkflow {
             ].join('\n'),
           },
 
+          // Upload artifacts...
           {
             name: 'Upload artifact',
             uses: 'actions/upload-artifact@v3',
@@ -122,6 +107,7 @@ export class BuildWorkflow {
               name: 'build-output',
               path: [
                 '${{ github.workspace }}',
+                '${{ github.workspace }}/dist/private',
                 // Exclude node_modules to reduce artifact size (we won't use those anyway)...
                 '!${{ github.workspace }}/node_modules',
                 '!${{ github.workspace }}/fixtures/node_modules',
@@ -220,7 +206,7 @@ export class BuildWorkflow {
           { name: 'Test', run: 'npx projen test' },
           {
             name: 'Assert clean working directory',
-            run: 'git diff --staged --exit-code',
+            run: 'git diff --cached --exit-code',
           },
         ],
       },
@@ -262,6 +248,113 @@ export class BuildWorkflow {
           },
         ],
       },
+      //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+      // Integration-style tests (via the release tarball)
+      //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+      'install-test': {
+        // Verifies the tarball can be installed & the CLI entry point can start (tested by `jsii --version`)
+        env: { CI: 'true' },
+        name: 'Install Test (${{ matrix.runs-on }} | node ${{ matrix.node-version }} | ${{ matrix.package-manager }})',
+        needs: ['package'],
+        permissions: {},
+        runsOn: ['${{ matrix.runs-on }}'],
+        strategy: {
+          failFast: false,
+          matrix: {
+            domain: {
+              'node-version': NodeRelease.ALL_RELEASES.filter((release) => release.supported).map(
+                (release) => `${release.majorVersion}.x`,
+              ),
+              'package-manager': ['npm', 'yarn'],
+              'runs-on': ['ubuntu-latest', 'windows-latest', 'macos-latest'],
+            },
+          },
+        },
+        steps: [
+          ACTIONS_SETUP_NODE('${{ matrix.node-version }}', false),
+          {
+            name: 'Download Artifact',
+            uses: 'actions/download-artifact@v3',
+            with: {
+              name: 'release-package',
+              path: '${{ runner.temp }}/release-package',
+            },
+          },
+          {
+            name: 'Install from tarball (npm)',
+            if: "runner.os != 'Windows' && matrix.package-manager == 'npm'",
+            run: ['npm init -y', 'npm install ${{ runner.temp }}/release-package/js/jsii-*.tgz'].join('\n'),
+          },
+          {
+            name: 'Install from tarball (yarn)',
+            if: "runner.os != 'Windows' && matrix.package-manager == 'yarn'",
+            run: ['yarn init -y', 'yarn add ${{ runner.temp }}/release-package/js/jsii-*.tgz'].join('\n'),
+          },
+          {
+            name: 'Install from tarball (Windows, npm)',
+            if: "runner.os == 'Windows' && matrix.package-manager == 'npm'",
+            run: [
+              'npm init -y',
+              '$TARBALL = Get-ChildItem -Path "${{ runner.temp }}/release-package/js/jsii-*.tgz"',
+              'npm install $TARBALL',
+            ].join('\n'),
+          },
+          {
+            name: 'Install from tarball (Windows, yarn)',
+            if: "runner.os == 'Windows' && matrix.package-manager == 'yarn'",
+            run: [
+              'yarn init -y',
+              '$TARBALL = Get-ChildItem -Path "${{ runner.temp }}/release-package/js/jsii-*.tgz"',
+              'yarn add $TARBALL',
+            ].join('\n'),
+          },
+          {
+            name: 'Simple command',
+            run: `./node_modules/.bin/jsii --version`,
+          },
+        ],
+      },
+      'pacmak-test': {
+        // Verifies compilation artifacts can be processed by jsii-pacmak@1.X
+        env: { CI: 'true' },
+        name: 'Pacmak Test',
+        needs: ['package'],
+        permissions: {},
+        runsOn: ['ubuntu-latest'],
+        steps: [
+          ACTIONS_SETUP_NODE(undefined, false),
+          {
+            name: 'Download Artifact',
+            uses: 'actions/download-artifact@v3',
+            with: {
+              name: 'release-package',
+              path: '${{ runner.temp }}/release-package',
+            },
+          },
+          {
+            name: 'Install from tarball',
+            run: [
+              'npm init -y',
+              'npm install jsii-pacmak@1.x ${{ runner.temp }}/release-package/private/*.tgz',
+              'npm ls --depth=0',
+              './node_modules/.bin/jsii-pacmak --version',
+            ].join('\n'),
+          },
+          {
+            name: 'Run jsii-pacmak',
+            run: './node_modules/.bin/jsii-pacmak --verbose --recurse ./node_modules/jsii-calc',
+          },
+        ],
+      },
+      'integ-clear': {
+        // This is a simple "join target" to simplify branch protection rules.
+        env: { CI: 'true' },
+        name: 'Integration Tests',
+        needs: ['install-test', 'pacmak-test'],
+        permissions: {},
+        runsOn: ['ubuntu-latest'],
+        steps: [{ name: 'Done', run: 'echo OK' }],
+      },
     });
 
     if (opts.autoMerge ?? true) {
@@ -274,6 +367,7 @@ export class BuildWorkflow {
       });
       autoMerge.addJob('enable-auto-merge', {
         env: { CI: 'true' },
+        if: '!github.event.pull_request.draft',
         name: 'Enable "Merge when ready" for this PR',
         permissions: {
           pullRequests: github.workflows.JobPermission.WRITE,

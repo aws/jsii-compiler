@@ -4,7 +4,6 @@ name: build
 on:
   merge_group: {}
   pull_request: {}
-  workflow_dispatch: {}
   push:
     branches:
       - main
@@ -21,11 +20,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
         with:
-          ref: ${{ github.event.pull_request.head.ref }}
+          repository: ${{ github.repository }}
+          ref: ${{ github.ref }}
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: 14.18.0
           cache: yarn
       - name: Cache build outputs
         if: github.event_name == 'pull_request'
@@ -38,15 +37,15 @@ jobs:
           restore-keys: build-outputs-
       - name: Install dependencies
         run: yarn install --check-files
-      - name: compile
+      - name: Compile
         run: npx projen && npx projen pre-compile && npx projen compile && npx projen post-compile
-      - name: test
+      - name: Test
         run: npx projen test
       - name: Find mutations
         id: self-mutation
         run: |-
           git add .
-          git diff --staged --patch --exit-code > .repo.patch || echo "needed=true" >> $GITHUB_OUTPUT
+          git diff --cached --patch --exit-code > .repo.patch || echo "needed=true" >> $GITHUB_OUTPUT
       - name: Upload patch
         if: steps.self-mutation.outputs.needed
         uses: actions/upload-artifact@v3
@@ -65,6 +64,7 @@ jobs:
           name: build-output
           path: |-
             ${{ github.workspace }}
+            ${{ github.workspace }}/dist/private
             !${{ github.workspace }}/node_modules
             !${{ github.workspace }}/fixtures/node_modules
   self-mutation:
@@ -124,7 +124,7 @@ jobs:
       - name: Test
         run: npx projen test
       - name: Assert clean working directory
-        run: git diff --staged --exit-code
+        run: git diff --cached --exit-code
     strategy:
       fail-fast: false
       matrix:
@@ -160,3 +160,95 @@ jobs:
         with:
           name: release-package
           path: ${{ github.workspace }}/dist
+  install-test:
+    name: Install Test (${{ matrix.runs-on }} | node ${{ matrix.node-version }} | ${{ matrix.package-manager }})
+    needs: package
+    runs-on: ${{ matrix.runs-on }}
+    permissions: {}
+    env:
+      CI: "true"
+    steps:
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node-version }}
+      - name: Download Artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: release-package
+          path: ${{ runner.temp }}/release-package
+      - name: Install from tarball (npm)
+        if: runner.os != 'Windows' && matrix.package-manager == 'npm'
+        run: |-
+          npm init -y
+          npm install ${{ runner.temp }}/release-package/js/jsii-*.tgz
+      - name: Install from tarball (yarn)
+        if: runner.os != 'Windows' && matrix.package-manager == 'yarn'
+        run: |-
+          yarn init -y
+          yarn add ${{ runner.temp }}/release-package/js/jsii-*.tgz
+      - name: Install from tarball (Windows, npm)
+        if: runner.os == 'Windows' && matrix.package-manager == 'npm'
+        run: |-
+          npm init -y
+          $TARBALL = Get-ChildItem -Path "${{ runner.temp }}/release-package/js/jsii-*.tgz"
+          npm install $TARBALL
+      - name: Install from tarball (Windows, yarn)
+        if: runner.os == 'Windows' && matrix.package-manager == 'yarn'
+        run: |-
+          yarn init -y
+          $TARBALL = Get-ChildItem -Path "${{ runner.temp }}/release-package/js/jsii-*.tgz"
+          yarn add $TARBALL
+      - name: Simple command
+        run: ./node_modules/.bin/jsii --version
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version:
+          - 14.x
+          - 16.x
+          - 18.x
+          - 19.x
+        package-manager:
+          - npm
+          - yarn
+        runs-on:
+          - ubuntu-latest
+          - windows-latest
+          - macos-latest
+  pacmak-test:
+    name: Pacmak Test
+    needs: package
+    runs-on: ubuntu-latest
+    permissions: {}
+    env:
+      CI: "true"
+    steps:
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with: {}
+      - name: Download Artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: release-package
+          path: ${{ runner.temp }}/release-package
+      - name: Install from tarball
+        run: |-
+          npm init -y
+          npm install jsii-pacmak@1.x ${{ runner.temp }}/release-package/private/*.tgz
+          npm ls --depth=0
+          ./node_modules/.bin/jsii-pacmak --version
+      - name: Run jsii-pacmak
+        run: ./node_modules/.bin/jsii-pacmak --verbose --recurse ./node_modules/jsii-calc
+  integ-clear:
+    name: Integration Tests
+    needs:
+      - install-test
+      - pacmak-test
+    runs-on: ubuntu-latest
+    permissions: {}
+    env:
+      CI: "true"
+    steps:
+      - name: Done
+        run: echo OK

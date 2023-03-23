@@ -7,7 +7,7 @@ export class SupportPolicy {
       allowComments: false,
       editGitignore: false,
       obj: {
-        current: '4.9',
+        current: '5.0',
         maintenance: {},
       } satisfies ReleasesDocument,
       readonly: true,

@@ -51,9 +51,9 @@ export class ReleaseWorkflow {
       },
       runsOn: ['ubuntu-latest'],
       steps: [
-        ACTIONS_CHECKOUT,
+        ACTIONS_CHECKOUT(),
         ACTIONS_SETUP_NODE(project.minNodeVersion),
-        YARN_INSTALL,
+        YARN_INSTALL(),
         {
           name: 'Prepare Release',
           run: 'yarn release ${{ github.ref_name }}',
@@ -345,9 +345,9 @@ class AutoTagWorkflow {
       },
       permissions: { contents: github.workflows.JobPermission.READ },
       steps: [
-        { ...ACTIONS_CHECKOUT, with: { ...ACTIONS_CHECKOUT.with, ref: props.branch } },
+        ACTIONS_CHECKOUT(props.branch),
         ACTIONS_SETUP_NODE(project.minNodeVersion),
-        YARN_INSTALL,
+        YARN_INSTALL(),
         { name: 'Build', run: 'yarn build' },
         { id: 'git', name: 'Identify git SHA', run: 'echo sha=$(git rev-parse HEAD) >> $GITHUB_OUTPUT' },
       ],
@@ -358,16 +358,9 @@ class AutoTagWorkflow {
       runsOn: ['ubuntu-latest'],
       permissions: {},
       steps: [
-        {
-          ...ACTIONS_CHECKOUT,
-          with: {
-            ...ACTIONS_CHECKOUT.with,
-            ref: '${{ needs.pre-flight.outputs.sha }}',
-            token: '${{ secrets.PROJEN_GITHUB_TOKEN }}',
-          },
-        },
+        ACTIONS_CHECKOUT('${{ needs.pre-flight.outputs.sha }}', { token: '${{ secrets.PROJEN_GITHUB_TOKEN }}' }),
         ACTIONS_SETUP_NODE(project.minNodeVersion),
-        YARN_INSTALL,
+        YARN_INSTALL(),
         {
           name: 'Set git identity',
           run: ['git config user.name "github-actions"', 'git config user.email "github-actions@github.com"'].join(
