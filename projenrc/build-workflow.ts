@@ -282,7 +282,7 @@ export class BuildWorkflow {
             name: 'List supported releases',
             run: [
               'echo -n "value=" >> $GITHUB_OUTPUT',
-              `node -p "JSON.stringify(['1.x', \`\${require('./releases.json').current}.x\`, ...Object.keys(require('./releases.json').maintenance).map((v) => \`\${v}.x\`), 'local'])" >> $GITHUB_OUTPUT`,
+              `node -p "JSON.stringify(['1.x', require('./releases.json').current + '.x', ...Object.keys(require('./releases.json').maintenance).map((v) => v + '.x'), 'local'])" >> $GITHUB_OUTPUT`,
             ].join('\n'),
           },
         ],
