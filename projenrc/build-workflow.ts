@@ -297,13 +297,12 @@ export class BuildWorkflow {
           matrix: {
             domain: {
               'runs-on': ['ubuntu-latest', 'windows-latest', 'macos-latest'],
-              'node-version': NodeRelease.ALL_RELEASES.flatMap((release) => `${release.majorVersion}.x`),
-              'jsii-version': '${{ needs.benchmark.outputs.release-list }}' as any,
+              'jsii-version': 'fromJSON(${{ needs.benchmark.outputs.release-list }})' as any,
             },
           },
         },
         steps: [
-          ACTIONS_SETUP_NODE('${{ matrix.node-version }}'),
+          ACTIONS_SETUP_NODE(),
           {
             name: 'Check out the aws/aws-cdk "v2-release" branch',
             uses: 'actions/checkout@v3',
