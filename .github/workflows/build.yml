@@ -160,3 +160,77 @@ jobs:
         with:
           name: release-package
           path: ${{ github.workspace }}/dist
+  prepare-benchmark:
+    name: prepare-benchmark
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      release-list: ${{ steps.list.outputs.value }}
+    env:
+      CI: "true"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.sha }}
+          repository: ${{ github.repository }}
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          cache: yarn
+          node-version: 14.18.0
+      - name: List supported releases
+        id: list
+        run: |-
+          echo -n "value=" >> $GITHUB_OUTPUT
+          node -p "JSON.stringify(['1.x', `${require('./releases.json').current}.x`, ...Object.keys(require('./releases.json').maintenance).map((v) => `${v}.x`), 'local'])" >> $GITHUB_OUTPUT
+  benchmark:
+    name: benchmark
+    needs:
+      - prepare-benchmark
+      - package
+    runs-on: ${{ matrix.runs-on }}
+    permissions: {}
+    env:
+      CI: "true"
+    steps:
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          cache: yarn
+          node-version: ${{ matrix.node-version }}
+      - name: Check out the aws/aws-cdk "v2-release" branch
+        uses: actions/checkout@v3
+        with:
+          repository: aws/aws-cdk
+          ref: v2-release
+    strategy:
+      matrix:
+        runs-on:
+          - ubuntu-latest
+          - windows-latest
+          - macos-latest
+        node-version:
+          - 0.x
+          - 1.x
+          - 2.x
+          - 3.x
+          - 4.x
+          - 5.x
+          - 6.x
+          - 7.x
+          - 8.x
+          - 9.x
+          - 10.x
+          - 11.x
+          - 13.x
+          - 15.x
+          - 12.x
+          - 14.x
+          - 16.x
+          - 17.x
+          - 18.x
+          - 19.x
+          - 20.x
+        jsii-version: ${{ needs.benchmark.outputs.release-list }}

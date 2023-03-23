@@ -1,5 +1,6 @@
 import { NodeRelease } from '@jsii/check-node';
 import { github, typescript } from 'projen';
+import { ACTIONS_CHECKOUT, ACTIONS_SETUP_NODE } from './common';
 
 export interface BuildWorkflowOptions {
   /**
@@ -258,6 +259,57 @@ export class BuildWorkflow {
             with: {
               name: 'release-package',
               path: '${{ github.workspace }}/dist',
+            },
+          },
+        ],
+      },
+      'prepare-benchmark': {
+        env: { CI: 'true' },
+        name: 'prepare-benchmark',
+        outputs: {
+          'release-list': {
+            stepId: 'list',
+            outputName: 'value',
+          },
+        },
+        permissions: { contents: github.workflows.JobPermission.READ },
+        runsOn: ['ubuntu-latest'],
+        steps: [
+          ACTIONS_CHECKOUT,
+          ACTIONS_SETUP_NODE(project.minNodeVersion),
+          {
+            id: 'list',
+            name: 'List supported releases',
+            run: [
+              'echo -n "value=" >> $GITHUB_OUTPUT',
+              `node -p "JSON.stringify(['1.x', \`\${require('./releases.json').current}.x\`, ...Object.keys(require('./releases.json').maintenance).map((v) => \`\${v}.x\`), 'local'])" >> $GITHUB_OUTPUT`,
+            ].join('\n'),
+          },
+        ],
+      },
+      'benchmark': {
+        env: { CI: 'true' },
+        name: 'benchmark',
+        needs: ['prepare-benchmark', 'package'],
+        permissions: {},
+        runsOn: ['${{ matrix.runs-on }}'],
+        strategy: {
+          matrix: {
+            domain: {
+              'runs-on': ['ubuntu-latest', 'windows-latest', 'macos-latest'],
+              'node-version': NodeRelease.ALL_RELEASES.flatMap((release) => `${release.majorVersion}.x`),
+              'jsii-version': '${{ needs.benchmark.outputs.release-list }}' as any,
+            },
+          },
+        },
+        steps: [
+          ACTIONS_SETUP_NODE('${{ matrix.node-version }}'),
+          {
+            name: 'Check out the aws/aws-cdk "v2-release" branch',
+            uses: 'actions/checkout@v3',
+            with: {
+              repository: 'aws/aws-cdk',
+              ref: 'v2-release',
             },
           },
         ],
