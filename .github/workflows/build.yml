@@ -4,7 +4,6 @@ name: build
 on:
   merge_group: {}
   pull_request: {}
-  workflow_dispatch: {}
   push:
     branches:
       - main
@@ -187,6 +186,7 @@ jobs:
       - name: Simple command
         run: ./node_modules/.bin/jsii --version
     strategy:
+      fail-fast: false
       matrix:
         node-version:
           - 14.x

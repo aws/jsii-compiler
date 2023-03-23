@@ -29,7 +29,6 @@ export class BuildWorkflow {
     wf.on({
       mergeGroup: {},
       pullRequest: {},
-      workflowDispatch: {},
     });
 
     if (opts.defaultBranch !== null) {
@@ -260,6 +259,7 @@ export class BuildWorkflow {
         permissions: {},
         runsOn: ['${{ matrix.runs-on }}'],
         strategy: {
+          failFast: false,
           matrix: {
             domain: {
               'node-version': NodeRelease.ALL_RELEASES.filter((release) => release.supported).map(
