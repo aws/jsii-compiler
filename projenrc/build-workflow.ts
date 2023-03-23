@@ -283,12 +283,20 @@ export class BuildWorkflow {
           {
             name: 'Install from tarball (npm)',
             if: "matrix.package-manager == 'npm'",
-            run: 'set -x && npm install --no-save $(find ${{ runner.temp }}/release-package/js -iname "jsii-*.tgz")',
+            run: [
+              'set -x',
+              'npm init -y',
+              'npm install $(find ${{ runner.temp }}/release-package/js -iname "jsii-*.tgz")',
+            ].join('\n'),
           },
           {
             name: 'Install from tarball (yarn)',
             if: "matrix.package-manager == 'yarn'",
-            run: 'set -x && yarn add --no-save $(find ${{ runner.temp }}/release-package/js -iname "jsii-*.tgz")',
+            run: [
+              'set -x',
+              'yarn init -y',
+              'yarn add $(find ${{ runner.temp }}/release-package/js -iname "jsii-*.tgz")',
+            ].join('\n'),
           },
           {
             name: 'Simple command',
@@ -316,7 +324,8 @@ export class BuildWorkflow {
           {
             name: 'Install from tarball',
             run: [
-              'npm install --no-save jsii-pacmak@1.x $(find ${{ runner.temp }}/release-package/private -iname "*.tgz")',
+              'npm init -y',
+              'npm install jsii-pacmak@1.x $(find ${{ runner.temp }}/release-package/private -iname "*.tgz")',
               'npm ls --depth=0',
               'set -x',
               './node_modules/.bin/jsii-pacmak --version',
