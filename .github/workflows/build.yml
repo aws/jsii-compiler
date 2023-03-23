@@ -179,10 +179,10 @@ jobs:
           path: ${{ runner.temp }}/release-package
       - name: Install from tarball (npm)
         if: matrix.package-manager == 'npm'
-        run: npm init -y && npm install ${{ runner.temp }}/release-package/js/jsii-*.tgz
+        run: npm init -y && npm install $(find ${{ runner.temp }}/release-package/js -iname "jsii-*.tgz")
       - name: Install from tarball (yarn)
         if: matrix.package-manager == 'yarn'
-        run: yarn init -y && yarn add ${{ runner.temp }}/release-package/js/jsii-*.tgz
+        run: yarn init -y && yarn add $(find ${{ runner.temp }}/release-package/js -iname "jsii-*.tgz")
       - name: Simple command
         run: ./node_modules/.bin/jsii --version
     strategy:

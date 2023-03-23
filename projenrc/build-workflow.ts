@@ -283,12 +283,16 @@ export class BuildWorkflow {
           {
             name: 'Install from tarball (npm)',
             if: "matrix.package-manager == 'npm'",
-            run: ['npm init -y', 'npm install ${{ runner.temp }}/release-package/js/jsii-*.tgz'].join(' && '),
+            run: ['npm init -y', 'npm install $(find ${{ runner.temp }}/release-package/js -iname "jsii-*.tgz")'].join(
+              ' && ',
+            ),
           },
           {
             name: 'Install from tarball (yarn)',
             if: "matrix.package-manager == 'yarn'",
-            run: ['yarn init -y', 'yarn add ${{ runner.temp }}/release-package/js/jsii-*.tgz'].join(' && '),
+            run: ['yarn init -y', 'yarn add $(find ${{ runner.temp }}/release-package/js -iname "jsii-*.tgz")'].join(
+              ' && ',
+            ),
           },
           {
             name: 'Simple command',
