@@ -65,13 +65,9 @@ jobs:
           name: build-output
           path: |-
             ${{ github.workspace }}
+            ${{ github.workspace }}/dist/private
             !${{ github.workspace }}/node_modules
             !${{ github.workspace }}/fixtures/node_modules
-      - name: Upload private package artifacts
-        uses: actions/upload-artifact@v3
-        with:
-          name: private-packages
-          path: ${{ github.workspace }}/dist/private
   self-mutation:
     needs: build
     runs-on: ubuntu-latest
@@ -184,10 +180,10 @@ jobs:
           path: ${{ runner.temp }}/release-package
       - name: Install from tarball (npm)
         if: matrix.package-manager == 'npm'
-        run: npm install --no-save $(find ${{ runner.temp }}/release-package/js -iname "jsii-*.tgz")
+        run: set -x && npm install --no-save $(find ${{ runner.temp }}/release-package/js -iname "jsii-*.tgz")
       - name: Install from tarball (yarn)
         if: matrix.package-manager == 'yarn'
-        run: yarn add --no-save $(find ${{ runner.temp }}/release-package/js -iname "jsii-*.tgz")
+        run: set -x && yarn add --no-save $(find ${{ runner.temp }}/release-package/js -iname "jsii-*.tgz")
       - name: Simple command
         run: ./node_modules/.bin/jsii --version
     strategy:
@@ -206,7 +202,7 @@ jobs:
           - macos-latest
   pacmak-test:
     name: Pacmak Test
-    needs: build
+    needs: package
     runs-on: ubuntu-latest
     permissions: {}
     env:
@@ -218,14 +214,16 @@ jobs:
       - name: Download Artifact
         uses: actions/download-artifact@v3
         with:
-          name: private-packages
-          path: ${{ runner.temp }}/private-packages
+          name: release-package
+          path: ${{ runner.temp }}/release-package
       - name: Install from tarball
         run: |-
-          npm install --no-save jsii-pacmak@1.x $(find ${{ runner.temp }}/private-packages -iname "*.tgz")
+          npm install --no-save jsii-pacmak@1.x $(find ${{ runner.temp }}/release-package/private -iname "*.tgz")
+          npm ls --depth=0
+          set -x
           ./node_modules/.bin/jsii-pacmak --version
       - name: Run jsii-pacmak
-        run: ./node_modules/.bin/jsii-pacmak --recurse ./node_modules/jsii-calc
+        run: ./node_modules/.bin/jsii-pacmak --verbose --recurse ./node_modules/jsii-calc
   integ-clear:
     name: Integration Tests
     needs:
