@@ -100,6 +100,7 @@ export class BuildWorkflow {
             ].join('\n'),
           },
 
+          // Upload artifacts...
           {
             name: 'Upload artifact',
             uses: 'actions/upload-artifact@v3',
@@ -111,6 +112,14 @@ export class BuildWorkflow {
                 '!${{ github.workspace }}/node_modules',
                 '!${{ github.workspace }}/fixtures/node_modules',
               ].join('\n'),
+            },
+          },
+          {
+            name: 'Upload private package artifacts',
+            uses: 'actions/upload-artifact@v3',
+            with: {
+              name: 'private-packages',
+              path: '${{ github.workspace }}/dist/private',
             },
           },
         ],
@@ -243,14 +252,6 @@ export class BuildWorkflow {
             with: {
               name: 'release-package',
               path: '${{ github.workspace }}/dist',
-            },
-          },
-          {
-            name: 'Upload private package artifacts',
-            uses: 'actions/upload-artifact@v3',
-            with: {
-              name: 'private-packages',
-              path: '${{ github.workspace }}/dist/private',
             },
           },
         ],

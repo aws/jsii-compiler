@@ -67,6 +67,11 @@ jobs:
             ${{ github.workspace }}
             !${{ github.workspace }}/node_modules
             !${{ github.workspace }}/fixtures/node_modules
+      - name: Upload private package artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: private-packages
+          path: ${{ github.workspace }}/dist/private
   self-mutation:
     needs: build
     runs-on: ubuntu-latest
@@ -160,11 +165,6 @@ jobs:
         with:
           name: release-package
           path: ${{ github.workspace }}/dist
-      - name: Upload private package artifacts
-        uses: actions/upload-artifact@v3
-        with:
-          name: private-packages
-          path: ${{ github.workspace }}/dist/private
   install-test:
     name: Install Test (${{ matrix.runs-on }} | node ${{ matrix.node-version }} | ${{ matrix.package-manager }})
     needs: package
