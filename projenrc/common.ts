@@ -23,7 +23,11 @@ export function ACTIONS_SETUP_NODE(
   };
 }
 
-export const YARN_INSTALL: github.workflows.JobStep = {
-  name: 'Install dependencies',
-  run: 'yarn install --frozen-lockfile',
-};
+export function YARN_INSTALL(
+  mode: '--check-files' | '--frozen-lockfile' = '--frozen-lockfile',
+): github.workflows.JobStep {
+  return {
+    name: 'Install dependencies',
+    run: `yarn install ${mode}`,
+  };
+}

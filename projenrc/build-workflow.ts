@@ -1,6 +1,6 @@
 import { NodeRelease } from '@jsii/check-node';
 import { github, typescript } from 'projen';
-import { ACTIONS_SETUP_NODE } from './common';
+import { ACTIONS_SETUP_NODE, YARN_INSTALL } from './common';
 
 export interface BuildWorkflowOptions {
   /**
@@ -59,14 +59,7 @@ export class BuildWorkflow {
               ref: '${{ github.event.pull_request.head.ref }}',
             },
           },
-          {
-            name: 'Setup Node.js',
-            uses: 'actions/setup-node@v3',
-            with: {
-              'node-version': project.minNodeVersion,
-              'cache': 'yarn',
-            },
-          },
+          ACTIONS_SETUP_NODE(),
           {
             name: 'Cache build outputs',
             if: "github.event_name == 'pull_request'",
@@ -78,10 +71,7 @@ export class BuildWorkflow {
               'restore-keys': 'build-outputs-',
             },
           },
-          {
-            name: 'Install dependencies',
-            run: 'yarn install --check-files',
-          },
+          YARN_INSTALL('--check-files'),
           {
             name: 'Compile',
             run: ['npx projen', 'npx projen pre-compile', 'npx projen compile', 'npx projen post-compile'].join(' && '),

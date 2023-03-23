@@ -53,7 +53,7 @@ export class ReleaseWorkflow {
       steps: [
         ACTIONS_CHECKOUT,
         ACTIONS_SETUP_NODE(project.minNodeVersion),
-        YARN_INSTALL,
+        YARN_INSTALL(),
         {
           name: 'Prepare Release',
           run: 'yarn release ${{ github.ref_name }}',
@@ -347,7 +347,7 @@ class AutoTagWorkflow {
       steps: [
         { ...ACTIONS_CHECKOUT, with: { ...ACTIONS_CHECKOUT.with, ref: props.branch } },
         ACTIONS_SETUP_NODE(project.minNodeVersion),
-        YARN_INSTALL,
+        YARN_INSTALL(),
         { name: 'Build', run: 'yarn build' },
         { id: 'git', name: 'Identify git SHA', run: 'echo sha=$(git rev-parse HEAD) >> $GITHUB_OUTPUT' },
       ],
@@ -367,7 +367,7 @@ class AutoTagWorkflow {
           },
         },
         ACTIONS_SETUP_NODE(project.minNodeVersion),
-        YARN_INSTALL,
+        YARN_INSTALL(),
         {
           name: 'Set git identity',
           run: ['git config user.name "github-actions"', 'git config user.email "github-actions@github.com"'].join(
