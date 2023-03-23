@@ -1,4 +1,5 @@
-import { mkdtempSync, rmSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { Assembly, loadAssemblyFromPath } from '@jsii/spec';
 import { compileJsiiForTest as compileJsiiV1 } from 'jsii-1.x';
@@ -41,6 +42,14 @@ test('integration test', () => {
     { ...DEFAULT_MATCHER, ...HAS_DEPRECATION_WARNINGS },
     'jsii-calc',
   );
+
+  // Package up the tarballs for further integration/E2E testing...
+  const distPrivate = join(__dirname, '..', 'dist', 'private');
+  rmSync(distPrivate, { force: true, recursive: true });
+  mkdirSync(distPrivate, { recursive: true });
+  for (const dir of [calcBaseOfBaseRoot, calcBaseRoot, calcLibRoot, calcRoot]) {
+    expect(spawnSync('npm', ['pack', `--pack-destination=${distPrivate}`, dir]).status).toBe(0);
+  }
 }, 120_000);
 
 test('v1 compatibility check', () => {
