@@ -11,13 +11,13 @@ export const ACTIONS_CHECKOUT: github.workflows.JobStep = {
 
 export function ACTIONS_SETUP_NODE(
   nodeVersion?: string,
-  packageManager: 'npm' | 'yarn' | `\${{${string}}}` = 'yarn',
+  cache: 'npm' | 'yarn' | `\${{${string}}}` | false = 'yarn',
 ): github.workflows.JobStep {
   return {
     name: 'Setup Node.js',
     uses: 'actions/setup-node@v3',
     with: {
-      'cache': packageManager,
+      'cache': cache || undefined,
       'node-version': nodeVersion,
     },
   };

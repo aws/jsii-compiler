@@ -171,7 +171,6 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
-          cache: ${{ matrix.package-manager }}
           node-version: ${{ matrix.node-version }}
       - name: Download Artifact
         uses: actions/download-artifact@v3
@@ -200,3 +199,25 @@ jobs:
           - ubuntu-latest
           - windows-latest
           - macos-latest
+  pacmak-test:
+    name: Pacmak Test
+    needs: package
+    runs-on: ubuntu-latest
+    permissions: {}
+    env:
+      CI: "true"
+    steps:
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with: {}
+      - name: Download Artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: release-package
+          path: ${{ runner.temp }}/release-package
+      - name: Install from tarball
+        run: |-
+          npm install --no-save jsii-pacmak@latest ${{ runner.temp }}/release-package/private/*.tgz
+          ./node_modules/.bin/jsii-pacmak --version
+      - name: Run jsii-pacmak
+        run: ./node_modules/.bin/jsii-pacmak --recurse ./node_modules/jsii-calc

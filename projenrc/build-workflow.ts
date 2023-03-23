@@ -263,7 +263,11 @@ export class BuildWorkflow {
           },
         ],
       },
+      //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+      // Integration-style tests (via the release tarball)
+      //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
       'install-test': {
+        // Verifies the tarball can be installed & the CLI entry point can start (tested by `jsii --version`)
         env: { CI: 'true' },
         name: 'Install Test (${{ matrix.runs-on }} | node ${{ matrix.node-version }} | ${{ matrix.package-manager }})',
         needs: ['package'],
@@ -281,7 +285,7 @@ export class BuildWorkflow {
           },
         },
         steps: [
-          ACTIONS_SETUP_NODE('${{ matrix.node-version }}', '${{ matrix.package-manager }}'),
+          ACTIONS_SETUP_NODE('${{ matrix.node-version }}', false),
           {
             name: 'Download Artifact',
             uses: 'actions/download-artifact@v3',
@@ -303,6 +307,36 @@ export class BuildWorkflow {
           {
             name: 'Simple command',
             run: `./node_modules/.bin/jsii --version`,
+          },
+        ],
+      },
+      'pacmak-test': {
+        // Verifies compilation artifacts can be processed by jsii-pacmak@latest
+        env: { CI: 'true' },
+        name: 'Pacmak Test',
+        needs: ['package'],
+        permissions: {},
+        runsOn: ['ubuntu-latest'],
+        steps: [
+          ACTIONS_SETUP_NODE(undefined, false),
+          {
+            name: 'Download Artifact',
+            uses: 'actions/download-artifact@v3',
+            with: {
+              name: 'release-package',
+              path: '${{ runner.temp }}/release-package',
+            },
+          },
+          {
+            name: 'Install from tarball',
+            run: [
+              'npm install --no-save jsii-pacmak@latest ${{ runner.temp }}/release-package/private/*.tgz',
+              './node_modules/.bin/jsii-pacmak --version',
+            ].join('\n'),
+          },
+          {
+            name: 'Run jsii-pacmak',
+            run: './node_modules/.bin/jsii-pacmak --recurse ./node_modules/jsii-calc',
           },
         ],
       },
