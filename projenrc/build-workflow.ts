@@ -326,6 +326,7 @@ export class BuildWorkflow {
       });
       autoMerge.addJob('enable-auto-merge', {
         env: { CI: 'true' },
+        if: '!github.event.pull_request.draft',
         name: 'Enable "Merge when ready" for this PR',
         permissions: {
           pullRequests: github.workflows.JobPermission.WRITE,
