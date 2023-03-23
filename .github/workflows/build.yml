@@ -21,8 +21,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
         with:
-          ref: ${{ github.sha }}
           repository: ${{ github.repository }}
+          ref: ${{ github.ref }}
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
@@ -46,7 +46,7 @@ jobs:
         id: self-mutation
         run: |-
           git add .
-          git diff --staged --patch --exit-code > .repo.patch || echo "needed=true" >> $GITHUB_OUTPUT
+          git diff --cached --patch --exit-code > .repo.patch || echo "needed=true" >> $GITHUB_OUTPUT
       - name: Upload patch
         if: steps.self-mutation.outputs.needed
         uses: actions/upload-artifact@v3
@@ -124,7 +124,7 @@ jobs:
       - name: Test
         run: npx projen test
       - name: Assert clean working directory
-        run: git diff --staged --exit-code
+        run: git diff --cached --exit-code
     strategy:
       fail-fast: false
       matrix:

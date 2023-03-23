@@ -117,7 +117,7 @@ async function main(): Promise<void> {
   }
 
   // Check if the work-tree is dirty or not...
-  const dirty = await git('diff', '--staged');
+  const dirty = await git('diff', '--cached');
   if (dirty != '') {
     if (ignoreDirty) {
       console.warn('↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧');

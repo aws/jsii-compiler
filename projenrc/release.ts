@@ -51,7 +51,7 @@ export class ReleaseWorkflow {
       },
       runsOn: ['ubuntu-latest'],
       steps: [
-        ACTIONS_CHECKOUT,
+        ACTIONS_CHECKOUT(),
         ACTIONS_SETUP_NODE(project.minNodeVersion),
         YARN_INSTALL(),
         {
@@ -345,7 +345,7 @@ class AutoTagWorkflow {
       },
       permissions: { contents: github.workflows.JobPermission.READ },
       steps: [
-        { ...ACTIONS_CHECKOUT, with: { ...ACTIONS_CHECKOUT.with, ref: props.branch } },
+        ACTIONS_CHECKOUT(props.branch),
         ACTIONS_SETUP_NODE(project.minNodeVersion),
         YARN_INSTALL(),
         { name: 'Build', run: 'yarn build' },
@@ -358,14 +358,7 @@ class AutoTagWorkflow {
       runsOn: ['ubuntu-latest'],
       permissions: {},
       steps: [
-        {
-          ...ACTIONS_CHECKOUT,
-          with: {
-            ...ACTIONS_CHECKOUT.with,
-            ref: '${{ needs.pre-flight.outputs.sha }}',
-            token: '${{ secrets.PROJEN_GITHUB_TOKEN }}',
-          },
-        },
+        ACTIONS_CHECKOUT('${{ needs.pre-flight.outputs.sha }}', { token: '${{ secrets.PROJEN_GITHUB_TOKEN }}' }),
         ACTIONS_SETUP_NODE(project.minNodeVersion),
         YARN_INSTALL(),
         {

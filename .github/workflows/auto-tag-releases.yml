@@ -19,6 +19,7 @@ jobs:
         uses: actions/checkout@v3
         with:
           repository: ${{ github.repository }}
+          ref: ${{ github.ref }}
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
@@ -40,9 +41,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
         with:
-          ref: ${{ needs.pre-flight.outputs.sha }}
           repository: ${{ github.repository }}
           token: ${{ secrets.PROJEN_GITHUB_TOKEN }}
+          ref: ${{ needs.pre-flight.outputs.sha }}
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:

@@ -52,7 +52,7 @@ export class BuildWorkflow {
         permissions: { contents: github.workflows.JobPermission.READ },
         runsOn: ['ubuntu-latest'],
         steps: [
-          ACTIONS_CHECKOUT,
+          ACTIONS_CHECKOUT(),
           ACTIONS_SETUP_NODE(),
           {
             name: 'Cache build outputs',
@@ -78,7 +78,7 @@ export class BuildWorkflow {
             id: 'self-mutation',
             run: [
               'git add .',
-              'git diff --staged --patch --exit-code > .repo.patch || echo "needed=true" >> $GITHUB_OUTPUT',
+              'git diff --cached --patch --exit-code > .repo.patch || echo "needed=true" >> $GITHUB_OUTPUT',
             ].join('\n'),
           },
           {
@@ -205,7 +205,7 @@ export class BuildWorkflow {
           { name: 'Test', run: 'npx projen test' },
           {
             name: 'Assert clean working directory',
-            run: 'git diff --staged --exit-code',
+            run: 'git diff --cached --exit-code',
           },
         ],
       },

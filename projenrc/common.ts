@@ -1,13 +1,32 @@
 import { github } from 'projen';
 
-export const ACTIONS_CHECKOUT: github.workflows.JobStep = {
-  name: 'Checkout',
-  uses: 'actions/checkout@v3',
-  with: {
-    ref: '${{ github.sha }}',
-    repository: '${{ github.repository }}',
-  },
-};
+interface CheckoutOptions {
+  readonly 'repository'?: string;
+  readonly 'token'?: string;
+  readonly 'ssh-key'?: string;
+  readonly 'ssh-known-hosts'?: string;
+  readonly 'ssh-strict'?: boolean;
+  readonly 'persist-credentials'?: boolean;
+  readonly 'path'?: string;
+  readonly 'clean'?: boolean;
+  readonly 'fecth-depth'?: number;
+  readonly 'lfs'?: boolean;
+  readonly 'submodules'?: boolean;
+  readonly 'set-safe-directory'?: boolean;
+  readonly 'github-server-url'?: string;
+}
+
+export function ACTIONS_CHECKOUT(ref = '${{ github.ref }}', opts?: CheckoutOptions): github.workflows.JobStep {
+  return {
+    name: 'Checkout',
+    uses: 'actions/checkout@v3',
+    with: {
+      repository: '${{ github.repository }}',
+      ...opts,
+      ref,
+    },
+  };
+}
 
 export function ACTIONS_SETUP_NODE(
   nodeVersion?: string,
