@@ -52,7 +52,7 @@ export class BuildWorkflow {
         permissions: { contents: github.workflows.JobPermission.READ },
         runsOn: ['ubuntu-latest'],
         steps: [
-          ACTIONS_CHECKOUT(),
+          ACTIONS_CHECKOUT(undefined, { lfs: true }),
           ACTIONS_SETUP_NODE(),
           {
             name: 'Cache build outputs',
