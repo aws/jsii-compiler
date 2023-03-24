@@ -266,8 +266,7 @@ jobs:
     steps:
       - name: Setup Node.js
         uses: actions/setup-node@v3
-        with:
-          cache: yarn
+        with: {}
       - name: Download artifact
         uses: actions/download-artifact@v3
         with:
