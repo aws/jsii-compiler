@@ -45,7 +45,7 @@ export class BenchmarkTest {
           },
         },
         steps: [
-          ACTIONS_SETUP_NODE(),
+          ACTIONS_SETUP_NODE(undefined, false),
           {
             name: 'Download artifact',
             uses: 'actions/download-artifact@v3',
