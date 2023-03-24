@@ -184,7 +184,7 @@ if (require.main === module) {
                   2,
                 ),
               );
-              return [require.resolve('typescript/bin/tsc'), '--build', '--project', tsconfig];
+              return [require.resolve('typescript/bin/tsc'), '--build', tsconfig];
           }
         })();
 
