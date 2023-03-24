@@ -56,6 +56,7 @@ export class BenchmarkTest {
             id: 'run',
             name: 'Benchmark',
             run: [
+              'set -x',
               'RESULT=$(yarn test:benchmark --silent --compiler=${{ matrix.compiler }})',
               'echo "${{ matrix.compiler }}=${RESULT}" >> $GITHUB_OUTPUT',
             ].join('\n'),
@@ -183,7 +184,7 @@ if (require.main === module) {
                   2,
                 ),
               );
-              return [require.resolve('typescript/bin/tsc'), '--project', tsconfig];
+              return [require.resolve('typescript/bin/tsc'), '--build', '--project', tsconfig];
           }
         })();
 

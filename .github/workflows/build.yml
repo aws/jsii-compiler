@@ -277,6 +277,7 @@ jobs:
       - name: Benchmark
         id: run
         run: |-
+          set -x
           RESULT=$(yarn test:benchmark --silent --compiler=${{ matrix.compiler }})
           echo "${{ matrix.compiler }}=${RESULT}" >> $GITHUB_OUTPUT
     strategy:
