@@ -73,7 +73,7 @@ export class BenchmarkTest {
           {
             name: 'Output Summary',
             run: [
-              'node <<(EOF)',
+              'node <<"EOF"',
               'const results = {',
               '  jsii: ${{ needs.benchmark.outputs.jsii }},',
               '  tsc: ${{ needs.benchmark.outputs.tsc }},',
