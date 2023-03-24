@@ -57,7 +57,7 @@ export class BenchmarkTest {
             name: 'Benchmark',
             run: [
               'set -x',
-              'RESULT=$(yarn test:benchmark --silent --compiler=${{ matrix.compiler }})',
+              'RESULT=$(yarn test:benchmark --compiler=${{ matrix.compiler }})',
               'echo "${{ matrix.compiler }}=${RESULT}" >> $GITHUB_OUTPUT',
             ].join('\n'),
           },
@@ -200,7 +200,7 @@ if (require.main === module) {
             return ok(Date.now() - now);
           }
           const reason = code != null ? `exit code ${code}` : `signal ${signal}`;
-          ko(new Error(`jsii exited with ${reason}`));
+          ko(new Error(`${compiler} exited with ${reason}`));
         });
       });
 
