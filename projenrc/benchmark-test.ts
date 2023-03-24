@@ -57,7 +57,7 @@ export class BenchmarkTest {
             name: 'Benchmark',
             run: [
               'set -x',
-              'RESULT=$(yarn test:benchmark --compiler=${{ matrix.compiler }})',
+              'RESULT=$(yarn --silent projen test:benchmark --compiler=${{ matrix.compiler }})',
               'echo "${{ matrix.compiler }}=${RESULT}" >> $GITHUB_OUTPUT',
             ].join('\n'),
           },
