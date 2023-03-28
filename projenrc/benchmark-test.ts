@@ -84,7 +84,7 @@ export class BenchmarkTest {
               'for (const [key, value] of Object.entries(results)) {',
               '  const [compiler,] = key.split("-");',
               '  stats[compiler] ??= [];',
-              '  stats[compiler].push(value);',
+              '  stats[compiler].push(JSON.parse(value).time);',
               '}',
               '',
               'for (const [compiler, values] of Object.entries(stats)) {',
