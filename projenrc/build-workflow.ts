@@ -1,5 +1,6 @@
 import { NodeRelease } from '@jsii/check-node';
 import { github, typescript } from 'projen';
+import { BenchmarkTest } from './benchmark-test';
 import { ACTIONS_CHECKOUT, ACTIONS_SETUP_NODE, YARN_INSTALL } from './common';
 
 export interface BuildWorkflowOptions {
@@ -51,7 +52,7 @@ export class BuildWorkflow {
         permissions: { contents: github.workflows.JobPermission.READ },
         runsOn: ['ubuntu-latest'],
         steps: [
-          ACTIONS_CHECKOUT(),
+          ACTIONS_CHECKOUT(undefined, { lfs: true }),
           ACTIONS_SETUP_NODE(),
           {
             name: 'Cache build outputs',
@@ -356,6 +357,8 @@ export class BuildWorkflow {
         steps: [{ name: 'Done', run: 'echo OK' }],
       },
     });
+
+    new BenchmarkTest(project, wf, { needs: ['build'], artifactName: 'build-output' });
 
     if (opts.autoMerge ?? true) {
       const autoMerge = project.github!.addWorkflow('auto-merge');

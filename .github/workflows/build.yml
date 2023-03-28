@@ -21,6 +21,7 @@ jobs:
         uses: actions/checkout@v3
         with:
           repository: ${{ github.repository }}
+          lfs: true
           ref: ${{ github.ref }}
       - name: Setup Node.js
         uses: actions/setup-node@v3
@@ -252,3 +253,145 @@ jobs:
     steps:
       - name: Done
         run: echo OK
+  benchmark:
+    name: Benchmark (${{ matrix.compiler }}, run ${{ matrix.index }})
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      jsii-0: ${{ steps.run.outputs.jsii-0 }}
+      tsc-0: ${{ steps.run.outputs.tsc-0 }}
+      jsii-1: ${{ steps.run.outputs.jsii-1 }}
+      tsc-1: ${{ steps.run.outputs.tsc-1 }}
+      jsii-2: ${{ steps.run.outputs.jsii-2 }}
+      tsc-2: ${{ steps.run.outputs.tsc-2 }}
+      jsii-3: ${{ steps.run.outputs.jsii-3 }}
+      tsc-3: ${{ steps.run.outputs.tsc-3 }}
+      jsii-4: ${{ steps.run.outputs.jsii-4 }}
+      tsc-4: ${{ steps.run.outputs.tsc-4 }}
+      jsii-5: ${{ steps.run.outputs.jsii-5 }}
+      tsc-5: ${{ steps.run.outputs.tsc-5 }}
+      jsii-6: ${{ steps.run.outputs.jsii-6 }}
+      tsc-6: ${{ steps.run.outputs.tsc-6 }}
+      jsii-7: ${{ steps.run.outputs.jsii-7 }}
+      tsc-7: ${{ steps.run.outputs.tsc-7 }}
+      jsii-8: ${{ steps.run.outputs.jsii-8 }}
+      tsc-8: ${{ steps.run.outputs.tsc-8 }}
+      jsii-9: ${{ steps.run.outputs.jsii-9 }}
+      tsc-9: ${{ steps.run.outputs.tsc-9 }}
+      jsii-10: ${{ steps.run.outputs.jsii-10 }}
+      tsc-10: ${{ steps.run.outputs.tsc-10 }}
+      jsii-11: ${{ steps.run.outputs.jsii-11 }}
+      tsc-11: ${{ steps.run.outputs.tsc-11 }}
+      jsii-12: ${{ steps.run.outputs.jsii-12 }}
+      tsc-12: ${{ steps.run.outputs.tsc-12 }}
+      jsii-13: ${{ steps.run.outputs.jsii-13 }}
+      tsc-13: ${{ steps.run.outputs.tsc-13 }}
+      jsii-14: ${{ steps.run.outputs.jsii-14 }}
+      tsc-14: ${{ steps.run.outputs.tsc-14 }}
+      jsii-15: ${{ steps.run.outputs.jsii-15 }}
+      tsc-15: ${{ steps.run.outputs.tsc-15 }}
+      jsii-16: ${{ steps.run.outputs.jsii-16 }}
+      tsc-16: ${{ steps.run.outputs.tsc-16 }}
+      jsii-17: ${{ steps.run.outputs.jsii-17 }}
+      tsc-17: ${{ steps.run.outputs.tsc-17 }}
+      jsii-18: ${{ steps.run.outputs.jsii-18 }}
+      tsc-18: ${{ steps.run.outputs.tsc-18 }}
+      jsii-19: ${{ steps.run.outputs.jsii-19 }}
+      tsc-19: ${{ steps.run.outputs.tsc-19 }}
+    env:
+      CI: "true"
+    steps:
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with: {}
+      - name: Download artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: build-output
+      - name: Install dependencies
+        run: yarn install --check-files
+      - name: Benchmark
+        id: run
+        run: |-
+          set -x
+          RESULT=$(yarn --silent projen test:benchmark --compiler=${{ matrix.compiler }})
+          echo "${{ matrix.compiler }}-${{ matrix.index }}=${RESULT}" >> $GITHUB_OUTPUT
+    strategy:
+      matrix:
+        compiler:
+          - jsii
+          - tsc
+        index:
+          - 0
+          - 1
+          - 2
+          - 3
+          - 4
+          - 5
+          - 6
+          - 7
+          - 8
+          - 9
+          - 10
+          - 11
+          - 12
+          - 13
+          - 14
+          - 15
+          - 16
+          - 17
+          - 18
+          - 19
+  benchmark_summary:
+    name: Benchmark
+    needs: benchmark
+    runs-on: ubuntu-latest
+    permissions: {}
+    env:
+      CI: "true"
+    steps:
+      - name: Output Summary
+        run: |-
+          node <<"EOF"
+          const fs = require("node:fs");
+
+          const results = ${{ toJSON(needs.benchmark.outputs) }};
+          console.debug(results);
+
+          const stats = {};
+          for (const [key, value] of Object.entries(results)) {
+            const [compiler,] = key.split("-");
+            stats[compiler] ??= [];
+            stats[compiler].push(JSON.parse(value).time);
+          }
+
+          for (const [compiler, values] of Object.entries(stats)) {
+            const avg = values.reduce((a, b) => a + b, 0) / values.length;
+            const variance = values.reduce((vari, elt) => ((elt - avg) ** 2) + vari, 0) / values.length;
+            stats[compiler] = {
+              min: Math.min(...values),
+              max: Math.max(...values),
+              avg,
+              stddev: Math.sqrt(variance),
+            };
+          }
+          const fastest = Object.values(stats).reduce((fast, { avg }) => Math.min(fast, avg), Infinity);
+
+          const summary = [
+            "## Benchmark Results",
+            "",
+            "Compiler | Fastest | Avergae | Slowest | StdDev | Slowdown",
+            "---------|--------:|--------:|--------:|-------:|--------:",
+          ];
+          const ms = new Intl.NumberFormat("en-US", { style: "unit", unit: "millisecond", maximumFractionDigits: 1, minimumFractionDigits: 1 });
+          const dec = new Intl.NumberFormat("en-US", { style: "decimal", maximumFractionDigits: 1, minimumFractionDigits: 1 });
+          const pre = (s) => `\`${s}\``;
+          for (const [compiler, { min, max, avg, stddev }] of Object.entries(stats).sort(([, l], [, r]) => l.avg - r.avg)) {
+            summary.push([compiler, pre(ms.format(min)), pre(ms.format(avg)), pre(ms.format(max)), pre(dec.format(stddev)), pre(`${dec.format(avg / fastest)}x`)].join(" | "));
+          }
+          summary.push("");
+
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, summary.join("\n"), "utf-8");
+          EOF

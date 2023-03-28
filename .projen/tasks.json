@@ -203,6 +203,26 @@
         }
       ]
     },
+    "test:benchmark": {
+      "name": "test:benchmark",
+      "description": "Executes the benchmark test",
+      "steps": [
+        {
+          "exec": "ts-node ./projenrc/benchmark-test.ts",
+          "receiveArgs": true
+        }
+      ]
+    },
+    "test:benchmark:update-aws-cdk-lib-snapshot": {
+      "name": "test:benchmark:update-aws-cdk-lib-snapshot",
+      "description": "Updates the fixtures/.tarballs/aws-cdk-lib.tgz file with a fresh snapshot.",
+      "steps": [
+        {
+          "exec": "ts-node projenrc/update-integ-package.ts",
+          "receiveArgs": true
+        }
+      ]
+    },
     "test:watch": {
       "name": "test:watch",
       "description": "Run jest in watch mode",
