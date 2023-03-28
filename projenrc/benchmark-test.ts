@@ -30,8 +30,8 @@ export class BenchmarkTest {
         needs,
         outputs: Object.fromEntries(
           indices.flatMap((idx) => [
-            [`jsii.${idx}`, { stepId: 'run', outputName: `jsii.${idx}` }],
-            [`tsc.${idx}`, { stepId: 'run', outputName: `tsc.${idx}` }],
+            [`jsii-${idx}`, { stepId: 'run', outputName: `jsii-${idx}` }],
+            [`tsc-${idx}`, { stepId: 'run', outputName: `tsc-${idx}` }],
           ]),
         ),
         permissions: { contents: github.workflows.JobPermission.READ },
@@ -59,7 +59,7 @@ export class BenchmarkTest {
             run: [
               'set -x',
               'RESULT=$(yarn --silent projen test:benchmark --compiler=${{ matrix.compiler }})',
-              'echo "${{ matrix.compiler }}.${{ matrix.index }}=${RESULT}" >> $GITHUB_OUTPUT',
+              'echo "${{ matrix.compiler }}-${{ matrix.index }}=${RESULT}" >> $GITHUB_OUTPUT',
             ].join('\n'),
           },
         ],
@@ -82,7 +82,7 @@ export class BenchmarkTest {
               '',
               'const stats = {};',
               'for (const [key, value] of Object.entries(results)) {',
-              '  const [compiler,] = key.split(".");',
+              '  const [compiler,] = key.split("-");',
               '  stats[compiler] ??= [];',
               '  stats[compiler].push(value);',
               '}',
