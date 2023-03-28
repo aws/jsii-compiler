@@ -66,7 +66,7 @@ export class BenchmarkTest {
       },
       benchmark_summary: {
         env: { CI: 'true' },
-        name: 'Benchmark Summary',
+        name: 'Benchmark',
         needs: ['benchmark'],
         permissions: {},
         runsOn: ['ubuntu-latest'],
