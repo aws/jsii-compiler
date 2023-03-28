@@ -345,7 +345,7 @@ jobs:
           - 18
           - 19
   benchmark_summary:
-    name: Benchmark Summary
+    name: Benchmark
     needs: benchmark
     runs-on: ubuntu-latest
     permissions: {}
