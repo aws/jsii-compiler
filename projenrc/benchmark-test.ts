@@ -106,7 +106,7 @@ export class BenchmarkTest {
               '  "---------|--------:|--------:|--------:|-------:|--------:",',
               '];',
               'const ms = new Intl.NumberFormat("en-US", { style: "unit", unit: "millisecond", maximumFractionDigits: 1, minimumFractionDigits: 1 });',
-              'const dev = new Intl.NumberFormat("en-US", { style: "decimal", maximumFractionDigits: 1, minimumFractionDigits: 1 });',
+              'const dec = new Intl.NumberFormat("en-US", { style: "decimal", maximumFractionDigits: 1, minimumFractionDigits: 1 });',
               'const pre = (s) => "\\\\u{0060}" + s + "\\\\u{0060}";',
               'for (const [compiler, { min, max, avg, stddev }] of Object.entries(stats).sort(([, l], [, r]) => l.avg - r.avg)) {',
               '  summary.push([compiler, pre(ms.format(min)), pre(ms.format(avg)), pre(ms.format(max)), pre(dec.format(stddev)), pre(dec.format(avg / fastest) + "x")].join(" | "));',
