@@ -254,7 +254,7 @@ jobs:
       - name: Done
         run: echo OK
   benchmark:
-    name: Benchmark (${{ matrix.compiler }})
+    name: Benchmark (${{ matrix.compiler }}, run ${{ matrix.index }})
     needs: build
     runs-on: ubuntu-latest
     permissions:

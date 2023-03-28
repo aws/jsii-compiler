@@ -26,7 +26,7 @@ export class BenchmarkTest {
     wf.addJobs({
       benchmark: {
         env: { CI: 'true' },
-        name: 'Benchmark (${{ matrix.compiler }})',
+        name: 'Benchmark (${{ matrix.compiler }}, run ${{ matrix.index }})',
         needs,
         outputs: Object.fromEntries(
           indices.flatMap((idx) => [
