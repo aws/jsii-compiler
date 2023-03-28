@@ -20,27 +20,28 @@ export class BenchmarkTest {
       receiveArgs: true,
     });
 
+    const iterations = 20;
+    const indices = Array.from({ length: iterations }, (_, idx) => idx);
+
     wf.addJobs({
       benchmark: {
         env: { CI: 'true' },
         name: 'Benchmark (${{ matrix.compiler }})',
         needs,
-        outputs: {
-          jsii: {
-            stepId: 'run',
-            outputName: 'jsii',
-          },
-          tsc: {
-            stepId: 'run',
-            outputName: 'tsc',
-          },
-        },
+        outputs: Object.fromEntries(
+          indices.flatMap((idx) => [
+            [`jsii.${idx}`, { stepId: 'run', outputName: `jsii.${idx}` }],
+            [`tsc.${idx}`, { stepId: 'run', outputName: `tsc.${idx}` }],
+          ]),
+        ),
         permissions: { contents: github.workflows.JobPermission.READ },
         runsOn: ['ubuntu-latest'],
         strategy: {
           matrix: {
             domain: {
               compiler: ['jsii', 'tsc'],
+              // Run each 20 times to average out disparities in timing...
+              index: indices,
             },
           },
         },
@@ -58,7 +59,7 @@ export class BenchmarkTest {
             run: [
               'set -x',
               'RESULT=$(yarn --silent projen test:benchmark --compiler=${{ matrix.compiler }})',
-              'echo "${{ matrix.compiler }}=${RESULT}" >> $GITHUB_OUTPUT',
+              'echo "${{ matrix.compiler }}.${{ matrix.index }}=${RESULT}" >> $GITHUB_OUTPUT',
             ].join('\n'),
           },
         ],
@@ -74,14 +75,44 @@ export class BenchmarkTest {
             name: 'Output Summary',
             run: [
               'node <<"EOF"',
-              'const results = {',
-              '  jsii: ${{ needs.benchmark.outputs.jsii }},',
-              '  tsc: ${{ needs.benchmark.outputs.tsc }},',
-              '};',
-              'const slowdown = results.jsii.time / results.tsc.time;',
-              'console.log(`Time for jsii: ${results.jsii.time} ms`);',
-              'console.log(`Time for tsc:  ${results.tsc.time} ms`);',
-              'console.log(`Slowdown:      ${slowdown}x`);',
+              'const fs = require("node:fs");',
+              '',
+              'const results = ${{ toJSON(needs.benchmark.outputs) }};',
+              'console.debug(results);',
+              '',
+              'const stats = {};',
+              'for (const [key, value] of Object.entries(results)) {',
+              '  const [compiler,] = key.split(".");',
+              '  stats[compiler] ??= [];',
+              '  stats[compiler].push(value);',
+              '}',
+              '',
+              'for (const [compiler, values] of Object.entries(stats)) {',
+              '  const avg = values.reduce((a, b) => a + b, 0) / values.length;',
+              '  const variance = values.reduce((vari, elt) => ((elt - avg) ** 2) + vari, 0) / values.length;',
+              '  stats[compiler] = {',
+              '    min: Math.min(...values),',
+              '    max: Math.max(...values),',
+              '    avg,',
+              '    stddev: Math.sqrt(variance),',
+              '  };',
+              '}',
+              'const fastest = Object.values(stats).reduce((fast, { avg }) => Math.min(fast, avg), Infinity);',
+              '',
+              'const summary = [',
+              '  "## Benchmark Results",',
+              '  "",',
+              '  "All times in milliseconds:",',
+              '  "",',
+              '  "Compiler | Fastest | Avergae | Slowest | StdDev | Slowdown",',
+              '  "---------|---------|---------|---------|--------|---------",',
+              '];',
+              'for (const [compiler, { min, max, avg, stddev }] of Object.entries(stats).sort(([_, { avg: l }], [_, { avg: r }]) => l - r)) {',
+              '  summary.push([compiler, min, avg.toFixed(1), max, stddev, (avg / fastest).toFixed(1) + "x"].join(" | "));',
+              '}',
+              'summary.push("");',
+              '',
+              'fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, summary.join("\\n"), "utf-8");',
               'EOF',
             ].join('\n'),
           },
