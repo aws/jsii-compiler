@@ -244,7 +244,11 @@ export class ReleaseWorkflow {
   }
 
   public autoTag(opts: AutoTagWorkflowProps): this {
-    new AutoTagWorkflow(this.project, `auto-tag-releases${opts.branch ? `-${opts.branch}` : ''}`, opts);
+    new AutoTagWorkflow(
+      this.project,
+      `auto-tag-${opts.preReleaseId ?? 'releases'}${opts.branch ? `-${opts.branch}` : ''}`,
+      opts,
+    );
     return this;
   }
 }
