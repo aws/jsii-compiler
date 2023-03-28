@@ -81,7 +81,7 @@ export class BenchmarkTest {
               'const slowdown = results.jsii.time / results.tsc.time;',
               'console.log(`Time for jsii: ${results.jsii.time} ms`);',
               'console.log(`Time for tsc:  ${results.tsc.time} ms`);',
-              'console.log(`Slowdown:      ${(slowdown}x`);',
+              'console.log(`Slowdown:      ${slowdown}x`);',
               'EOF',
             ].join('\n'),
           },
