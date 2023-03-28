@@ -107,7 +107,7 @@ export class BenchmarkTest {
               '  "Compiler | Fastest | Avergae | Slowest | StdDev | Slowdown",',
               '  "---------|---------|---------|---------|--------|---------",',
               '];',
-              'for (const [compiler, { min, max, avg, stddev }] of Object.entries(stats).sort(([_, { avg: l }], [_, { avg: r }]) => l - r)) {',
+              'for (const [compiler, { min, max, avg, stddev }] of Object.entries(stats).sort(([_, l], [_, r]) => l.avg - r.avg)) {',
               '  summary.push([compiler, min, avg.toFixed(1), max, stddev, (avg / fastest).toFixed(1) + "x"].join(" | "));',
               '}',
               'summary.push("");',
