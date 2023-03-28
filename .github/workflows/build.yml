@@ -382,13 +382,13 @@ jobs:
           const summary = [
             "## Benchmark Results",
             "",
-            "All times in milliseconds:",
-            "",
             "Compiler | Fastest | Avergae | Slowest | StdDev | Slowdown",
-            "---------|---------|---------|---------|--------|---------",
+            "---------|--------:|--------:|--------:|-------:|--------:",
           ];
+          const ms = new Intl.NumberFormat("en-US", { style: "unit", unit: "duration-millisecond", maximumFractionDigits: 1, minimumFractionDigits: 1 });
+          const dev = new Intl.NumberFormat("en-US", { style: "decimal", maximumFractionDigits: 1, minimumFractionDigits: 1 });
           for (const [compiler, { min, max, avg, stddev }] of Object.entries(stats).sort(([, l], [, r]) => l.avg - r.avg)) {
-            summary.push([compiler, min, avg.toFixed(1), max, stddev, (avg / fastest).toFixed(1) + "x"].join(" | "));
+            summary.push([compiler, ms.format(min), ms.format(avg), ms.format(max), dec.format(stddev), dec.format(avg / fastest) + "x"].join(" | "));
           }
           summary.push("");
 
