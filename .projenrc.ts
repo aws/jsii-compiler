@@ -214,11 +214,16 @@ new JsiiCalcFixtures(project);
 new BuildWorkflow(project);
 
 // Add the custom release workflow
-new ReleaseWorkflow(project).autoTag({
-  preReleaseId: 'dev',
-  runName: 'Auto-Tag Prerelease (default branch)',
-  schedule: '0 0 * * *',
-});
+new ReleaseWorkflow(project)
+  .autoTag({
+    preReleaseId: 'dev',
+    runName: 'Auto-Tag Prerelease (default branch)',
+    schedule: '0 0 * * 0,2-6', // Tuesday though sundays at midnight
+  })
+  .autoTag({
+    runName: 'Auto-Tag Release (default branch)',
+    schedule: '0 0 * * 1', // Mondays at midnight
+  });
 
 new UpdateIntegPackage(project);
 
