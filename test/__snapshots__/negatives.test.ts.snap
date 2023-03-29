@@ -237,6 +237,25 @@ neg.extend-struct.ts:6:1 - error JSII3007: Attempt to extend or implement struct
 
 `;
 
+exports[`generics 1`] = `
+neg.generics.ts:1:27 - error JSII1006: Generic types are not supported because semantics are not uniform in target languages.
+
+1 export class GenericClass<T extends object> {
+                            ~~~~~~~~~~~~~~~~
+
+neg.generics.ts:13:35 - error JSII1006: Generic types are not supported because semantics are not uniform in target languages.
+
+13 export interface IGenericBehavior<T extends object | string> {
+                                     ~~~~~~~~~~~~~~~~~~~~~~~~~
+
+neg.generics.ts:9:32 - error JSII1006: Generic types are not supported because semantics are not uniform in target languages.
+
+9 export interface GenericStruct<T> {
+                                 ~
+
+
+`;
+
 exports[`implement-struct 1`] = `
 neg.implement-struct.ts:6:1 - error JSII3007: Attempt to extend or implement struct "jsii.Struct" from "jsii.Illegal"
 
