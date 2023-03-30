@@ -115,7 +115,8 @@ export function emitDownleveledDeclarations({ packageJson, projectRoot, tsc }: P
     typesVersions ??= {};
     const from = [...(tsc?.outDir != null ? [tsc?.outDir] : []), '*'].join('/');
     const to = [...(tsc?.outDir != null ? [tsc?.outDir] : []), TYPES_COMPAT, versionSuffix, '*'].join('/');
-    typesVersions[`<=${version}`] = { [from]: [to] };
+    // We put 2 candidate redirects (first match wins), so that it works for nested imports, too (see: https://github.com/microsoft/TypeScript/issues/43133)
+    typesVersions[`<=${version}`] = { [from]: [to, `${to}/index.d.ts`] };
   }
 
   // Compare JSON stringifications, as the order of keys is important here...

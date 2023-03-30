@@ -35,3 +35,5 @@ export class StaticConsumer {
     return StaticConsumerBase.consume(...args);
   }
 }
+
+export * as deep from './deep';

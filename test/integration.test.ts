@@ -61,12 +61,15 @@ test('v1 compatibility check', () => {
         // unsupported syntax, such as the `type` modifier on import elements,
         // etc...
         'import * as calc from "jsii-calc";',
+        'import * as deep from "@scope/jsii-calc-base/lib/deep";',
         '',
         // Export some class so the assembly isn't empty (not that it matters,
         // really), but most use stuff from `calc` so it's not elided by the
         // compiler.
         'export class SomeClass {',
         '  private constructor() {',
+        '    new deep.BarrelImportClass();',
+        '',
         '    const calculator = new calc.Calculator();',
         '    calculator.add(42);',
         '    calculator.mul(1337);',

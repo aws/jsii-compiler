@@ -26,9 +26,19 @@
   "typesVersions": {
     "<=3.9": {
       "*": [
-        ".types-compat/ts3.9/*"
+        ".types-compat/ts3.9/*",
+        ".types-compat/ts3.9/*/index.d.ts"
       ]
     }
+  },
+  "exports": {
+    ".": {
+      "types": "./lib/index.d.ts",
+      "import": "./lib/index.js",
+      "require": "./lib/index.js"
+    },
+    "./lib/deep": "./lib/deep.js",
+    "./.warnings.jsii.js": "./.warnings.jsii.js"
   },
   "dependencies": {
     "@scope/jsii-calc-base-of-base": "^2.1.1"
