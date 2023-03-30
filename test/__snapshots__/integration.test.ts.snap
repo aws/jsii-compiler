@@ -63,6 +63,15 @@ exports[`integration test: @scope/jsii-calc-base 1`] = `
     "url": "https://github.com/aws/jsii.git",
   },
   "schema": "jsii/0.10.0",
+  "submodules": {
+    "@scope/jsii-calc-base.deep": {
+      "locationInModule": {
+        "filename": "lib/index.ts",
+        "line": 39,
+      },
+      "symbolId": "lib/deep/index:",
+    },
+  },
   "targets": {
     "dotnet": {
       "iconUrl": "https://raw.githubusercontent.com/aws/aws-cdk/main/logo/default-256-dark.png",
@@ -209,6 +218,19 @@ exports[`integration test: @scope/jsii-calc-base 1`] = `
       ],
       "name": "StaticConsumer",
       "symbolId": "lib/index:StaticConsumer",
+    },
+    "@scope/jsii-calc-base.deep.BarrelImportClass": {
+      "assembly": "@scope/jsii-calc-base",
+      "fqn": "@scope/jsii-calc-base.deep.BarrelImportClass",
+      "initializer": {},
+      "kind": "class",
+      "locationInModule": {
+        "filename": "lib/deep/index.ts",
+        "line": 1,
+      },
+      "name": "BarrelImportClass",
+      "namespace": "deep",
+      "symbolId": "lib/deep/index:BarrelImportClass",
     },
   },
   "version": "0.0.0",
@@ -404,6 +426,9 @@ exports[`integration test: @scope/jsii-calc-lib 1`] = `
   },
   "dependencyClosure": {
     "@scope/jsii-calc-base": {
+      "submodules": {
+        "@scope/jsii-calc-base.deep": {},
+      },
       "targets": {
         "dotnet": {
           "iconUrl": "https://raw.githubusercontent.com/aws/aws-cdk/main/logo/default-256-dark.png",
@@ -488,14 +513,14 @@ exports[`integration test: @scope/jsii-calc-lib 1`] = `
     "@scope/jsii-calc-lib.deprecationRemoval": {
       "locationInModule": {
         "filename": "lib/index.ts",
-        "line": 132,
+        "line": 136,
       },
       "symbolId": "lib/deprecation-removal:",
     },
     "@scope/jsii-calc-lib.submodule": {
       "locationInModule": {
         "filename": "lib/index.ts",
-        "line": 130,
+        "line": 134,
       },
       "readme": {
         "markdown": "# Submodule Readme
@@ -564,7 +589,7 @@ to include an "import" statement for the calc-base module.",
         },
         "locationInModule": {
           "filename": "lib/index.ts",
-          "line": 121,
+          "line": 122,
         },
         "parameters": [
           {
@@ -578,7 +603,7 @@ to include an "import" statement for the calc-base module.",
       "kind": "class",
       "locationInModule": {
         "filename": "lib/index.ts",
-        "line": 120,
+        "line": 121,
       },
       "methods": [
         {
@@ -587,7 +612,7 @@ to include an "import" statement for the calc-base module.",
           },
           "locationInModule": {
             "filename": "lib/index.ts",
-            "line": 125,
+            "line": 126,
           },
           "name": "foo",
           "parameters": [
@@ -712,7 +737,7 @@ to include an "import" statement for the calc-base module.",
       "kind": "enum",
       "locationInModule": {
         "filename": "lib/index.ts",
-        "line": 98,
+        "line": 99,
       },
       "members": [
         {
@@ -741,7 +766,7 @@ to include an "import" statement for the calc-base module.",
       "kind": "interface",
       "locationInModule": {
         "filename": "lib/index.ts",
-        "line": 24,
+        "line": 25,
       },
       "name": "IDoublable",
       "properties": [
@@ -753,7 +778,7 @@ to include an "import" statement for the calc-base module.",
           "immutable": true,
           "locationInModule": {
             "filename": "lib/index.ts",
-            "line": 25,
+            "line": 26,
           },
           "name": "doubleValue",
           "type": {
@@ -775,7 +800,7 @@ a "hello" or "goodbye" blessing and they will respond back in a fun and friendly
       "kind": "interface",
       "locationInModule": {
         "filename": "lib/index.ts",
-        "line": 59,
+        "line": 60,
       },
       "methods": [
         {
@@ -786,7 +811,7 @@ a "hello" or "goodbye" blessing and they will respond back in a fun and friendly
           },
           "locationInModule": {
             "filename": "lib/index.ts",
-            "line": 63,
+            "line": 64,
           },
           "name": "hello",
           "returns": {
@@ -814,7 +839,7 @@ far enough up the tree.",
       "kind": "interface",
       "locationInModule": {
         "filename": "lib/index.ts",
-        "line": 109,
+        "line": 110,
       },
       "methods": [
         {
@@ -824,7 +849,7 @@ far enough up the tree.",
           },
           "locationInModule": {
             "filename": "lib/index.ts",
-            "line": 110,
+            "line": 111,
           },
           "name": "baz",
         },
@@ -843,7 +868,7 @@ far enough up the tree.",
       "kind": "interface",
       "locationInModule": {
         "filename": "lib/index.ts",
-        "line": 69,
+        "line": 70,
       },
       "name": "MyFirstStruct",
       "properties": [
@@ -856,7 +881,7 @@ far enough up the tree.",
           "immutable": true,
           "locationInModule": {
             "filename": "lib/index.ts",
-            "line": 78,
+            "line": 79,
           },
           "name": "anumber",
           "type": {
@@ -872,7 +897,7 @@ far enough up the tree.",
           "immutable": true,
           "locationInModule": {
             "filename": "lib/index.ts",
-            "line": 73,
+            "line": 74,
           },
           "name": "astring",
           "type": {
@@ -887,7 +912,7 @@ far enough up the tree.",
           "immutable": true,
           "locationInModule": {
             "filename": "lib/index.ts",
-            "line": 79,
+            "line": 80,
           },
           "name": "firstOptional",
           "optional": true,
@@ -918,7 +943,7 @@ far enough up the tree.",
         },
         "locationInModule": {
           "filename": "lib/index.ts",
-          "line": 36,
+          "line": 37,
         },
         "parameters": [
           {
@@ -938,7 +963,7 @@ far enough up the tree.",
       "kind": "class",
       "locationInModule": {
         "filename": "lib/index.ts",
-        "line": 31,
+        "line": 32,
       },
       "name": "Number",
       "properties": [
@@ -950,7 +975,7 @@ far enough up the tree.",
           "immutable": true,
           "locationInModule": {
             "filename": "lib/index.ts",
-            "line": 43,
+            "line": 44,
           },
           "name": "doubleValue",
           "overrides": "@scope/jsii-calc-lib.IDoublable",
@@ -966,7 +991,7 @@ far enough up the tree.",
           "immutable": true,
           "locationInModule": {
             "filename": "lib/index.ts",
-            "line": 36,
+            "line": 37,
           },
           "name": "value",
           "overrides": "@scope/jsii-calc-lib.NumericValue",
@@ -990,7 +1015,7 @@ far enough up the tree.",
       "kind": "class",
       "locationInModule": {
         "filename": "lib/index.ts",
-        "line": 7,
+        "line": 8,
       },
       "methods": [
         {
@@ -1000,7 +1025,7 @@ far enough up the tree.",
           },
           "locationInModule": {
             "filename": "lib/index.ts",
-            "line": 16,
+            "line": 17,
           },
           "name": "toString",
           "returns": {
@@ -1021,7 +1046,7 @@ far enough up the tree.",
           "immutable": true,
           "locationInModule": {
             "filename": "lib/index.ts",
-            "line": 11,
+            "line": 12,
           },
           "name": "value",
           "type": {
@@ -1044,7 +1069,7 @@ far enough up the tree.",
       "kind": "class",
       "locationInModule": {
         "filename": "lib/index.ts",
-        "line": 51,
+        "line": 52,
       },
       "methods": [
         {
@@ -1055,7 +1080,7 @@ far enough up the tree.",
           },
           "locationInModule": {
             "filename": "lib/index.ts",
-            "line": 52,
+            "line": 53,
           },
           "name": "toString",
           "overrides": "@scope/jsii-calc-lib.NumericValue",
@@ -1080,7 +1105,7 @@ far enough up the tree.",
       "kind": "interface",
       "locationInModule": {
         "filename": "lib/index.ts",
-        "line": 85,
+        "line": 86,
       },
       "name": "StructWithOnlyOptionals",
       "properties": [
@@ -1093,7 +1118,7 @@ far enough up the tree.",
           "immutable": true,
           "locationInModule": {
             "filename": "lib/index.ts",
-            "line": 89,
+            "line": 90,
           },
           "name": "optional1",
           "optional": true,
@@ -1109,7 +1134,7 @@ far enough up the tree.",
           "immutable": true,
           "locationInModule": {
             "filename": "lib/index.ts",
-            "line": 90,
+            "line": 91,
           },
           "name": "optional2",
           "optional": true,
@@ -1125,7 +1150,7 @@ far enough up the tree.",
           "immutable": true,
           "locationInModule": {
             "filename": "lib/index.ts",
-            "line": 91,
+            "line": 92,
           },
           "name": "optional3",
           "optional": true,
@@ -1470,6 +1495,9 @@ exports[`integration test: jsii-calc 1`] = `
   },
   "dependencyClosure": {
     "@scope/jsii-calc-base": {
+      "submodules": {
+        "@scope/jsii-calc-base.deep": {},
+      },
       "targets": {
         "dotnet": {
           "iconUrl": "https://raw.githubusercontent.com/aws/aws-cdk/main/logo/default-256-dark.png",
@@ -18497,7 +18525,7 @@ library, regardless of whether they were explicitly referenced or not.",
         },
         "locationInModule": {
           "filename": "lib/index.ts",
-          "line": 121,
+          "line": 122,
         },
         "parameters": [
           {
@@ -20410,7 +20438,7 @@ exports[`v1 compatibility check: test output assembly 1`] = `
       "kind": "class",
       "locationInModule": {
         "filename": "index.ts",
-        "line": 3,
+        "line": 4,
       },
       "name": "SomeClass",
       "symbolId": "index:SomeClass",

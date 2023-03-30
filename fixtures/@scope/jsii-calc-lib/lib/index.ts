@@ -1,4 +1,5 @@
 import * as base from '@scope/jsii-calc-base';
+import * as deep from '@scope/jsii-calc-base/lib/deep';
 import { Very } from '@scope/jsii-calc-base-of-base';
 
 /**
@@ -124,6 +125,9 @@ export class BaseFor2647 {
 
   public foo(obj: base.IBaseInterface): void {
     obj.bar();
+
+    // Just so it's used... no other interest here.
+    new deep.BarrelImportClass();
   }
 }
 
