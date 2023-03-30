@@ -1056,6 +1056,11 @@ export class Assembler implements Emitter {
       );
     }
 
+    const classDeclaration = type.symbol.valueDeclaration as ts.ClassDeclaration;
+    for (const typeParam of classDeclaration.typeParameters ?? []) {
+      this._diagnostics.push(JsiiDiagnostic.JSII_1006_GENERIC_TYPE.create(typeParam));
+    }
+
     const jsiiType: spec.ClassType = bindings.setClassRelatedNode(
       {
         assembly: this.projectInfo.name,
@@ -1065,7 +1070,7 @@ export class Assembler implements Emitter {
         namespace: ctx.namespace.length > 0 ? ctx.namespace.join('.') : undefined,
         docs: this._visitDocumentation(type.symbol, ctx).docs,
       },
-      type.symbol.valueDeclaration as ts.ClassDeclaration,
+      classDeclaration,
     );
 
     if (_isAbstract(type.symbol, jsiiType)) {
@@ -1674,6 +1679,10 @@ export class Assembler implements Emitter {
       | ts.ClassLikeDeclaration
       | ts.InterfaceDeclaration
       | undefined;
+
+    for (const typeParam of typeDecl?.typeParameters ?? []) {
+      this._diagnostics.push(JsiiDiagnostic.JSII_1006_GENERIC_TYPE.create(typeParam));
+    }
 
     for (const decl of (typeDecl?.members as ReadonlyArray<ts.ClassElement | ts.TypeElement> | undefined)?.filter(
       (mem) => ts.isIndexSignatureDeclaration(mem),

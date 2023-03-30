@@ -286,6 +286,12 @@ export class JsiiDiagnostic implements ts.Diagnostic {
     name: 'typescript-restrictions/separate-write-type',
   });
 
+  public static readonly JSII_1006_GENERIC_TYPE = Code.error({
+    code: 1006,
+    formatter: () => 'Generic types are not supported because semantics are not uniform in target languages.',
+    name: 'typescript-restriction/generic-type',
+  });
+
   public static readonly JSII_1999_UNSUPPORTED = Code.error({
     code: 1999,
     formatter: ({
