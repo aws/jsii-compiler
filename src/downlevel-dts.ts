@@ -113,7 +113,7 @@ export function emitDownleveledDeclarations({ packageJson, projectRoot, tsc }: P
 
     // Register the type redirect in the typesVersions configuration
     typesVersions ??= {};
-    const from = [...(tsc?.outDir != null ? [tsc?.outDir] : []), '*'].join('/');
+    const from = '*';
     const to = [...(tsc?.outDir != null ? [tsc?.outDir] : []), TYPES_COMPAT, versionSuffix, '*'].join('/');
     // We put 2 candidate redirects (first match wins), so that it works for nested imports, too (see: https://github.com/microsoft/TypeScript/issues/43133)
     typesVersions[`<=${version}`] = { [from]: [to, `${to}/index.d.ts`] };
