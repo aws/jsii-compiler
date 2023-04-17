@@ -290,7 +290,7 @@ The current status of `jsii` compiler releases is:
 Release | Status  | Comment
 --------|---------|-----------------------------
 `1.x`   | Current | https://github.com/aws/jsii
-`4.9.x` | Preview | ![](https://img.shields.io/npm/v/jsii/v4.9-next?label=jsii%40v4.9-next&logo=npm)
+`5.0.x` | Current | ![](https://img.shields.io/npm/v/jsii/v5.0-latest?label=jsii%40v5.0-latest&logo=npm)
 
 ## :balance_scale: License
 
