@@ -37,6 +37,7 @@ jspm_packages/
 !/.github/workflows/upgrade.yml
 !/.github/pull_request_template.md
 !/.prettierrc.json
+!/.npmrc
 !/test/
 !/tsconfig.json
 !/tsconfig.dev.json
