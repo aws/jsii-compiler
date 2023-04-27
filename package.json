@@ -46,7 +46,7 @@
     "@types/tar": "^6.1.4",
     "@typescript-eslint/eslint-plugin": "^5",
     "@typescript-eslint/parser": "^5",
-    "all-contributors-cli": "^6.24.0",
+    "all-contributors-cli": "^6.25.0",
     "clone": "^2.1.2",
     "eslint": "^8",
     "eslint-config-prettier": "^8.8.0",
@@ -62,7 +62,7 @@
     "npm": "^9.6.5",
     "npm-check-updates": "^16",
     "prettier": "^2.8.8",
-    "projen": "^0.71.25",
+    "projen": "^0.71.27",
     "tar": "^6.1.13",
     "ts-jest": "^29.1.0",
     "ts-node": "^10.9.1"
