@@ -184,6 +184,7 @@ project.addDevDeps(
   'eslint-plugin-unicorn',
   'jsii-1.x@npm:jsii@1',
   'lockfile',
+  'glob',
 );
 
 project.preCompileTask.exec('ts-node build-tools/code-gen.ts', {
