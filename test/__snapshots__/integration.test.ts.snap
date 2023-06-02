@@ -3515,7 +3515,7 @@ calculator.mul(3);
 console.log(calculator.expression.value);
 \`\`\`
 
-I will repeat this example again, but in an @example tag.",
+I will repeat this example again, but in an",
         "stability": "stable",
         "summary": "A calculator which maintains a current value and allows adding operations.",
       },
