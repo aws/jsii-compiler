@@ -34,7 +34,8 @@ jspm_packages/
 !/.projenrc.js
 !/jest.config.json
 /coverage/
-!/.github/workflows/upgrade.yml
+!/.github/workflows/upgrade-main.yml
+!/.github/workflows/upgrade-maintenance-v5.0.yml
 !/.github/pull_request_template.md
 !/.prettierrc.json
 !/.npmrc
@@ -58,3 +59,5 @@ jspm_packages/
 !/.github/workflows/release.yml
 !/.github/workflows/auto-tag-dev.yml
 !/.github/workflows/auto-tag-releases.yml
+!/.github/workflows/auto-tag-dev-v5.0.yml
+!/.github/workflows/auto-tag-releases-v5.0.yml
