@@ -133,6 +133,16 @@ jobs:
         node-version:
           - 16.x
           - 18.x
+  matrix-clear:
+    name: Unit Tests
+    needs: matrix-test
+    runs-on: ubuntu-latest
+    permissions: {}
+    env:
+      CI: "true"
+    steps:
+      - name: Done
+        run: echo OK
   package:
     name: package
     needs: build

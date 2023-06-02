@@ -211,6 +211,15 @@ export class BuildWorkflow {
           },
         ],
       },
+      'matrix-clear': {
+        // This is a simple "join target" to simplify branch protection rules.
+        env: { CI: 'true' },
+        name: 'Unit Tests',
+        needs: ['matrix-test'],
+        permissions: {},
+        runsOn: ['ubuntu-latest'],
+        steps: [{ name: 'Done', run: 'echo OK' }],
+      },
       'package': {
         env: { CI: 'true' },
         name: 'package',
