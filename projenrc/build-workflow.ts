@@ -35,7 +35,7 @@ export class BuildWorkflow {
     if (opts.defaultBranch !== null) {
       wf.on({
         push: {
-          branches: [opts.defaultBranch ?? 'main'],
+          branches: [opts.defaultBranch ?? 'main', 'maintenance/*'],
         },
       });
     }
@@ -210,6 +210,15 @@ export class BuildWorkflow {
             run: 'git diff --cached --exit-code',
           },
         ],
+      },
+      'matrix-clear': {
+        // This is a simple "join target" to simplify branch protection rules.
+        env: { CI: 'true' },
+        name: 'Unit Tests',
+        needs: ['matrix-test'],
+        permissions: {},
+        runsOn: ['ubuntu-latest'],
+        steps: [{ name: 'Done', run: 'echo OK' }],
       },
       'package': {
         env: { CI: 'true' },
