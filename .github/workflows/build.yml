@@ -132,7 +132,6 @@ jobs:
         node-version:
           - 16.x
           - 18.x
-          - 19.x
   package:
     name: package
     needs: build
@@ -207,7 +206,6 @@ jobs:
         node-version:
           - 16.x
           - 18.x
-          - 19.x
         package-manager:
           - npm
           - yarn
