@@ -271,7 +271,7 @@ async function main(): Promise<void> {
  * @param prerelease the prerelease identifier this is running for.
  * @param versionMajorMinor the major/minor version considered.
  *
- * @returns arguments to pass tp `git describe`.
+ * @returns arguments to pass to `git describe`.
  */
 function excludeLowerTags(prerelease: PrereleaseIdentifier | undefined): readonly string[] {
   switch (prerelease) {
