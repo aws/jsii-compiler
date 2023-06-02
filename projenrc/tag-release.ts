@@ -3,6 +3,8 @@ import { SemVer } from 'semver';
 import { versionMajorMinor } from 'typescript';
 import * as yargs from 'yargs';
 
+type PrereleaseIdentifier = 'dev' | 'pre' | 'alpha' | 'beta' | 'rc';
+
 async function main(): Promise<void> {
   const {
     dryRun,
@@ -30,7 +32,7 @@ async function main(): Promise<void> {
       alias: 'pre-release',
       type: 'string',
       desc: 'Use the specified pre-release identifier',
-      choices: ['dev', 'pre', 'alpha', 'beta', 'rc'],
+      choices: ['dev', 'pre', 'alpha', 'beta', 'rc'] as PrereleaseIdentifier[],
     })
     .option('push', {
       boolean: true,
@@ -194,6 +196,8 @@ async function main(): Promise<void> {
     '--contains',
     '--match',
     `v${versionMajorMinor}.*`,
+    // If no prerelease identifier, ignore any prerelease tags (we're "upgrading" to a regular release)
+    ...excludeLowerTags(prerelease),
     '--tags',
     HEAD,
   );
@@ -256,6 +260,42 @@ async function main(): Promise<void> {
     console.debug(`Pushing tag to upstream '${push}'`);
   }
   await git('push', remote, `v${version}`);
+}
+
+/**
+ * Computes the `--exclude` options to be passed tino `git describe` to filter
+ * out any pre-release tags considered "inferior" to the current one, so that
+ * releases may be published that upgrade an artifact from one prerelease tier
+ * to the next tier (up to regular release).
+ *
+ * @param prerelease the prerelease identifier this is running for.
+ * @param versionMajorMinor the major/minor version considered.
+ *
+ * @returns arguments to pass tp `git describe`.
+ */
+function excludeLowerTags(prerelease: PrereleaseIdentifier | undefined): readonly string[] {
+  switch (prerelease) {
+    case 'dev':
+    case 'pre':
+      // -dev and -pre are the lowest rank. They can't be re-tagged as -dev or -pre.
+      return [];
+    case 'alpha':
+      // -dev and -pre can be upgraded to -alpha.
+      return excludeIdentifiers('dev', 'pre');
+    case 'beta':
+      // -dev, -pre and -alpha can be upgraded to -beta
+      return excludeIdentifiers('dev', 'pre', 'alpha');
+    case 'rc':
+      // -dev, -pre, -alpha and -beta can be upgraded to -rv
+      return excludeIdentifiers('dev', 'pre', 'alpha', 'beta');
+    case undefined:
+      // Regular release, ignore all prerelease tags.
+      return ['--exclude', `v${versionMajorMinor}.*-*`];
+  }
+
+  function excludeIdentifiers(...toExclude: readonly PrereleaseIdentifier[]) {
+    return toExclude.flatMap((id) => ['--exclude', `v${versionMajorMinor}.*-${id}.*`]);
+  }
 }
 
 main().then(
