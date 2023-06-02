@@ -1,4 +1,5 @@
 import {
+  copyFileSync,
   existsSync,
   mkdirSync,
   mkdtempSync,
@@ -48,7 +49,7 @@ export function emitDownleveledDeclarations({ packageJson, projectRoot, tsc }: P
   const compatRoot = join(projectRoot, ...(tsc?.outDir != null ? [tsc?.outDir] : []), TYPES_COMPAT);
   rmSync(compatRoot, { force: true, recursive: true });
 
-  const rewrites = new Map<`${number}.${number}`, Map<string, string>>();
+  const rewrites = new Set<`${number}.${number}`>();
 
   for (const breakpoint of DOWNLEVEL_BREAKPOINTS) {
     if (TS_VERSION.compare(breakpoint) <= 0) {
@@ -64,11 +65,14 @@ export function emitDownleveledDeclarations({ packageJson, projectRoot, tsc }: P
     const workdir = mkdtempSync(join(tmpdir(), `downlevel-dts-${breakpoint}-${basename(projectRoot)}-`));
     try {
       downlevel(projectRoot, workdir, breakpoint.version);
-      for (const dts of walkDirectory(workdir)) {
-        const original = readFileSync(join(projectRoot, dts), 'utf-8');
-        const downleveled = readFileSync(join(workdir, dts), 'utf-8');
-        needed ||= !equalWithNormalizedLineTerminator(original, downleveled);
-        rewriteSet.set(dts, downleveled);
+      const projectOutDir = tsc?.outDir != null ? join(projectRoot, tsc.outDir) : projectRoot;
+      const workOutDir = tsc?.outDir != null ? join(workdir, tsc.outDir) : workdir;
+      for (const dts of walkDirectory(workOutDir)) {
+        const original = readFileSync(join(projectOutDir, dts), 'utf-8');
+        const downleveledPath = join(workOutDir, dts);
+        const downleveled = readFileSync(downleveledPath, 'utf-8');
+        needed ||= !semanticallyEqualDeclarations(original, downleveled);
+        rewriteSet.set(dts, downleveledPath);
       }
 
       // If none of the declarations files changed during the down-level, then
@@ -78,7 +82,29 @@ export function emitDownleveledDeclarations({ packageJson, projectRoot, tsc }: P
       // actually does not allow most of the unsupported syntaxes to be used
       // anyway.
       if (needed) {
-        rewrites.set(`${breakpoint.major}.${breakpoint.minor}`, rewriteSet);
+        rewrites.add(`${breakpoint.major}.${breakpoint.minor}`);
+
+        const versionSuffix = `ts${breakpoint.major}.${breakpoint.minor}`;
+        const compatDir = join(compatRoot, versionSuffix);
+        if (!existsSync(compatDir)) {
+          mkdirSync(compatDir, { recursive: true });
+          try {
+            // Write an empty .npmignore file so that npm pack doesn't use the .gitignore file...
+            writeFileSync(join(compatRoot, '.npmignore'), '\n', 'utf-8');
+            // Make sure all of this is gitignored, out of courtesy...
+            writeFileSync(join(compatRoot, '.gitignore'), '*\n', 'utf-8');
+          } catch {
+            // Ignore any error here... This is inconsequential.
+          }
+        }
+
+        for (const [dts, downleveledPath] of rewriteSet) {
+          const rewritten = join(compatDir, dts);
+          // Make sure the parent directory exists (dts might be nested)
+          mkdirSync(dirname(rewritten), { recursive: true });
+          // Write the re-written declarations file there...
+          copyFileSync(downleveledPath, rewritten);
+        }
       }
     } finally {
       // Clean up after outselves...
@@ -88,33 +114,11 @@ export function emitDownleveledDeclarations({ packageJson, projectRoot, tsc }: P
 
   let typesVersions: Mutable<PackageJson['typesVersions']>;
 
-  for (const [version, rewriteSet] of rewrites) {
-    const versionSuffix = `ts${version}`;
-    const compatDir = join(compatRoot, versionSuffix);
-    if (!existsSync(compatDir)) {
-      mkdirSync(compatDir, { recursive: true });
-      try {
-        // Write an empty .npmignore file so that npm pack doesn't use the .gitignore file...
-        writeFileSync(join(compatRoot, '.npmignore'), '\n', 'utf-8');
-        // Make sure all of this is gitignored, out of courtesy...
-        writeFileSync(join(compatRoot, '.gitignore'), '*\n', 'utf-8');
-      } catch {
-        // Ignore any error here... This is inconsequential.
-      }
-    }
-
-    for (const [dts, downleveled] of rewriteSet) {
-      const rewritten = join(compatDir, dts);
-      // Make sure the parent directory exists (dts might be nested)
-      mkdirSync(dirname(rewritten), { recursive: true });
-      // Write the re-written declarations file there...
-      writeFileSync(rewritten, downleveled, 'utf-8');
-    }
-
+  for (const version of rewrites) {
     // Register the type redirect in the typesVersions configuration
     typesVersions ??= {};
     const from = [...(tsc?.outDir != null ? [tsc?.outDir] : []), '*'].join('/');
-    const to = [...(tsc?.outDir != null ? [tsc?.outDir] : []), TYPES_COMPAT, versionSuffix, '*'].join('/');
+    const to = [...(tsc?.outDir != null ? [tsc?.outDir] : []), TYPES_COMPAT, `ts${version}`, '*'].join('/');
     // We put 2 candidate redirects (first match wins), so that it works for nested imports, too (see: https://github.com/microsoft/TypeScript/issues/43133)
     typesVersions[`<=${version}`] = { [from]: [to, `${to}/index.d.ts`] };
   }
@@ -159,23 +163,37 @@ export function emitDownleveledDeclarations({ packageJson, projectRoot, tsc }: P
 }
 
 /**
- * Compares two strings ignoring new line differences. This is necessary because
- * `downlevel-dts` may use a different line-ending convention (at time of
- * writing, it always uses CRLF) than what `jsii` itself emits, but that should
- * not affect the comparison of declarations files.
+ * Compares the contents of two declaration files semantically.
  *
  * @param left the first string.
  * @param right the second string.
  *
- * @returns `true` if `left` and `right` contain the same text, modulo line
- *          terminator tokens.
+ * @returns `true` if `left` and `right` contain the same declarations.
  */
-function equalWithNormalizedLineTerminator(left: string, right: string): boolean {
-  // ECMA262 12.3: https://tc39.es/ecma262/#sec-line-terminators
-  const JS_LINE_TERMINATOR_REGEX = /(\n|\r\n?|\u{2028}|\u{2029})/gmu;
+function semanticallyEqualDeclarations(left: string, right: string): boolean {
+  // We normalize declarations largely by parsing & re-printing them.
+  const normalizeDeclarations = (code: string): string => {
+    const sourceFile = ts.createSourceFile('index.d.ts', code, ts.ScriptTarget.Latest, false, ts.ScriptKind.TS);
+    const printer = ts.createPrinter({
+      newLine: ts.NewLineKind.LineFeed,
+      noEmitHelpers: true,
+      omitTrailingSemicolon: false,
+      removeComments: true,
+    });
+    let normalized = printer.printFile(sourceFile);
 
-  left = left.replace(JS_LINE_TERMINATOR_REGEX, '\n').trim();
-  right = right.replace(JS_LINE_TERMINATOR_REGEX, '\n').trim();
+    // TypeScript may emit duplicated reference declarations... which are absent from Downlevel-DTS' output...
+    // https://github.com/microsoft/TypeScript/issues/48143
+    const REFERENCES_TYPES_NODE = '/// <reference types="node" />';
+    if (normalized.startsWith(`${REFERENCES_TYPES_NODE}\n${REFERENCES_TYPES_NODE}`)) {
+      normalized = normalized.slice(REFERENCES_TYPES_NODE.length + 1);
+    }
+
+    return normalized;
+  };
+
+  left = normalizeDeclarations(left);
+  right = normalizeDeclarations(right);
 
   return left === right;
 }

@@ -2,8 +2,9 @@ import { javascript, JsonFile, JsonPatch, typescript } from 'projen';
 import { BuildWorkflow } from './projenrc/build-workflow';
 import { JsiiCalcFixtures } from './projenrc/fixtures';
 import { ReleaseWorkflow } from './projenrc/release';
-import { SupportPolicy } from './projenrc/support';
+import { SUPPORT_POLICY, SupportPolicy } from './projenrc/support';
 import { UpdateIntegPackage } from './projenrc/update-integ-package';
+import { UpgradeDependencies } from './projenrc/upgrade-dependencies';
 
 const project = new typescript.TypeScriptProject({
   projenrcTs: true,
@@ -78,14 +79,31 @@ const project = new typescript.TypeScriptProject({
 
   buildWorkflow: false, // We have our own build workflow (need matrix test)
   release: false, // We have our own release workflow
-  defaultReleaseBranch: 'release',
+  defaultReleaseBranch: 'main',
 
   autoApproveUpgrades: true,
   autoApproveOptions: {
     allowedUsernames: ['aws-cdk-automation', 'github-bot'],
   },
 
+  depsUpgrade: false, // We have our own custom upgrade workflow
+
   vscode: true,
+});
+
+new UpgradeDependencies(project, {
+  workflowOptions: {
+    branches: [
+      'main',
+      ...Object.entries(SUPPORT_POLICY.maintenance).flatMap(([version, until]) => {
+        if (Date.now() > until.getTime()) {
+          return [];
+        }
+        return [`maintenance/v${version}`];
+      }),
+    ],
+    labels: ['auto-approve'],
+  },
 });
 
 // VSCode will look at the "closest" file named "tsconfig.json" when deciding on which config to use
@@ -108,9 +126,6 @@ project.tsconfig?.file?.patch(
   JsonPatch.add('/compilerOptions/composite', true),
   JsonPatch.add('/compilerOptions/declarationMap', true),
 );
-
-// Add support policy documents
-new SupportPolicy(project);
 
 // Don't show .gitignore'd files in the VSCode explorer
 project.vscode!.settings.addSetting('explorer.excludeGitIgnore', true);
@@ -184,6 +199,7 @@ project.addDevDeps(
   'eslint-plugin-unicorn',
   'jsii-1.x@npm:jsii@1',
   'lockfile',
+  'glob',
 );
 
 project.preCompileTask.exec('ts-node build-tools/code-gen.ts', {
@@ -213,8 +229,9 @@ new JsiiCalcFixtures(project);
 // Add Node.js version matrix test
 new BuildWorkflow(project);
 
-// Add the custom release workflow
-new ReleaseWorkflow(project)
+// Add support policy documents & release workflows
+new SupportPolicy(project);
+const releases = new ReleaseWorkflow(project)
   .autoTag({
     preReleaseId: 'dev',
     runName: 'Auto-Tag Prerelease (default branch)',
@@ -224,6 +241,32 @@ new ReleaseWorkflow(project)
     runName: 'Auto-Tag Release (default branch)',
     schedule: '0 0 * * 1', // Mondays at midnight
   });
+
+// We'll stagger release schedules so as to avoid everything going out at once.
+let hour = 0;
+for (const [version, until] of Object.entries(SUPPORT_POLICY.maintenance)) {
+  if (Date.now() <= until.getTime()) {
+    // Stagger schedules every 5 hours, rolling. 5 was selected because it's co-prime to 24.
+    hour = (hour + 5) % 24;
+
+    const branch = `v${version}`;
+
+    releases
+      .autoTag({
+        preReleaseId: 'dev',
+        runName: `Auto-Tag Prerelease (${branch})`,
+        schedule: `0 ${hour} * * 0,2-6`, // Tuesday though sundays
+        branch: `maintenance/${branch}`,
+        nameSuffix: branch,
+      })
+      .autoTag({
+        runName: `Auto-Tag Release (${branch})`,
+        schedule: `0 ${hour} * * 1`, // Mondays
+        branch: `maintenance/${branch}`,
+        nameSuffix: branch,
+      });
+  }
+}
 
 new UpdateIntegPackage(project);
 
