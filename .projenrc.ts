@@ -4,6 +4,7 @@ import { JsiiCalcFixtures } from './projenrc/fixtures';
 import { ReleaseWorkflow } from './projenrc/release';
 import { SUPPORT_POLICY, SupportPolicy } from './projenrc/support';
 import { UpdateIntegPackage } from './projenrc/update-integ-package';
+import { UpgradeDependencies } from './projenrc/upgrade-dependencies';
 
 const project = new typescript.TypeScriptProject({
   projenrcTs: true,
@@ -85,21 +86,24 @@ const project = new typescript.TypeScriptProject({
     allowedUsernames: ['aws-cdk-automation', 'github-bot'],
   },
 
-  depsUpgradeOptions: {
-    workflowOptions: {
-      branches: [
-        'main',
-        ...Object.entries(SUPPORT_POLICY.maintenance).flatMap(([version, until]) => {
-          if (Date.now() > until.getTime()) {
-            return [];
-          }
-          return [`maintenance/v${version}`];
-        }),
-      ],
-    },
-  },
+  depsUpgrade: false, // We have our own custom upgrade workflow
 
   vscode: true,
+});
+
+new UpgradeDependencies(project, {
+  workflowOptions: {
+    branches: [
+      'main',
+      ...Object.entries(SUPPORT_POLICY.maintenance).flatMap(([version, until]) => {
+        if (Date.now() > until.getTime()) {
+          return [];
+        }
+        return [`maintenance/v${version}`];
+      }),
+    ],
+    labels: ['auto-approve'],
+  },
 });
 
 // VSCode will look at the "closest" file named "tsconfig.json" when deciding on which config to use

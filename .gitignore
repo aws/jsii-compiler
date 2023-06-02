@@ -34,8 +34,6 @@ jspm_packages/
 !/.projenrc.js
 !/jest.config.json
 /coverage/
-!/.github/workflows/upgrade-main.yml
-!/.github/workflows/upgrade-maintenance-v5.0.yml
 !/.github/pull_request_template.md
 !/.prettierrc.json
 !/.npmrc
@@ -46,6 +44,8 @@ jspm_packages/
 /lib
 /dist/
 !/.eslintrc.json
+!/.github/workflows/upgrade-main.yml
+!/.github/workflows/upgrade-maintenance-v5.0.yml
 /build-tools/tsconfig.json
 /projenrc/tsconfig.json
 /test/tsconfig.json
