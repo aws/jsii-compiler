@@ -66,9 +66,9 @@ test('v1 compatibility check', () => {
         // Export some class so the assembly isn't empty (not that it matters,
         // really), but most use stuff from `calc` so it's not elided by the
         // compiler.
-        'export class SomeClass {',
+        'export class SomeClass extends deep.BarrelImportClass {',
         '  private constructor() {',
-        '    new deep.BarrelImportClass();',
+        '    super();',
         '',
         '    const calculator = new calc.Calculator();',
         '    calculator.add(42);',
@@ -80,6 +80,7 @@ test('v1 compatibility check', () => {
       {
         compilationDirectory,
         packageJson: {
+          dependencies: { '@scope/jsii-calc-base': '*' },
           jsii: {
             tsc: {
               types: ['node'],
