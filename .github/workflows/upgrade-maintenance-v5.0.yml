@@ -24,6 +24,10 @@ jobs:
           node-version: 14.18.0
       - name: Install dependencies
         run: yarn install --check-files --frozen-lockfile
+      - name: Back-port projenrc changes from main
+        env:
+          CI: "true"
+        run: git checkout origin/main -- .projenrc.ts projenrc README.md && yarn projen
       - name: Upgrade dependencies
         run: npx projen upgrade
       - name: Find mutations

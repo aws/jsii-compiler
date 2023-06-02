@@ -261,6 +261,15 @@ export class UpgradeDependencies extends Component {
         with: Object.keys(with_).length > 0 ? with_ : undefined,
       },
       ...this._project.renderWorkflowSetup({ mutable: false }),
+      ...(branch && branch !== 'main'
+        ? [
+            {
+              env: { CI: 'true' },
+              name: 'Back-port projenrc changes from main',
+              run: 'git checkout origin/main -- .projenrc.ts projenrc README.md && yarn projen',
+            },
+          ]
+        : []),
       {
         name: 'Upgrade dependencies',
         run: this._project.runTaskCommand(task),
