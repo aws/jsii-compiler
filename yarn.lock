@@ -1048,9 +1048,9 @@
   integrity sha512-XJfwUVUKDHF5ugKwIcxEgc9k8b7HbznCp6eUfWgu710hMPNIO4aw4/zB5RogDQz8nd6gyCDpU9O/m6qYEWY6yQ==
 
 "@sindresorhus/is@^5.2.0":
-  version "5.4.0"
-  resolved "https://registry.yarnpkg.com/@sindresorhus/is/-/is-5.4.0.tgz#b1bfbd6024311ade045093b424536cefcc8e3a42"
-  integrity sha512-Ggh6E9AnMpiNXlbXfFUcWE9qm408rL8jDi7+PMBBx7TMbwEmiqAiSmZ+zydYwxcJLqPGNDoLc9mXDuMDBZg0sA==
+  version "5.4.1"
+  resolved "https://registry.yarnpkg.com/@sindresorhus/is/-/is-5.4.1.tgz#c4383ce702fb90531c3d310506bab89e70427c53"
+  integrity sha512-axlrvsHlHlFmKKMEg4VyvMzFr93JWJj4eIfXY1STVuO2fsImCa7ncaiG5gC8HKOX590AW5RtRsC41/B+OfrSqw==
 
 "@sinonjs/commons@^3.0.0":
   version "3.0.0"
@@ -6406,9 +6406,9 @@ typedarray-to-buffer@^3.1.5:
     is-typedarray "^1.0.0"
 
 typescript@next:
-  version "5.2.0-dev.20230603"
-  resolved "https://registry.yarnpkg.com/typescript/-/typescript-5.2.0-dev.20230603.tgz#e9e618df48bd1d74296ac264dd816ed43dd96a27"
-  integrity sha512-jxLUGxmI27KgHSMU2bKNbnpq2WOQIJYJvBcOxcgBSxzCnTZTZmeWU/9nPKQCtbHorw+OTe+BxQWjVw21uhPxjQ==
+  version "5.2.0-dev.20230604"
+  resolved "https://registry.yarnpkg.com/typescript/-/typescript-5.2.0-dev.20230604.tgz#1713801ff534308db6b7cca3dd1df1102a96841a"
+  integrity sha512-S+m9ocHTc37/7/vpvz9n9ClkqteqN3jcwFYAZb3Gc7uFmvBKcjHSU8y+ccAh+d1sOgzu3WPZW8WrbCsGZWmfCw==
 
 typescript@~3.9.10:
   version "3.9.10"
