@@ -376,9 +376,6 @@ export class BuildWorkflow {
         pullRequestTarget: {
           types: ['opened', 'reopened', 'ready_for_review'],
         },
-        mergeGroup: {
-          branches: ['main'],
-        },
       });
       autoMerge.addJob('enable-auto-merge', {
         env: { CI: 'true' },
