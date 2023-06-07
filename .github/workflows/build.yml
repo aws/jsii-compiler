@@ -2,7 +2,10 @@
 
 name: build
 on:
-  merge_group: {}
+  merge_group:
+    branches:
+      - main
+      - maintenance/*
   pull_request: {}
   push:
     branches:

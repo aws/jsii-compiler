@@ -28,7 +28,9 @@ export class BuildWorkflow {
   public constructor(project: typescript.TypeScriptProject, opts: BuildWorkflowOptions = {}) {
     const wf = project.github!.addWorkflow('build');
     wf.on({
-      mergeGroup: {},
+      mergeGroup: {
+        branches: ['main', 'maintenance/*'],
+      },
       pullRequest: {},
     });
 
