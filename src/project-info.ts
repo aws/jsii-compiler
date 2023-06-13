@@ -466,7 +466,7 @@ function _validateStability(stability: string | undefined, deprecated: string | 
   if (!stability && deprecated) {
     stability = spec.Stability.Deprecated;
   } else if (deprecated && stability !== spec.Stability.Deprecated) {
-    throw new Error(
+    console.warn(
       `Package is deprecated (${deprecated}), but it's stability is ${stability} and not ${spec.Stability.Deprecated}`,
     );
   }
