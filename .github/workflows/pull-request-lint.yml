@@ -27,3 +27,4 @@ jobs:
             fix
             chore
           requireScope: false
+        if: github.event == 'pull_request' || github.event_name == 'pull_request_target'
