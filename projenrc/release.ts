@@ -244,11 +244,8 @@ export class ReleaseWorkflow {
   }
 
   public autoTag(opts: AutoTagWorkflowProps): this {
-    new AutoTagWorkflow(
-      this.project,
-      `auto-tag-${opts.preReleaseId ?? 'releases'}${opts.branch ? `-${opts.branch}` : ''}`,
-      opts,
-    );
+    const suffix = opts.nameSuffix ? `-${opts.nameSuffix}` : opts.branch ? `-${opts.branch}` : '';
+    new AutoTagWorkflow(this.project, `auto-tag-${opts.preReleaseId ?? 'releases'}${suffix}`, opts);
     return this;
   }
 }
@@ -321,6 +318,14 @@ interface AutoTagWorkflowProps {
    * @default - a regular release will be tagged.
    */
   readonly preReleaseId?: string;
+
+  /**
+   * The workflow name suffix. A single `-` will be prepended to this value if
+   * present, which is then appended at the end of the workflow name.
+   *
+   * @default - derived from the branch name (if present).
+   */
+  readonly nameSuffix?: string;
 }
 
 class AutoTagWorkflow {
