@@ -266,7 +266,7 @@ export class UpgradeDependencies extends Component {
             {
               env: { CI: 'true' },
               name: 'Back-port projenrc changes from main',
-              run: 'git checkout origin/main -- .projenrc.ts projenrc README.md && yarn projen',
+              run: 'git fetch origin main && git checkout FETCH_HEAD -- .projenrc.ts projenrc README.md && yarn projen',
             },
           ]
         : []),
