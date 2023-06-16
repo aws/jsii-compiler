@@ -2337,9 +2337,9 @@ eastasianwidth@^0.2.0:
   integrity sha512-I88TYZWc9XiYHRQ4/3c5rjjfgkjhLyW2luGIheGERbNQ6OY7yTybanSpDXZa8y7VUP9YmDcYa+eyq4ca7iLqWA==
 
 electron-to-chromium@^1.4.431:
-  version "1.4.432"
-  resolved "https://registry.yarnpkg.com/electron-to-chromium/-/electron-to-chromium-1.4.432.tgz#154a69d5ead974347f534aea4d28b03c7149fd7b"
-  integrity sha512-yz3U/khQgAFT2HURJA3/F4fKIyO2r5eK09BQzBZFd6BvBSSaRuzKc2ZNBHtJcO75/EKiRYbVYJZ2RB0P4BuD2g==
+  version "1.4.431"
+  resolved "https://registry.yarnpkg.com/electron-to-chromium/-/electron-to-chromium-1.4.431.tgz#47990d6e43465d69aa1fbd0abdec43114946edd0"
+  integrity sha512-m232JTVmCawA2vG+1azVxhKZ9Sv1Q//xxNv5PkP5rWxGgQE8c3CiZFrh8Xnp+d1NmNxlu3QQrGIfdeW5TtXX5w==
 
 emittery@^0.13.1:
   version "0.13.1"
@@ -6330,9 +6330,9 @@ typedarray-to-buffer@^3.1.5:
     is-typedarray "^1.0.0"
 
 typescript@next:
-  version "5.2.0-dev.20230616"
-  resolved "https://registry.yarnpkg.com/typescript/-/typescript-5.2.0-dev.20230616.tgz#56173fa188e54b022e6854dfe9e8be9961252b29"
-  integrity sha512-pprSaAXEPeobRjBGiyipvM7IXY4wSEHq5RiQS2BnDzYAXpfPi9jF5CRHg8QgWxm1KQlAy0JVLfsQI3rlHjDcEQ==
+  version "5.2.0-dev.20230615"
+  resolved "https://registry.yarnpkg.com/typescript/-/typescript-5.2.0-dev.20230615.tgz#b7eb65f6f36ca252f799e029a1e3d74aa45fb20b"
+  integrity sha512-SdfFJrVM+chzZhLGs4On2LYaG/1DD2vr5hMCA1OwYUOompO+U6ljnHMQT5DAu8Bx2Ku5ZBBv53QnKK7WBrH2lA==
 
 typescript@~3.9.10:
   version "3.9.10"
