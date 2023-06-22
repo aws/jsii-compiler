@@ -26,7 +26,7 @@ jobs:
         run: yarn install --check-files --frozen-lockfile
       - name: Back-port projenrc changes from main
         env:
-          CI: "true"
+          CI: "false"
         run: git fetch origin main && git checkout FETCH_HEAD -- .projenrc.ts projenrc README.md && yarn projen
       - name: Upgrade dependencies
         run: npx projen upgrade
