@@ -264,7 +264,11 @@ export class UpgradeDependencies extends Component {
       ...(branch && branch !== 'main'
         ? [
             {
-              env: { CI: 'true' },
+              env: {
+                // Important: this ensures `yarn projen` runs `yarn install` and not `yarn install:ci` so it can update
+                // the yarn.lock file.
+                CI: 'false',
+              },
               name: 'Back-port projenrc changes from main',
               run: 'git fetch origin main && git checkout FETCH_HEAD -- .projenrc.ts projenrc README.md && yarn projen',
             },
