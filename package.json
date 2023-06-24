@@ -41,7 +41,7 @@
     "@types/glob": "^8.1.0",
     "@types/jest": "^29.5.2",
     "@types/lockfile": "^1.0.2",
-    "@types/node": "^14",
+    "@types/node": "^16",
     "@types/semver": "^7.5.0",
     "@types/tar": "^6.1.5",
     "@typescript-eslint/eslint-plugin": "^5",
@@ -62,7 +62,7 @@
     "npm": "^9.7.2",
     "npm-check-updates": "^16",
     "prettier": "^2.8.8",
-    "projen": "^0.71.106",
+    "projen": "^0.71.108",
     "tar": "^6.1.15",
     "ts-jest": "^29.1.0",
     "ts-node": "^10.9.1"
@@ -83,7 +83,7 @@
     "yargs": "^17.7.2"
   },
   "engines": {
-    "node": ">= 14.18.0"
+    "node": ">= 16.14.0"
   },
   "main": "lib/index.js",
   "license": "Apache-2.0",
