@@ -3,7 +3,13 @@ import * as path from 'node:path';
 import { Assembly } from '@jsii/spec';
 import * as ts from 'typescript';
 
-import { findUp } from './utils';
+/**
+ * This file is exported as a submodule so other packages can import it without having to load the whole of jsii
+ * It should NOT depend on any other code in jsii!
+ *
+ * Depending on ./find-utils is okay, since it is also self-contained
+ */
+import { findUp } from './find-utils';
 
 /**
  * Additional options that may be provided to the symbolIdentifier.

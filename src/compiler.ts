@@ -8,6 +8,7 @@ import { Assembler } from './assembler';
 import * as Case from './case';
 import { emitDownleveledDeclarations, TYPES_COMPAT } from './downlevel-dts';
 import { Emitter } from './emitter';
+import { findDependencyDirectory } from './find-utils';
 import { JsiiDiagnostic } from './jsii-diagnostic';
 import { ProjectInfo } from './project-info';
 import { WARNINGSCODE_FILE_NAME } from './transforms/deprecation-warnings';
@@ -495,7 +496,7 @@ export class Compiler implements Emitter {
     }
 
     try {
-      const depDir = utils.findDependencyDirectory(depName, this.options.projectInfo.projectRoot);
+      const depDir = findDependencyDirectory(depName, this.options.projectInfo.projectRoot);
 
       const dep = path.join(depDir, 'tsconfig.json');
       if (!fs.existsSync(dep)) {

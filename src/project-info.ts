@@ -6,8 +6,9 @@ import * as log4js from 'log4js';
 import * as semver from 'semver';
 import * as ts from 'typescript';
 
+import { findDependencyDirectory } from './find-utils';
 import { JsiiDiagnostic } from './jsii-diagnostic';
-import { parsePerson, parseRepository, findDependencyDirectory } from './utils';
+import { parsePerson, parseRepository } from './utils';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-require-imports
 const spdx: Set<string> = require('spdx-license-list/simple');

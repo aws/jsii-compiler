@@ -150,6 +150,7 @@ project.package.addField('exports', {
   '.': `./${project.package.entrypoint}`,
   './bin/jsii': './bin/jsii',
   './package.json': './package.json',
+  './symbol-id': './symbol-id.js',
 });
 
 // Remove TypeScript devDependency (it's a direct/normal dependency here)
