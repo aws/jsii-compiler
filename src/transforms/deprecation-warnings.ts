@@ -4,8 +4,8 @@ import * as spec from '@jsii/spec';
 import { Assembly } from '@jsii/spec';
 import * as ts from 'typescript';
 
+import { symbolIdentifier } from '../common/symbol-id';
 import { ProjectInfo } from '../project-info';
-import { symbolIdentifier } from '../symbol-id';
 
 export const WARNINGSCODE_FILE_NAME = '.warnings.jsii.js';
 const WARNING_FUNCTION_NAME = 'print';
