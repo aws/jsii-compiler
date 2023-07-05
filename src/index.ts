@@ -1,3 +1,3 @@
 export * from './jsii-diagnostic';
-export * from './symbol-id';
+export * from './common/symbol-id';
 export * from './helpers';

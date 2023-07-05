@@ -9,6 +9,7 @@ import * as log4js from 'log4js';
 import * as ts from 'typescript';
 
 import * as Case from './case';
+import { symbolIdentifier } from './common/symbol-id';
 import { Directives } from './directives';
 import { getReferencedDocParams, parseSymbolDocumentation, TypeSystemHints } from './docs';
 import { Emitter } from './emitter';
@@ -17,7 +18,6 @@ import * as literate from './literate';
 import * as bindings from './node-bindings';
 import { ProjectInfo } from './project-info';
 import { isReservedName } from './reserved-words';
-import { symbolIdentifier } from './symbol-id';
 import { DeprecatedRemover } from './transforms/deprecated-remover';
 import { DeprecationWarningsInjector } from './transforms/deprecation-warnings';
 import { RuntimeTypeInfoInjector } from './transforms/runtime-info';

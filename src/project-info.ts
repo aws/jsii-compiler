@@ -6,7 +6,7 @@ import * as log4js from 'log4js';
 import * as semver from 'semver';
 import * as ts from 'typescript';
 
-import { findDependencyDirectory } from './find-utils';
+import { findDependencyDirectory } from './common/find-utils';
 import { JsiiDiagnostic } from './jsii-diagnostic';
 import { parsePerson, parseRepository } from './utils';
 
