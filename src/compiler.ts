@@ -6,6 +6,7 @@ import * as ts from 'typescript';
 
 import { Assembler } from './assembler';
 import * as Case from './case';
+import { findDependencyDirectory } from './common/find-utils';
 import { emitDownleveledDeclarations, TYPES_COMPAT } from './downlevel-dts';
 import { Emitter } from './emitter';
 import { JsiiDiagnostic } from './jsii-diagnostic';
@@ -495,7 +496,7 @@ export class Compiler implements Emitter {
     }
 
     try {
-      const depDir = utils.findDependencyDirectory(depName, this.options.projectInfo.projectRoot);
+      const depDir = findDependencyDirectory(depName, this.options.projectInfo.projectRoot);
 
       const dep = path.join(depDir, 'tsconfig.json');
       if (!fs.existsSync(dep)) {
