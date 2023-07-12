@@ -185,7 +185,7 @@ function semanticallyEqualDeclarations(left: string, right: string): boolean {
     // TypeScript may emit duplicated reference declarations... which are absent from Downlevel-DTS' output...
     // https://github.com/microsoft/TypeScript/issues/48143
     const REFERENCES_TYPES_NODE = '/// <reference types="node" />';
-    if (normalized.startsWith(`${REFERENCES_TYPES_NODE}\n${REFERENCES_TYPES_NODE}`)) {
+    while (normalized.startsWith(`${REFERENCES_TYPES_NODE}\n${REFERENCES_TYPES_NODE}`)) {
       normalized = normalized.slice(REFERENCES_TYPES_NODE.length + 1);
     }
 
