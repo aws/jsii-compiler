@@ -159,6 +159,7 @@ export class ReleaseWorkflow {
             '--title=${{ github.ref_name }}',
             '--verify-tag',
             '--prerelease',
+            `--latest=\${{ needs.build.outputs.${PublishTargetOutput.IS_LATEST} }}`,
           ].join(' '),
           env: {
             GH_TOKEN: '${{ github.token }}',
@@ -173,6 +174,7 @@ export class ReleaseWorkflow {
             '--generate-notes',
             '--title=${{ github.ref_name }}',
             '--verify-tag',
+            `--latest=\${{ needs.build.outputs.${PublishTargetOutput.IS_LATEST} }}`,
           ].join(' '),
           env: {
             GH_TOKEN: '${{ github.token }}',
