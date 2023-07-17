@@ -1,4 +1,4 @@
-# ![jsii](https://raw.githubusercontent.com/aws/jsii/main/logo/png/128.png)
+# ![jsii](https://raw.githubusercontent.com/aws/jsii-compiler/main/logo/png/128.png)
 
 [![Join the chat at https://cdk.Dev](https://img.shields.io/static/v1?label=Slack&message=cdk.dev&color=brightgreen&logo=slack)](https://cdk.dev)
 [![All Contributors](https://img.shields.io/github/all-contributors/aws/jsii/main?label=%E2%9C%A8%20All%20Contributors)](#contributors-)
@@ -287,11 +287,11 @@ The applicable _Maintenance & Support policy_ can be reviewed in [SUPPORT.md](./
 
 The current status of `jsii` compiler releases is:
 
-Release | Status      | Comment
---------|-------------|-----------------------------
-`1.x`   | Current     | https://github.com/aws/jsii
-`5.1.x` | Current     | ![](https://img.shields.io/npm/v/jsii/v5.1-latest?label=jsii%40v5.1-latest&logo=npm)
-`5.0.x` | Maintenance | ![](https://img.shields.io/npm/v/jsii/v5.0-latest?label=jsii%40v5.0-latest&logo=npm)
+| Release | Status      | Comment                                                                              |
+| ------- | ----------- | ------------------------------------------------------------------------------------ |
+| `1.x`   | Current     | https://github.com/aws/jsii                                                          |
+| `5.1.x` | Current     | ![](https://img.shields.io/npm/v/jsii/v5.1-latest?label=jsii%40v5.1-latest&logo=npm) |
+| `5.0.x` | Maintenance | ![](https://img.shields.io/npm/v/jsii/v5.0-latest?label=jsii%40v5.0-latest&logo=npm) |
 
 ## :balance_scale: License
 

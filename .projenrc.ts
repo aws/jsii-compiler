@@ -176,6 +176,7 @@ project.npmignore?.addPatterns(
   '/CONTRIBUTING.md',
   '/build-tools/',
   '/fixtures/',
+  '/logo/',
   '/projenrc/',
   '*.tsbuildinfo',
   '*.d.ts.map', // Declarations map aren't useful in published packages.
