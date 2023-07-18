@@ -21,6 +21,7 @@ tsconfig.tsbuildinfo
 /CONTRIBUTING.md
 /build-tools/
 /fixtures/
+/logo/
 /projenrc/
 *.tsbuildinfo
 *.d.ts.map
