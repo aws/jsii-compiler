@@ -212,8 +212,9 @@ export class UpgradeDependencies extends Component {
     steps.push({ exec: this._project.package.installAndUpdateLockfileCommand });
 
     // run upgrade command to upgrade transitive deps as well
+    const depTypes = this.project.deps.all.map((dep) => dep.type);
     steps.push({
-      exec: this._project.package.renderUpgradePackagesCommand(exclude, this.options.include),
+      exec: this._project.package.renderUpgradePackagesCommand(depTypes, exclude, this.options.include),
     });
 
     // run "projen" to give projen a chance to update dependencies (it will also run "yarn install")
