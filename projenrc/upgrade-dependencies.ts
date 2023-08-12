@@ -1,5 +1,6 @@
 import { Component, DependencyType, github, javascript, release, Task, TaskStep } from 'projen';
 import { DEFAULT_GITHUB_ACTIONS_USER } from 'projen/lib/github/constants';
+import { NodePackageManager } from 'projen/lib/javascript';
 
 const CREATE_PATCH_STEP_ID = 'create_patch';
 const PATCH_CREATED_OUTPUT = 'patch_created';
@@ -189,7 +190,7 @@ export class UpgradeDependencies extends Component {
     // in it or one of its dependencies. This will make upgrade workflows
     // slightly more stable and resilient to upstream changes.
     steps.push({
-      exec: this._project.package.renderUpgradePackagesCommand([], ['npm-check-updates']),
+      exec: this.renderUpgradePackagesCommand(['npm-check-updates']),
     });
 
     for (const dep of ['dev', 'optional', 'peer', 'prod', 'bundle']) {
@@ -329,6 +330,39 @@ export class UpgradeDependencies extends Component {
       }),
       jobId: 'pr',
     };
+  }
+
+  /**
+   * Render a package manager specific command to upgrade all requested dependencies.
+   */
+  private renderUpgradePackagesCommand(include: string[]): string {
+    function upgradePackages(command: string) {
+      return () => {
+        return `${command} ${include.join(' ')}`;
+      };
+    }
+
+    const packageManager = this._project.package.packageManager;
+
+    let lazy;
+    switch (packageManager) {
+      case NodePackageManager.YARN:
+      case NodePackageManager.YARN2:
+        lazy = upgradePackages('yarn upgrade');
+        break;
+      case NodePackageManager.NPM:
+        lazy = upgradePackages('npm update');
+        break;
+      case NodePackageManager.PNPM:
+        lazy = upgradePackages('pnpm update');
+        break;
+      default:
+        throw new Error(`unexpected package manager ${packageManager}`);
+    }
+
+    // return a lazy function so that dependencies include ones that were
+    // added post project instantiation (i.e using project.addDeps)
+    return lazy as unknown as string;
   }
 }
 
