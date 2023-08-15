@@ -328,7 +328,7 @@ export class UpgradeDependencies extends Component {
   private renderUpgradePackagesCommand(include?: string[]): string {
     function upgradePackages(command: string) {
       return () => {
-        return `${command} ${(include ?? []).join(' ')}`;
+        return `${command} ${(include ?? []).join(' ')}`.trim();
       };
     }
 
