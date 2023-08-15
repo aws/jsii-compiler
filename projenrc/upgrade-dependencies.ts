@@ -10,13 +10,6 @@ const PATCH_CREATED_OUTPUT = 'patch_created';
  */
 export interface UpgradeDependenciesOptions {
   /**
-   * List of package names to exclude during the upgrade.
-   *
-   * @default - Nothing is excluded.
-   */
-  readonly exclude?: string[];
-
-  /**
    * List of package names to include during the upgrade.
    *
    * @default - Everything is included.
@@ -154,8 +147,6 @@ export class UpgradeDependencies extends Component {
   }
 
   private renderTaskSteps(): TaskStep[] {
-    const exclude = this.options.exclude ?? [];
-
     // exclude depedencies that has already version pinned (fully or with patch version) by Projen with ncu (but not package manager upgrade)
     // Getting only unique values through set
     const ncuExcludes = [
@@ -166,8 +157,7 @@ export class UpgradeDependencies extends Component {
               dep.name === 'typescript' ||
               (dep.version && dep.version[0] !== '^' && dep.type !== DependencyType.OVERRIDE),
           )
-          .map((dep) => dep.name)
-          .concat(exclude),
+          .map((dep) => dep.name),
       ),
     ];
     // TypeScript is minor-pinned in this project...
@@ -214,7 +204,7 @@ export class UpgradeDependencies extends Component {
 
     // run upgrade command to upgrade transitive deps as well
     steps.push({
-      exec: this._project.package.renderUpgradePackagesCommand(exclude, this.options.include),
+      exec: this.renderUpgradePackagesCommand(this.options.include),
     });
 
     // run "projen" to give projen a chance to update dependencies (it will also run "yarn install")
@@ -335,10 +325,10 @@ export class UpgradeDependencies extends Component {
   /**
    * Render a package manager specific command to upgrade all requested dependencies.
    */
-  private renderUpgradePackagesCommand(include: string[]): string {
+  private renderUpgradePackagesCommand(include?: string[]): string {
     function upgradePackages(command: string) {
       return () => {
-        return `${command} ${include.join(' ')}`;
+        return `${command} ${(include ?? []).join(' ')}`;
       };
     }
 
