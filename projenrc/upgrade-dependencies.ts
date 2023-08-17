@@ -1,5 +1,6 @@
 import { Component, DependencyType, github, javascript, release, Task, TaskStep } from 'projen';
 import { DEFAULT_GITHUB_ACTIONS_USER } from 'projen/lib/github/constants';
+import { NodePackageManager } from 'projen/lib/javascript';
 
 const CREATE_PATCH_STEP_ID = 'create_patch';
 const PATCH_CREATED_OUTPUT = 'patch_created';
@@ -8,13 +9,6 @@ const PATCH_CREATED_OUTPUT = 'patch_created';
  * Options for `UpgradeDependencies`.
  */
 export interface UpgradeDependenciesOptions {
-  /**
-   * List of package names to exclude during the upgrade.
-   *
-   * @default - Nothing is excluded.
-   */
-  readonly exclude?: string[];
-
   /**
    * List of package names to include during the upgrade.
    *
@@ -153,8 +147,6 @@ export class UpgradeDependencies extends Component {
   }
 
   private renderTaskSteps(): TaskStep[] {
-    const exclude = this.options.exclude ?? [];
-
     // exclude depedencies that has already version pinned (fully or with patch version) by Projen with ncu (but not package manager upgrade)
     // Getting only unique values through set
     const ncuExcludes = [
@@ -165,8 +157,7 @@ export class UpgradeDependencies extends Component {
               dep.name === 'typescript' ||
               (dep.version && dep.version[0] !== '^' && dep.type !== DependencyType.OVERRIDE),
           )
-          .map((dep) => dep.name)
-          .concat(exclude),
+          .map((dep) => dep.name),
       ),
     ];
     // TypeScript is minor-pinned in this project...
@@ -189,7 +180,7 @@ export class UpgradeDependencies extends Component {
     // in it or one of its dependencies. This will make upgrade workflows
     // slightly more stable and resilient to upstream changes.
     steps.push({
-      exec: this._project.package.renderUpgradePackagesCommand([], ['npm-check-updates']),
+      exec: this.renderUpgradePackagesCommand(['npm-check-updates']),
     });
 
     for (const dep of ['dev', 'optional', 'peer', 'prod', 'bundle']) {
@@ -213,7 +204,7 @@ export class UpgradeDependencies extends Component {
 
     // run upgrade command to upgrade transitive deps as well
     steps.push({
-      exec: this._project.package.renderUpgradePackagesCommand(exclude, this.options.include),
+      exec: this.renderUpgradePackagesCommand(this.options.include),
     });
 
     // run "projen" to give projen a chance to update dependencies (it will also run "yarn install")
@@ -329,6 +320,39 @@ export class UpgradeDependencies extends Component {
       }),
       jobId: 'pr',
     };
+  }
+
+  /**
+   * Render a package manager specific command to upgrade all requested dependencies.
+   */
+  private renderUpgradePackagesCommand(include?: string[]): string {
+    function upgradePackages(command: string) {
+      return () => {
+        return `${command} ${(include ?? []).join(' ')}`.trim();
+      };
+    }
+
+    const packageManager = this._project.package.packageManager;
+
+    let lazy;
+    switch (packageManager) {
+      case NodePackageManager.YARN:
+      case NodePackageManager.YARN2:
+        lazy = upgradePackages('yarn upgrade');
+        break;
+      case NodePackageManager.NPM:
+        lazy = upgradePackages('npm update');
+        break;
+      case NodePackageManager.PNPM:
+        lazy = upgradePackages('pnpm update');
+        break;
+      default:
+        throw new Error(`unexpected package manager ${packageManager}`);
+    }
+
+    // return a lazy function so that dependencies include ones that were
+    // added post project instantiation (i.e using project.addDeps)
+    return lazy as unknown as string;
   }
 }
 
