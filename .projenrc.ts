@@ -13,6 +13,7 @@ import { UpgradeDependencies } from './projenrc/upgrade-dependencies';
 // 2. Edit `support.ts`, maintenance EOL date for the current version is 6 months from
 //    today, make the new version current.
 // 3. `npx projen`
+// 4. Update the version list in the README.
 
 const project = new typescript.TypeScriptProject({
   projenrcTs: true,
