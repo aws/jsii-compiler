@@ -194,7 +194,7 @@ project.addDeps(
   'semver-intersect',
   'sort-json',
   'spdx-license-list',
-  'typescript',
+  `typescript@~${SUPPORT_POLICY.current}`,
   'yargs',
 );
 
