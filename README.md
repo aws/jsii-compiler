@@ -287,11 +287,12 @@ The applicable _Maintenance & Support policy_ can be reviewed in [SUPPORT.md](./
 
 The current status of `jsii` compiler releases is:
 
-| Release | Status      | Comment                                                                              |
-| ------- | ----------- | ------------------------------------------------------------------------------------ |
-| `1.x`   | Current     | https://github.com/aws/jsii                                                          |
-| `5.1.x` | Current     | ![](https://img.shields.io/npm/v/jsii/v5.1-latest?label=jsii%40v5.1-latest&logo=npm) |
-| `5.0.x` | Maintenance | ![](https://img.shields.io/npm/v/jsii/v5.0-latest?label=jsii%40v5.0-latest&logo=npm) |
+| Release | Status      | Comment                                                                                 |
+| ------- | ----------- | --------------------------------------------------------------------------------------- |
+| `1.x`   | Current     | https://github.com/aws/jsii                                                             |
+| `5.2.x` | Current     | ![npm](https://img.shields.io/npm/v/jsii/v5.2-latest?label=jsii%40v5.2-latest&logo=npm) |
+| `5.1.x` | Maintenance | ![npm](https://img.shields.io/npm/v/jsii/v5.1-latest?label=jsii%40v5.1-latest&logo=npm) |
+| `5.0.x` | Maintenance | ![npm](https://img.shields.io/npm/v/jsii/v5.0-latest?label=jsii%40v5.0-latest&logo=npm) |
 
 ## :balance_scale: License
 
