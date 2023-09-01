@@ -62,7 +62,7 @@
     "npm": "^9.8.1",
     "npm-check-updates": "^16",
     "prettier": "^2.8.8",
-    "projen": "^0.73.2",
+    "projen": "^0.73.3",
     "tar": "^6.1.15",
     "ts-jest": "^29.1.1",
     "ts-node": "^10.9.1"
@@ -78,7 +78,7 @@
     "semver": "^7.5.4",
     "semver-intersect": "^1.4.0",
     "sort-json": "^2.0.1",
-    "spdx-license-list": "^6.6.0",
+    "spdx-license-list": "^6.7.0",
     "typescript": "~5.2",
     "yargs": "^17.7.2"
   },
