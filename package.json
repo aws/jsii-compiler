@@ -39,7 +39,7 @@
     "@types/clone": "^2.1.2",
     "@types/deep-equal": "^1.0.1",
     "@types/glob": "^8.1.0",
-    "@types/jest": "^29.5.4",
+    "@types/jest": "^29.5.5",
     "@types/lockfile": "^1.0.2",
     "@types/node": "^16",
     "@types/semver": "^7.5.2",
@@ -62,7 +62,7 @@
     "npm": "^9.8.1",
     "npm-check-updates": "^16",
     "prettier": "^2.8.8",
-    "projen": "^0.73.20",
+    "projen": "^0.73.21",
     "tar": "^6.2.0",
     "ts-jest": "^29.1.1",
     "ts-node": "^10.9.1"
