@@ -5,6 +5,7 @@ import { ReleaseWorkflow } from './projenrc/release';
 import { SUPPORT_POLICY, SupportPolicy } from './projenrc/support';
 import { UpdateIntegPackage } from './projenrc/update-integ-package';
 import { UpgradeDependencies } from './projenrc/upgrade-dependencies';
+import { TypeScriptModuleResolution } from 'projen/lib/javascript';
 
 // See 'projenrc/support.ts' for TypeScript versions we are tracking. To add a new version:
 //
@@ -49,11 +50,21 @@ const project = new typescript.TypeScriptProject({
       esModuleInterop: false,
       noImplicitOverride: true,
       skipLibCheck: true,
+      // resolvePackageJsonExports: true,
+      moduleResolution: TypeScriptModuleResolution.NODE16,
+      module: 'node16',
 
       sourceMap: true,
       inlineSourceMap: false,
       inlineSources: true,
     },
+  },
+  tsconfigDev: {
+    compilerOptions: {
+      // resolvePackageJsonExports: true,
+      moduleResolution: TypeScriptModuleResolution.NODE16,
+      module: 'node16',
+    }
   },
 
   prettier: true,
