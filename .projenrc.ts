@@ -1,11 +1,11 @@
 import { javascript, JsonFile, JsonPatch, typescript, YamlFile } from 'projen';
+import { TypeScriptModuleResolution } from 'projen/lib/javascript';
 import { BuildWorkflow } from './projenrc/build-workflow';
 import { JsiiCalcFixtures } from './projenrc/fixtures';
 import { ReleaseWorkflow } from './projenrc/release';
 import { SUPPORT_POLICY, SupportPolicy } from './projenrc/support';
 import { UpdateIntegPackage } from './projenrc/update-integ-package';
 import { UpgradeDependencies } from './projenrc/upgrade-dependencies';
-import { TypeScriptModuleResolution } from 'projen/lib/javascript';
 
 // See 'projenrc/support.ts' for TypeScript versions we are tracking. To add a new version:
 //
@@ -62,7 +62,7 @@ const project = new typescript.TypeScriptProject({
     compilerOptions: {
       moduleResolution: TypeScriptModuleResolution.NODE16,
       module: 'node16',
-    }
+    },
   },
 
   prettier: true,
