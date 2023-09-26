@@ -50,7 +50,6 @@ const project = new typescript.TypeScriptProject({
       esModuleInterop: false,
       noImplicitOverride: true,
       skipLibCheck: true,
-      // resolvePackageJsonExports: true,
       moduleResolution: TypeScriptModuleResolution.NODE16,
       module: 'node16',
 
@@ -61,7 +60,6 @@ const project = new typescript.TypeScriptProject({
   },
   tsconfigDev: {
     compilerOptions: {
-      // resolvePackageJsonExports: true,
       moduleResolution: TypeScriptModuleResolution.NODE16,
       module: 'node16',
     }
