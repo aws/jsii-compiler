@@ -11,7 +11,7 @@
       "es2020",
       "es2021.WeakRef"
     ],
-    "module": "CommonJS",
+    "module": "node16",
     "noEmitOnError": false,
     "noFallthroughCasesInSwitch": true,
     "noImplicitAny": true,
@@ -27,6 +27,7 @@
     "target": "ES2020",
     "noImplicitOverride": true,
     "skipLibCheck": true,
+    "moduleResolution": "node16",
     "sourceMap": true
   },
   "include": [
