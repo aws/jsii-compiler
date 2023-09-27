@@ -1,4 +1,5 @@
 import { javascript, JsonFile, JsonPatch, typescript, YamlFile } from 'projen';
+import { TypeScriptModuleResolution } from 'projen/lib/javascript';
 import { BuildWorkflow } from './projenrc/build-workflow';
 import { JsiiCalcFixtures } from './projenrc/fixtures';
 import { ReleaseWorkflow } from './projenrc/release';
@@ -49,10 +50,18 @@ const project = new typescript.TypeScriptProject({
       esModuleInterop: false,
       noImplicitOverride: true,
       skipLibCheck: true,
+      moduleResolution: TypeScriptModuleResolution.NODE16,
+      module: 'node16',
 
       sourceMap: true,
       inlineSourceMap: false,
       inlineSources: true,
+    },
+  },
+  tsconfigDev: {
+    compilerOptions: {
+      moduleResolution: TypeScriptModuleResolution.NODE16,
+      module: 'node16',
     },
   },
 
