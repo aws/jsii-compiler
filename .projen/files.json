@@ -19,7 +19,6 @@
     ".github/workflows/upgrade-maintenance-v5.1.yml",
     ".gitignore",
     ".npmignore",
-    ".npmrc",
     ".prettierrc.json",
     ".projen/deps.json",
     ".projen/files.json",
