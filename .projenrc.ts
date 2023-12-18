@@ -15,10 +15,10 @@ import { UpgradeDependencies } from './projenrc/upgrade-dependencies';
 // 3. Edit `support.ts`, maintenance EOL date for the current version is 6 months from
 //    today, make the new version current.
 // 4. Update `minNodeVersion` to the oldest LTS version of Node (i.e. dropping support for EOL versions of Node)
-// 4. `npx projen`
-// 5. Update the version list in the README.
-// 6. Create a PR
-// 7. Perform new version steps for `jsii-rosetta`
+// 5. `npx projen`
+// 6. Update the version list in the README.
+// 7. Create a PR
+// 8. Perform new version steps for `jsii-rosetta`
 
 const project = new typescript.TypeScriptProject({
   projenrcTs: true,
