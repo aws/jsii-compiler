@@ -21,6 +21,7 @@ usual), but also in **Python**, **Java**, **C#** (and other languages from the _
 Head over to our [documentation website](https://aws.github.io/jsii)!
 
 The jsii toolchain is spread out on multiple repositories:
+
 - [aws/jsii-compiler](https://github.com/aws/jsii-compiler) is where the `jsii` compiler is maintained (except releases
   in the `1.x` line)
 - [aws/jsii-rosetta](https://github.com/aws/jsii-rosetta) is where the `jsii-rosetta` sample code transliteration tool
@@ -33,7 +34,7 @@ The jsii toolchain is spread out on multiple repositories:
   - The jsii runtime libraries for the supported jsii target languages
   - `1.x` release lines of `jsii` and `jsii-rosetta`
 
-# :book: Blog Posts
+## :book: Blog Posts
 
 Here's a collection of blog posts (in chronological order) related to `jsii`:
 
@@ -55,11 +56,33 @@ Here's a collection of blog posts (in chronological order) related to `jsii`:
 > :information_source: If you wrote blog posts about `jsii` and would like to have them referenced here, do not hesitate
 > to file a pull request to add the links here!
 
-# :gear: Contributing
+## :gear: Maintenance & Support
+
+The applicable _Maintenance & Support policy_ can be reviewed in [SUPPORT.md](./SUPPORT.md).
+
+The current status of `jsii` compiler releases is:
+
+| Release | Status      | Comment                                                                                 |
+| ------- | ----------- | --------------------------------------------------------------------------------------- |
+| `5.3.x` | Current     | ![npm](https://img.shields.io/npm/v/jsii/v5.3-latest?label=jsii%40v5.3-latest&logo=npm) |
+| `5.2.x` | Maintenance | ![npm](https://img.shields.io/npm/v/jsii/v5.2-latest?label=jsii%40v5.2-latest&logo=npm) |
+| `5.1.x` | Maintenance | ![npm](https://img.shields.io/npm/v/jsii/v5.1-latest?label=jsii%40v5.1-latest&logo=npm) |
+| `5.0.x` | Maintenance | ![npm](https://img.shields.io/npm/v/jsii/v5.0-latest?label=jsii%40v5.0-latest&logo=npm) |
+| `1.x`   | Maintenance | <https://github.com/aws/jsii>                                                           |
+
+## :balance_scale: License
+
+**jsii** is distributed under the [Apache License, Version 2.0][apache-2.0].
+
+See [LICENSE](./LICENSE) and [NOTICE](./NOTICE) for more information.
+
+[apache-2.0]: https://www.apache.org/licenses/LICENSE-2.0
+
+## :gear: Contributing
 
 See [CONTRIBUTING](./CONTRIBUTING.md).
 
-## Contributors ✨
+### Contributors ✨
 
 Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/docs/en/emoji-key)):
 
@@ -280,24 +303,3 @@ Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/d
 
 This project follows the [all-contributors](https://github.com/all-contributors/all-contributors) specification.
 Contributions of any kind welcome!
-
-## :gear: Maintenance & Support
-
-The applicable _Maintenance & Support policy_ can be reviewed in [SUPPORT.md](./SUPPORT.md).
-
-The current status of `jsii` compiler releases is:
-
-| Release | Status      | Comment                                                                                 |
-| ------- | ----------- | --------------------------------------------------------------------------------------- |
-| `1.x`   | Current     | https://github.com/aws/jsii                                                             |
-| `5.2.x` | Current     | ![npm](https://img.shields.io/npm/v/jsii/v5.2-latest?label=jsii%40v5.2-latest&logo=npm) |
-| `5.1.x` | Maintenance | ![npm](https://img.shields.io/npm/v/jsii/v5.1-latest?label=jsii%40v5.1-latest&logo=npm) |
-| `5.0.x` | Maintenance | ![npm](https://img.shields.io/npm/v/jsii/v5.0-latest?label=jsii%40v5.0-latest&logo=npm) |
-
-## :balance_scale: License
-
-**jsii** is distributed under the [Apache License, Version 2.0][apache-2.0].
-
-See [LICENSE](./LICENSE) and [NOTICE](./NOTICE) for more information.
-
-[apache-2.0]: https://www.apache.org/licenses/LICENSE-2.0

@@ -11,10 +11,14 @@ import { UpgradeDependencies } from './projenrc/upgrade-dependencies';
 //
 // 1. Fork the current `main` to a maintenance branch:
 //    `git push origin main:maintenance/v5.2`
-// 2. Edit `support.ts`, maintenance EOL date for the current version is 6 months from
+// 2. Add a branch protection rule for the new maintenance branch
+// 3. Edit `support.ts`, maintenance EOL date for the current version is 6 months from
 //    today, make the new version current.
-// 3. `npx projen`
-// 4. Update the version list in the README.
+// 4. Update `minNodeVersion` to the oldest LTS version of Node (i.e. dropping support for EOL versions of Node)
+// 4. `npx projen`
+// 5. Update the version list in the README.
+// 6. Create a PR
+// 7. Perform new version steps for `jsii-rosetta`
 
 const project = new typescript.TypeScriptProject({
   projenrcTs: true,
@@ -40,7 +44,7 @@ const project = new typescript.TypeScriptProject({
 
   autoDetectBin: true,
 
-  minNodeVersion: '16.14.0',
+  minNodeVersion: '18.12.0',
   tsconfig: {
     compilerOptions: {
       // @see https://github.com/microsoft/TypeScript/wiki/Node-Target-Mapping
