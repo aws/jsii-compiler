@@ -256,6 +256,11 @@ project.eslint?.addRules({
   'unicorn/no-unnecessary-await': ['error'],
 });
 
+// contributors:update
+project.addTask('contributors:update', {
+  exec: 'all-contributors check | grep "Missing contributors" -A 1 | tail -n1 | sed -e "s/,//g" | xargs -n1 | grep -v "\\[bot\\]" | grep -v "aws-cdk-automation" | xargs -n1 -I{} all-contributors add {} code',
+});
+
 // Register jsii-calc stuff in the work stream
 new JsiiCalcFixtures(project);
 

@@ -65,6 +65,14 @@
         }
       ]
     },
+    "contributors:update": {
+      "name": "contributors:update",
+      "steps": [
+        {
+          "exec": "all-contributors check | grep \"Missing contributors\" -A 1 | tail -n1 | sed -e \"s/,//g\" | xargs -n1 | grep -v \"\\[bot\\]\" | grep -v \"aws-cdk-automation\" | xargs -n1 -I{} all-contributors add {} code"
+        }
+      ]
+    },
     "default": {
       "name": "default",
       "description": "Synthesize project files",

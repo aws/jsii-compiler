@@ -11,6 +11,7 @@
     "build": "npx projen build",
     "clobber": "npx projen clobber",
     "compile": "npx projen compile",
+    "contributors:update": "npx projen contributors:update",
     "default": "npx projen default",
     "eject": "npx projen eject",
     "eslint": "npx projen eslint",
