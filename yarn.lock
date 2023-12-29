@@ -5323,10 +5323,10 @@ progress@^2.0.3:
   resolved "https://registry.yarnpkg.com/progress/-/progress-2.0.3.tgz#7e8cf8d8f5b8f239c1bc68beb4eb78567d572ef8"
   integrity sha512-7PiHtLll5LdnKIMw100I+8xJXR5gW2QwWYkT6iJva0bXitZKa/XMrSbdmg3r2Xnaidz9Qumd0VPaMrZlF9V9sA==
 
-projen@^0.78.3:
-  version "0.78.3"
-  resolved "https://registry.yarnpkg.com/projen/-/projen-0.78.3.tgz#acbe5222fda6cea0e7b81a1ebd950f2d03610bae"
-  integrity sha512-QkHuynNspKg5KpGa4uZdnf2yL0VbBBfguYgU7VZWlM/G1z/zAcGfblrjqO6NebIXCYwL/k33+cRgW8MDZUjnvA==
+projen@^0.78.4:
+  version "0.78.4"
+  resolved "https://registry.yarnpkg.com/projen/-/projen-0.78.4.tgz#47ab90c449d63a1393af93104796099eb2f55f89"
+  integrity sha512-lj8U6OC6Ac5ToObt8HwcPsWd6o81yM2Vdkj/hK9lS0EpwDq1YcIxeSnM0udVpg4YwxF3Bw3+W96HL1KuEE0UMg==
   dependencies:
     "@iarna/toml" "^2.2.5"
     case "^1.6.3"
@@ -6359,9 +6359,9 @@ typedarray-to-buffer@^3.1.5:
     is-typedarray "^1.0.0"
 
 typescript@next:
-  version "5.4.0-dev.20231227"
-  resolved "https://registry.yarnpkg.com/typescript/-/typescript-5.4.0-dev.20231227.tgz#cfbef8e3b9d4391a62e14a72e65c500c5df12e53"
-  integrity sha512-lUTwqlRFd+OYg6urfqgdDBiEs4rUyejfaNeLLE9x77VYwHGPNS+Hg6/UQiXTpHuQIk+aMjxZkBJDDuGbD+SEdA==
+  version "5.4.0-dev.20231228"
+  resolved "https://registry.yarnpkg.com/typescript/-/typescript-5.4.0-dev.20231228.tgz#2f6dd1281bda0f7ba67944651e4ed501bd70ef06"
+  integrity sha512-LRdJTPnj+MTmEI+AYsKHdpxa2FhmBP8NbEDu0sQC8pYOggvnbg0W5idoFkJz5Y4TXLRPRbAgqemoJOCuwxLaBQ==
 
 typescript@~3.9.10:
   version "3.9.10"
