@@ -31,7 +31,6 @@ jspm_packages/
 *.tgz
 .yarn-integrity
 .cache
-!/.projenrc.js
 !/jest.config.json
 /coverage/
 !/.github/pull_request_template.md
@@ -66,3 +65,4 @@ jspm_packages/
 !/.github/workflows/auto-tag-releases-v5.1.yml
 !/.github/workflows/auto-tag-dev-v5.2.yml
 !/.github/workflows/auto-tag-releases-v5.2.yml
+!/.projenrc.ts

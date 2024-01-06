@@ -2,6 +2,7 @@
 /.projen/
 /jest.config.json
 /coverage/
+/.prettierrc.json
 /test/
 /tsconfig.dev.json
 /src/
@@ -25,3 +26,4 @@ tsconfig.tsbuildinfo
 /projenrc/
 *.tsbuildinfo
 *.d.ts.map
+/.gitattributes
