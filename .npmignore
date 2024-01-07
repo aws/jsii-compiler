@@ -27,3 +27,4 @@ tsconfig.tsbuildinfo
 *.tsbuildinfo
 *.d.ts.map
 /.gitattributes
+/.projenrc.ts
