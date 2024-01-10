@@ -30,7 +30,7 @@ jobs:
         uses: actions/setup-node@v3
         with:
           cache: yarn
-          node-version: 16.14.0
+          node-version: 18.12.0
       - name: Install dependencies
         run: yarn install --frozen-lockfile
       - name: Prepare Release
@@ -130,7 +130,7 @@ jobs:
         uses: actions/setup-node@v3
         with:
           always-auth: true
-          node-version: 16.14.0
+          node-version: 18.12.0
           registry-url: https://registry.npmjs.org/
       - name: Federate to AWS
         uses: aws-actions/configure-aws-credentials@v1
