@@ -35,13 +35,10 @@
   "reporters": [
     "default"
   ],
-  "preset": "ts-jest",
-  "globals": {},
   "transform": {
-    "^.+\\.tsx?$": [
+    "^.+\\.[t]sx?$": [
       "ts-jest",
       {
-        "compiler": "typescript",
         "tsconfig": "tsconfig.dev.json"
       }
     ]
