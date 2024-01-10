@@ -73,7 +73,7 @@ test('v1 compatibility check', () => {
         '    const calculator = new calc.Calculator();',
         '    calculator.add(42);',
         '    calculator.mul(1337);',
-        '    console.debug(calculator.expression);',
+        '    calculator.expression;',
         '  }',
         '}',
       ].join('\n'),
@@ -83,7 +83,7 @@ test('v1 compatibility check', () => {
           dependencies: { '@scope/jsii-calc-base': '*' },
           jsii: {
             tsc: {
-              types: ['node'],
+              types: [],
             },
           },
         },

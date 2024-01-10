@@ -31,7 +31,6 @@
     "sourceMap": true
   },
   "include": [
-    ".projenrc.js",
     "src/**/*.ts",
     "test/**/*.ts",
     "build-tools/**/*.ts",
