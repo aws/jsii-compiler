@@ -11,10 +11,14 @@ import { UpgradeDependencies } from './projenrc/upgrade-dependencies';
 //
 // 1. Fork the current `main` to a maintenance branch:
 //    `git push origin main:maintenance/v5.2`
-// 2. Edit `support.ts`, maintenance EOL date for the current version is 6 months from
+// 2. Add a branch protection rule for the new maintenance branch
+// 3. Edit `support.ts`, maintenance EOL date for the current version is 6 months from
 //    today, make the new version current.
-// 3. `npx projen`
-// 4. Update the version list in the README.
+// 4. Update `minNodeVersion` to the oldest LTS version of Node (i.e. dropping support for EOL versions of Node)
+// 5. `npx projen`
+// 6. Update the version list in the README.
+// 7. Create a PR
+// 8. Perform new version steps for `jsii-rosetta`
 
 const project = new typescript.TypeScriptProject({
   projenrcTs: true,
@@ -40,7 +44,7 @@ const project = new typescript.TypeScriptProject({
 
   autoDetectBin: true,
 
-  minNodeVersion: '16.14.0',
+  minNodeVersion: '18.12.0',
   tsconfig: {
     compilerOptions: {
       // @see https://github.com/microsoft/TypeScript/wiki/Node-Target-Mapping
@@ -250,6 +254,11 @@ project.eslint?.addRules({
   'unicorn/prefer-node-protocol': ['error'],
   'unicorn/no-array-for-each': ['error'],
   'unicorn/no-unnecessary-await': ['error'],
+});
+
+// contributors:update
+project.addTask('contributors:update', {
+  exec: 'all-contributors check | grep "Missing contributors" -A 1 | tail -n1 | sed -e "s/,//g" | xargs -n1 | grep -v "\\[bot\\]" | grep -v "aws-cdk-automation" | xargs -n1 -I{} all-contributors add {} code',
 });
 
 // Register jsii-calc stuff in the work stream
