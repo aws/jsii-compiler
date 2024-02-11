@@ -4797,9 +4797,9 @@ npm-bundled@^3.0.0:
     npm-normalize-package-bin "^3.0.0"
 
 npm-check-updates@^16:
-  version "16.14.14"
-  resolved "https://registry.yarnpkg.com/npm-check-updates/-/npm-check-updates-16.14.14.tgz#754ceec1a14c8e2d435807c6290dc08f9607dff3"
-  integrity sha512-Y3ajS/Ep40jM489rLBdz9jehn/BMil5s9fA4PSr2ZJxxSmtLWCSmRqsI2IEZ9Nb3MTMu8a3s7kBs0l+JbjdkTA==
+  version "16.14.15"
+  resolved "https://registry.yarnpkg.com/npm-check-updates/-/npm-check-updates-16.14.15.tgz#2126328d1fecc08f70b6e88da433bd5dfa0f9af0"
+  integrity sha512-WH0wJ9j6CP7Azl+LLCxWAYqroT2IX02kRIzgK/fg0rPpMbETgHITWBdOPtrv521xmA3JMgeNsQ62zvVtS/nCmQ==
   dependencies:
     chalk "^5.3.0"
     cli-table3 "^0.6.3"
@@ -5306,10 +5306,10 @@ progress@^2.0.3:
   resolved "https://registry.yarnpkg.com/progress/-/progress-2.0.3.tgz#7e8cf8d8f5b8f239c1bc68beb4eb78567d572ef8"
   integrity sha512-7PiHtLll5LdnKIMw100I+8xJXR5gW2QwWYkT6iJva0bXitZKa/XMrSbdmg3r2Xnaidz9Qumd0VPaMrZlF9V9sA==
 
-projen@^0.79.15:
-  version "0.79.15"
-  resolved "https://registry.yarnpkg.com/projen/-/projen-0.79.15.tgz#33b45058055d6ec65510e62f6b81200b3e824885"
-  integrity sha512-0B6w91QIDoHbva3yM4GZVPnurPCMeiZmB8b67wlrMmssfEHzOr4iK974iriv+B8/TTwD1aq6rgc4Wi7zKWm6HA==
+projen@^0.79.16:
+  version "0.79.16"
+  resolved "https://registry.yarnpkg.com/projen/-/projen-0.79.16.tgz#49604da02a95024ef0f789c35732ba6ca7f26693"
+  integrity sha512-Q0t7OJJHtXAJ4MiUaxInNqgbKEcY51P8BYQrK2sBvcAQl06BFbtcV+AaxIytPD//EklNMyxjXFzzHcHN307uMw==
   dependencies:
     "@iarna/toml" "^2.2.5"
     case "^1.6.3"
@@ -6334,9 +6334,9 @@ typedarray-to-buffer@^3.1.5:
     is-typedarray "^1.0.0"
 
 typescript@next:
-  version "5.4.0-dev.20240209"
-  resolved "https://registry.yarnpkg.com/typescript/-/typescript-5.4.0-dev.20240209.tgz#536d80a9f7ccb8d31e5b909622ab7811c380810a"
-  integrity sha512-qhstJB8bOkf9hDabhxluOD3J94iUqsQZtTcia/T8ymwqh2ziTXx9z9OQg3sxJOcUEVVxwAxKybCiwLM2HxwPwg==
+  version "5.4.0-dev.20240210"
+  resolved "https://registry.yarnpkg.com/typescript/-/typescript-5.4.0-dev.20240210.tgz#49879f43e95b3058e37760dbaed0e661c7c6fdaa"
+  integrity sha512-2Gzli3tdbcXsjTYrQXJhqtevbqmk6soSQYu/n2x05Psj4YeFIcP/zGICTZx5UNF+la7n6+tVoj7dZNr0TQK6jg==
 
 typescript@~3.9.10:
   version "3.9.10"
