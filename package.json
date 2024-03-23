@@ -69,8 +69,8 @@
     "ts-node": "^10.9.2"
   },
   "dependencies": {
-    "@jsii/check-node": "1.95.0",
-    "@jsii/spec": "^1.95.0",
+    "@jsii/check-node": "1.96.0",
+    "@jsii/spec": "^1.96.0",
     "case": "^1.6.3",
     "chalk": "^4",
     "downlevel-dts": "^0.11.0",
