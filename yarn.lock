@@ -1256,6 +1256,11 @@
   resolved "https://registry.yarnpkg.com/@types/normalize-package-data/-/normalize-package-data-2.4.4.tgz#56e2cc26c397c038fab0e3a917a12d5c5909e901"
   integrity sha512-37i+OaWTh9qeK4LSHPsyRC7NahnGotNuZvjLSgcPzblpHB3rrCJxAOgI5gCdKm7coonsaX1Of0ILiTcnZjbfxA==
 
+"@types/semver-utils@^1.1.1":
+  version "1.1.3"
+  resolved "https://registry.yarnpkg.com/@types/semver-utils/-/semver-utils-1.1.3.tgz#f78233e6613e53626844112422845f0f13b573fb"
+  integrity sha512-T+YwkslhsM+CeuhYUxyAjWm7mJ5am/K10UX40RuA6k6Lc7eGtq8iY2xOzy7Vq0GOqhl/xZl5l2FwURZMTPTUww==
+
 "@types/semver@^7.5.0", "@types/semver@^7.5.8":
   version "7.5.8"
   resolved "https://registry.yarnpkg.com/@types/semver/-/semver-7.5.8.tgz#8268a8c57a3e4abd25c165ecd36237db7948a55e"
@@ -2408,9 +2413,9 @@ eastasianwidth@^0.2.0:
   integrity sha512-I88TYZWc9XiYHRQ4/3c5rjjfgkjhLyW2luGIheGERbNQ6OY7yTybanSpDXZa8y7VUP9YmDcYa+eyq4ca7iLqWA==
 
 electron-to-chromium@^1.4.668:
-  version "1.4.715"
-  resolved "https://registry.yarnpkg.com/electron-to-chromium/-/electron-to-chromium-1.4.715.tgz#bb16bcf2a3537962fccfa746b5c98c5f7404ff46"
-  integrity sha512-XzWNH4ZSa9BwVUQSDorPWAUQ5WGuYz7zJUNpNif40zFCiCl20t8zgylmreNmn26h5kiyw2lg7RfTmeMBsDklqg==
+  version "1.4.716"
+  resolved "https://registry.yarnpkg.com/electron-to-chromium/-/electron-to-chromium-1.4.716.tgz#90c229ce0af2ad3b6e54472af1200e07f10293a4"
+  integrity sha512-t/MXMzFKQC3UfMDpw7V5wdB/UAB8dWx4hEsy+fpPYJWW3gqh3u5T1uXp6vR+H6dGCPBxkRo+YBcapBLvbGQHRw==
 
 emittery@^0.13.1:
   version "0.13.1"
@@ -4854,10 +4859,11 @@ npm-bundled@^3.0.0:
     npm-normalize-package-bin "^3.0.0"
 
 npm-check-updates@^16:
-  version "16.14.17"
-  resolved "https://registry.yarnpkg.com/npm-check-updates/-/npm-check-updates-16.14.17.tgz#424be984050cef9a77a258094e946f7a7e282bc9"
-  integrity sha512-ElnDdXKe60f8S6RhzFeaGuH2TFJmt2cU2HjLdowldabdm27nWFCxV2ebeP3xGbQkzp2+RPDQNdW9HqU1lcY8ag==
+  version "16.14.18"
+  resolved "https://registry.yarnpkg.com/npm-check-updates/-/npm-check-updates-16.14.18.tgz#d87501e5eebf305196caa4edb7137b56937ec99c"
+  integrity sha512-9iaRe9ohx9ykdbLjPRIYcq1A0RkrPYUx9HmQK1JIXhfxtJCNE/+497H9Z4PGH6GWRALbz5KF+1iZoySK2uSEpQ==
   dependencies:
+    "@types/semver-utils" "^1.1.1"
     chalk "^5.3.0"
     cli-table3 "^0.6.3"
     commander "^10.0.1"
@@ -5367,10 +5373,10 @@ progress@^2.0.3:
   resolved "https://registry.yarnpkg.com/progress/-/progress-2.0.3.tgz#7e8cf8d8f5b8f239c1bc68beb4eb78567d572ef8"
   integrity sha512-7PiHtLll5LdnKIMw100I+8xJXR5gW2QwWYkT6iJva0bXitZKa/XMrSbdmg3r2Xnaidz9Qumd0VPaMrZlF9V9sA==
 
-projen@^0.80.12:
-  version "0.80.12"
-  resolved "https://registry.yarnpkg.com/projen/-/projen-0.80.12.tgz#57451d4af20b557b9ad210d64d9ee78ac4dc53b9"
-  integrity sha512-emMvNBi8gGEeLg71IL/8Xx262hnPvzTnbl0Oua+Ce+25yXCAclGfDjzPGEoHgXpmaVYtFWp8jVnaGvXKfNTKgQ==
+projen@^0.80.13:
+  version "0.80.13"
+  resolved "https://registry.yarnpkg.com/projen/-/projen-0.80.13.tgz#b2ed33b8a28ab238ce26fed09d4ab942b495d876"
+  integrity sha512-6kOhiKSr5pwIB07euAzuo84UMLg7dYc1kPG4aqdULeUOnPpHIQSIoF0R2GHcf6iT1ZldrLgrtYy7SRsluobdAA==
   dependencies:
     "@iarna/toml" "^2.2.5"
     case "^1.6.3"
@@ -6424,9 +6430,9 @@ typedarray-to-buffer@^3.1.5:
     is-typedarray "^1.0.0"
 
 typescript@next:
-  version "5.5.0-dev.20240324"
-  resolved "https://registry.yarnpkg.com/typescript/-/typescript-5.5.0-dev.20240324.tgz#a0eb9b003e1cf3f66c857e05cfbee8c1f9666237"
-  integrity sha512-U3uIH1GEaD9zBFzYICNRbm+eDTzrOY7qOgyjFKL9IZbK1j1upzvmaLvOiqKC+v4cgFm0fG2zVlTxn1hmKCrZdA==
+  version "5.5.0-dev.20240325"
+  resolved "https://registry.yarnpkg.com/typescript/-/typescript-5.5.0-dev.20240325.tgz#e2eb7513bc1e9ee1c23291b77fc406e6252804d3"
+  integrity sha512-3kSBj+PWimbJvH3s/sQiIU7zBIOWAEpHdD3lykIykePugc1qXNIK8d5/WJJNpzH4q2n6gY8pz8lLoe/HanVGnA==
 
 typescript@~3.9.10:
   version "3.9.10"
