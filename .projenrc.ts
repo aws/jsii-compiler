@@ -19,7 +19,7 @@ import { UpgradeDependencies } from './projenrc/upgrade-dependencies';
 //    today, make the new version current.
 // 4. Update `minNodeVersion` to the oldest LTS version of Node (i.e. dropping support for EOL versions of Node)
 // 5. `npx projen`
-// 6. Update the version list in the README.
+// 6. Update the version list in the README. (remember to remove EOL versions)
 // 7. Create a PR
 // 8. Perform new version steps for `jsii-rosetta`
 
