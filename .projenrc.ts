@@ -12,6 +12,9 @@ import { UpgradeDependencies } from './projenrc/upgrade-dependencies';
 // 1. Fork the current `main` to a maintenance branch:
 //    `git push origin main:maintenance/v5.2`
 // 2. Add a branch protection rule for the new maintenance branch
+
+// --- on main branch:
+
 // 3. Edit `support.ts`, maintenance EOL date for the current version is 6 months from
 //    today, make the new version current.
 // 4. Update `minNodeVersion` to the oldest LTS version of Node (i.e. dropping support for EOL versions of Node)
@@ -239,6 +242,7 @@ project.preCompileTask.exec('ts-node build-tools/code-gen.ts', {
   name: 'code-gen',
 });
 project.gitignore.addPatterns('/src/version.ts', '/jsii-outdir/', '/test/negatives/.*');
+project.gitignore.exclude('.DS_Store');
 
 // Exclude negatives from tsconfig and eslint...
 project.tsconfigDev.addExclude('test/negatives/**/*.ts');
