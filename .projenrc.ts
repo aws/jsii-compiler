@@ -18,7 +18,9 @@ import { UpgradeDependencies } from './projenrc/upgrade-dependencies';
 // 5. `npx projen`
 // 6. Update the version list in the README (remember to remove EOS versions)
 // 7. Create a PR
-// 8. Perform new version steps for `jsii-rosetta`
+// 8. Note that merging the PR doesn't trigger a release. Release are perfoemd on a weekly schedule, you should manully create a release by trigeeting this workflow:
+//    https://github.com/aws/jsii-compiler/actions/workflows/auto-tag-releases.yml
+// 9. Perform new version steps for `jsii-rosetta`
 
 const project = new typescript.TypeScriptProject({
   projenrcTs: true,
