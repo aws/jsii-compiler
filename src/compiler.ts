@@ -5,37 +5,17 @@ import * as log4js from 'log4js';
 import * as ts from 'typescript';
 
 import { Assembler } from './assembler';
-import * as Case from './case';
 import { findDependencyDirectory } from './common/find-utils';
 import { emitDownleveledDeclarations, TYPES_COMPAT } from './downlevel-dts';
 import { Emitter } from './emitter';
 import { JsiiDiagnostic } from './jsii-diagnostic';
 import { ProjectInfo } from './project-info';
 import { WARNINGSCODE_FILE_NAME } from './transforms/deprecation-warnings';
+import { TypeScriptConfig, TypeScriptConfigValidationRuleSet } from './tsconfig';
+import { BASE_COMPILER_OPTIONS, convertForJson } from './tsconfig/compiler-options';
+import { TypeScriptConfigValidator } from './tsconfig/tsconfig-validator';
+import { ValidationError } from './tsconfig/validator';
 import * as utils from './utils';
-
-const BASE_COMPILER_OPTIONS: ts.CompilerOptions = {
-  alwaysStrict: true,
-  declaration: true,
-  experimentalDecorators: true,
-  incremental: true,
-  lib: ['lib.es2020.d.ts'],
-  module: ts.ModuleKind.CommonJS,
-  noEmitOnError: true,
-  noFallthroughCasesInSwitch: true,
-  noImplicitAny: true,
-  noImplicitReturns: true,
-  noImplicitThis: true,
-  noUnusedLocals: true,
-  noUnusedParameters: true,
-  resolveJsonModule: true,
-  skipLibCheck: true,
-  strict: true,
-  strictNullChecks: true,
-  strictPropertyInitialization: true,
-  stripInternal: false,
-  target: ts.ScriptTarget.ES2020,
-};
 
 const LOG = log4js.getLogger('jsii/compiler');
 export const DIAGNOSTICS = 'diagnostics';
@@ -57,10 +37,23 @@ export interface CompilerOptions {
   /** Whether to add warnings for deprecated elements */
   addDeprecationWarnings?: boolean;
   /**
-   * The name of the tsconfig file to generate
+   * The name of the tsconfig file to generate.
+   * Cannot be used at the same time as `typeScriptConfig`.
    * @default "tsconfig.json"
    */
   generateTypeScriptConfig?: string;
+  /**
+   * The name of the tsconfig file to use.
+   * Cannot be used at the same time as `generateTypeScriptConfig`.
+   * @default - generate the tsconfig file
+   */
+  typeScriptConfig?: string;
+  /**
+   * The ruleset to validate the provided tsconfig file against.
+   * Can only be used when `typeScriptConfig` is provided.
+   * @default TypeScriptConfigValidationRuleSet.STRICT - if `typeScriptConfig` is provided
+   */
+  validateTypeScriptConfig?: TypeScriptConfigValidationRuleSet;
   /**
    * Whether to compress the assembly
    * @default false
@@ -68,50 +61,45 @@ export interface CompilerOptions {
   compressAssembly?: boolean;
 }
 
-export interface TypescriptConfig {
-  compilerOptions: ts.CompilerOptions;
-  include?: string[];
-  exclude?: string[];
-  references?: ts.ProjectReference[];
-}
-
 export class Compiler implements Emitter {
   private readonly system: ts.System;
   private readonly compilerHost: ts.CompilerHost;
-  private typescriptConfig?: TypescriptConfig;
+  private readonly userProvidedTypeScriptConfig: boolean;
+  private readonly tsConfig: TypeScriptConfig;
   private rootFiles: string[] = [];
   private readonly configPath: string;
-  private readonly projectReferences: boolean;
+  private readonly projectRoot: string;
 
   public constructor(private readonly options: CompilerOptions) {
-    const rootDir = this.options.projectInfo.projectRoot;
+    if (options.generateTypeScriptConfig != null && options.typeScriptConfig != null) {
+      throw new Error(
+        'Cannot use `generateTypeScriptConfig` and `typeScriptConfig` together. Provide only one of them.',
+      );
+    }
+
+    this.projectRoot = this.options.projectInfo.projectRoot;
+    const configFileName = options.typeScriptConfig ?? options.generateTypeScriptConfig ?? 'tsconfig.json';
+    this.configPath = path.join(this.projectRoot, configFileName);
+    this.userProvidedTypeScriptConfig = Boolean(options.typeScriptConfig);
+    this.tsConfig = this.configureTypeScript();
+
     this.system = {
       ...ts.sys,
-      getCurrentDirectory: () => rootDir,
-      createDirectory: (pth) => ts.sys.createDirectory(path.resolve(rootDir, pth)),
-      deleteFile: ts.sys.deleteFile && ((pth) => ts.sys.deleteFile!(path.join(rootDir, pth))),
-      fileExists: (pth) => ts.sys.fileExists(path.resolve(rootDir, pth)),
-      getFileSize: ts.sys.getFileSize && ((pth) => ts.sys.getFileSize!(path.resolve(rootDir, pth))),
-      readFile: (pth, encoding) => ts.sys.readFile(path.resolve(rootDir, pth), encoding),
+      getCurrentDirectory: () => this.projectRoot,
+      createDirectory: (pth) => ts.sys.createDirectory(path.resolve(this.projectRoot, pth)),
+      deleteFile: ts.sys.deleteFile && ((pth) => ts.sys.deleteFile!(path.join(this.projectRoot, pth))),
+      fileExists: (pth) => ts.sys.fileExists(path.resolve(this.projectRoot, pth)),
+      getFileSize: ts.sys.getFileSize && ((pth) => ts.sys.getFileSize!(path.resolve(this.projectRoot, pth))),
+      readFile: (pth, encoding) => ts.sys.readFile(path.resolve(this.projectRoot, pth), encoding),
       watchFile:
         ts.sys.watchFile &&
         ((pth, callback, pollingInterval, watchOptions) =>
-          ts.sys.watchFile!(path.resolve(rootDir, pth), callback, pollingInterval, watchOptions)),
+          ts.sys.watchFile!(path.resolve(this.projectRoot, pth), callback, pollingInterval, watchOptions)),
       writeFile: (pth, data, writeByteOrderMark) =>
-        ts.sys.writeFile(path.resolve(rootDir, pth), data, writeByteOrderMark),
+        ts.sys.writeFile(path.resolve(this.projectRoot, pth), data, writeByteOrderMark),
     };
-    this.compilerHost = ts.createIncrementalCompilerHost(BASE_COMPILER_OPTIONS, this.system);
 
-    const configFileName = options.generateTypeScriptConfig ?? 'tsconfig.json';
-
-    this.configPath = path.join(this.options.projectInfo.projectRoot, configFileName);
-
-    this.projectReferences =
-      options.projectReferences !== undefined
-        ? options.projectReferences
-        : options.projectInfo.projectReferences !== undefined
-        ? options.projectInfo.projectReferences
-        : false;
+    this.compilerHost = ts.createIncrementalCompilerHost(this.tsConfig.compilerOptions, this.system);
   }
 
   /**
@@ -120,8 +108,8 @@ export class Compiler implements Emitter {
    * @param files can be specified to override the standard source code location logic. Useful for example when testing "negatives".
    */
   public emit(...files: string[]): ts.EmitResult {
-    this._prepareForBuild(...files);
-    return this._buildOnce();
+    this.prepareForBuild(...files);
+    return this.buildOnce();
   }
 
   /**
@@ -137,15 +125,12 @@ export class Compiler implements Emitter {
    */
   public async watch(): Promise<never>;
   public async watch(opts?: NonBlockingWatchOptions): Promise<ts.Watch<ts.BuilderProgram> | never> {
-    this._prepareForBuild();
+    this.prepareForBuild();
 
-    const pi = this.options.projectInfo;
-    const projectRoot = pi.projectRoot;
     const host = ts.createWatchCompilerHost(
       this.configPath,
       {
-        ...pi.tsc,
-        ...BASE_COMPILER_OPTIONS,
+        ...this.tsConfig.compilerOptions,
         noEmitOnError: false,
       },
       this.system,
@@ -162,10 +147,10 @@ export class Compiler implements Emitter {
     //
     // eslint-disable-next-line @typescript-eslint/no-misused-promises
     host.afterProgramCreate = (builderProgram) => {
-      const emitResult = this._consumeProgram(builderProgram.getProgram(), host.getDefaultLibLocation!());
+      const emitResult = this.consumeProgram(builderProgram.getProgram(), host.getDefaultLibLocation!());
 
       for (const diag of emitResult.diagnostics.filter((d) => d.code === JSII_DIAGNOSTICS_CODE)) {
-        utils.logDiagnostic(diag, projectRoot);
+        utils.logDiagnostic(diag, this.projectRoot);
       }
 
       if (orig) {
@@ -191,29 +176,75 @@ export class Compiler implements Emitter {
    *
    * @param files the files that were specified as input in the CLI invocation.
    */
-  private _prepareForBuild(...files: string[]) {
-    this.buildTypeScriptConfig();
-    this.writeTypeScriptConfig();
+  private configureTypeScript(): TypeScriptConfig {
+    if (this.userProvidedTypeScriptConfig) {
+      const config = this.loadTypeScriptConfig();
+
+      // emit a warning if validation is disabled
+      const rules = this.options.validateTypeScriptConfig ?? TypeScriptConfigValidationRuleSet.NONE;
+      if (rules === TypeScriptConfigValidationRuleSet.NONE) {
+        utils.logDiagnostic(
+          JsiiDiagnostic.JSII_4009_DISABLED_TSCONFIG_VALIDATION.create(undefined, this.configPath),
+          this.projectRoot,
+        );
+      }
+
+      // validate the user provided config
+      if (rules !== TypeScriptConfigValidationRuleSet.NONE) {
+        try {
+          const validator = new TypeScriptConfigValidator(rules);
+          validator.validate(this.tsConfig!);
+        } catch (error: unknown) {
+          if (error instanceof ValidationError) {
+            utils.logDiagnostic(
+              JsiiDiagnostic.JSII_4000_FAILED_TSCONFIG_VALIDATION.create(undefined, this.configPath, error.violations),
+              this.projectRoot,
+            );
+          }
+
+          throw new Error(
+            `Failed validation of tsconfig "compilerOptions" in "${config}" against rule set "${rules}"!`,
+          );
+        }
+      }
+
+      return config;
+    }
+
+    // generated config if none is provided by the user
+    return this.buildTypeScriptConfig();
+  }
+
+  /**
+   * Final preparations of the project for build.
+   *
+   * These are preparations that either
+   * - must happen immediately before the build, or
+   * - can be different for every build like assigning the relevant root file(s).
+   *
+   * @param files the files that were specified as input in the CLI invocation.
+   */
+  private prepareForBuild(...files: string[]) {
+    if (!this.userProvidedTypeScriptConfig) {
+      this.writeTypeScriptConfig();
+    }
+
     this.rootFiles = this.determineSources(files);
   }
 
   /**
    * Do a single build
    */
-  private _buildOnce(): ts.EmitResult {
+  private buildOnce(): ts.EmitResult {
     if (!this.compilerHost.getDefaultLibLocation) {
       throw new Error('No default library location was found on the TypeScript compiler host!');
     }
 
-    const tsconf = this.typescriptConfig!;
-    const pi = this.options.projectInfo;
+    const tsconf = this.tsConfig!;
 
     const prog = ts.createIncrementalProgram({
       rootNames: this.rootFiles.concat(_pathOfLibraries(this.compilerHost)),
-      options: {
-        ...pi.tsc,
-        ...(tsconf?.compilerOptions ?? BASE_COMPILER_OPTIONS),
-      },
+      options: tsconf.compilerOptions,
       // Make the references absolute for the compiler
       projectReferences: tsconf.references?.map((ref) => ({
         path: path.resolve(path.dirname(this.configPath), ref.path),
@@ -221,10 +252,10 @@ export class Compiler implements Emitter {
       host: this.compilerHost,
     });
 
-    return this._consumeProgram(prog.getProgram(), this.compilerHost.getDefaultLibLocation());
+    return this.consumeProgram(prog.getProgram(), this.compilerHost.getDefaultLibLocation());
   }
 
-  private _consumeProgram(program: ts.Program, stdlib: string): ts.EmitResult {
+  private consumeProgram(program: ts.Program, stdlib: string): ts.EmitResult {
     const diagnostics = [...ts.getPreEmitDiagnostics(program)];
     let hasErrors = false;
 
@@ -298,24 +329,32 @@ export class Compiler implements Emitter {
   }
 
   /**
-   * Build the TypeScript config object
+   * Build the TypeScript config object from jsii config
    *
-   * This is the object that will be written to disk.
+   * This is the object that will be written to disk
+   * unless an existing tsconfig was provided.
    */
-  private buildTypeScriptConfig() {
+  private buildTypeScriptConfig(): TypeScriptConfig {
     let references: string[] | undefined;
-    if (this.projectReferences) {
+
+    const isComposite =
+      this.options.projectReferences !== undefined
+        ? this.options.projectReferences
+        : this.options.projectInfo.projectReferences !== undefined
+        ? this.options.projectInfo.projectReferences
+        : false;
+    if (isComposite) {
       references = this.findProjectReferences();
     }
 
     const pi = this.options.projectInfo;
 
-    this.typescriptConfig = {
+    return {
       compilerOptions: {
         ...pi.tsc,
         ...BASE_COMPILER_OPTIONS,
         // Enable composite mode if project references are enabled
-        composite: this.projectReferences,
+        composite: isComposite,
         // When incremental, configure a tsbuildinfo file
         tsBuildInfoFile: path.join(pi.tsc?.outDir ?? '.', 'tsconfig.tsbuildinfo'),
       },
@@ -338,6 +377,20 @@ export class Compiler implements Emitter {
   }
 
   /**
+   * Load the TypeScript config object from a provided file
+   */
+  private loadTypeScriptConfig() {
+    const projectRoot = this.options.projectInfo.projectRoot;
+    const { config, error } = ts.readConfigFile(this.configPath, ts.sys.readFile);
+    if (error) {
+      utils.logDiagnostic(error, projectRoot);
+      throw new Error(`Failed to load tsconfig at ${this.configPath}`);
+    }
+    const extended = ts.parseJsonConfigFileContent(config, ts.sys, projectRoot);
+    return { compilerOptions: extended.options };
+  }
+
+  /**
    * Creates a `tsconfig.json` file to improve the IDE experience.
    *
    * @return the fully qualified path to the `tsconfig.json` file
@@ -346,7 +399,7 @@ export class Compiler implements Emitter {
     const commentKey = '_generated_by_jsii_';
     const commentValue = 'Generated by jsii - safe to delete, and ideally should be in .gitignore';
 
-    (this.typescriptConfig as any)[commentKey] = commentValue;
+    (this.tsConfig as any)[commentKey] = commentValue;
 
     if (fs.existsSync(this.configPath)) {
       const currentConfig = JSON.parse(fs.readFileSync(this.configPath, 'utf-8'));
@@ -358,46 +411,12 @@ export class Compiler implements Emitter {
     }
 
     const outputConfig = {
-      ...this.typescriptConfig,
-      compilerOptions: {
-        ...this.typescriptConfig?.compilerOptions,
-        lib: this.typescriptConfig?.compilerOptions?.lib?.map((lib) =>
-          // Drop the "lib." prefix and ".d.ts" suffix before writing up the tsconfig.json file
-          lib.slice(4, lib.length - 5),
-        ),
-        // Re-write the module, targets & jsx to be the JSON format instead of Programmatic API
-        module: (this.typescriptConfig?.compilerOptions?.module &&
-          ts.ModuleKind[this.typescriptConfig.compilerOptions.module]) as any,
-        newLine: newLineForTsconfigJson(this.typescriptConfig?.compilerOptions.newLine),
-        target: (this.typescriptConfig?.compilerOptions?.target &&
-          ts.ScriptTarget[this.typescriptConfig.compilerOptions.target]) as any,
-        jsx: (this.typescriptConfig?.compilerOptions?.jsx &&
-          Case.snake(ts.JsxEmit[this.typescriptConfig.compilerOptions.jsx])) as any,
-      },
+      ...this.tsConfig,
+      compilerOptions: convertForJson(this.tsConfig?.compilerOptions),
     };
 
     LOG.debug(`Creating or updating ${chalk.blue(this.configPath)}`);
     fs.writeFileSync(this.configPath, JSON.stringify(outputConfig, null, 2), 'utf8');
-
-    /**
-     * This is annoying - the values expected in the tsconfig.json file are not
-     * the same as the enum constant names, or their values. So we need this
-     * function to map the "compiler API version" to the "tsconfig.json version"
-     *
-     * @param newLine the compiler form of the new line configuration
-     *
-     * @return the requivalent value to put in tsconfig.json
-     */
-    function newLineForTsconfigJson(newLine: ts.NewLineKind | undefined) {
-      switch (newLine) {
-        case ts.NewLineKind.CarriageReturnLineFeed:
-          return 'crlf';
-        case ts.NewLineKind.LineFeed:
-          return 'lf';
-        default:
-          return undefined;
-      }
-    }
   }
 
   /**
@@ -464,7 +483,7 @@ export class Compiler implements Emitter {
     } else {
       const parseConfigHost = parseConfigHostFromCompilerHost(this.compilerHost);
       const parsed = ts.parseJsonConfigFileContent(
-        this.typescriptConfig,
+        this.tsConfig,
         parseConfigHost,
         this.options.projectInfo.projectRoot,
       );

@@ -8,6 +8,7 @@ import * as ts from 'typescript';
 
 import { findDependencyDirectory } from './common/find-utils';
 import { JsiiDiagnostic } from './jsii-diagnostic';
+import { TypeScriptConfigValidationRuleSet } from './tsconfig';
 import { parsePerson, parseRepository } from './utils';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-require-imports
@@ -77,6 +78,10 @@ export interface ProjectInfo {
   readonly exports?: {
     readonly [name: string]: string | { readonly [name: string]: string };
   };
+
+  // user-provided tsconfig
+  readonly tsconfig?: string;
+  readonly validateTsConfig?: TypeScriptConfigValidationRuleSet;
 }
 
 export interface PackageJson {
@@ -112,15 +117,22 @@ export interface PackageJson {
   readonly bundledDependencies?: readonly string[];
 
   readonly jsii?: {
+    // main jsii config
     readonly diagnostics?: { readonly [id: string]: 'error' | 'warning' | 'suggestion' | 'message' };
     readonly metadata?: { readonly [key: string]: unknown };
     readonly targets?: { readonly [name: string]: unknown };
     readonly versionFormat?: 'short' | 'full';
 
+    // Either user-provided config ...
+    readonly tsconfig?: string;
+    readonly validateTsConfig?: string;
+
+    // ... or configure tsc here
     readonly excludeTypescript?: readonly string[];
     readonly projectReferences?: boolean;
     readonly tsc?: TSCompilerOptions;
 
+    // unexpected options
     readonly [key: string]: unknown;
   };
 
@@ -255,6 +267,10 @@ export function loadProjectInfo(projectRoot: string): ProjectInfoResult {
     bin: pkg.bin,
     exports: pkg.exports,
     diagnostics: _loadDiagnostics(pkg.jsii?.diagnostics),
+
+    // user-provided tsconfig
+    tsconfig: pkg.jsii?.tsconfig,
+    validateTsConfig: _validateTsConfigRuleSet(pkg.jsii?.validateTsConfig ?? 'strict'),
   };
   return { projectInfo, diagnostics };
 }
@@ -478,6 +494,21 @@ function _validateStability(stability: string | undefined, deprecated: string | 
     throw new Error(`Invalid stability "${stability}", it must be one of ${Object.values(spec.Stability).join(', ')}`);
   }
   return stability as spec.Stability;
+}
+
+function _validateTsConfigRuleSet(ruleSet: string): TypeScriptConfigValidationRuleSet | undefined {
+  if (ruleSet == null) {
+    return undefined;
+  }
+  if (!Object.values(TypeScriptConfigValidationRuleSet).includes(ruleSet as any)) {
+    throw new Error(
+      `Invalid validateTsConfig "${ruleSet}", it must be one of ${Object.values(TypeScriptConfigValidationRuleSet).join(
+        ', ',
+      )}`,
+    );
+  }
+
+  return ruleSet as TypeScriptConfigValidationRuleSet;
 }
 
 /**

@@ -39,7 +39,13 @@
     "^.+\\.[t]sx?$": [
       "ts-jest",
       {
-        "tsconfig": "tsconfig.dev.json"
+        "compiler": "typescript",
+        "tsconfig": "tsconfig.dev.json",
+        "diagnostics": {
+          "ignoreCodes": [
+            "TS151001"
+          ]
+        }
       }
     ]
   },

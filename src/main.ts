@@ -10,11 +10,43 @@ import { Compiler } from './compiler';
 import { configureCategories } from './jsii-diagnostic';
 import { loadProjectInfo } from './project-info';
 import { emitSupportPolicyInformation } from './support';
+import { TypeScriptConfigValidationRuleSet } from './tsconfig';
 import * as utils from './utils';
 import { VERSION } from './version';
 import { enabledWarnings } from './warnings';
 
 const warningTypes = Object.keys(enabledWarnings);
+
+function choiceWithDesc(
+  choices: { [choice: string]: string },
+  desc: string,
+): {
+  choices: string[];
+  desc: string;
+} {
+  return {
+    choices: Object.keys(choices),
+    desc: [desc, ...Object.entries(choices).map(([choice, docs]) => `${choice}: ${docs}`)].join('\n'),
+  };
+}
+
+enum OPTION_GROUP {
+  JSII = 'jsii compiler options:',
+  TS = 'TypeScript config options:',
+}
+
+const ruleSets: {
+  [choice in TypeScriptConfigValidationRuleSet]: string;
+} = {
+  [TypeScriptConfigValidationRuleSet.STRICT]:
+    'Validates the provided config against the strict rule set designed for maximum backwards-compatibility.',
+  [TypeScriptConfigValidationRuleSet.GENERATED]:
+    'Enforces the same settings as used by --generate-tsconfig. Use this to stay compatible with the generated config, but have full ownership over the file.',
+  [TypeScriptConfigValidationRuleSet.MINIMAL]:
+    '[Experimental] Only enforces options that are known to be incompatible with jsii. This rule set is experimental and might change without notice.',
+  [TypeScriptConfigValidationRuleSet.NONE]:
+    'Disables all config validation. Intended for experimental setups only. Use at your own risk.',
+};
 
 (async () => {
   await emitSupportPolicyInformation();
@@ -38,9 +70,10 @@ const warningTypes = Object.keys(enabledWarnings);
             desc: 'Watch for file changes and recompile automatically',
           })
           .option('project-references', {
+            group: OPTION_GROUP.JSII,
             alias: 'r',
             type: 'boolean',
-            desc: 'Generate TypeScript project references (also [package.json].jsii.projectReferences)',
+            desc: 'Generate TypeScript project references (also [package.json].jsii.projectReferences)\nHas no effect if --tsconfig is provided',
           })
           .option('fix-peer-dependencies', {
             type: 'boolean',
@@ -49,30 +82,51 @@ const warningTypes = Object.keys(enabledWarnings);
             hidden: true,
           })
           .options('fail-on-warnings', {
+            group: OPTION_GROUP.JSII,
             alias: 'Werr',
             type: 'boolean',
             desc: 'Treat warnings as errors',
           })
           .option('silence-warnings', {
+            group: OPTION_GROUP.JSII,
             type: 'array',
             default: [],
             desc: `List of warnings to silence (warnings: ${warningTypes.join(',')})`,
           })
           .option('strip-deprecated', {
+            group: OPTION_GROUP.JSII,
             type: 'string',
             desc: '[EXPERIMENTAL] Hides all @deprecated members from the API (implementations remain). If an optional file name is given, only FQNs present in the file will be stripped.',
           })
           .option('add-deprecation-warnings', {
+            group: OPTION_GROUP.JSII,
             type: 'boolean',
             default: false,
             desc: '[EXPERIMENTAL] Injects warning statements for all deprecated elements, to be printed at runtime',
           })
           .option('generate-tsconfig', {
+            group: OPTION_GROUP.TS,
             type: 'string',
-            default: 'tsconfig.json',
+            defaultDescription: 'tsconfig.json',
             desc: 'Name of the typescript configuration file to generate with compiler settings',
           })
+          .option('tsconfig', {
+            group: OPTION_GROUP.TS,
+            alias: 'c',
+            type: 'string',
+            desc: '[EXPERIMENTAL] Use this typescript configuration file to compile the jsii project.',
+          })
+          .conflicts('tsconfig', ['generate-tsconfig', 'project-references'])
+          .option('validate-tsconfig', {
+            group: OPTION_GROUP.TS,
+            ...choiceWithDesc(
+              ruleSets,
+              '[EXPERIMENTAL] Validate the provided typescript configuration file against a set of rules.',
+            ),
+            default: TypeScriptConfigValidationRuleSet.STRICT,
+          })
           .option('compress-assembly', {
+            group: OPTION_GROUP.JSII,
             type: 'boolean',
             default: false,
             desc: 'Emit a compressed version of the assembly',
@@ -85,6 +139,10 @@ const warningTypes = Object.keys(enabledWarnings);
           }),
       async (argv) => {
         _configureLog4js(argv.verbose);
+
+        if (argv['generate-tsconfig'] != null && argv.tsconfig != null) {
+          throw new Error('Options --generate-tsconfig and --tsconfig are mutually exclusive');
+        }
 
         const projectRoot = path.normalize(path.resolve(process.cwd(), argv.PROJECT_ROOT));
 
@@ -109,6 +167,10 @@ const warningTypes = Object.keys(enabledWarnings);
           stripDeprecatedAllowListFile: argv['strip-deprecated'],
           addDeprecationWarnings: argv['add-deprecation-warnings'],
           generateTypeScriptConfig: argv['generate-tsconfig'],
+          typeScriptConfig: argv.tsconfig ?? projectInfo.packageJson.jsii?.tsconfig,
+          validateTypeScriptConfig:
+            (argv['validate-tsconfig'] as TypeScriptConfigValidationRuleSet) ??
+            projectInfo.packageJson.jsii?.validateTsConfig,
           compressAssembly: argv['compress-assembly'],
         });
 
