@@ -8,7 +8,7 @@ export const SUPPORT_POLICY: ReleasesDocument = {
     '5.0': new Date('2024-01-31'),
     '5.1': new Date('2024-02-28'),
     '5.2': new Date('2024-06-30'),
-    '5.3': new Date('2024-10-07'),
+    '5.3': new Date('2024-10-15'),
   },
 };
 
