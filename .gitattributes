@@ -7,14 +7,17 @@
 /.github/workflows/auto-approve.yml linguist-generated
 /.github/workflows/auto-merge.yml linguist-generated
 /.github/workflows/auto-tag-dev-v5.2.yml linguist-generated
+/.github/workflows/auto-tag-dev-v5.3.yml linguist-generated
 /.github/workflows/auto-tag-dev.yml linguist-generated
 /.github/workflows/auto-tag-releases-v5.2.yml linguist-generated
+/.github/workflows/auto-tag-releases-v5.3.yml linguist-generated
 /.github/workflows/auto-tag-releases.yml linguist-generated
 /.github/workflows/build.yml linguist-generated
 /.github/workflows/pull-request-lint.yml linguist-generated
 /.github/workflows/release.yml linguist-generated
 /.github/workflows/upgrade-main.yml linguist-generated
 /.github/workflows/upgrade-maintenance-v5.2.yml linguist-generated
+/.github/workflows/upgrade-maintenance-v5.3.yml linguist-generated
 /.gitignore linguist-generated
 /.npmignore linguist-generated
 /.prettierrc.json linguist-generated
