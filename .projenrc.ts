@@ -10,15 +10,17 @@ import { UpgradeDependencies } from './projenrc/upgrade-dependencies';
 // See 'projenrc/support.ts' for TypeScript versions we are tracking. To add a new version:
 //
 // 1. Fork the current `main` to a maintenance branch:
-//    `git push origin main:maintenance/v5.2`
+//    `git push origin main:maintenance/vx.y` (x.y is the TS version that is about to be replaced by a new release)
 // 2. Add a branch protection rule for the new maintenance branch
 // 3. Edit `support.ts`, maintenance EOL date for the current version is 6 months from
 //    today, make the new version current.
 // 4. Update `minNodeVersion` to the oldest LTS version of Node (i.e. dropping support for EOL versions of Node)
 // 5. `npx projen`
-// 6. Update the version list in the README.
+// 6. Update the version list in the README (remember to remove EOS versions)
 // 7. Create a PR
-// 8. Perform new version steps for `jsii-rosetta`
+// 8. Note that merging the PR doesn't trigger a release. Release are perfoemd on a weekly schedule, you should manully create a release by trigeeting this workflow:
+//    https://github.com/aws/jsii-compiler/actions/workflows/auto-tag-releases.yml
+// 9. Perform new version steps for `jsii-rosetta`
 
 const project = new typescript.TypeScriptProject({
   projenrcTs: true,
@@ -239,6 +241,7 @@ project.preCompileTask.exec('ts-node build-tools/code-gen.ts', {
   name: 'code-gen',
 });
 project.gitignore.addPatterns('/src/version.ts', '/jsii-outdir/', '/test/negatives/.*');
+project.gitignore.exclude('.DS_Store');
 
 // Exclude negatives from tsconfig and eslint...
 project.tsconfigDev.addExclude('test/negatives/**/*.ts');

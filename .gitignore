@@ -44,6 +44,7 @@ jspm_packages/
 !/.eslintrc.json
 !/.github/workflows/upgrade-main.yml
 !/.github/workflows/upgrade-maintenance-v5.2.yml
+!/.github/workflows/upgrade-maintenance-v5.3.yml
 /build-tools/tsconfig.json
 /projenrc/tsconfig.json
 /test/tsconfig.json
@@ -52,6 +53,7 @@ jspm_packages/
 /src/version.ts
 /jsii-outdir/
 /test/negatives/.*
+.DS_Store
 !/.github/workflows/build.yml
 !/.github/workflows/auto-merge.yml
 !/.github/workflows/release.yml
@@ -59,4 +61,6 @@ jspm_packages/
 !/.github/workflows/auto-tag-releases.yml
 !/.github/workflows/auto-tag-dev-v5.2.yml
 !/.github/workflows/auto-tag-releases-v5.2.yml
+!/.github/workflows/auto-tag-dev-v5.3.yml
+!/.github/workflows/auto-tag-releases-v5.3.yml
 !/.projenrc.ts

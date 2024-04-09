@@ -63,14 +63,14 @@
     "npm": "^9.9.3",
     "npm-check-updates": "^16",
     "prettier": "^2.8.8",
-    "projen": "^0.80.19",
+    "projen": "^0.80.20",
     "tar": "^6.2.1",
     "ts-jest": "^29.1.2",
     "ts-node": "^10.9.2"
   },
   "dependencies": {
-    "@jsii/check-node": "1.96.0",
-    "@jsii/spec": "^1.96.0",
+    "@jsii/check-node": "1.97.0",
+    "@jsii/spec": "^1.97.0",
     "case": "^1.6.3",
     "chalk": "^4",
     "downlevel-dts": "^0.11.0",
@@ -80,7 +80,7 @@
     "semver-intersect": "^1.5.0",
     "sort-json": "^2.0.1",
     "spdx-license-list": "^6.9.0",
-    "typescript": "~5.3",
+    "typescript": "~5.4",
     "yargs": "^17.7.2"
   },
   "engines": {
