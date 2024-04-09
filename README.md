@@ -62,13 +62,12 @@ The applicable _Maintenance & Support policy_ can be reviewed in [SUPPORT.md](./
 
 The current status of `jsii` compiler releases is:
 
-| Release | Status      | Comment                                                                                 |
-| ------- | ----------- | --------------------------------------------------------------------------------------- |
-| `5.3.x` | Current     | ![npm](https://img.shields.io/npm/v/jsii/v5.3-latest?label=jsii%40v5.3-latest&logo=npm) |
-| `5.2.x` | Maintenance | ![npm](https://img.shields.io/npm/v/jsii/v5.2-latest?label=jsii%40v5.2-latest&logo=npm) |
-| `5.1.x` | Maintenance | ![npm](https://img.shields.io/npm/v/jsii/v5.1-latest?label=jsii%40v5.1-latest&logo=npm) |
-| `5.0.x` | Maintenance | ![npm](https://img.shields.io/npm/v/jsii/v5.0-latest?label=jsii%40v5.0-latest&logo=npm) |
-| `1.x`   | Maintenance | <https://github.com/aws/jsii>                                                           |
+| Release | Status      | EOS        | Comment                                                                                 |
+| ------- | ----------- |------------| --------------------------------------------------------------------------------------- |
+| `5.4.x` | Current     | TBD        | ![npm](https://img.shields.io/npm/v/jsii/v5.4-latest?label=jsii%40v5.4-latest&logo=npm) |
+| `5.3.x` | Maintenance | 2024-10-07 | ![npm](https://img.shields.io/npm/v/jsii/v5.3-latest?label=jsii%40v5.3-latest&logo=npm) |
+| `5.2.x` | Maintenance | 2024-06-30 | ![npm](https://img.shields.io/npm/v/jsii/v5.2-latest?label=jsii%40v5.2-latest&logo=npm) |
+| `1.x`   | Maintenance | 2024-10-31 | <https://github.com/aws/jsii>                                                           |
 
 ## :balance_scale: License
 
