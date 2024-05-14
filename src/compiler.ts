@@ -137,6 +137,7 @@ export class Compiler implements Emitter {
       ts.createEmitAndSemanticDiagnosticsBuilderProgram,
       opts?.reportDiagnostics,
       opts?.reportWatchStatus,
+      this.tsConfig.watchOptions,
     );
     if (!host.getDefaultLibLocation) {
       throw new Error('No default library location was found on the TypeScript compiler host!');
@@ -178,7 +179,7 @@ export class Compiler implements Emitter {
    */
   private configureTypeScript(): TypeScriptConfig {
     if (this.userProvidedTypeScriptConfig) {
-      const config = this.loadTypeScriptConfig();
+      const config = this.readTypeScriptConfig();
 
       // emit a warning if validation is disabled
       const rules = this.options.validateTypeScriptConfig ?? TypeScriptConfigValidationRuleSet.NONE;
@@ -193,7 +194,11 @@ export class Compiler implements Emitter {
       if (rules !== TypeScriptConfigValidationRuleSet.NONE) {
         try {
           const validator = new TypeScriptConfigValidator(rules);
-          validator.validate(this.tsConfig!);
+          validator.validate({
+            ...config,
+            // convert the internal format to the user format which is what the validator operates on
+            compilerOptions: convertForJson(config.compilerOptions),
+          });
         } catch (error: unknown) {
           if (error instanceof ValidationError) {
             utils.logDiagnostic(
@@ -202,8 +207,9 @@ export class Compiler implements Emitter {
             );
           }
 
+          const configName = path.relative(this.projectRoot, this.configPath);
           throw new Error(
-            `Failed validation of tsconfig "compilerOptions" in "${config}" against rule set "${rules}"!`,
+            `Failed validation of tsconfig "compilerOptions" in "${configName}" against rule set "${rules}"!`,
           );
         }
       }
@@ -379,7 +385,7 @@ export class Compiler implements Emitter {
   /**
    * Load the TypeScript config object from a provided file
    */
-  private loadTypeScriptConfig() {
+  private readTypeScriptConfig(): TypeScriptConfig {
     const projectRoot = this.options.projectInfo.projectRoot;
     const { config, error } = ts.readConfigFile(this.configPath, ts.sys.readFile);
     if (error) {
@@ -387,7 +393,13 @@ export class Compiler implements Emitter {
       throw new Error(`Failed to load tsconfig at ${this.configPath}`);
     }
     const extended = ts.parseJsonConfigFileContent(config, ts.sys, projectRoot);
-    return { compilerOptions: extended.options };
+    // the tsconfig parser adds this in, but it is not an expected compilerOption
+    delete extended.options.configFilePath;
+
+    return {
+      compilerOptions: extended.options,
+      watchOptions: extended.watchOptions,
+    };
   }
 
   /**

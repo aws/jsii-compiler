@@ -1,18 +1,29 @@
-/* eslint-disable @typescript-eslint/member-ordering */
-
 /**
  * A function that receives 3 arguments and validates if the provided value matches.
  * @param value The value to validate
- * @param reporter A function that will be called by the matcher with a a violation message.
- * This function is always called, regardless of the outcome of the matcher.
- * It is up to the caller of the matcher to decide if the message should be used or not.
- * @param hints A function that might receive explicitly allowed values.
- * This can be used to generate synthetics values that would match the matcher.
- * It is not guaranteed that hints are received or that hints are complete.
- *
+ * @params options Additional options to influence the matcher behavior.
  * @returns true if the value matches
  */
-type Matcher = (value: any, reporter: (message: string) => void, hints?: (allowed: any[]) => void) => boolean;
+type Matcher = (value: any, options?: MatcherOptions) => boolean;
+
+interface MatcherOptions {
+  /**
+   * A function that will be called by the matcher with a a violation message.
+   * This function is always called, regardless of the outcome of the matcher.
+   * It is up to the caller of the matcher to decide if the message should be used or not.
+   *
+   * @param message The message describing the possible failure.
+   */
+  reporter?: (message: string) => void;
+  /**
+   * A function that might receive explicitly allowed values.
+   * This can be used to generate synthetics values that would match the matcher.
+   * It is not guaranteed that hints are received or that hints are complete.
+   *
+   * @param allowed The list values that a matcher offers as definitely allowed.
+   */
+  hints?: (allowed: any[]) => void;
+}
 
 export enum RuleType {
   PASS,
@@ -68,11 +79,10 @@ export class RuleSet {
    */
   public get requiredFields(): Array<string> {
     const required: string[] = [];
-    const noop = () => {};
 
     for (const rule of this._rules) {
       const key = rule.field;
-      const matcherResult = rule.matcher(undefined, noop);
+      const matcherResult = rule.matcher(undefined);
 
       switch (rule.type) {
         case RuleType.PASS:
@@ -106,31 +116,8 @@ export class RuleSet {
    * @param field The field the rule applies to
    * @param matcher The matcher function
    */
-  public pass(field: string, matcher: Matcher) {
+  public shouldPass(field: string, matcher: Matcher) {
     this._rules.push({ field, matcher, type: RuleType.PASS });
-  }
-
-  /**
-   * Requires the matcher to pass for the given field.
-   * Otherwise a violation is detected.
-   *
-   * @param data The data object we want to add rules for.
-   * @param caseSensitive Whether the string matcher should be case sensitive or not.
-   */
-  public passMany(data: object, caseSensitive = false) {
-    for (const [field, value] of Object.entries(data)) {
-      if (typeof value === 'string') {
-        this.pass(field, Match.strEq(value, caseSensitive));
-        continue;
-      }
-
-      if (Array.isArray(value)) {
-        this.pass(field, Match.arrEq(value));
-        continue;
-      }
-
-      this.pass(field, Match.eq(value));
-    }
   }
 
   /**
@@ -139,30 +126,8 @@ export class RuleSet {
    * @param field The field the rule applies to
    * @param matcher The matcher function
    */
-  public fail(field: string, matcher: Matcher) {
+  public shouldFail(field: string, matcher: Matcher) {
     this._rules.push({ field, matcher, type: RuleType.FAIL });
-  }
-
-  /**
-   * Detects a violation if the matcher is matching for a certain field.
-   *
-   * @param data The data object we want to add rules for.
-   * @param caseSensitive Whether the string matcher should be case sensitive or not.
-   */
-  public failMany(data: object, caseSensitive = false) {
-    for (const [field, value] of Object.entries(data)) {
-      if (typeof value === 'string') {
-        this.fail(field, Match.strEq(value, caseSensitive));
-        continue;
-      }
-
-      if (Array.isArray(value)) {
-        this.fail(field, Match.arrEq(value));
-        continue;
-      }
-
-      this.fail(field, Match.eq(value));
-    }
   }
 
   /**
@@ -185,19 +150,20 @@ export class RuleSet {
    */
   public getFieldHints(): Record<string, any[]> {
     const fieldHints: Record<string, any[]> = {};
-    const noop = () => {};
 
     for (const rule of this._rules) {
       // We are only interested in PASS rules here.
       // For FAILs we still don't know which values would pass.
       if (rule.type === RuleType.PASS) {
         // run the matcher to record hints
-        rule.matcher(undefined, noop, (receivedHints: any[]) => {
-          // if we have recorded hints, add them to the map
-          if (receivedHints) {
-            fieldHints[rule.field] ??= [];
-            fieldHints[rule.field].push(...receivedHints);
-          }
+        rule.matcher(undefined, {
+          hints: (receivedHints: any[]) => {
+            // if we have recorded hints, add them to the map
+            if (receivedHints) {
+              fieldHints[rule.field] ??= [];
+              fieldHints[rule.field].push(...receivedHints);
+            }
+          },
         });
       }
     }
@@ -210,27 +176,35 @@ export class RuleSet {
  * Helper to wrap a matcher with error reporting and hints
  */
 function wrapMatcher(matcher: Matcher, message: (actual: any) => string, allowed?: any[]): Matcher {
-  return (value: any, reporter: (message: string) => void, hints?: (allowed: any[]) => void) => {
-    reporter(message(value));
-    if (allowed && hints) {
-      hints(allowed);
+  return (value, options) => {
+    options?.reporter?.(message(value));
+    if (allowed) {
+      options?.hints?.(allowed);
     }
-    return matcher(
-      value,
-      () => {},
-      () => {},
-    );
+    return matcher(value);
   };
 }
 
 export class Match {
   /**
+   * Value is optional, but if present should match
+   */
+  public static optional(matcher: Matcher): Matcher {
+    return (value, options) => {
+      if (value == null) {
+        return true;
+      }
+      return matcher(value, options);
+    };
+  }
+
+  /**
    * Value must be one of the allowed options
    */
   public static oneOf(...allowed: Array<string | number>): Matcher {
     return wrapMatcher(
-      (actual: any) => allowed.includes(actual),
-      (actual: any) => `Expected value to be one of ${JSON.stringify(allowed)}, got: ${JSON.stringify(actual)}`,
+      (actual) => allowed.includes(actual),
+      (actual) => `Expected value to be one of ${JSON.stringify(allowed)}, got: ${JSON.stringify(actual)}`,
       allowed,
     );
   }
@@ -240,16 +214,14 @@ export class Match {
    * Arrays are compared by elements
    */
   public static eq(expected: any): Matcher {
-    return (actual: any, report, hints?) => {
+    return (actual, options) => {
       if (Array.isArray(expected)) {
-        return Match.arrEq(expected)(actual, report);
+        return Match.arrEq(expected)(actual, options);
       }
 
       try {
-        if (hints) {
-          hints([expected]);
-        }
-        report(`Expected value ${JSON.stringify(expected)}, got: ${JSON.stringify(actual)}`);
+        options?.hints?.([expected]);
+        options?.reporter?.(`Expected value ${JSON.stringify(expected)}, got: ${JSON.stringify(actual)}`);
         return actual == expected;
       } catch {
         // some values cannot compared using loose quality, in this case the matcher just fails
@@ -264,7 +236,7 @@ export class Match {
    */
   public static arrEq(expected: any[]): Matcher {
     return wrapMatcher(
-      (actual: any) => {
+      (actual) => {
         try {
           // if both are arrays and of the same length, compare elements
           // if one of them is not, or they are a different length,
@@ -281,7 +253,7 @@ export class Match {
           return false;
         }
       },
-      (actual: any) => `Expected array matching ${JSON.stringify(expected)}, got: ${JSON.stringify(actual)}`,
+      (actual) => `Expected array matching ${JSON.stringify(expected)}, got: ${JSON.stringify(actual)}`,
       [expected],
     );
   }
@@ -291,7 +263,7 @@ export class Match {
    */
   public static strEq(expected: string, caseSensitive = false): Matcher {
     return wrapMatcher(
-      (actual: any) => {
+      (actual) => {
         // case insensitive
         if (!caseSensitive && typeof actual === 'string') {
           return expected.toLowerCase() == actual.toLowerCase();
@@ -308,14 +280,21 @@ export class Match {
   /**
    * Allows any value
    */
-  public static ANY = (_1: any, _reporter?: any) => true;
+  public static ANY: Matcher = (_val, _options) => true;
+
+  // eslint-disable-next-line @typescript-eslint/member-ordering
+  public static TRUE: Matcher = Match.eq(true);
+  // eslint-disable-next-line @typescript-eslint/member-ordering
+  public static FALSE: Matcher = Match.eq(false);
 
   /**
    * Missing (undefined) value
    */
+  // eslint-disable-next-line @typescript-eslint/member-ordering
   public static MISSING = wrapMatcher(
-    (actual: any) => actual === null || actual === undefined,
-    (actual: any) => `Expected value to be present, got ${JSON.stringify(actual)}`,
+    (actual) => actual === null || actual === undefined,
+    (actual) => `Expected value to be present, got ${JSON.stringify(actual)}`,
+    [undefined, null],
   );
 }
 
@@ -361,8 +340,10 @@ export class ObjectValidator {
 
       // Use a fallback message, but allow the matcher to report a better arrow
       let violationMessage = 'Value is not allowed, got: ' + JSON.stringify(value);
-      const matchResult = rule.matcher(value, (message: string) => {
-        violationMessage = message;
+      const matchResult = rule.matcher(value, {
+        reporter: (message: string) => {
+          violationMessage = message;
+        },
       });
 
       switch (rule.type) {

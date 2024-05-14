@@ -39,13 +39,13 @@ const ruleSets: {
   [choice in TypeScriptConfigValidationRuleSet]: string;
 } = {
   [TypeScriptConfigValidationRuleSet.STRICT]:
-    'Validates the provided config against the strict rule set designed for maximum backwards-compatibility.',
+    'Validates the provided config against a strict rule set designed for maximum backwards-compatibility.',
   [TypeScriptConfigValidationRuleSet.GENERATED]:
-    'Enforces the same settings as used by --generate-tsconfig. Use this to stay compatible with the generated config, but have full ownership over the file.',
+    'Enforces a config as created by --generate-tsconfig. Use this to stay compatible with the generated config, but have full ownership over the file.',
   [TypeScriptConfigValidationRuleSet.MINIMAL]:
-    '[Experimental] Only enforces options that are known to be incompatible with jsii. This rule set is experimental and might change without notice.',
+    'Only enforce options that are known to be incompatible with jsii. This rule set is likely to be incomplete and new rules will be added without notice as incompatibilities emerge.',
   [TypeScriptConfigValidationRuleSet.NONE]:
-    'Disables all config validation. Intended for experimental setups only. Use at your own risk.',
+    'Disables all config validation, including options that are known to be incompatible with jsii. Intended for experimentation only. Use at your own risk.',
 };
 
 (async () => {

@@ -2,14 +2,10 @@ import { mkdirSync, existsSync, mkdtempSync, rmSync, writeFileSync, readFileSync
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { loadAssemblyFromPath, SPEC_FILE_NAME, SPEC_FILE_NAME_COMPRESSED } from '@jsii/spec';
-
-import fc from 'fast-check';
-import { fcTsconfigRealistic } from './tsconfig/helpers';
 import { Compiler } from '../src/compiler';
 import { TYPES_COMPAT } from '../src/downlevel-dts';
 import { ProjectInfo } from '../src/project-info';
 import { TypeScriptConfigValidationRuleSet } from '../src/tsconfig';
-import rulesForStrict from '../src/tsconfig/rulesets/strict';
 import { TypeScriptConfigValidator } from '../src/tsconfig/tsconfig-validator';
 
 describe(Compiler, () => {
@@ -178,81 +174,74 @@ describe(Compiler, () => {
 
   describe('user-provided tsconfig', () => {
     test('will use user-provided config', () => {
-      fc.assert(
-        fc.property(fcTsconfigRealistic(rulesForStrict), (tsconfig) => {
-          const sourceDir = mkdtempSync(join(tmpdir(), 'jsii-compiler-user-tsconfig-'));
-          const tsconfigPath = 'tsconfig.dev.json';
-          writeFileSync(join(sourceDir, tsconfigPath), JSON.stringify(tsconfig, null, 2));
+      const sourceDir = mkdtempSync(join(tmpdir(), 'jsii-compiler-user-tsconfig-'));
+      const tsconfigPath = 'tsconfig.dev.json';
+      writeFileSync(join(sourceDir, tsconfigPath), JSON.stringify(tsconfigForNode18Strict(), null, 2));
 
-          const compiler = new Compiler({
-            projectInfo: _makeProjectInfo(sourceDir, 'index.d.ts'),
-            typeScriptConfig: tsconfigPath,
-          });
+      const compiler = new Compiler({
+        projectInfo: _makeProjectInfo(sourceDir, 'index.d.ts'),
+        typeScriptConfig: tsconfigPath,
+      });
 
-          compiler.emit();
-        }),
-      );
+      compiler.emit();
     });
 
-    test.skip('"watch" mode', async () => {
-      return fc.assert(
-        fc.asyncProperty(fcTsconfigRealistic(rulesForStrict), async (tsconfig) => {
-          const sourceDir = mkdtempSync(join(tmpdir(), 'jsii-compiler-watch-mode-'));
-          const tsconfigPath = 'tsconfig.dev.json';
-          writeFileSync(join(sourceDir, tsconfigPath), JSON.stringify(tsconfig, null, 2));
+    test('"watch" mode', async () => {
+      const sourceDir = mkdtempSync(join(tmpdir(), 'jsii-compiler-watch-mode-'));
+      const tsconfigPath = 'tsconfig.dev.json';
+      writeFileSync(join(sourceDir, tsconfigPath), JSON.stringify(tsconfigForNode18Strict(), null, 2));
 
-          try {
-            writeFileSync(join(sourceDir, 'index.ts'), 'export class MarkerA {}');
-            // Intentionally using lower case name - it should be case-insensitive
-            writeFileSync(join(sourceDir, 'readme.md'), '# Test Package');
+      try {
+        writeFileSync(join(sourceDir, 'index.ts'), 'export class MarkerA {}');
+        // Intentionally using lower case name - it should be case-insensitive
+        writeFileSync(join(sourceDir, 'readme.md'), '# Test Package');
 
-            const compiler = new Compiler({
-              projectInfo: _makeProjectInfo(sourceDir, 'index.d.ts'),
-              failOnWarnings: true,
-              typeScriptConfig: tsconfigPath,
-            });
+        const compiler = new Compiler({
+          projectInfo: _makeProjectInfo(sourceDir, 'index.d.ts'),
+          failOnWarnings: true,
+          typeScriptConfig: tsconfigPath,
+          validateTypeScriptConfig: TypeScriptConfigValidationRuleSet.STRICT,
+        });
 
-            let firstCompilation = true;
-            let onWatchClosed: () => void;
-            let onWatchFailed: (err: unknown) => void;
-            const watchClosed = new Promise<void>((ok, ko) => {
-              onWatchClosed = ok;
-              onWatchFailed = ko;
-            });
-            const watch = await compiler.watch({
-              nonBlocking: true,
-              // Ignore diagnostics reporting (not to pollute test console output)
-              reportDiagnostics: () => null,
-              // Ignore watch status reporting (not to pollute test console output)
-              reportWatchStatus: () => null,
-              // Verify everything goes according to plan
-              compilationComplete: (emitResult) => {
-                try {
-                  expect(emitResult.emitSkipped).toBeFalsy();
-                  const output = JSON.stringify(loadAssemblyFromPath(sourceDir));
-                  if (firstCompilation) {
-                    firstCompilation = false;
-                    expect(output).toContain('"MarkerA"');
-                    setImmediate(() => writeFileSync(join(sourceDir, 'index.ts'), 'export class MarkerB {}'));
-                    return;
-                  }
-                  expect(output).toContain('"MarkerB"');
-                  watch.close();
-                  // Tell the test suite we're done here!
-                  onWatchClosed();
-                } catch (e) {
-                  watch.close();
-                  onWatchFailed(e);
-                }
-              },
-            });
-            await watchClosed;
-          } finally {
-            rmSync(sourceDir, { force: true, recursive: true });
-          }
-        }),
-      );
-    }, 60_000);
+        let firstCompilation = true;
+        let onWatchClosed: () => void;
+        let onWatchFailed: (err: unknown) => void;
+        const watchClosed = new Promise<void>((ok, ko) => {
+          onWatchClosed = ok;
+          onWatchFailed = ko;
+        });
+        const watch = await compiler.watch({
+          nonBlocking: true,
+          // Ignore diagnostics reporting (not to pollute test console output)
+          reportDiagnostics: () => null,
+          // Ignore watch status reporting (not to pollute test console output)
+          reportWatchStatus: () => null,
+          // Verify everything goes according to plan
+          compilationComplete: (emitResult) => {
+            try {
+              expect(emitResult.emitSkipped).toBeFalsy();
+              const output = JSON.stringify(loadAssemblyFromPath(sourceDir));
+              if (firstCompilation) {
+                firstCompilation = false;
+                expect(output).toContain('"MarkerA"');
+                setImmediate(() => writeFileSync(join(sourceDir, 'index.ts'), 'export class MarkerB {}'));
+                return;
+              }
+              expect(output).toContain('"MarkerB"');
+              watch.close();
+              // Tell the test suite we're done here!
+              onWatchClosed();
+            } catch (e) {
+              watch.close();
+              onWatchFailed(e);
+            }
+          },
+        });
+        await watchClosed;
+      } finally {
+        rmSync(sourceDir, { force: true, recursive: true });
+      }
+    }, 15_000);
   });
 
   describe('compressed assembly option', () => {
@@ -351,7 +340,7 @@ function expectedTypeScriptConfig() {
       inlineSourceMap: true,
       inlineSources: true,
       lib: ['es2020'],
-      module: 'CommonJS',
+      module: 'commonjs',
       noEmitOnError: true,
       noFallthroughCasesInSwitch: true,
       noImplicitAny: true,
@@ -365,8 +354,29 @@ function expectedTypeScriptConfig() {
       strictNullChecks: true,
       strictPropertyInitialization: true,
       stripInternal: false,
-      target: 'ES2020',
+      target: 'es2020',
       tsBuildInfoFile: 'tsconfig.tsbuildinfo',
+    },
+    exclude: ['node_modules', TYPES_COMPAT],
+    include: [join('**', '*.ts')],
+  };
+}
+
+/**
+ * An example of a user-provided config, based on the popular tsconfig/bases project & adjusted for the strict rule set
+ * @see https://github.com/tsconfig/bases/blob/main/bases/node18.json
+ */
+function tsconfigForNode18Strict() {
+  return {
+    compilerOptions: {
+      lib: ['es2022'],
+      module: 'node16',
+      target: 'es2022',
+
+      strict: true,
+      esModuleInterop: true,
+      skipLibCheck: true,
+      moduleResolution: 'node16',
     },
     exclude: ['node_modules', TYPES_COMPAT],
     include: [join('**', '*.ts')],

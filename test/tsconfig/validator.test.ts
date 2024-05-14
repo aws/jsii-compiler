@@ -1,7 +1,6 @@
 import fc from 'fast-check';
 import { Match, ObjectValidator, RuleSet } from '../../src/tsconfig/validator';
 
-const noop = () => {};
 const expectViolation = (expectedMessage: string, expected: any, actual: any) => {
   return (message: string) => {
     expect(message).toMatch(expectedMessage);
@@ -15,7 +14,7 @@ describe('Built-in matchers', () => {
     test('pass', () => {
       fc.assert(
         fc.property(fc.anything(), (actual) => {
-          return Match.ANY(actual, noop);
+          return Match.ANY(actual);
         }),
       );
     });
@@ -31,7 +30,7 @@ describe('Built-in matchers', () => {
             })
             .chain((allowed) => fc.tuple(fc.constant(allowed), fc.constantFrom(...allowed))),
           ([allowed, actual]) => {
-            return Match.oneOf(...allowed)(actual, noop);
+            return Match.oneOf(...allowed)(actual);
           },
         ),
       );
@@ -45,7 +44,9 @@ describe('Built-in matchers', () => {
           (possible) => {
             const allowed = possible.slice(0, -1);
             const actual = possible.at(-1);
-            return !Match.oneOf(...allowed)(actual, expectViolation('Expected value to be one of', allowed, actual));
+            return !Match.oneOf(...allowed)(actual, {
+              reporter: expectViolation('Expected value to be one of', allowed, actual),
+            });
           },
         ),
       );
@@ -56,7 +57,7 @@ describe('Built-in matchers', () => {
     test('pass', () => {
       fc.assert(
         fc.property(fc.anything(), (value) => {
-          return Match.eq(value)(value, noop);
+          return Match.eq(value)(value);
         }),
       );
     });
@@ -73,7 +74,7 @@ describe('Built-in matchers', () => {
               // this uses loose equality, while catching any not comparable values
               comparator: (a, b) => {
                 try {
-                  return a == b || Match.arrEq(a as any)(b, () => {});
+                  return a == b || Match.arrEq(a as any)(b);
                 } catch {
                   return false;
                 }
@@ -82,7 +83,7 @@ describe('Built-in matchers', () => {
           ),
           ([expected, actual]) => {
             const keyword = Array.isArray(expected) ? 'array' : 'value';
-            return !Match.eq(expected)(actual, expectViolation(`Expected ${keyword}`, expected, actual));
+            return !Match.eq(expected)(actual, { reporter: expectViolation(`Expected ${keyword}`, expected, actual) });
           },
         ),
       );
@@ -102,7 +103,7 @@ describe('Built-in matchers', () => {
               ),
             ),
           ([expected, actual]) => {
-            return Match.arrEq(expected)(actual, noop);
+            return Match.arrEq(expected)(actual);
           },
         ),
       );
@@ -117,7 +118,9 @@ describe('Built-in matchers', () => {
           (possible, actualBase) => {
             const expected = possible.slice(0, -1);
             const actual = [...actualBase, possible.at(-1)];
-            return !Match.arrEq(expected)(actual, expectViolation('Expected array matching', expected, actual));
+            return !Match.arrEq(expected)(actual, {
+              reporter: expectViolation('Expected array matching', expected, actual),
+            });
           },
         ),
       );
@@ -128,7 +131,7 @@ describe('Built-in matchers', () => {
     test('pass', () => {
       fc.assert(
         fc.property(fc.string(), (value) => {
-          return Match.strEq(value, true)(value, noop);
+          return Match.strEq(value, true)(value);
         }),
       );
     });
@@ -140,7 +143,9 @@ describe('Built-in matchers', () => {
             maxLength: 2,
           }),
           ([expected, actual]) => {
-            return !Match.strEq(expected, true)(actual, expectViolation('Expected string', expected, actual));
+            return !Match.strEq(expected, true)(actual, {
+              reporter: expectViolation('Expected string', expected, actual),
+            });
           },
         ),
       );
@@ -153,7 +158,7 @@ describe('Built-in matchers', () => {
         fc.property(
           fc.string({ minLength: 1 }).chain((s) => fc.tuple(fc.constant(s), fc.mixedCase(fc.constant(s)))),
           ([expected, actual]) => {
-            return Match.strEq(expected, false)(actual, noop);
+            return Match.strEq(expected, false)(actual);
           },
         ),
       );
@@ -166,7 +171,9 @@ describe('Built-in matchers', () => {
             maxLength: 2,
           }),
           ([expected, actual]) => {
-            return !Match.strEq(expected, true)(actual, expectViolation('Expected string', expected, actual));
+            return !Match.strEq(expected, true)(actual, {
+              reporter: expectViolation('Expected string', expected, actual),
+            });
           },
         ),
       );

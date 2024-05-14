@@ -69,20 +69,62 @@ export function convertForJson(opt: ts.CompilerOptions): ts.CompilerOptions {
     ...opt,
 
     // Drop the "lib." prefix and ".d.ts" suffix before writing up the tsconfig.json file
-    ...(opt.lib
-      ? {
-          lib: convertLibForJson(opt.lib),
-        }
-      : {}),
+    ...valueHelper('lib', opt.lib, convertLibForJson),
 
     // Re-write the module, targets & jsx to be the JSON format instead of Programmatic API
-    ...(opt.module ? { module: ts.ModuleKind[opt.module] as any } : {}),
-    ...(opt.target ? { target: ts.ScriptTarget[opt.target] as any } : {}),
-    ...(opt.jsx ? { jsx: Case.snake(ts.JsxEmit[opt.jsx]) as any } : {}),
+    ...enumHelper('importsNotUsedAsValues', opt.importsNotUsedAsValues, ts.ImportsNotUsedAsValues),
+    ...enumHelper('jsx', opt.jsx, ts.JsxEmit, Case.kebab),
+    ...enumHelper('module', opt.module, ts.ModuleKind),
+    ...enumHelper('moduleResolution', opt.moduleResolution, ts.ModuleResolutionKind),
+    ...enumHelper('moduleDetection', opt.moduleDetection, ts.ModuleDetectionKind),
+    ...enumHelper('target', opt.target, ts.ScriptTarget),
 
     // rewrite newline to be the JSON format instead of Programmatic API
-    ...(opt.newLine ? { newLine: convertNewLineForJson(opt.newLine) as any } : {}),
+    ...valueHelper('newLine', opt.newLine, convertNewLineForJson),
   };
+}
+
+function valueHelper<T, U>(
+  name: string,
+  value: T | undefined,
+  converter: (value: T) => U,
+): {
+  [name: string]: U;
+} {
+  if (!value) {
+    return {};
+  }
+  return { [name]: converter(value) };
+}
+
+function enumHelper<T>(
+  name: string,
+  value: any,
+  enumObj: T,
+  converter?: (value: string) => string,
+): {
+  [name: string]: string;
+} {
+  if (!value) {
+    return {};
+  }
+  return { [name]: convertEnumToJson(value, enumObj, converter) };
+}
+
+/**
+ * Convert an internal enum value to what a user would write in tsconfig.json
+ * Possibly using a converter function to adjust casing.
+ * @param value The internal enum value
+ * @param enumObj The enum object to convert from
+ * @param converter The converter function, defaults to lowercase
+ * @returns The humanized version of the enum value
+ */
+export function convertEnumToJson<T>(
+  value: keyof T,
+  enumObj: T,
+  converter: (value: string) => string = (v) => v.toLowerCase(),
+): string {
+  return converter(enumObj[value] as any);
 }
 
 /**

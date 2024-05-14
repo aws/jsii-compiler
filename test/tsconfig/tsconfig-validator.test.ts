@@ -1,9 +1,9 @@
 import fc from 'fast-check';
 import { fcTsconfig } from './helpers';
 import { TypeScriptConfigValidationRuleSet } from '../../src/tsconfig';
-import rulesForGenerated from '../../src/tsconfig/rulesets/generated';
-import rulesForMinimal from '../../src/tsconfig/rulesets/minimal';
-import rulesForStrict from '../../src/tsconfig/rulesets/strict';
+import rulesForGenerated from '../../src/tsconfig/rulesets/generated.public';
+import rulesForMinimal from '../../src/tsconfig/rulesets/minimal.public';
+import rulesForStrict from '../../src/tsconfig/rulesets/strict.public';
 import { TypeScriptConfigValidator } from '../../src/tsconfig/tsconfig-validator';
 
 describe('rule sets', () => {

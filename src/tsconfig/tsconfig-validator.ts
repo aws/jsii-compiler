@@ -1,7 +1,7 @@
 import { TypeScriptConfig, TypeScriptConfigValidationRuleSet } from '.';
-import generated from './rulesets/generated';
-import minimal from './rulesets/minimal';
-import strict from './rulesets/strict';
+import generated from './rulesets/generated.public';
+import minimal from './rulesets/minimal.public';
+import strict from './rulesets/strict.public';
 import { Match, ObjectValidator, RuleSet, RuleType } from './validator';
 
 const RuleSets: {
@@ -21,17 +21,17 @@ export class TypeScriptConfigValidator {
     const topLevelRules = new RuleSet({
       unexpectedFields: RuleType.PASS,
     });
-    topLevelRules.pass('files', Match.ANY);
-    topLevelRules.pass('extends', Match.ANY);
-    topLevelRules.pass('include', Match.ANY);
-    topLevelRules.pass('exclude', Match.ANY);
-    topLevelRules.pass('references', Match.ANY);
-    topLevelRules.pass('watchOptions', Match.ANY);
-    topLevelRules.pass('typeAcquisition', Match.MISSING);
+    topLevelRules.shouldPass('files', Match.ANY);
+    topLevelRules.shouldPass('extends', Match.ANY);
+    topLevelRules.shouldPass('include', Match.ANY);
+    topLevelRules.shouldPass('exclude', Match.ANY);
+    topLevelRules.shouldPass('references', Match.ANY);
+    topLevelRules.shouldPass('watchOptions', Match.ANY);
+    topLevelRules.shouldPass('typeAcquisition', Match.MISSING);
 
     this.compilerOptions = new ObjectValidator(RuleSets[ruleSet], 'compilerOptions');
-    topLevelRules.pass('compilerOptions', (actual) => {
-      this.compilerOptions.validate(actual);
+    topLevelRules.shouldPass('compilerOptions', (compilerOptions) => {
+      this.compilerOptions.validate(compilerOptions);
       return true;
     });
 
@@ -43,7 +43,7 @@ export class TypeScriptConfigValidator {
    *
    * @throws when the config is invalid
    *
-   * @param tsconfig the tsconfig to be validated
+   * @param tsconfig the tsconfig to be validated, this MUST be a tsconfig as a user would have written it in tsconfig.
    */
   public validate(tsconfig: TypeScriptConfig) {
     this.validator.validate(tsconfig);

@@ -298,11 +298,10 @@ function constantsFromRuleSet<T>(rules: RuleSet = new RuleSet()): Record<string,
  */
 function findRequiredKeysFromRuleSet(rules: RuleSet = new RuleSet()): string[] {
   const required: string[] = [];
-  const noop = () => {};
 
   for (const rule of rules.rules) {
     const key = rule.field;
-    const matcherResult = rule.matcher(undefined, noop);
+    const matcherResult = rule.matcher(undefined);
 
     switch (rule.type) {
       case RuleType.PASS:
@@ -324,16 +323,15 @@ function findRequiredKeysFromRuleSet(rules: RuleSet = new RuleSet()): string[] {
 }
 
 function filterArbsByRuleSet<T>(arbs: RecordModel<T>, rules: RuleSet = new RuleSet()): RecordModel<T> {
-  const noop = () => {};
   for (const rule of rules.rules) {
     if ((rule.field as keyof typeof arbs) in arbs) {
       const key: keyof typeof arbs = rule.field as any;
       switch (rule.type) {
         case RuleType.PASS:
-          arbs[key] = arbs[key].filter((v: any) => rule.matcher(v, noop));
+          arbs[key] = arbs[key].filter((v: any) => rule.matcher(v));
           break;
         case RuleType.FAIL:
-          arbs[key] = arbs[key].filter((v: any) => !rule.matcher(v, noop));
+          arbs[key] = arbs[key].filter((v: any) => !rule.matcher(v));
           break;
         default:
           continue;
