@@ -7,6 +7,7 @@ import * as clone from 'clone';
 import * as ts from 'typescript';
 
 import { loadProjectInfo } from '../src/project-info';
+import { TypeScriptConfigValidationRuleSet } from '../src/tsconfig';
 import { VERSION } from '../src/version';
 
 const BASE_PROJECT = {
@@ -252,6 +253,65 @@ describe('loadProjectInfo', () => {
         },
       );
     });
+  });
+
+  describe('user-provided tsconfig', () => {
+    test('can set a user-provided config', () => {
+      return _withTestProject(
+        (projectRoot) => expect(loadProjectInfo(projectRoot).projectInfo.tsconfig).toBe('tsconfig.dev.json'),
+        (info) => {
+          info.jsii.tsconfig = 'tsconfig.dev.json';
+        },
+      );
+    });
+
+    test('if user-provided config is not set, default is undefined', () => {
+      return _withTestProject(
+        (projectRoot) => expect(loadProjectInfo(projectRoot).projectInfo.tsconfig).toBe(undefined),
+        (info) => {
+          info.jsii.tsconfig = undefined;
+        },
+      );
+    });
+
+    test.each(Object.entries(TypeScriptConfigValidationRuleSet))(
+      'can set validation rule: "%s"',
+      (key: string, ruleSet: string) => {
+        return _withTestProject(
+          (projectRoot) =>
+            expect(loadProjectInfo(projectRoot).projectInfo.validateTsConfig).toBe(
+              TypeScriptConfigValidationRuleSet[key as keyof typeof TypeScriptConfigValidationRuleSet],
+            ),
+          (info) => {
+            info.jsii.validateTsConfig = ruleSet;
+          },
+        );
+      },
+    );
+
+    test('if validation rule set is not set, default is strict', () => {
+      return _withTestProject(
+        (projectRoot) =>
+          expect(loadProjectInfo(projectRoot).projectInfo.validateTsConfig).toBe(
+            TypeScriptConfigValidationRuleSet.STRICT,
+          ),
+        (info) => {
+          info.jsii.validateTsConfig = undefined;
+        },
+      );
+    });
+
+    test.each([[''], [' '], ['definitely-invalid1234']])(
+      'reject invalid validation rule set: "%s"',
+      (ruleSet: string) => {
+        return _withTestProject(
+          (projectRoot) => expect(() => loadProjectInfo(projectRoot)).toThrow(/Invalid validateTsConfig/),
+          (info) => {
+            info.jsii.validateTsConfig = ruleSet;
+          },
+        );
+      },
+    );
   });
 });
 
