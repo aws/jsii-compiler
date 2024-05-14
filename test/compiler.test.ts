@@ -2,10 +2,11 @@ import { mkdirSync, existsSync, mkdtempSync, rmSync, writeFileSync, readFileSync
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { loadAssemblyFromPath, SPEC_FILE_NAME, SPEC_FILE_NAME_COMPRESSED } from '@jsii/spec';
-
 import { Compiler } from '../src/compiler';
 import { TYPES_COMPAT } from '../src/downlevel-dts';
 import { ProjectInfo } from '../src/project-info';
+import { TypeScriptConfigValidationRuleSet } from '../src/tsconfig';
+import { TypeScriptConfigValidator } from '../src/tsconfig/tsconfig-validator';
 
 describe(Compiler, () => {
   describe('generated tsconfig', () => {
@@ -35,122 +36,212 @@ describe(Compiler, () => {
         expectedTypeScriptConfig(),
       );
     });
-  });
 
-  test('"watch" mode', async () => {
-    const sourceDir = mkdtempSync(join(tmpdir(), 'jsii-compiler-watch-mode-'));
-
-    try {
-      writeFileSync(join(sourceDir, 'index.ts'), 'export class MarkerA {}');
-      // Intentionally using lower case name - it should be case-insensitive
-      writeFileSync(join(sourceDir, 'readme.md'), '# Test Package');
+    test('generated tsconfig passed validation', () => {
+      const sourceDir = mkdtempSync(join(tmpdir(), 'jsii-compiler-watch-mode-'));
 
       const compiler = new Compiler({
         projectInfo: _makeProjectInfo(sourceDir, 'index.d.ts'),
-        failOnWarnings: true,
-        projectReferences: false,
-      });
-
-      let firstCompilation = true;
-      let onWatchClosed: () => void;
-      let onWatchFailed: (err: unknown) => void;
-      const watchClosed = new Promise<void>((ok, ko) => {
-        onWatchClosed = ok;
-        onWatchFailed = ko;
-      });
-      const watch = await compiler.watch({
-        nonBlocking: true,
-        // Ignore diagnostics reporting (not to pollute test console output)
-        reportDiagnostics: () => null,
-        // Ignore watch status reporting (not to pollute test console output)
-        reportWatchStatus: () => null,
-        // Verify everything goes according to plan
-        compilationComplete: (emitResult) => {
-          try {
-            expect(emitResult.emitSkipped).toBeFalsy();
-            const output = JSON.stringify(loadAssemblyFromPath(sourceDir));
-            if (firstCompilation) {
-              firstCompilation = false;
-              expect(output).toContain('"MarkerA"');
-              setImmediate(() => writeFileSync(join(sourceDir, 'index.ts'), 'export class MarkerB {}'));
-              return;
-            }
-            expect(output).toContain('"MarkerB"');
-            watch.close();
-            // Tell the test suite we're done here!
-            onWatchClosed();
-          } catch (e) {
-            watch.close();
-            onWatchFailed(e);
-          }
-        },
-      });
-      await watchClosed;
-    } finally {
-      rmSync(sourceDir, { force: true, recursive: true });
-    }
-  }, 15_000);
-
-  test('rootDir is added to assembly', () => {
-    const outDir = 'jsii-outdir';
-    const rootDir = 'jsii-rootdir';
-    const sourceDir = mkdtempSync(join(tmpdir(), 'jsii-tmpdir'));
-    mkdirSync(join(sourceDir, rootDir), { recursive: true });
-
-    try {
-      writeFileSync(join(sourceDir, rootDir, 'index.ts'), 'export class MarkerA {}');
-      // Intentionally using lower case name - it should be case-insensitive
-      writeFileSync(join(sourceDir, rootDir, 'readme.md'), '# Test Package');
-
-      const compiler = new Compiler({
-        projectInfo: {
-          ..._makeProjectInfo(sourceDir, join(outDir, 'index.d.ts')),
-          tsc: {
-            outDir,
-            rootDir,
-          },
-        },
-        failOnWarnings: true,
-        projectReferences: false,
       });
 
       compiler.emit();
 
-      const assembly = loadAssemblyFromPath(sourceDir);
-      expect(assembly.metadata).toEqual(
-        expect.objectContaining({
-          tscRootDir: rootDir,
-        }),
-      );
-    } finally {
-      rmSync(sourceDir, { force: true, recursive: true });
-    }
+      // read generated config
+      const tsconfig = JSON.parse(readFileSync(join(sourceDir, 'tsconfig.json'), 'utf-8'));
+
+      // set up the tsconfig validator with rules for the generated file
+      const validator = new TypeScriptConfigValidator(TypeScriptConfigValidationRuleSet.GENERATED);
+
+      expect(() => validator.validate(tsconfig)).not.toThrow();
+    });
+
+    test('"watch" mode', async () => {
+      const sourceDir = mkdtempSync(join(tmpdir(), 'jsii-compiler-watch-mode-'));
+
+      try {
+        writeFileSync(join(sourceDir, 'index.ts'), 'export class MarkerA {}');
+        // Intentionally using lower case name - it should be case-insensitive
+        writeFileSync(join(sourceDir, 'readme.md'), '# Test Package');
+
+        const compiler = new Compiler({
+          projectInfo: _makeProjectInfo(sourceDir, 'index.d.ts'),
+          failOnWarnings: true,
+          projectReferences: false,
+        });
+
+        let firstCompilation = true;
+        let onWatchClosed: () => void;
+        let onWatchFailed: (err: unknown) => void;
+        const watchClosed = new Promise<void>((ok, ko) => {
+          onWatchClosed = ok;
+          onWatchFailed = ko;
+        });
+        const watch = await compiler.watch({
+          nonBlocking: true,
+          // Ignore diagnostics reporting (not to pollute test console output)
+          reportDiagnostics: () => null,
+          // Ignore watch status reporting (not to pollute test console output)
+          reportWatchStatus: () => null,
+          // Verify everything goes according to plan
+          compilationComplete: (emitResult) => {
+            try {
+              expect(emitResult.emitSkipped).toBeFalsy();
+              const output = JSON.stringify(loadAssemblyFromPath(sourceDir));
+              if (firstCompilation) {
+                firstCompilation = false;
+                expect(output).toContain('"MarkerA"');
+                setImmediate(() => writeFileSync(join(sourceDir, 'index.ts'), 'export class MarkerB {}'));
+                return;
+              }
+              expect(output).toContain('"MarkerB"');
+              watch.close();
+              // Tell the test suite we're done here!
+              onWatchClosed();
+            } catch (e) {
+              watch.close();
+              onWatchFailed(e);
+            }
+          },
+        });
+        await watchClosed;
+      } finally {
+        rmSync(sourceDir, { force: true, recursive: true });
+      }
+    }, 15_000);
+
+    test('rootDir is added to assembly', () => {
+      const outDir = 'jsii-outdir';
+      const rootDir = 'jsii-rootdir';
+      const sourceDir = mkdtempSync(join(tmpdir(), 'jsii-tmpdir'));
+      mkdirSync(join(sourceDir, rootDir), { recursive: true });
+
+      try {
+        writeFileSync(join(sourceDir, rootDir, 'index.ts'), 'export class MarkerA {}');
+        // Intentionally using lower case name - it should be case-insensitive
+        writeFileSync(join(sourceDir, rootDir, 'readme.md'), '# Test Package');
+
+        const compiler = new Compiler({
+          projectInfo: {
+            ..._makeProjectInfo(sourceDir, join(outDir, 'index.d.ts')),
+            tsc: {
+              outDir,
+              rootDir,
+            },
+          },
+          failOnWarnings: true,
+          projectReferences: false,
+        });
+
+        compiler.emit();
+
+        const assembly = loadAssemblyFromPath(sourceDir);
+        expect(assembly.metadata).toEqual(
+          expect.objectContaining({
+            tscRootDir: rootDir,
+          }),
+        );
+      } finally {
+        rmSync(sourceDir, { force: true, recursive: true });
+      }
+    });
+
+    test('emits declaration map when feature is enabled', () => {
+      const sourceDir = mkdtempSync(join(tmpdir(), 'jsii-tmpdir'));
+
+      try {
+        writeFileSync(join(sourceDir, 'index.ts'), 'export class MarkerA {}');
+
+        const compiler = new Compiler({
+          projectInfo: {
+            ..._makeProjectInfo(sourceDir, 'index.d.ts'),
+            tsc: {
+              declarationMap: true,
+            },
+          },
+          generateTypeScriptConfig: 'tsconfig.jsii.json',
+        });
+
+        compiler.emit();
+
+        expect(() => {
+          readFileSync(join(sourceDir, 'index.d.ts.map'), 'utf-8');
+        }).not.toThrow();
+      } finally {
+        rmSync(sourceDir, { force: true, recursive: true });
+      }
+    });
   });
 
-  test('emits declaration map when feature is enabled', () => {
-    const sourceDir = mkdtempSync(join(tmpdir(), 'jsii-tmpdir'));
-
-    try {
-      writeFileSync(join(sourceDir, 'index.ts'), 'export class MarkerA {}');
+  describe('user-provided tsconfig', () => {
+    test('will use user-provided config', () => {
+      const sourceDir = mkdtempSync(join(tmpdir(), 'jsii-compiler-user-tsconfig-'));
+      const tsconfigPath = 'tsconfig.dev.json';
+      writeFileSync(join(sourceDir, tsconfigPath), JSON.stringify(tsconfigForNode18Strict(), null, 2));
 
       const compiler = new Compiler({
-        projectInfo: {
-          ..._makeProjectInfo(sourceDir, 'index.d.ts'),
-          tsc: {
-            declarationMap: true,
-          },
-        },
-        generateTypeScriptConfig: 'tsconfig.jsii.json',
+        projectInfo: _makeProjectInfo(sourceDir, 'index.d.ts'),
+        typeScriptConfig: tsconfigPath,
       });
 
       compiler.emit();
+    });
 
-      expect(() => {
-        readFileSync(join(sourceDir, 'index.d.ts.map'), 'utf-8');
-      }).not.toThrow();
-    } finally {
-      rmSync(sourceDir, { force: true, recursive: true });
-    }
+    test('"watch" mode', async () => {
+      const sourceDir = mkdtempSync(join(tmpdir(), 'jsii-compiler-watch-mode-'));
+      const tsconfigPath = 'tsconfig.dev.json';
+      writeFileSync(join(sourceDir, tsconfigPath), JSON.stringify(tsconfigForNode18Strict(), null, 2));
+
+      try {
+        writeFileSync(join(sourceDir, 'index.ts'), 'export class MarkerA {}');
+        // Intentionally using lower case name - it should be case-insensitive
+        writeFileSync(join(sourceDir, 'readme.md'), '# Test Package');
+
+        const compiler = new Compiler({
+          projectInfo: _makeProjectInfo(sourceDir, 'index.d.ts'),
+          failOnWarnings: true,
+          typeScriptConfig: tsconfigPath,
+          validateTypeScriptConfig: TypeScriptConfigValidationRuleSet.STRICT,
+        });
+
+        let firstCompilation = true;
+        let onWatchClosed: () => void;
+        let onWatchFailed: (err: unknown) => void;
+        const watchClosed = new Promise<void>((ok, ko) => {
+          onWatchClosed = ok;
+          onWatchFailed = ko;
+        });
+        const watch = await compiler.watch({
+          nonBlocking: true,
+          // Ignore diagnostics reporting (not to pollute test console output)
+          reportDiagnostics: () => null,
+          // Ignore watch status reporting (not to pollute test console output)
+          reportWatchStatus: () => null,
+          // Verify everything goes according to plan
+          compilationComplete: (emitResult) => {
+            try {
+              expect(emitResult.emitSkipped).toBeFalsy();
+              const output = JSON.stringify(loadAssemblyFromPath(sourceDir));
+              if (firstCompilation) {
+                firstCompilation = false;
+                expect(output).toContain('"MarkerA"');
+                setImmediate(() => writeFileSync(join(sourceDir, 'index.ts'), 'export class MarkerB {}'));
+                return;
+              }
+              expect(output).toContain('"MarkerB"');
+              watch.close();
+              // Tell the test suite we're done here!
+              onWatchClosed();
+            } catch (e) {
+              watch.close();
+              onWatchFailed(e);
+            }
+          },
+        });
+        await watchClosed;
+      } finally {
+        rmSync(sourceDir, { force: true, recursive: true });
+      }
+    }, 15_000);
   });
 
   describe('compressed assembly option', () => {
@@ -212,6 +303,8 @@ describe(Compiler, () => {
 function _makeProjectInfo(sourceDir: string, types: string): ProjectInfo {
   return {
     projectRoot: sourceDir,
+    description: 'test',
+    homepage: 'https://github.com/aws/jsii-compiler',
     packageJson: {},
     types,
     main: types.replace(/(?:\.d)?\.ts(x?)/, '.js$1'),
@@ -247,7 +340,7 @@ function expectedTypeScriptConfig() {
       inlineSourceMap: true,
       inlineSources: true,
       lib: ['es2020'],
-      module: 'CommonJS',
+      module: 'commonjs',
       noEmitOnError: true,
       noFallthroughCasesInSwitch: true,
       noImplicitAny: true,
@@ -261,8 +354,29 @@ function expectedTypeScriptConfig() {
       strictNullChecks: true,
       strictPropertyInitialization: true,
       stripInternal: false,
-      target: 'ES2020',
+      target: 'es2020',
       tsBuildInfoFile: 'tsconfig.tsbuildinfo',
+    },
+    exclude: ['node_modules', TYPES_COMPAT],
+    include: [join('**', '*.ts')],
+  };
+}
+
+/**
+ * An example of a user-provided config, based on the popular tsconfig/bases project & adjusted for the strict rule set
+ * @see https://github.com/tsconfig/bases/blob/main/bases/node18.json
+ */
+function tsconfigForNode18Strict() {
+  return {
+    compilerOptions: {
+      lib: ['es2022'],
+      module: 'node16',
+      target: 'es2022',
+
+      strict: true,
+      esModuleInterop: true,
+      skipLibCheck: true,
+      moduleResolution: 'node16',
     },
     exclude: ['node_modules', TYPES_COMPAT],
     include: [join('**', '*.ts')],

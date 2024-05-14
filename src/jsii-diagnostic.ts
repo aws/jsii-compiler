@@ -4,6 +4,7 @@ import * as ts from 'typescript';
 
 import { TypeSystemHints } from './docs';
 import { WARNINGSCODE_FILE_NAME } from './transforms/deprecation-warnings';
+import { Violation } from './tsconfig/validator';
 import { JSII_DIAGNOSTICS_CODE, _formatDiagnostic } from './utils';
 
 /**
@@ -427,7 +428,24 @@ export class JsiiDiagnostic implements ts.Diagnostic {
   });
 
   //////////////////////////////////////////////////////////////////////////////
-  // 4000 => 4999 -- RESERVED
+  // 4000 => 4999 -- TYPESCRIPT & JSII CONFIG ERRORS
+
+  public static readonly JSII_4000_FAILED_TSCONFIG_VALIDATION = Code.error({
+    code: 4000,
+    formatter: (config: string, violations: Array<Violation>) => {
+      return `Typescript compiler options in "${config}" are not passing validation, found the following rule violations:\n${violations
+        .map((v) => `  - ${v.field}: ${v.message}`)
+        .join('\n')}`;
+    },
+    name: 'typescript-config/invalid-tsconfig',
+  });
+
+  public static readonly JSII_4009_DISABLED_TSCONFIG_VALIDATION = Code.warning({
+    code: 4009,
+    formatter: (config: string) =>
+      `Validation of typescript config "${config}" is disabled. This is intended for experimental setups only. Compilation might fail or produce incompatible artifacts.`,
+    name: 'typescript-config/disabled-tsconfig-validation',
+  });
 
   //////////////////////////////////////////////////////////////////////////////
   // 5000 => 5999 -- LANGUAGE COMPATIBILITY ERRORS
