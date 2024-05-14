@@ -81,7 +81,7 @@ export interface ProjectInfo {
 
   // user-provided tsconfig
   readonly tsconfig?: string;
-  readonly validateTsConfig?: TypeScriptConfigValidationRuleSet;
+  readonly validateTsconfig?: TypeScriptConfigValidationRuleSet;
 }
 
 export interface PackageJson {
@@ -125,7 +125,7 @@ export interface PackageJson {
 
     // Either user-provided config ...
     readonly tsconfig?: string;
-    readonly validateTsConfig?: string;
+    readonly validateTsconfig?: string;
 
     // ... or configure tsc here
     readonly excludeTypescript?: readonly string[];
@@ -270,7 +270,7 @@ export function loadProjectInfo(projectRoot: string): ProjectInfoResult {
 
     // user-provided tsconfig
     tsconfig: pkg.jsii?.tsconfig,
-    validateTsConfig: _validateTsConfigRuleSet(pkg.jsii?.validateTsConfig ?? 'strict'),
+    validateTsconfig: _validateTsconfigRuleSet(pkg.jsii?.validateTsconfig ?? 'strict'),
   };
   return { projectInfo, diagnostics };
 }
@@ -496,13 +496,13 @@ function _validateStability(stability: string | undefined, deprecated: string | 
   return stability as spec.Stability;
 }
 
-function _validateTsConfigRuleSet(ruleSet: string): TypeScriptConfigValidationRuleSet | undefined {
+function _validateTsconfigRuleSet(ruleSet: string): TypeScriptConfigValidationRuleSet | undefined {
   if (ruleSet == null) {
     return undefined;
   }
   if (!Object.values(TypeScriptConfigValidationRuleSet).includes(ruleSet as any)) {
     throw new Error(
-      `Invalid validateTsConfig "${ruleSet}", it must be one of ${Object.values(TypeScriptConfigValidationRuleSet).join(
+      `Invalid validateTsconfig "${ruleSet}", it must be one of ${Object.values(TypeScriptConfigValidationRuleSet).join(
         ', ',
       )}`,
     );
