@@ -178,12 +178,54 @@ describe(Compiler, () => {
       const tsconfigPath = 'tsconfig.dev.json';
       writeFileSync(join(sourceDir, tsconfigPath), JSON.stringify(tsconfigForNode18Strict(), null, 2));
 
+      writeFileSync(join(sourceDir, 'index.ts'), 'export class MarkerA {}');
+      writeFileSync(join(sourceDir, 'README.md'), '# Test Package');
       const compiler = new Compiler({
         projectInfo: _makeProjectInfo(sourceDir, 'index.d.ts'),
         typeScriptConfig: tsconfigPath,
       });
 
-      compiler.emit();
+      const result = compiler.emit();
+      expect(result.diagnostics).toEqual([]);
+      expect(result.emitSkipped).toBe(false);
+    });
+
+    test('use user-provided config uses include and exclude', () => {
+      const sourceDir = mkdtempSync(join(tmpdir(), 'jsii-compiler-user-tsconfig-'));
+      mkdirSync(join(sourceDir, 'sub'));
+      const tsconfigPath = 'tsconfig.dev.json';
+      writeFileSync(
+        join(sourceDir, tsconfigPath),
+        JSON.stringify(
+          {
+            compilerOptions: {
+              lib: ['es2022'],
+              module: 'node16',
+              target: 'es2022',
+              noImplicitAny: true,
+            },
+            include: ['**/*.ts'],
+            exclude: ['sub/**'],
+          },
+          null,
+          2,
+        ),
+      );
+
+      writeFileSync(join(sourceDir, 'index.ts'), 'export class MarkerA {}');
+      writeFileSync(join(sourceDir, 'README.md'), '# Test Package');
+
+      // file with an implicit any that fails against the local config if not excluded
+      writeFileSync(join(sourceDir, 'sub', 'index.ts'), 'export class MarkerB { constructor(public foobar) {} }');
+
+      const compiler = new Compiler({
+        projectInfo: _makeProjectInfo(sourceDir, 'index.d.ts'),
+        typeScriptConfig: tsconfigPath,
+      });
+
+      const result = compiler.emit();
+      expect(result.diagnostics).toEqual([]);
+      expect(result.emitSkipped).toBe(false);
     });
 
     test('"watch" mode', async () => {
@@ -376,6 +418,7 @@ function tsconfigForNode18Strict() {
       strict: true,
       esModuleInterop: true,
       skipLibCheck: true,
+      noEmitOnError: true,
       moduleResolution: 'node16',
     },
     exclude: ['node_modules', TYPES_COMPAT],
