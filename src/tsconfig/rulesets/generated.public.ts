@@ -1,4 +1,4 @@
-import configurable from './configurable';
+import jsiiConfiguredOptions from './jsii-configured-options';
 import { BASE_COMPILER_OPTIONS, convertForJson } from '../compiler-options';
 import { Match, RuleSet, RuleType } from '../validator';
 
@@ -11,7 +11,7 @@ const generated = new RuleSet({
 });
 
 // import all options that are configurable via jsii settings
-generated.import(configurable);
+generated.import(jsiiConfiguredOptions);
 
 // ... and all generated options
 for (const [field, value] of Object.entries(convertForJson(BASE_COMPILER_OPTIONS))) {

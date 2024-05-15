@@ -123,7 +123,7 @@ const ruleSets: {
               ruleSets,
               '[EXPERIMENTAL] Validate the provided typescript configuration file against a set of rules.',
             ),
-            default: TypeScriptConfigValidationRuleSet.STRICT,
+            defaultDescription: TypeScriptConfigValidationRuleSet.STRICT,
           })
           .option('compress-assembly', {
             group: OPTION_GROUP.JSII,
@@ -159,6 +159,12 @@ const ruleSets: {
 
         configureCategories(projectInfo.diagnostics ?? {});
 
+        const typeScriptConfig = argv.tsconfig ?? projectInfo.packageJson.jsii?.tsconfig;
+        const validateTypeScriptConfig =
+          (argv['validate-tsconfig'] as TypeScriptConfigValidationRuleSet) ??
+          projectInfo.packageJson.jsii?.validateTsconfig ??
+          TypeScriptConfigValidationRuleSet.STRICT;
+
         const compiler = new Compiler({
           projectInfo,
           projectReferences: argv['project-references'],
@@ -167,10 +173,8 @@ const ruleSets: {
           stripDeprecatedAllowListFile: argv['strip-deprecated'],
           addDeprecationWarnings: argv['add-deprecation-warnings'],
           generateTypeScriptConfig: argv['generate-tsconfig'],
-          typeScriptConfig: argv.tsconfig ?? projectInfo.packageJson.jsii?.tsconfig,
-          validateTypeScriptConfig:
-            (argv['validate-tsconfig'] as TypeScriptConfigValidationRuleSet) ??
-            projectInfo.packageJson.jsii?.validateTsConfig,
+          typeScriptConfig,
+          validateTypeScriptConfig,
           compressAssembly: argv['compress-assembly'],
         });
 
