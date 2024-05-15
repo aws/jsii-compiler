@@ -279,11 +279,11 @@ describe('loadProjectInfo', () => {
       (key: string, ruleSet: string) => {
         return _withTestProject(
           (projectRoot) =>
-            expect(loadProjectInfo(projectRoot).projectInfo.validateTsConfig).toBe(
+            expect(loadProjectInfo(projectRoot).projectInfo.validateTsconfig).toBe(
               TypeScriptConfigValidationRuleSet[key as keyof typeof TypeScriptConfigValidationRuleSet],
             ),
           (info) => {
-            info.jsii.validateTsConfig = ruleSet;
+            info.jsii.validateTsconfig = ruleSet;
           },
         );
       },
@@ -292,7 +292,7 @@ describe('loadProjectInfo', () => {
     test('if validation rule set is not set, default is strict', () => {
       return _withTestProject(
         (projectRoot) =>
-          expect(loadProjectInfo(projectRoot).projectInfo.validateTsConfig).toBe(
+          expect(loadProjectInfo(projectRoot).projectInfo.validateTsconfig).toBe(
             TypeScriptConfigValidationRuleSet.STRICT,
           ),
         (info) => {
@@ -305,9 +305,9 @@ describe('loadProjectInfo', () => {
       'reject invalid validation rule set: "%s"',
       (ruleSet: string) => {
         return _withTestProject(
-          (projectRoot) => expect(() => loadProjectInfo(projectRoot)).toThrow(/Invalid validateTsConfig/),
+          (projectRoot) => expect(() => loadProjectInfo(projectRoot)).toThrow(/Invalid validateTsconfig/),
           (info) => {
-            info.jsii.validateTsConfig = ruleSet;
+            info.jsii.validateTsconfig = ruleSet;
           },
         );
       },
