@@ -90,6 +90,10 @@
       "type": "build"
     },
     {
+      "name": "fast-check",
+      "type": "build"
+    },
+    {
       "name": "glob",
       "type": "build"
     },
