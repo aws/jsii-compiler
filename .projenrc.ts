@@ -166,7 +166,7 @@ project.vscode!.settings.addSetting('explorer.excludeGitIgnore', true);
 project.vscode!.settings.addSetting('typescript.tsdk', 'node_modules/typescript/lib');
 // Format-on-save using ESLint
 project.vscode!.extensions.addRecommendations('dbaeumer.vscode-eslint');
-project.vscode!.settings.addSetting('editor.codeActionsOnSave', { 'source.fixAll.eslint': true });
+project.vscode!.settings.addSetting('editor.codeActionsOnSave', { 'source.fixAll.eslint': 'explicit' });
 project.vscode!.settings.addSetting('eslint.validate', ['typescript']);
 
 // Exports map...
@@ -181,14 +181,14 @@ project.package.addField('exports', {
 project.deps.removeDependency('typescript');
 
 // Modernize ts-jest configuration
-if (project.jest?.config?.globals?.['ts-jest']) {
-  delete project.jest.config.globals['ts-jest'];
+if (project.jest?.config) {
   project.jest.config.transform ??= {};
-  project.jest.config.transform['^.+\\.tsx?$'] = [
+  project.jest.config.transform['^.+\\.[t]sx?$'] = [
     'ts-jest',
     {
       compiler: 'typescript',
       tsconfig: 'tsconfig.dev.json',
+      diagnostics: { ignoreCodes: ['TS151001'] },
     },
   ];
 }
@@ -232,6 +232,7 @@ project.addDevDeps(
   'all-contributors-cli',
   'clone',
   'eslint-plugin-unicorn',
+  'fast-check',
   'jsii-1.x@npm:jsii@1',
   'lockfile',
   'glob',
