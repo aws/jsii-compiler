@@ -432,8 +432,8 @@ export class JsiiDiagnostic implements ts.Diagnostic {
 
   public static readonly JSII_4000_FAILED_TSCONFIG_VALIDATION = Code.error({
     code: 4000,
-    formatter: (config: string, violations: Array<Violation>) => {
-      return `Typescript compiler options in "${config}" are not passing validation, found the following rule violations:\n${violations
+    formatter: (config: string, ruleSet: string, violations: Array<Violation>) => {
+      return `Typescript compiler options in "${config}" are not passing validation against rule set "${ruleSet}", found the following rule violations:\n${violations
         .map((v) => `  - ${v.field}: ${v.message}`)
         .join('\n')}`;
     },

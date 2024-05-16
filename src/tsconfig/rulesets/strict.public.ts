@@ -1,5 +1,7 @@
-import configurable from './configurable';
-import incompatible from './incompatible-options';
+import configurableOptions from './configurable-options';
+import deprecatedOptions from './deprecated-options';
+import incompatibleOptions from './incompatible-options';
+import strictFamilyOptions from './strict-family-options';
 import { Match, RuleSet, RuleType } from '../validator';
 
 // The public rule set used for the "strict" tsconfig validation setting.
@@ -11,10 +13,13 @@ const strict = new RuleSet({
 });
 
 // import all options that are configurable
-strict.import(configurable);
+strict.import(configurableOptions);
 
 // import all options that are definitely incompatible
-strict.import(incompatible);
+strict.import(incompatibleOptions);
+
+// strict family options
+strict.import(strictFamilyOptions);
 
 // Best practice rules
 strict.shouldPass('target', Match.eq('es2022')); // node18
@@ -23,10 +28,10 @@ strict.shouldPass('module', Match.oneOf('node16', 'commonjs'));
 strict.shouldPass('moduleResolution', Match.optional(Match.oneOf('node', 'node16')));
 strict.shouldPass('esModuleInterop', Match.TRUE);
 strict.shouldPass('skipLibCheck', Match.TRUE);
-strict.shouldPass('strict', Match.eq(true));
-strict.shouldPass('incremental', Match.ANY);
+strict.shouldPass('stripInternal', Match.optional(Match.FALSE));
+strict.shouldPass('noEmitOnError', Match.TRUE);
 
 // Deprecated ts options that should not be used with jsii
-strict.shouldPass('prepend', Match.MISSING);
+strict.import(deprecatedOptions);
 
 export default strict;
