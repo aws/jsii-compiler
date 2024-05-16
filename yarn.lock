@@ -2401,9 +2401,9 @@ eastasianwidth@^0.2.0:
   integrity sha512-I88TYZWc9XiYHRQ4/3c5rjjfgkjhLyW2luGIheGERbNQ6OY7yTybanSpDXZa8y7VUP9YmDcYa+eyq4ca7iLqWA==
 
 electron-to-chromium@^1.4.668:
-  version "1.4.768"
-  resolved "https://registry.yarnpkg.com/electron-to-chromium/-/electron-to-chromium-1.4.768.tgz#3795bd000ccb8978be1af2d06320b2dac810a372"
-  integrity sha512-z2U3QcvNuxdkk33YV7R1bVMNq7fL23vq3WfO5BHcqrm4TnDGReouBfYKLEFh5umoK1XACjEwp8mmnhXk2EJigw==
+  version "1.4.771"
+  resolved "https://registry.yarnpkg.com/electron-to-chromium/-/electron-to-chromium-1.4.771.tgz#fcaf0e80b78d42e35b86d1c892378c08a8d29414"
+  integrity sha512-b/CmBh1c5SXZy5oFu4a0o+2TdM0AYStiwoQebEoImGAINstCsS/s/MOvPKMoxu1nA2BJtEOJI1nC/VoVRzdXWA==
 
 emittery@^0.13.1:
   version "0.13.1"
@@ -5369,10 +5369,10 @@ progress@^2.0.3:
   resolved "https://registry.yarnpkg.com/progress/-/progress-2.0.3.tgz#7e8cf8d8f5b8f239c1bc68beb4eb78567d572ef8"
   integrity sha512-7PiHtLll5LdnKIMw100I+8xJXR5gW2QwWYkT6iJva0bXitZKa/XMrSbdmg3r2Xnaidz9Qumd0VPaMrZlF9V9sA==
 
-projen@^0.81.11:
-  version "0.81.11"
-  resolved "https://registry.yarnpkg.com/projen/-/projen-0.81.11.tgz#e933cd8b3df19fcc6c3ca7c9918a0995eeaefb8a"
-  integrity sha512-4zfviP7jWXLa7JP2PSBJZIvfy6IVZcPkjBD1LcVjvxeSc+f2al1NdWe3jLY8ssD+siARQU53YwGuGRGiCh1rXQ==
+projen@^0.81.13:
+  version "0.81.13"
+  resolved "https://registry.yarnpkg.com/projen/-/projen-0.81.13.tgz#ea2cab002a00df46dc324515b4b47571cda2afd9"
+  integrity sha512-gmH+/lvhUitjrCNNvV2ZRmiQ6D4sbGVfOBHND5bsEUm/58b5zz5LUvjj3wn5O3/2dECNMlimaYTBAyNuzV1aCw==
   dependencies:
     "@iarna/toml" "^2.2.5"
     case "^1.6.3"
@@ -6431,9 +6431,9 @@ typedarray-to-buffer@^3.1.5:
     is-typedarray "^1.0.0"
 
 typescript@next:
-  version "5.5.0-dev.20240514"
-  resolved "https://registry.yarnpkg.com/typescript/-/typescript-5.5.0-dev.20240514.tgz#e5af4601760955c53fe5eb42298419862f01a262"
-  integrity sha512-NccALPZlTF/kDNV2Q071Or2T5CcoAHodWjsKseA4LZKfdqufQzebaQlPuZatC8AgHY2cnQJBcKMCHNFWW9ubpA==
+  version "5.5.0-dev.20240515"
+  resolved "https://registry.yarnpkg.com/typescript/-/typescript-5.5.0-dev.20240515.tgz#0380d92f94b833f250c4655c82c0f110799e7e9a"
+  integrity sha512-l2Rtvs3xAcEVgF5wOML5AASB79iMHrw9RGXEMY/oeV11IwP0nxOtB1Q5fLvmdPkbsP0PKeTfvd46sOWRATqAiA==
 
 typescript@~3.9.10:
   version "3.9.10"
