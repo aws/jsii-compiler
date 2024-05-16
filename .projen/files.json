@@ -1,5 +1,6 @@
 {
   "files": [
+    ".backportrc.json",
     ".eslintrc.json",
     ".gitattributes",
     ".github/pull_request_template.md",
@@ -11,6 +12,7 @@
     ".github/workflows/auto-tag-releases-v5.2.yml",
     ".github/workflows/auto-tag-releases-v5.3.yml",
     ".github/workflows/auto-tag-releases.yml",
+    ".github/workflows/backport.yml",
     ".github/workflows/build.yml",
     ".github/workflows/pull-request-lint.yml",
     ".github/workflows/release.yml",
