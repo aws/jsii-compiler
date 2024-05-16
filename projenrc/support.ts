@@ -11,6 +11,7 @@ export const SUPPORT_POLICY: ReleasesDocument = {
     '5.3': new Date('2024-10-15'),
   },
 };
+
 export class SupportPolicy {
   public get branches(): {
     [version: string]: string;
