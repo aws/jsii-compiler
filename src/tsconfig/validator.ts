@@ -185,6 +185,19 @@ function wrapMatcher(matcher: Matcher, message: (actual: any) => string, allowed
   };
 }
 
+/**
+ * Helper to implement loose equality that is safe for any value
+ * Needed because there are some values that are equal as object, but not with ==
+ * There are also values that cannot be compared using == and will throw
+ */
+function looseEqual(a: any, b: any): boolean {
+  try {
+    return Object.is(a, b) || a == b;
+  } catch {
+    return false;
+  }
+}
+
 export class Match {
   /**
    * Value is optional, but if present should match
@@ -219,14 +232,9 @@ export class Match {
         return Match.arrEq(expected)(actual, options);
       }
 
-      try {
-        options?.hints?.([expected]);
-        options?.reporter?.(`Expected value ${JSON.stringify(expected)}, got: ${JSON.stringify(actual)}`);
-        return actual == expected;
-      } catch {
-        // some values cannot compared using loose quality, in this case the matcher just fails
-        return false;
-      }
+      options?.hints?.([expected]);
+      options?.reporter?.(`Expected value ${JSON.stringify(expected)}, got: ${JSON.stringify(actual)}`);
+      return looseEqual(actual, expected);
     };
   }
 
@@ -237,21 +245,16 @@ export class Match {
   public static arrEq(expected: any[]): Matcher {
     return wrapMatcher(
       (actual) => {
-        try {
-          // if both are arrays and of the same length, compare elements
-          // if one of them is not, or they are a different length,
-          // skip comparing elements as the the equality check later will fail
-          if (Array.isArray(expected) && Array.isArray(actual) && expected.length == actual.length) {
-            // compare all elements with loose typing
-            return expected.every((e) => actual.some((a) => a == e));
-          }
-
-          // all other values and arrays of different shape
-          return actual == expected;
-        } catch {
-          // some values cannot compared using loose quality, in this case the matcher just fails
-          return false;
+        // if both are arrays and of the same length, compare elements
+        // if one of them is not, or they are a different length,
+        // skip comparing elements as the the equality check later will fail
+        if (Array.isArray(expected) && Array.isArray(actual) && expected.length == actual.length) {
+          // compare all elements with loose typing
+          return expected.every((e) => actual.some((a) => looseEqual(a, e)));
         }
+
+        // all other values and arrays of different shape
+        return looseEqual(actual, expected);
       },
       (actual) => `Expected array matching ${JSON.stringify(expected)}, got: ${JSON.stringify(actual)}`,
       [expected],
@@ -266,11 +269,11 @@ export class Match {
       (actual) => {
         // case insensitive
         if (!caseSensitive && typeof actual === 'string') {
-          return expected.toLowerCase() == actual.toLowerCase();
+          return looseEqual(expected.toLowerCase(), actual.toLowerCase());
         }
 
         // case sensitive
-        return actual == expected;
+        return looseEqual(actual, expected);
       },
       (actual: any) => `Expected string ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`,
       [expected],
