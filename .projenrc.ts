@@ -1,5 +1,4 @@
-import { javascript, JsonFile, JsonPatch, typescript, YamlFile } from 'projen';
-import { TypeScriptModuleResolution } from 'projen/lib/javascript';
+import { javascript, JsonFile, JsonPatch, github, typescript, YamlFile } from 'projen';
 import { BuildWorkflow } from './projenrc/build-workflow';
 import { JsiiCalcFixtures } from './projenrc/fixtures';
 import { ReleaseWorkflow } from './projenrc/release';
@@ -56,7 +55,7 @@ const project = new typescript.TypeScriptProject({
       esModuleInterop: false,
       noImplicitOverride: true,
       skipLibCheck: true,
-      moduleResolution: TypeScriptModuleResolution.NODE16,
+      moduleResolution: javascript.TypeScriptModuleResolution.NODE16,
       module: 'node16',
 
       sourceMap: true,
@@ -66,7 +65,7 @@ const project = new typescript.TypeScriptProject({
   },
   tsconfigDev: {
     compilerOptions: {
-      moduleResolution: TypeScriptModuleResolution.NODE16,
+      moduleResolution: javascript.TypeScriptModuleResolution.NODE16,
       module: 'node16',
     },
   },
@@ -272,7 +271,7 @@ new JsiiCalcFixtures(project);
 new BuildWorkflow(project);
 
 // Add support policy documents & release workflows
-new SupportPolicy(project);
+const supported = new SupportPolicy(project);
 const releases = new ReleaseWorkflow(project)
   .autoTag({
     preReleaseId: 'dev',
@@ -286,29 +285,30 @@ const releases = new ReleaseWorkflow(project)
 
 // We'll stagger release schedules so as to avoid everything going out at once.
 let hour = 0;
-for (const [version, until] of Object.entries(SUPPORT_POLICY.maintenance)) {
-  if (Date.now() <= until.getTime()) {
-    // Stagger schedules every 5 hours, rolling. 5 was selected because it's co-prime to 24.
-    hour = (hour + 5) % 24;
-
-    const branch = `v${version}`;
-
-    releases
-      .autoTag({
-        preReleaseId: 'dev',
-        runName: `Auto-Tag Prerelease (${branch})`,
-        schedule: `0 ${hour} * * 0,2-6`, // Tuesday though sundays
-        branch: `maintenance/${branch}`,
-        nameSuffix: branch,
-      })
-      .autoTag({
-        runName: `Auto-Tag Release (${branch})`,
-        schedule: `0 ${hour} * * 1`, // Mondays
-        branch: `maintenance/${branch}`,
-        nameSuffix: branch,
-      });
-  }
+for (const [version, branch] of Object.entries(supported.activeBranches(false))) {
+  // Stagger schedules every 5 hours, rolling. 5 was selected because it's co-prime to 24.
+  hour = (hour + 5) % 24;
+  const tag = `v${version}`;
+  releases
+    .autoTag({
+      preReleaseId: 'dev',
+      runName: `Auto-Tag Prerelease (${tag})`,
+      schedule: `0 ${hour} * * 0,2-6`, // Tuesday though sundays
+      branch,
+      nameSuffix: tag,
+    })
+    .autoTag({
+      runName: `Auto-Tag Release (${tag})`,
+      schedule: `0 ${hour} * * 1`, // Mondays
+      branch,
+      nameSuffix: tag,
+    });
 }
+
+// Allow PR backports to all maintained versions
+new github.PullRequestBackport(project, {
+  branches: Object.values(supported.activeBranches()),
+});
 
 new UpdateIntegPackage(project);
 
