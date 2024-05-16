@@ -9,6 +9,7 @@ export const camel = withCache(Case.camel);
 export const constant = withCache(Case.constant);
 export const pascal = withCache(Case.pascal);
 export const snake = withCache(Case.snake);
+export const kebab = withCache(Case.kebab);
 
 class Cache {
   public static fetch(text: string, func: (text: string) => string): string {
