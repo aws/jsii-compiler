@@ -26,6 +26,7 @@ tsconfig.tsbuildinfo
 /projenrc/
 *.tsbuildinfo
 *.d.ts.map
+.backportrc.json
 /.gitattributes
 /.projenrc.ts
 /projenrc
