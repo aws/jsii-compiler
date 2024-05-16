@@ -179,6 +179,44 @@ describe('Built-in matchers', () => {
       );
     });
   });
+
+  describe('Match.TRUE', () => {
+    test('pass', () => {
+      expect(Match.TRUE(true)).toBe(true);
+    });
+
+    test('fail', () => {
+      expect(Match.TRUE(false)).toBe(false);
+    });
+  });
+
+  describe('Match.FALSE', () => {
+    test('pass', () => {
+      expect(Match.FALSE(false)).toBe(true);
+    });
+
+    test('fail', () => {
+      expect(Match.FALSE(true)).toBe(false);
+    });
+  });
+
+  describe('Match.MISSING', () => {
+    test('pass', () => {
+      expect(Match.MISSING(undefined)).toBe(true);
+      expect(Match.MISSING(null)).toBe(true);
+    });
+
+    test('fail', () => {
+      fc.assert(
+        fc.property(
+          fc.anything().filter((v) => !(v === undefined || v === null)),
+          (actual) => {
+            return !Match.MISSING(actual);
+          },
+        ),
+      );
+    });
+  });
 });
 
 describe('Object Validator', () => {
