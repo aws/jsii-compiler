@@ -386,8 +386,8 @@ class AutoTagWorkflow {
         {
           name: `Tag ${props.preReleaseId ? 'PreRelease' : 'Release'}`,
           run: `yarn tag-release --idempotent --no-sign --push ${
-            props.preReleaseId ? `--prerelease=${props.preReleaseId}` : ''
-          } --release-line=${props.releaseLine}`,
+            props.preReleaseId ? `--prerelease=${props.preReleaseId} ` : ''
+          }--release-line=${props.releaseLine}`,
         },
       ],
     });
