@@ -15,6 +15,7 @@ async function main(): Promise<void> {
     remote,
     sign,
     verbose,
+    releaseLine,
   } = await yargs
     .scriptName('npx projen tag-release')
     .option('idempotent', {
@@ -62,10 +63,21 @@ async function main(): Promise<void> {
       desc: 'Do not actually create a tag, just determine what it would be',
       default: false,
     })
+    .option('release-line', {
+      alias: 'r',
+      type: 'string',
+      desc: 'The version line for this release. This will be checked against the actual available typescript version and fail if they do not match. If not provided the current typescript version will be released.',
+      default: versionMajorMinor,
+    })
     .help().argv;
 
   if (verbose) {
-    console.debug(`Current release line: ${versionMajorMinor}`);
+    console.debug(`Expected release line: ${releaseLine}`);
+    console.debug(`Detected release line: ${versionMajorMinor}`);
+  }
+
+  if (releaseLine !== versionMajorMinor) {
+    throw new Error(`Release line mismatch: expected ${releaseLine}, got ${versionMajorMinor}`);
   }
 
   // Shell out to a git command and ensure it returns successfully, and returns

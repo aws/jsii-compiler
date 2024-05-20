@@ -4,7 +4,7 @@ name: auto-tag-dev-v5.3
 run-name: Auto-Tag Prerelease (v5.3)
 on:
   schedule:
-    - cron: 0 10 * * 0,2-6
+    - cron: 0 5 * * 0,2-6
   workflow_dispatch: {}
 jobs:
   pre-flight:
@@ -56,4 +56,4 @@ jobs:
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
       - name: Tag PreRelease
-        run: yarn tag-release --idempotent --no-sign --push --prerelease=dev
+        run: yarn tag-release --idempotent --no-sign --push --prerelease=dev --release-line=5.3
