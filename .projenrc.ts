@@ -274,11 +274,13 @@ new BuildWorkflow(project);
 const supported = new SupportPolicy(project);
 const releases = new ReleaseWorkflow(project)
   .autoTag({
+    releaseLine: SUPPORT_POLICY.current,
     preReleaseId: 'dev',
     runName: 'Auto-Tag Prerelease (default branch)',
     schedule: '0 0 * * 0,2-6', // Tuesday though sundays at midnight
   })
   .autoTag({
+    releaseLine: SUPPORT_POLICY.current,
     runName: 'Auto-Tag Release (default branch)',
     schedule: '0 0 * * 1', // Mondays at midnight
   });
@@ -291,6 +293,7 @@ for (const [version, branch] of Object.entries(supported.activeBranches(false)))
   const tag = `v${version}`;
   releases
     .autoTag({
+      releaseLine: version,
       preReleaseId: 'dev',
       runName: `Auto-Tag Prerelease (${tag})`,
       schedule: `0 ${hour} * * 0,2-6`, // Tuesday though sundays
@@ -298,6 +301,7 @@ for (const [version, branch] of Object.entries(supported.activeBranches(false)))
       nameSuffix: tag,
     })
     .autoTag({
+      releaseLine: version,
       runName: `Auto-Tag Release (${tag})`,
       schedule: `0 ${hour} * * 1`, // Mondays
       branch,
