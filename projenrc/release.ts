@@ -292,6 +292,11 @@ class TagReleaseTask {
 
 interface AutoTagWorkflowProps {
   /**
+   * The version used as the tagging base
+   */
+  readonly releaseLine: string;
+
+  /**
    * The branch on which to trigger this AutoTagWorkflow.
    *
    * @default - the repository's default branch
@@ -382,7 +387,7 @@ class AutoTagWorkflow {
           name: `Tag ${props.preReleaseId ? 'PreRelease' : 'Release'}`,
           run: `yarn tag-release --idempotent --no-sign --push ${
             props.preReleaseId ? `--prerelease=${props.preReleaseId}` : ''
-          }`,
+          } --release-line=${props.releaseLine}`,
         },
       ],
     });
