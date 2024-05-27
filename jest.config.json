@@ -1,4 +1,5 @@
 {
+  "coverageProvider": "v8",
   "moduleFileExtensions": [
     "ts",
     "tsx",
