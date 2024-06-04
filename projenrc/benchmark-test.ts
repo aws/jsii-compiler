@@ -72,10 +72,23 @@ export class BenchmarkTest {
         runsOn: ['ubuntu-latest'],
         steps: [
           {
+            name: 'Authenticate Via OIDC Role',
+            uses: 'aws-actions/configure-aws-credentials@v4',
+            with: {
+              'aws-region': 'us-east-1',
+              'role-duration-seconds': 900,
+              'role-to-assume': '${{ secrets.AWS_ROLE_TO_ASSUME_FOR_DIFF }}',
+              'role-session-name': 'github-diff-action@cdk-ops',
+              'output-credentials': true,
+            },
+          },
+          {
             name: 'Output Summary',
             run: [
               'node <<"EOF"',
               'const fs = require("node:fs");',
+              '',
+              `const core = require('@actions/core');`,
               '',
               'const results = ${{ toJSON(needs.benchmark.outputs) }};',
               'console.debug(results);',
@@ -110,11 +123,39 @@ export class BenchmarkTest {
               'const pre = (s) => `\\`${s}\\``;',
               'for (const [compiler, { min, max, avg, stddev }] of Object.entries(stats).sort(([, l], [, r]) => l.avg - r.avg)) {',
               '  summary.push([compiler, pre(ms.format(min)), pre(ms.format(avg)), pre(ms.format(max)), pre(dec.format(stddev)), pre(`${dec.format(avg / fastest)}x`)].join(" | "));',
+              `  core.setOutput('test-duration-' + compiler, pre(ms.format(avg)));`,
               '}',
               'summary.push("");',
               '',
               'fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, summary.join("\\n"), "utf-8");',
               'EOF',
+            ].join('\n'),
+          },
+        ],
+      },
+      benchmark_metrics: {
+        env: { CI: 'true' },
+        name: 'Publich Benchmark Metrics',
+        needs: ['benchmark-summary'],
+        permissions: {},
+        runsOn: ['ubuntu-latest'],
+        steps: [
+          {
+            name: 'Authenticate Via OIDC Role',
+            uses: 'aws-actions/configure-aws-credentials@v4',
+            with: {
+              'aws-region': 'us-east-1',
+              'role-duration-seconds': 900,
+              'role-to-assume': '${{ secrets.AWS_ROLE_TO_ASSUME_FOR_DIFF }}',
+              'role-session-name': 'github-diff-action@cdk-ops',
+              'output-credentials': true,
+            },
+          },
+          {
+            name: 'Publish Metrics',
+            run: [
+              'aws cloudwatch put-metric-data --metric-name tsc-benchmark-time-test --namespace Jsii --value ${{ needs.benchmark-summary.outputs.test-duration-tsc }}',
+              'aws cloudwatch put-metric-data --metric-name jsii-benchmark-time-test --namespace Jsii --value ${{ needs.benchmark-summary.outputs.test-duration-jsii }}',
             ].join('\n'),
           },
         ],
