@@ -72,17 +72,6 @@ export class BenchmarkTest {
         runsOn: ['ubuntu-latest'],
         steps: [
           {
-            name: 'Authenticate Via OIDC Role',
-            uses: 'aws-actions/configure-aws-credentials@v4',
-            with: {
-              'aws-region': 'us-east-1',
-              'role-duration-seconds': 900,
-              'role-to-assume': '${{ secrets.AWS_ROLE_TO_ASSUME_FOR_DIFF }}',
-              'role-session-name': 'github-diff-action@cdk-ops',
-              'output-credentials': true,
-            },
-          },
-          {
             name: 'Output Summary',
             run: [
               'node <<"EOF"',
