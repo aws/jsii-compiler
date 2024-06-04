@@ -409,7 +409,7 @@ jobs:
           EOF
   benchmark_metrics:
     name: Publich Benchmark Metrics
-    needs: benchmark-summary
+    needs: benchmark_summary
     runs-on: ubuntu-latest
     permissions: {}
     env:

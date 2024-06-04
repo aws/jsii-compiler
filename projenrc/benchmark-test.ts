@@ -125,7 +125,7 @@ export class BenchmarkTest {
       benchmark_metrics: {
         env: { CI: 'true' },
         name: 'Publich Benchmark Metrics',
-        needs: ['benchmark-summary'],
+        needs: ['benchmark_summary'],
         permissions: {},
         runsOn: ['ubuntu-latest'],
         steps: [
