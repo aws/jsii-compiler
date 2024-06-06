@@ -366,7 +366,7 @@ jobs:
           node <<"EOF"
           const fs = require("node:fs");
 
-          const core = require('@actions/core');
+          const outputFilePath = process.env.GITHUB_OUTPUT;
 
           const results = ${{ toJSON(needs.benchmark.outputs) }};
           console.debug(results);
@@ -401,7 +401,10 @@ jobs:
           const pre = (s) => `\`${s}\``;
           for (const [compiler, { min, max, avg, stddev }] of Object.entries(stats).sort(([, l], [, r]) => l.avg - r.avg)) {
             summary.push([compiler, pre(ms.format(min)), pre(ms.format(avg)), pre(ms.format(max)), pre(dec.format(stddev)), pre(`${dec.format(avg / fastest)}x`)].join(" | "));
-            core.setOutput('test-duration-' + compiler, pre(ms.format(avg)));
+            const key = 'test-duration-' + compiler;
+            const value = pre(ms.format(avg)));
+            fs.appendFileSync(outputFilePath, `${key}=${value}
+          `)
           }
           summary.push("");
 
