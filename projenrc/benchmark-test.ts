@@ -114,6 +114,7 @@ export class BenchmarkTest {
               '  summary.push([compiler, pre(ms.format(min)), pre(ms.format(avg)), pre(ms.format(max)), pre(dec.format(stddev)), pre(`${dec.format(avg / fastest)}x`)].join(" | "));',
               `  const key = 'test-duration-' + compiler;`,
               `  const value = pre(ms.format(avg));`,
+              '',
               '  fs.appendFileSync(outputFilePath, `${key}=${value}\n`)',
               '}',
               'summary.push("");',
