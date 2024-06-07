@@ -424,7 +424,7 @@ jobs:
         with:
           aws-region: us-east-1
           role-duration-seconds: 900
-          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME_FOR_DIFF }}
+          role-to-assume: arn:aws:iam::590183883712:role/Ops-jsiiTeamOIDC-Role1ABCC5F0-jL37v7e7I15P
           role-session-name: github-diff-action@cdk-ops
           output-credentials: true
       - name: Publish Metrics
