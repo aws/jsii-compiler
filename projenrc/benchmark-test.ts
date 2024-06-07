@@ -3,6 +3,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { github, typescript } from 'projen';
+import { JobPermission } from 'projen/lib/github/workflows-model';
 import * as tar from 'tar';
 import * as ts from 'typescript';
 import * as yargs from 'yargs';
@@ -129,7 +130,9 @@ export class BenchmarkTest {
         env: { CI: 'true' },
         name: 'Publich Benchmark Metrics',
         needs: ['benchmark_summary'],
-        permissions: {},
+        permissions: {
+          idToken: JobPermission.WRITE,
+        },
         runsOn: ['ubuntu-latest'],
         steps: [
           {

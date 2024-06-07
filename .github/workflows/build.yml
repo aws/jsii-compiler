@@ -415,7 +415,8 @@ jobs:
     name: Publich Benchmark Metrics
     needs: benchmark_summary
     runs-on: ubuntu-latest
-    permissions: {}
+    permissions:
+      id-token: write
     env:
       CI: "true"
     steps:
