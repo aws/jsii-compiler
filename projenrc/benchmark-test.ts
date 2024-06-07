@@ -69,22 +69,6 @@ export class BenchmarkTest {
         env: { CI: 'true' },
         name: 'Benchmark',
         needs: ['benchmark'],
-        // outputs: {
-        //   'duration-jsii': {
-        //     value: '${{ steps.duration-jsii.outputs.duration }}',
-        //   },
-        //   'duration-tsc': {
-        //     description: 'Duration of tsc benchmark',
-        //     value: '${{ steps.duration-tsc.outputs.duration }}',
-        //   },
-        // },
-        // }
-        // Object.fromEntries(
-        //   indices.flatMap((idx) => [
-        //     [`duration-jsii`, { stepId: 'run', outputName: `jsii-${idx}` }],
-        //     [`duration-tsc`, { stepId: 'run', outputName: `tsc-${idx}` }],
-        //   ]),
-        // ),
         permissions: {
           idToken: JobPermission.WRITE,
         },
@@ -163,35 +147,6 @@ export class BenchmarkTest {
           },
         ],
       },
-      // benchmark_metrics: {
-      //   env: { CI: 'true' },
-      //   name: 'Publich Benchmark Metrics',
-      //   needs: ['benchmark_summary'],
-      //   permissions: {
-      //     idToken: JobPermission.WRITE,
-      //   },
-      //   runsOn: ['ubuntu-latest'],
-      //   steps: [
-      //     {
-      //       name: 'Authenticate Via OIDC Role',
-      //       uses: 'aws-actions/configure-aws-credentials@v4',
-      //       with: {
-      //         'aws-region': 'us-east-1',
-      //         'role-duration-seconds': 900,
-      //         'role-to-assume': 'arn:aws:iam::590183883712:role/Ops-jsiiTeamOIDC-Role1ABCC5F0-jL37v7e7I15P',
-      //         'role-session-name': 'github-diff-action@cdk-ops',
-      //         'output-credentials': true,
-      //       },
-      //     },
-      //     {
-      //       name: 'Publish Metrics',
-      //       run: [
-      //         'aws cloudwatch put-metric-data --metric-name tsc-benchmark-time-test --namespace JsiiPerformance --value ${{ needs.benchmark_summary.outputs.test-duration-tsc }}',
-      //         'aws cloudwatch put-metric-data --metric-name jsii-benchmark-time-test --namespace JsiiPerformance --value ${{ needs.benchmark_summary.outputs.test-duration-jsii }}',
-      //       ].join('\n'),
-      //     },
-      //   ],
-      // },
     });
   }
 }
