@@ -3,6 +3,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { github, typescript } from 'projen';
+import { JobPermission } from 'projen/lib/github/workflows-model';
 import * as tar from 'tar';
 import * as ts from 'typescript';
 import * as yargs from 'yargs';
@@ -68,14 +69,19 @@ export class BenchmarkTest {
         env: { CI: 'true' },
         name: 'Benchmark',
         needs: ['benchmark'],
-        permissions: {},
+        permissions: {
+          idToken: JobPermission.WRITE,
+        },
         runsOn: ['ubuntu-latest'],
         steps: [
           {
             name: 'Output Summary',
+            id: 'output_summary',
             run: [
               'node <<"EOF"',
               'const fs = require("node:fs");',
+              '',
+              `const outputFilePath = process.env.GITHUB_OUTPUT;`,
               '',
               'const results = ${{ toJSON(needs.benchmark.outputs) }};',
               'console.debug(results);',
@@ -110,11 +116,33 @@ export class BenchmarkTest {
               'const pre = (s) => `\\`${s}\\``;',
               'for (const [compiler, { min, max, avg, stddev }] of Object.entries(stats).sort(([, l], [, r]) => l.avg - r.avg)) {',
               '  summary.push([compiler, pre(ms.format(min)), pre(ms.format(avg)), pre(ms.format(max)), pre(dec.format(stddev)), pre(`${dec.format(avg / fastest)}x`)].join(" | "));',
+              `  const key = 'duration-' + compiler;`,
+              `  const value = avg;`,
+              '',
+              '  fs.appendFileSync(outputFilePath, `${key}=${value}\n`)',
               '}',
               'summary.push("");',
               '',
               'fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, summary.join("\\n"), "utf-8");',
               'EOF',
+            ].join('\n'),
+          },
+          {
+            name: 'Authenticate Via OIDC Role',
+            uses: 'aws-actions/configure-aws-credentials@v4',
+            with: {
+              'aws-region': 'us-east-1',
+              'role-duration-seconds': 900,
+              'role-to-assume': 'arn:aws:iam::590183883712:role/Ops-jsiiTeamOIDC-Role1ABCC5F0-jL37v7e7I15P',
+              'role-session-name': 'github-diff-action@cdk-ops',
+              'output-credentials': true,
+            },
+          },
+          {
+            name: 'Publish Metrics',
+            run: [
+              'aws cloudwatch put-metric-data --metric-name TSC-average --namespace JsiiPerformance --value ${{ steps.output_summary.outputs.duration-tsc }}',
+              'aws cloudwatch put-metric-data --metric-name JSII-average --namespace JsiiPerformance --value ${{ steps.output_summary.outputs.duration-jsii }}',
             ].join('\n'),
           },
         ],
