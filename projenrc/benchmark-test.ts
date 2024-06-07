@@ -69,11 +69,30 @@ export class BenchmarkTest {
         env: { CI: 'true' },
         name: 'Benchmark',
         needs: ['benchmark'],
-        permissions: {},
+        // outputs: {
+        //   'duration-jsii': {
+        //     value: '${{ steps.duration-jsii.outputs.duration }}',
+        //   },
+        //   'duration-tsc': {
+        //     description: 'Duration of tsc benchmark',
+        //     value: '${{ steps.duration-tsc.outputs.duration }}',
+        //   },
+        // },
+        // }
+        // Object.fromEntries(
+        //   indices.flatMap((idx) => [
+        //     [`duration-jsii`, { stepId: 'run', outputName: `jsii-${idx}` }],
+        //     [`duration-tsc`, { stepId: 'run', outputName: `tsc-${idx}` }],
+        //   ]),
+        // ),
+        permissions: {
+          idToken: JobPermission.WRITE,
+        },
         runsOn: ['ubuntu-latest'],
         steps: [
           {
             name: 'Output Summary',
+            id: 'output_summary',
             run: [
               'node <<"EOF"',
               'const fs = require("node:fs");',
@@ -113,7 +132,7 @@ export class BenchmarkTest {
               'const pre = (s) => `\\`${s}\\``;',
               'for (const [compiler, { min, max, avg, stddev }] of Object.entries(stats).sort(([, l], [, r]) => l.avg - r.avg)) {',
               '  summary.push([compiler, pre(ms.format(min)), pre(ms.format(avg)), pre(ms.format(max)), pre(dec.format(stddev)), pre(`${dec.format(avg / fastest)}x`)].join(" | "));',
-              `  const key = 'test-duration-' + compiler;`,
+              `  const key = 'duration-' + compiler;`,
               `  const value = pre(ms.format(avg));`,
               '',
               '  fs.appendFileSync(outputFilePath, `${key}=${value}\n`)',
@@ -124,17 +143,6 @@ export class BenchmarkTest {
               'EOF',
             ].join('\n'),
           },
-        ],
-      },
-      benchmark_metrics: {
-        env: { CI: 'true' },
-        name: 'Publich Benchmark Metrics',
-        needs: ['benchmark_summary'],
-        permissions: {
-          idToken: JobPermission.WRITE,
-        },
-        runsOn: ['ubuntu-latest'],
-        steps: [
           {
             name: 'Authenticate Via OIDC Role',
             uses: 'aws-actions/configure-aws-credentials@v4',
@@ -149,12 +157,41 @@ export class BenchmarkTest {
           {
             name: 'Publish Metrics',
             run: [
-              'aws cloudwatch put-metric-data --metric-name tsc-benchmark-time-test --namespace JsiiPerformance --value ${{ needs.benchmark_summary.outputs.test-duration-tsc }}',
-              'aws cloudwatch put-metric-data --metric-name jsii-benchmark-time-test --namespace JsiiPerformance --value ${{ needs.benchmark_summary.outputs.test-duration-jsii }}',
+              'aws cloudwatch put-metric-data --metric-name tsc-benchmark-time-test --namespace JsiiPerformance --value ${{ steps.output_summary.outputs.duration-tsc }}',
+              'aws cloudwatch put-metric-data --metric-name jsii-benchmark-time-test --namespace JsiiPerformance --value ${{ steps.output_summary.outputs.duration-jsii }}',
             ].join('\n'),
           },
         ],
       },
+      // benchmark_metrics: {
+      //   env: { CI: 'true' },
+      //   name: 'Publich Benchmark Metrics',
+      //   needs: ['benchmark_summary'],
+      //   permissions: {
+      //     idToken: JobPermission.WRITE,
+      //   },
+      //   runsOn: ['ubuntu-latest'],
+      //   steps: [
+      //     {
+      //       name: 'Authenticate Via OIDC Role',
+      //       uses: 'aws-actions/configure-aws-credentials@v4',
+      //       with: {
+      //         'aws-region': 'us-east-1',
+      //         'role-duration-seconds': 900,
+      //         'role-to-assume': 'arn:aws:iam::590183883712:role/Ops-jsiiTeamOIDC-Role1ABCC5F0-jL37v7e7I15P',
+      //         'role-session-name': 'github-diff-action@cdk-ops',
+      //         'output-credentials': true,
+      //       },
+      //     },
+      //     {
+      //       name: 'Publish Metrics',
+      //       run: [
+      //         'aws cloudwatch put-metric-data --metric-name tsc-benchmark-time-test --namespace JsiiPerformance --value ${{ needs.benchmark_summary.outputs.test-duration-tsc }}',
+      //         'aws cloudwatch put-metric-data --metric-name jsii-benchmark-time-test --namespace JsiiPerformance --value ${{ needs.benchmark_summary.outputs.test-duration-jsii }}',
+      //       ].join('\n'),
+      //     },
+      //   ],
+      // },
     });
   }
 }
