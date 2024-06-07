@@ -423,5 +423,5 @@ jobs:
           output-credentials: true
       - name: Publish Metrics
         run: |-
-          aws cloudwatch put-metric-data --metric-name tsc-benchmark-time-test --namespace JsiiPerformance --value ${{ steps.output_summary.outputs.duration-tsc }}
-          aws cloudwatch put-metric-data --metric-name jsii-benchmark-time-test --namespace JsiiPerformance --value ${{ steps.output_summary.outputs.duration-jsii }}
+          aws cloudwatch put-metric-data --metric-name TSC-average --namespace JsiiPerformance --value ${{ steps.output_summary.outputs.duration-tsc }}
+          aws cloudwatch put-metric-data --metric-name JSII-average --namespace JsiiPerformance --value ${{ steps.output_summary.outputs.duration-jsii }}
