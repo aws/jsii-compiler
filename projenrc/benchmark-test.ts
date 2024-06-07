@@ -133,7 +133,7 @@ export class BenchmarkTest {
               'for (const [compiler, { min, max, avg, stddev }] of Object.entries(stats).sort(([, l], [, r]) => l.avg - r.avg)) {',
               '  summary.push([compiler, pre(ms.format(min)), pre(ms.format(avg)), pre(ms.format(max)), pre(dec.format(stddev)), pre(`${dec.format(avg / fastest)}x`)].join(" | "));',
               `  const key = 'duration-' + compiler;`,
-              `  const value = pre(ms.format(avg));`,
+              `  const value = avg;`,
               '',
               '  fs.appendFileSync(outputFilePath, `${key}=${value}\n`)',
               '}',
