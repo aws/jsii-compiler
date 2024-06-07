@@ -149,8 +149,8 @@ export class BenchmarkTest {
           {
             name: 'Publish Metrics',
             run: [
-              'aws cloudwatch put-metric-data --metric-name tsc-benchmark-time-test --namespace JsiiPerformance --value ${{ needs.benchmark-summary.outputs.test-duration-tsc }}',
-              'aws cloudwatch put-metric-data --metric-name jsii-benchmark-time-test --namespace JsiiPerformance --value ${{ needs.benchmark-summary.outputs.test-duration-jsii }}',
+              'aws cloudwatch put-metric-data --metric-name tsc-benchmark-time-test --namespace JsiiPerformance --value ${{ needs.benchmark_summary.outputs.test-duration-tsc }}',
+              'aws cloudwatch put-metric-data --metric-name jsii-benchmark-time-test --namespace JsiiPerformance --value ${{ needs.benchmark_summary.outputs.test-duration-jsii }}',
             ].join('\n'),
           },
         ],
