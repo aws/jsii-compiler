@@ -267,6 +267,7 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     permissions:
+      id-token: write
       contents: read
     outputs:
       jsii-0: ${{ steps.run.outputs.jsii-0 }}
@@ -298,6 +299,7 @@ jobs:
       jsii-13: ${{ steps.run.outputs.jsii-13 }}
       tsc-13: ${{ steps.run.outputs.tsc-13 }}
       jsii-14: ${{ steps.run.outputs.jsii-14 }}
+        id-token: write #
       tsc-14: ${{ steps.run.outputs.tsc-14 }}
       jsii-15: ${{ steps.run.outputs.jsii-15 }}
       tsc-15: ${{ steps.run.outputs.tsc-15 }}
