@@ -34,7 +34,7 @@ export function ACTIONS_SETUP_NODE(
 ): github.workflows.JobStep {
   return {
     name: 'Setup Node.js',
-    uses: 'actions/setup-node@v3',
+    uses: 'actions/setup-node@v4',
     with: {
       'cache': cache || undefined,
       'node-version': nodeVersion,

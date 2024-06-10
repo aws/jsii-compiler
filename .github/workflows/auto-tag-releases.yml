@@ -21,10 +21,10 @@ jobs:
           repository: ${{ github.repository }}
           ref: ${{ github.ref }}
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           cache: yarn
-          node-version: 18.12.0
+          node-version: "18"
       - name: Install dependencies
         run: yarn install --frozen-lockfile
       - name: Build
@@ -45,10 +45,10 @@ jobs:
           token: ${{ secrets.PROJEN_GITHUB_TOKEN }}
           ref: ${{ needs.pre-flight.outputs.sha }}
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           cache: yarn
-          node-version: 18.12.0
+          node-version: "18"
       - name: Install dependencies
         run: yarn install --frozen-lockfile
       - name: Set git identity
