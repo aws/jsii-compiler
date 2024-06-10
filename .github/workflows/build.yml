@@ -418,6 +418,7 @@ jobs:
           fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, summary.join("\n"), "utf-8");
           EOF
       - name: Authenticate Via OIDC Role
+        if: github.ref == 'refs/heads/main'
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-region: us-east-1
@@ -426,6 +427,7 @@ jobs:
           role-session-name: github-diff-action@cdk-ops
           output-credentials: true
       - name: Publish Metrics
+        if: github.ref == 'refs/heads/main'
         run: |-
           aws cloudwatch put-metric-data --metric-name TSC-average --namespace JsiiPerformance --value ${{ steps.output_summary.outputs.duration-tsc }}
           aws cloudwatch put-metric-data --metric-name JSII-average --namespace JsiiPerformance --value ${{ steps.output_summary.outputs.duration-jsii }}
