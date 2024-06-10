@@ -103,6 +103,7 @@ const project = new typescript.TypeScriptProject({
   buildWorkflow: false, // We have our own build workflow (need matrix test)
   release: false, // We have our own release workflow
   defaultReleaseBranch: 'main',
+  workflowNodeVersion: 'lts/*', // upgrade workflows should run on latest lts version
 
   autoApproveUpgrades: true,
   autoApproveOptions: {
