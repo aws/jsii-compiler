@@ -22,6 +22,8 @@ export class ReleaseWorkflow {
 
     release.on({ push: { tags: ['v*.*.*'] } });
 
+    const nodeVersion = project.minNodeVersion?.split('.', 1).at(0) ?? 'lts/*';
+
     const releasePackageName = 'release-package';
     const publishTarget = 'publish-target';
     const federateToAwsStep: github.workflows.JobStep = {
@@ -52,7 +54,7 @@ export class ReleaseWorkflow {
       runsOn: ['ubuntu-latest'],
       steps: [
         ACTIONS_CHECKOUT(),
-        ACTIONS_SETUP_NODE(project.minNodeVersion),
+        ACTIONS_SETUP_NODE(nodeVersion),
         YARN_INSTALL(),
         {
           name: 'Prepare Release',
@@ -212,7 +214,7 @@ export class ReleaseWorkflow {
           ...ACTIONS_SETUP_NODE(),
           with: {
             'always-auth': true,
-            'node-version': project.minNodeVersion,
+            'node-version': nodeVersion,
             'registry-url': `https://registry.npmjs.org/`,
           },
         },
@@ -337,6 +339,7 @@ interface AutoTagWorkflowProps {
 
 class AutoTagWorkflow {
   public constructor(project: typescript.TypeScriptProject, name: string, props: AutoTagWorkflowProps) {
+    const nodeVersion = project.minNodeVersion?.split('.', 1).at(0) ?? 'lts/*';
     const workflow = project.github!.addWorkflow(name);
     workflow.runName = props.runName;
     workflow.on({
@@ -362,7 +365,7 @@ class AutoTagWorkflow {
       permissions: { contents: github.workflows.JobPermission.READ },
       steps: [
         ACTIONS_CHECKOUT(props.branch),
-        ACTIONS_SETUP_NODE(project.minNodeVersion),
+        ACTIONS_SETUP_NODE(nodeVersion),
         YARN_INSTALL(),
         { name: 'Build', run: 'yarn build' },
         { id: 'git', name: 'Identify git SHA', run: 'echo sha=$(git rev-parse HEAD) >> $GITHUB_OUTPUT' },
@@ -375,7 +378,7 @@ class AutoTagWorkflow {
       permissions: {},
       steps: [
         ACTIONS_CHECKOUT('${{ needs.pre-flight.outputs.sha }}', { token: '${{ secrets.PROJEN_GITHUB_TOKEN }}' }),
-        ACTIONS_SETUP_NODE(project.minNodeVersion),
+        ACTIONS_SETUP_NODE(nodeVersion),
         YARN_INSTALL(),
         {
           name: 'Set git identity',
