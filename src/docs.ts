@@ -201,7 +201,7 @@ export function splitSummary(docBlock: string | undefined): [string | undefined,
  * Replace newlines with spaces for use in tables
  */
 function noNewlines(s: string) {
-  return s.replace(/\n/g, ' ');
+  return s.replace(/\r?\n/g, ' ');
 }
 
 function endWithPeriod(s: string) {
