@@ -170,6 +170,28 @@ describe(Compiler, () => {
         rmSync(sourceDir, { force: true, recursive: true });
       }
     });
+
+    test('can resolve project references', () => {
+      const sourceDir = mkdtempSync(join(tmpdir(), 'jsii-compiler-project-refs'));
+
+      writeFileSync(join(sourceDir, 'index.ts'), 'export class MarkerA {}');
+      writeFileSync(join(sourceDir, 'README.md'), '# Test Package');
+      const compiler = new Compiler({
+        projectInfo: {
+          ..._makeProjectInfo(sourceDir, 'index.d.ts'),
+          packageJson: {
+            dependencies: {
+              'jsii-calc': '*',
+            },
+          },
+        },
+        projectReferences: true,
+      });
+
+      const result = compiler.emit();
+      expect(result.diagnostics).toEqual([]);
+      expect(result.emitSkipped).toBe(false);
+    });
   });
 
   describe('user-provided tsconfig', () => {
