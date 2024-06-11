@@ -1,7 +1,8 @@
-import { mkdirSync, existsSync, mkdtempSync, rmSync, writeFileSync, readFileSync } from 'node:fs';
+import { mkdirSync, existsSync, mkdtempSync, rmSync, writeFileSync, readFileSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { loadAssemblyFromPath, SPEC_FILE_NAME, SPEC_FILE_NAME_COMPRESSED } from '@jsii/spec';
+import { compile, Lock } from './fixtures';
 import { Compiler } from '../src/compiler';
 import { TYPES_COMPAT } from '../src/downlevel-dts';
 import { ProjectInfo } from '../src/project-info';
@@ -169,6 +170,59 @@ describe(Compiler, () => {
       } finally {
         rmSync(sourceDir, { force: true, recursive: true });
       }
+    });
+
+    describe('project references', () => {
+      let lock: Lock | undefined;
+
+      beforeAll(async () => {
+        lock = await Lock.acquire();
+      }, 120_000);
+
+      afterAll(async () => {
+        await lock?.release();
+        lock = undefined;
+      }, 120_000);
+
+      test('can resolve project references', async () => {
+        const sourceDir = mkdtempSync(join(tmpdir(), 'jsii-compiler-project-refs'));
+
+        // link the composite package
+        const fixture = '@fixtures/jsii-composite';
+        const fixtureLocation = compile(lock!, fixture, false);
+        const linkLocation = join(sourceDir, 'node_modules', fixture);
+        mkdirSync(dirname(linkLocation), { recursive: true });
+        symlinkSync(fixtureLocation, linkLocation, 'dir');
+
+        // Add some files to the parent project
+        writeFileSync(join(sourceDir, 'index.ts'), 'export class MarkerA {}');
+        writeFileSync(join(sourceDir, 'README.md'), '# Test Package');
+
+        const compiler = new Compiler({
+          projectInfo: {
+            ..._makeProjectInfo(sourceDir, 'index.d.ts'),
+            packageJson: {
+              devDependencies: {
+                '@fixtures/jsii-composite': '*',
+              },
+            },
+          },
+          projectReferences: true,
+        });
+
+        compiler.emit();
+
+        expect(JSON.parse(readFileSync(join(sourceDir, 'tsconfig.json'), 'utf-8'))).toMatchObject({
+          compilerOptions: {
+            composite: true,
+          },
+          references: [
+            {
+              path: expect.stringMatching('fixtures/@fixtures/jsii-composite'),
+            },
+          ],
+        });
+      }, 120_000);
     });
   });
 

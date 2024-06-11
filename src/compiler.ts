@@ -81,7 +81,6 @@ export class Compiler implements Emitter {
     const configFileName = options.typeScriptConfig ?? options.generateTypeScriptConfig ?? 'tsconfig.json';
     this.configPath = path.join(this.projectRoot, configFileName);
     this.userProvidedTypeScriptConfig = Boolean(options.typeScriptConfig);
-    this.tsconfig = this.configureTypeScript();
 
     this.system = {
       ...ts.sys,
@@ -99,6 +98,7 @@ export class Compiler implements Emitter {
         ts.sys.writeFile(path.resolve(this.projectRoot, pth), data, writeByteOrderMark),
     };
 
+    this.tsconfig = this.configureTypeScript();
     this.compilerHost = ts.createIncrementalCompilerHost(this.tsconfig.compilerOptions, this.system);
   }
 
