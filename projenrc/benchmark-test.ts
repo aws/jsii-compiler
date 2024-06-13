@@ -8,6 +8,7 @@ import * as tar from 'tar';
 import * as ts from 'typescript';
 import * as yargs from 'yargs';
 import { ACTIONS_SETUP_NODE, YARN_INSTALL } from './common';
+import { SUPPORT_POLICY } from './support';
 
 export class BenchmarkTest {
   public constructor(
@@ -20,6 +21,8 @@ export class BenchmarkTest {
       exec: 'ts-node ./projenrc/benchmark-test.ts',
       receiveArgs: true,
     });
+
+    const jsiiVersion = SUPPORT_POLICY.current;
 
     const iterations = 20;
     const indices = Array.from({ length: iterations }, (_, idx) => idx);
@@ -149,6 +152,10 @@ export class BenchmarkTest {
               'aws cloudwatch put-metric-data --metric-name TSC-average --namespace JsiiPerformance --value ${{ steps.output_summary.outputs.duration-tsc }}',
               'aws cloudwatch put-metric-data --metric-name JSII-average --namespace JsiiPerformance --value ${{ steps.output_summary.outputs.duration-jsii }}',
               'aws cloudwatch put-metric-data --metric-name JSII-slowdown --namespace JsiiPerformance --value ${{ steps.output_summary.outputs.jsii-slowdown }}',
+              'aws cloudwatch put-metric-data --metric-name JSII-average --namespace JsiiPerformance --value ${{ steps.output_summary.outputs.duration-jsii }} ' +
+                `--dimensions JsiiVersion=${jsiiVersion}`,
+              'aws cloudwatch put-metric-data --metric-name JSII-slowdown --namespace JsiiPerformance --value ${{ steps.output_summary.outputs.jsii-slowdown }} ' +
+                `--dimensions JsiiVersion=${jsiiVersion}`,
             ].join('\n'),
           },
         ],
