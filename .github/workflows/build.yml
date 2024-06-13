@@ -432,3 +432,5 @@ jobs:
           aws cloudwatch put-metric-data --metric-name TSC-average --namespace JsiiPerformance --value ${{ steps.output_summary.outputs.duration-tsc }}
           aws cloudwatch put-metric-data --metric-name JSII-average --namespace JsiiPerformance --value ${{ steps.output_summary.outputs.duration-jsii }}
           aws cloudwatch put-metric-data --metric-name JSII-slowdown --namespace JsiiPerformance --value ${{ steps.output_summary.outputs.jsii-slowdown }}
+          aws cloudwatch put-metric-data --metric-name JSII-average --namespace JsiiPerformance --value ${{ steps.output_summary.outputs.duration-jsii }} --dimensions JsiiVersion=5.4
+          aws cloudwatch put-metric-data --metric-name JSII-slowdown --namespace JsiiPerformance --value ${{ steps.output_summary.outputs.jsii-slowdown }} --dimensions JsiiVersion=5.4
