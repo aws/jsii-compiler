@@ -154,8 +154,7 @@ export class BenchmarkTest {
           {
             name: 'Publish Metrics',
             //if: `github.event.repository.fork == false && github.ref == 'refs/heads/main'`,
-            run: `|-
-            aws cloudwatch put-metric-data --namespace JsiiPerformance --metric-data '[
+            run: `aws cloudwatch put-metric-data --namespace JsiiPerformance --metric-data '[
               {
                 "MetricName": "TSC-average",
                 "Value": \${{steps.output_summary.outputs.duration-tsc}}
