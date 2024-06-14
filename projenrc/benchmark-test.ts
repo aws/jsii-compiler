@@ -183,7 +183,7 @@ export class BenchmarkTest {
                 "Dimensions": [
                   {
                     "Name": "JsiiVersion",
-                    "Value": ${jsiiVersion}
+                    "Value": "${jsiiVersion}"
                   }
                 ]
               },
@@ -193,7 +193,7 @@ export class BenchmarkTest {
                 "Dimensions": [
                   {
                     "Name": "JsiiVersion",
-                    "Value": ${jsiiVersion}
+                    "Value": "${jsiiVersion}"
                   }
                 ]
               }
