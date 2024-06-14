@@ -149,7 +149,6 @@ export class BenchmarkTest {
             name: 'Get TSC version',
             id: 'get_tsc_version',
             if: `github.event.repository.fork == false && github.ref == 'refs/heads/main'`,
-            uses: 'aws-actions/configure-aws-credentials@v4',
             run: `echo "TSC_VERSION=$(tsc --version | awk '{print $2}')" >> $GITHUB_ENV`,
           },
           {
