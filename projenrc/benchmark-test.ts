@@ -146,17 +146,61 @@ export class BenchmarkTest {
             },
           },
           {
+            name: 'Get TSC version',
+            id: 'get_tsc_version',
+            if: `github.event.repository.fork == false && github.ref == 'refs/heads/main'`,
+            uses: 'aws-actions/configure-aws-credentials@v4',
+            run: `echo "TSC_VERSION=$(tsc --version | awk '{print $2}')" >> $GITHUB_ENV`,
+          },
+          {
             name: 'Publish Metrics',
             if: `github.event.repository.fork == false && github.ref == 'refs/heads/main'`,
-            run: [
-              'aws cloudwatch put-metric-data --metric-name TSC-average --namespace JsiiPerformance --value ${{ steps.output_summary.outputs.duration-tsc }}',
-              'aws cloudwatch put-metric-data --metric-name JSII-average --namespace JsiiPerformance --value ${{ steps.output_summary.outputs.duration-jsii }}',
-              'aws cloudwatch put-metric-data --metric-name JSII-slowdown --namespace JsiiPerformance --value ${{ steps.output_summary.outputs.jsii-slowdown }}',
-              'aws cloudwatch put-metric-data --metric-name JSII-average --namespace JsiiPerformance --value ${{ steps.output_summary.outputs.duration-jsii }} ' +
-                `--dimensions JsiiVersion=${jsiiVersion}`,
-              'aws cloudwatch put-metric-data --metric-name JSII-slowdown --namespace JsiiPerformance --value ${{ steps.output_summary.outputs.jsii-slowdown }} ' +
-                `--dimensions JsiiVersion=${jsiiVersion}`,
-            ].join('\n'),
+            run: `
+            |-
+            aws cloudwatch put-metric-data --namespace JsiiPerformance --metric-data '[
+              {
+                "MetricName": "TSC-average",
+                "Value": \${{steps.output_summary.outputs.duration-tsc}}
+              },
+              {
+                "MetricName": "JSII-average",
+                "Value": \${{steps.output_summary.outputs.duration-jsii}}
+              },
+              {
+                "MetricName": "JSII-slowdown",
+                "Value": \${{steps.output_summary.outputs.jsii-slowdown}}
+              },
+              {
+                "MetricName": "TSC-average",
+                "Value": \${{steps.output_summary.outputs.duration-tsc}},
+                "Dimensions": [
+                  {
+                    "Name": "TscVersion",
+                    "Value": "\${{ env.TSC_VERSION }}"
+                  }
+                ]
+              },
+              {
+                "MetricName": "JSII-average",
+                "Value": \${{steps.output_summary.outputs.duration-jsii}},
+                "Dimensions": [
+                  {
+                    "Name": "JsiiVersion",
+                    "Value": ${jsiiVersion}
+                  }
+                ]
+              },
+              {
+                "MetricName": "JSII-slowdown",
+                "Value": \${{steps.output_summary.outputs.jsii-slowdown}},
+                "Dimensions": [
+                  {
+                    "Name": "JsiiVersion",
+                    "Value": ${jsiiVersion}
+                  }
+                ]
+              }
+            ]'`,
           },
         ],
       },
