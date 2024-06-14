@@ -429,9 +429,8 @@ jobs:
         id: get_tsc_version
         run: echo "TSC_VERSION=$(tsc --version | awk '{print $2}')" >> $GITHUB_ENV
       - name: Publish Metrics
-        run: |2-
-          
-                      |-
+        run: |-
+          |-
                       aws cloudwatch put-metric-data --namespace JsiiPerformance --metric-data '[
                         {
                           "MetricName": "TSC-average",
