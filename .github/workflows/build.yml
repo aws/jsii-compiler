@@ -418,7 +418,6 @@ jobs:
           fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, summary.join("\n"), "utf-8");
           EOF
       - name: Authenticate Via OIDC Role
-        if: github.event.repository.fork == false && github.ref == 'refs/heads/main'
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-region: us-east-1
@@ -428,10 +427,8 @@ jobs:
           output-credentials: true
       - name: Get TSC version
         id: get_tsc_version
-        if: github.event.repository.fork == false && github.ref == 'refs/heads/main'
         run: echo "TSC_VERSION=$(tsc --version | awk '{print $2}')" >> $GITHUB_ENV
       - name: Publish Metrics
-        if: github.event.repository.fork == false && github.ref == 'refs/heads/main'
         run: |2-
           
                       |-
