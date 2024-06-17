@@ -146,10 +146,13 @@ export class BenchmarkTest {
             },
           },
           {
-            name: 'Get TSC version',
-            id: 'get_tsc_version',
+            name: 'Get version line',
+            id: 'version',
             if: `github.event.repository.fork == false && github.ref == 'refs/heads/main'`,
-            run: `echo "TSC_VERSION=$(tsc --version | awk '{print $2}')" >> $GITHUB_ENV`,
+            run: [
+              `VERSION=$(node -p "require('./lib/version.js').RELEASE_LINE")`,
+              'echo "release-line=${RESULT}" >> $GITHUB_OUTPUT',
+            ].join('\n'),
           },
           {
             name: 'Publish Metrics',
@@ -173,7 +176,8 @@ export class BenchmarkTest {
                 "Dimensions": [
                   {
                     "Name": "TscVersion",
-                    "Value": "\${{ env.TSC_VERSION }}"
+                    "Value": "\${{ steps.version.outputs.release-line }}
+                    "
                   }
                 ]
               },
@@ -183,7 +187,7 @@ export class BenchmarkTest {
                 "Dimensions": [
                   {
                     "Name": "JsiiVersion",
-                    "Value": "${jsiiVersion}"
+                    "Value": "\${{ steps.version.outputs.release-line }}"
                   }
                 ]
               },
@@ -193,7 +197,8 @@ export class BenchmarkTest {
                 "Dimensions": [
                   {
                     "Name": "JsiiVersion",
-                    "Value": "${jsiiVersion}"
+                    "Value": "\${{ steps.version.outputs.release-line }}
+                    "
                   }
                 ]
               }
