@@ -426,10 +426,12 @@ jobs:
           role-to-assume: arn:aws:iam::590183883712:role/Ops-jsiiTeamOIDC-Role1ABCC5F0-jL37v7e7I15P
           role-session-name: github-diff-action@cdk-ops
           output-credentials: true
-      - name: Get TSC version
-        id: get_tsc_version
+      - name: Get version line
+        id: version
         if: github.event.repository.fork == false && github.ref == 'refs/heads/main'
-        run: echo "TSC_VERSION=$(tsc --version | awk '{print $2}')" >> $GITHUB_ENV
+        run: |-
+          VERSION=$(node -p "require('./lib/version.js').RELEASE_LINE")
+          echo "release-line=${RESULT}" >> $GITHUB_OUTPUT
       - name: Publish Metrics
         if: github.event.repository.fork == false && github.ref == 'refs/heads/main'
         run: |-
@@ -452,7 +454,8 @@ jobs:
                           "Dimensions": [
                             {
                               "Name": "TscVersion",
-                              "Value": "${{ env.TSC_VERSION }}"
+                              "Value": "${{ steps.version.outputs.release-line }}
+                              "
                             }
                           ]
                         },
@@ -462,7 +465,7 @@ jobs:
                           "Dimensions": [
                             {
                               "Name": "JsiiVersion",
-                              "Value": "5.4"
+                              "Value": "${{ steps.version.outputs.release-line }}"
                             }
                           ]
                         },
@@ -472,7 +475,8 @@ jobs:
                           "Dimensions": [
                             {
                               "Name": "JsiiVersion",
-                              "Value": "5.4"
+                              "Value": "${{ steps.version.outputs.release-line }}
+                              "
                             }
                           ]
                         }

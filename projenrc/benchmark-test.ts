@@ -8,7 +8,6 @@ import * as tar from 'tar';
 import * as ts from 'typescript';
 import * as yargs from 'yargs';
 import { ACTIONS_SETUP_NODE, YARN_INSTALL } from './common';
-import { SUPPORT_POLICY } from './support';
 
 export class BenchmarkTest {
   public constructor(
@@ -21,8 +20,6 @@ export class BenchmarkTest {
       exec: 'ts-node ./projenrc/benchmark-test.ts',
       receiveArgs: true,
     });
-
-    const jsiiVersion = SUPPORT_POLICY.current;
 
     const iterations = 20;
     const indices = Array.from({ length: iterations }, (_, idx) => idx);
