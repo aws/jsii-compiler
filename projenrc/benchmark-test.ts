@@ -146,7 +146,7 @@ export class BenchmarkTest {
             name: 'Get version line',
             // Gets the current JSII/TSC version line, stripping the patch release number.
             id: 'version',
-            if: `github.event.repository.fork == false && github.ref == 'refs/heads/main'`,
+            //if: `github.event.repository.fork == false && github.ref == 'refs/heads/main'`,
             run: [
               `VERSION=$(tsc --version | awk '{print $2}' | awk -F. '{print $1"."$2}')`,
               'echo $VERSION',
