@@ -148,6 +148,7 @@ export class BenchmarkTest {
             if: `github.event.repository.fork == false && github.ref == 'refs/heads/main'`,
             run: [
               `VERSION=$(node -p "require('./lib/version.js').RELEASE_LINE")`,
+              'echo $VERSION',
               'echo "release-line=${RESULT}" >> $GITHUB_OUTPUT',
             ].join('\n'),
           },
