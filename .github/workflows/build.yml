@@ -429,9 +429,9 @@ jobs:
       - name: Get version line
         id: version
         run: |-
-          VERSION=$(node -p "require('./lib/version.js').RELEASE_LINE")
+          VERSION=$(tsc --version | awk '{print $2}' | awk -F. '{print $1"."$2}')
           echo $VERSION
-          echo "release-line=${RESULT}" >> $GITHUB_OUTPUT
+          echo "release-line=$VERSION" >> $GITHUB_ENV
       - name: Publish Metrics
         if: github.event.repository.fork == false && github.ref == 'refs/heads/main'
         run: |-
