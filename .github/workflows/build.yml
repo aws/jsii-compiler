@@ -428,6 +428,7 @@ jobs:
           output-credentials: true
       - name: Get version line
         id: version
+        if: github.event.repository.fork == false && github.ref == 'refs/heads/main'
         run: |-
           VERSION=$(tsc --version | awk '{print $2}' | awk -F. '{print $1"."$2}')
           echo $VERSION
