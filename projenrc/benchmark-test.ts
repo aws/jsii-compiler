@@ -149,7 +149,7 @@ export class BenchmarkTest {
             run: [
               `VERSION=$(node -p "require('./lib/version.js').RELEASE_LINE")`,
               'echo $VERSION',
-              'echo "release-line=${RESULT}" >> $GITHUB_OUTPUT',
+              'echo "release-line=${VERSION}" >> $GITHUB_OUTPUT',
             ].join('\n'),
           },
           {
