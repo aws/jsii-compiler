@@ -175,7 +175,7 @@ export class BenchmarkTest {
                 "Dimensions": [
                   {
                     "Name": "TscVersion",
-                    "Value": "\${{ steps.version.outputs.release-line }}
+                    "Value": "\${{ env.release-line }}
                     "
                   }
                 ]
@@ -186,7 +186,7 @@ export class BenchmarkTest {
                 "Dimensions": [
                   {
                     "Name": "JsiiVersion",
-                    "Value": "\${{ steps.version.outputs.release-line }}"
+                    "Value": "\${{ env.release-line }}"
                   }
                 ]
               },
@@ -196,7 +196,7 @@ export class BenchmarkTest {
                 "Dimensions": [
                   {
                     "Name": "JsiiVersion",
-                    "Value": "\${{ steps.version.outputs.release-line }}
+                    "Value": "\${{ env.release-line }}
                     "
                   }
                 ]
