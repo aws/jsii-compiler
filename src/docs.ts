@@ -227,7 +227,7 @@ const SUMMARY_MAX_WORDS = 20;
  * long, we'll take the first sentence (terminated by a punctuation).
  */
 function summaryLine(str: string) {
-  const paras = str.split('\n\n');
+  const paras = str.split(/(\r?\n){2}/);
   if (paras.length > 1 && paras[0].split(' ').length < SUMMARY_MAX_WORDS) {
     return paras[0];
   }
