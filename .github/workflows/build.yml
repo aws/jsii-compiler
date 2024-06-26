@@ -455,8 +455,7 @@ jobs:
                           "Dimensions": [
                             {
                               "Name": "TscVersion",
-                              "Value": "${{ env.release-line }}
-                              "
+                              "Value": "${{ env.release-line }}"
                             }
                           ]
                         },
@@ -476,8 +475,7 @@ jobs:
                           "Dimensions": [
                             {
                               "Name": "JsiiVersion",
-                              "Value": "${{ env.release-line }}
-                              "
+                              "Value": "${{ env.release-line }}"
                             }
                           ]
                         }
