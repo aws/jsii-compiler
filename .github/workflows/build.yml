@@ -15,6 +15,7 @@ jobs:
       contents: read
     outputs:
       self-mutation-needed: ${{ steps.self-mutation.outputs.needed }}
+      release-line: ${{ steps.version.outputs.release-line }}
     env:
       CI: "true"
     steps:
@@ -69,6 +70,11 @@ jobs:
             ${{ github.workspace }}/dist/private
             !${{ github.workspace }}/node_modules
             !${{ github.workspace }}/fixtures/node_modules
+      - name: Version Line
+        id: version
+        run: |-
+          VERSION=$(node -p "require('./lib/version.js').RELEASE_LINE")
+          echo "release-line=${VERSION}" >> $GITHUB_OUTPUT
   self-mutation:
     needs: build
     runs-on: ubuntu-latest
@@ -355,7 +361,9 @@ jobs:
           - 19
   benchmark_summary:
     name: Benchmark
-    needs: benchmark
+    needs:
+      - benchmark
+      - build
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -426,13 +434,6 @@ jobs:
           role-to-assume: arn:aws:iam::590183883712:role/Ops-jsiiTeamOIDC-Role1ABCC5F0-jL37v7e7I15P
           role-session-name: github-diff-action@cdk-ops
           output-credentials: true
-      - name: Get version line
-        id: version
-        if: github.event.repository.fork == false && github.ref == 'refs/heads/main'
-        run: |-
-          VERSION=$(tsc --version | awk '{print $2}' | awk -F. '{print $1"."$2}')
-          echo $VERSION
-          echo "release-line=$VERSION" >> $GITHUB_ENV
       - name: Publish Metrics
         if: github.event.repository.fork == false && github.ref == 'refs/heads/main'
         run: |-
@@ -455,7 +456,7 @@ jobs:
                           "Dimensions": [
                             {
                               "Name": "TscVersion",
-                              "Value": "${{ env.release-line }}"
+                              "Value": "${{ needs.build.outputs.release-line }}"
                             }
                           ]
                         },
@@ -465,7 +466,7 @@ jobs:
                           "Dimensions": [
                             {
                               "Name": "JsiiVersion",
-                              "Value": "${{ env.release-line }}"
+                              "Value": "${{ needs.build.outputs.release-line }}"
                             }
                           ]
                         },
@@ -475,7 +476,7 @@ jobs:
                           "Dimensions": [
                             {
                               "Name": "JsiiVersion",
-                              "Value": "${{ env.release-line }}"
+                              "Value": "${{ needs.build.outputs.release-line }}}"
                             }
                           ]
                         }

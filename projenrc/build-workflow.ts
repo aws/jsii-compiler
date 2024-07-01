@@ -50,6 +50,10 @@ export class BuildWorkflow {
             stepId: 'self-mutation',
             outputName: 'needed',
           },
+          'release-line': {
+            stepId: 'version',
+            outputName: 'release-line',
+          },
         },
         permissions: { contents: github.workflows.JobPermission.READ },
         runsOn: ['ubuntu-latest'],
@@ -116,6 +120,14 @@ export class BuildWorkflow {
                 '!${{ github.workspace }}/fixtures/node_modules',
               ].join('\n'),
             },
+          },
+          {
+            name: 'Version Line',
+            id: 'version',
+            run: [
+              `VERSION=$(node -p "require('./lib/version.js').RELEASE_LINE")`,
+              'echo "release-line=${VERSION}" >> $GITHUB_OUTPUT',
+            ].join('\n'),
           },
         ],
       },
