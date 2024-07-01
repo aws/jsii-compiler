@@ -436,7 +436,7 @@ jobs:
           output-credentials: true
       - name: Test version line
         id: version
-        run: echo ${{ needs.build.outputs.release-line }}"
+        run: echo "${{ needs.build.outputs.release-line }}"
       - name: Publish Metrics
         if: github.event.repository.fork == false && github.ref == 'refs/heads/main'
         run: |-

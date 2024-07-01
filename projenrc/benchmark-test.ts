@@ -147,7 +147,7 @@ export class BenchmarkTest {
             // Gets the current JSII/TSC version line, stripping the patch release number.
             id: 'version',
             // if: `github.event.repository.fork == false && github.ref == 'refs/heads/main'`,
-            run: ['echo ${{ needs.build.outputs.release-line }}"'].join('\n'),
+            run: ['echo "${{ needs.build.outputs.release-line }}"'].join('\n'),
           },
           {
             name: 'Publish Metrics',
