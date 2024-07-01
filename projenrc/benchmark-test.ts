@@ -143,13 +143,6 @@ export class BenchmarkTest {
             },
           },
           {
-            name: 'Test version line',
-            // Gets the current JSII/TSC version line, stripping the patch release number.
-            id: 'version',
-            // if: `github.event.repository.fork == false && github.ref == 'refs/heads/main'`,
-            run: ['echo "${{ needs.build.outputs.release-line }}"'].join('\n'),
-          },
-          {
             name: 'Publish Metrics',
             if: `github.event.repository.fork == false && github.ref == 'refs/heads/main'`,
             run: `aws cloudwatch put-metric-data --namespace JsiiPerformance --metric-data '[

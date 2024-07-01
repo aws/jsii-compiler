@@ -434,9 +434,6 @@ jobs:
           role-to-assume: arn:aws:iam::590183883712:role/Ops-jsiiTeamOIDC-Role1ABCC5F0-jL37v7e7I15P
           role-session-name: github-diff-action@cdk-ops
           output-credentials: true
-      - name: Test version line
-        id: version
-        run: echo "${{ needs.build.outputs.release-line }}"
       - name: Publish Metrics
         if: github.event.repository.fork == false && github.ref == 'refs/heads/main'
         run: |-
