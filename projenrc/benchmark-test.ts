@@ -68,7 +68,7 @@ export class BenchmarkTest {
       benchmark_summary: {
         env: { CI: 'true' },
         name: 'Benchmark',
-        needs: ['benchmark'],
+        needs: ['benchmark', 'build'],
         permissions: {
           idToken: JobPermission.WRITE,
         },
@@ -143,15 +143,11 @@ export class BenchmarkTest {
             },
           },
           {
-            name: 'Get version line',
+            name: 'Test version line',
             // Gets the current JSII/TSC version line, stripping the patch release number.
             id: 'version',
-            if: `github.event.repository.fork == false && github.ref == 'refs/heads/main'`,
-            run: [
-              `VERSION=$(tsc --version | awk '{print $2}' | awk -F. '{print $1"."$2}')`,
-              'echo $VERSION',
-              'echo "release-line=$VERSION" >> $GITHUB_ENV',
-            ].join('\n'),
+            // if: `github.event.repository.fork == false && github.ref == 'refs/heads/main'`,
+            run: ['echo ${{ needs.build.outputs.release-line }}"'].join('\n'),
           },
           {
             name: 'Publish Metrics',
@@ -175,7 +171,7 @@ export class BenchmarkTest {
                 "Dimensions": [
                   {
                     "Name": "TscVersion",
-                    "Value": "\${{ env.release-line }}"
+                    "Value": "\${{ needs.build.outputs.release-line }}"
                   }
                 ]
               },
@@ -185,7 +181,7 @@ export class BenchmarkTest {
                 "Dimensions": [
                   {
                     "Name": "JsiiVersion",
-                    "Value": "\${{ env.release-line }}"
+                    "Value": "\${{ needs.build.outputs.release-line }}"
                   }
                 ]
               },
@@ -195,7 +191,7 @@ export class BenchmarkTest {
                 "Dimensions": [
                   {
                     "Name": "JsiiVersion",
-                    "Value": "\${{ env.release-line }}"
+                    "Value": "\${{ needs.build.outputs.release-line }}}"
                   }
                 ]
               }
