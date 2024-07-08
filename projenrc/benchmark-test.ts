@@ -184,7 +184,7 @@ export class BenchmarkTest {
                 "Dimensions": [
                   {
                     "Name": "JsiiVersion",
-                    "Value": "\${{ needs.build.outputs.release-line }}}"
+                    "Value": "\${{ needs.build.outputs.release-line }}"
                   }
                 ]
               }
