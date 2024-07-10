@@ -132,7 +132,7 @@ export class BenchmarkTest {
           },
           {
             name: 'Authenticate Via OIDC Role',
-            if: `github.event.repository.fork == false && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/maintenance/v))`,
+            if: `github.event.repository.fork == false && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/maintenance/v'))`,
             uses: 'aws-actions/configure-aws-credentials@v4',
             with: {
               'aws-region': 'us-east-1',
@@ -144,7 +144,7 @@ export class BenchmarkTest {
           },
           {
             name: 'Publish Metrics',
-            if: `github.event.repository.fork == false && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/maintenance/v))`,
+            if: `github.event.repository.fork == false && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/maintenance/v'))`,
             run: `aws cloudwatch put-metric-data --namespace JsiiPerformance --metric-data '[
               {
                 "MetricName": "TSC-average",
