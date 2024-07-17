@@ -12,8 +12,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-    outputs:
-      self-mutation-needed: ${{ steps.self-mutation.outputs.needed }}
     env:
       CI: "true"
     steps:
@@ -42,23 +40,6 @@ jobs:
         run: npx projen && npx projen pre-compile && npx projen compile && npx projen post-compile
       - name: Test
         run: npx projen test
-      - name: Find mutations
-        id: self-mutation
-        run: |-
-          git add .
-          git diff --cached --patch --exit-code > .repo.patch || echo "needed=true" >> $GITHUB_OUTPUT
-      - name: Upload patch
-        if: steps.self-mutation.outputs.needed
-        uses: actions/upload-artifact@v3
-        with:
-          name: .repo.patch
-          path: .repo.patch
-      - name: Fail if self-mutation is needed
-        if: steps.self-mutation.outputs.needed
-        run: |-
-          echo "::error::Files were changed during build (see build log). If this was triggered from a fork, you will need to update your branch."
-          cat .repo.patch
-          exit 1
       - name: Upload artifact
         uses: actions/upload-artifact@v3
         with:
@@ -68,37 +49,6 @@ jobs:
             ${{ github.workspace }}/dist/private
             !${{ github.workspace }}/node_modules
             !${{ github.workspace }}/fixtures/node_modules
-  self-mutation:
-    needs: build
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    env:
-      CI: "true"
-    if: always() && (github.event_name == 'pull_request') && needs.build.outputs.self-mutation-needed && (github.event.pull_request.head.repo.full_name == github.repository)
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-        with:
-          ref: ${{ github.event.pull_request.head.ref }}
-          repository: ${{ github.event.pull_request.head.repo.full_name }}
-          token: ${{ secrets.PROJEN_GITHUB_TOKEN }}
-      - name: Download patch
-        uses: actions/download-artifact@v3
-        with:
-          name: .repo.patch
-          path: ${{ runner.temp }}
-      - name: Apply patch
-        run: '[ -s ${{ runner.temp }}/.repo.patch ] && git apply ${{ runner.temp }}/.repo.patch || echo "Empty patch. Skipping."'
-      - name: Set git identity
-        run: |-
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
-      - name: Push changes
-        run: |-
-          git add .
-          git commit -s -m "chore: self-mutation"
-          git push origin HEAD:${{ github.event.pull_request.head.ref }}
   matrix-test:
     name: test (node ${{ matrix.node-version }})
     needs: build
