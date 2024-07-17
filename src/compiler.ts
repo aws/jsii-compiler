@@ -223,6 +223,8 @@ export class Compiler implements Emitter {
     return this._consumeProgram(prog.getProgram(), this.compilerHost.getDefaultLibLocation());
   }
 
+  // asdfasdfasdf
+
   private _consumeProgram(program: ts.Program, stdlib: string): ts.EmitResult {
     const diagnostics = [...ts.getPreEmitDiagnostics(program)];
     let hasErrors = false;
