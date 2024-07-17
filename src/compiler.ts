@@ -220,6 +220,8 @@ export class Compiler implements Emitter {
       host: this.compilerHost,
     });
 
+    // asdfasdfasdf
+
     return this._consumeProgram(prog.getProgram(), this.compilerHost.getDefaultLibLocation());
   }
 
