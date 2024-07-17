@@ -225,6 +225,8 @@ export class Compiler implements Emitter {
 
   ///// asdfasdfasdf
 
+  ///// asdfasdfasdfasdf
+
   private _consumeProgram(program: ts.Program, stdlib: string): ts.EmitResult {
     const diagnostics = [...ts.getPreEmitDiagnostics(program)];
     let hasErrors = false;
