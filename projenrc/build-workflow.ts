@@ -232,7 +232,18 @@ export class BuildWorkflow {
         needs: ['matrix-test'],
         permissions: {},
         runsOn: ['ubuntu-latest'],
-        steps: [{ name: 'Done', run: 'echo OK' }],
+        if: 'always()',
+        steps: [
+          {
+            name: 'Build result',
+            run: 'echo ${{needs.matrix-test.result}}',
+          },
+          {
+            if: "${{ needs.matrix-test.result != 'success' }}",
+            name: 'Set status based on matrix build',
+            run: 'exit 1',
+          },
+        ],
       },
       'package': {
         env: { CI: 'true' },
