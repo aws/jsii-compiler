@@ -141,9 +141,13 @@ jobs:
     permissions: {}
     env:
       CI: "true"
+    if: always()
     steps:
-      - name: Done
-        run: echo OK
+      - name: Build result
+        run: echo ${{needs.matrix-test.result}}
+      - name: Set status based on matrix build
+        if: ${{ needs.matrix-test.result != 'success' }}
+        run: exit 1
   package:
     name: package
     needs: build
