@@ -49,3 +49,23 @@ describe('rule sets', () => {
     );
   });
 });
+
+describe('ruleset: strict', () => {
+  test('can set outDir', () => {
+    const validator = new TypeScriptConfigValidator(TypeScriptConfigValidationRuleSet.STRICT);
+    validator.validate({
+      compilerOptions: {
+        outDir: 'lib',
+
+        // minimal stuff to pass test
+        strict: true,
+        target: 'es2022' as any,
+        lib: ['es2022'],
+        module: 'node16' as any,
+        esModuleInterop: true,
+        skipLibCheck: true,
+        noEmitOnError: true,
+      },
+    });
+  });
+});
