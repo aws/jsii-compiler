@@ -4,7 +4,7 @@ import { Match, RuleSet } from '../validator';
 // This is an internal rule set, that may be used by other rule sets.
 // We accept all value for these
 const jsiiConfiguredOptions = new RuleSet();
-jsiiConfiguredOptions.shouldPass('outdir', Match.ANY);
+jsiiConfiguredOptions.shouldPass('outDir', Match.ANY);
 jsiiConfiguredOptions.shouldPass('rootDir', Match.ANY);
 jsiiConfiguredOptions.shouldPass('forceConsistentCasingInFileNames', Match.ANY);
 jsiiConfiguredOptions.shouldPass('declarationMap', Match.ANY);
