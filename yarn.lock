@@ -988,9 +988,9 @@
     graceful-fs "4.2.10"
 
 "@pnpm/npm-conf@^2.1.0":
-  version "2.2.2"
-  resolved "https://registry.yarnpkg.com/@pnpm/npm-conf/-/npm-conf-2.2.2.tgz#0058baf1c26cbb63a828f0193795401684ac86f0"
-  integrity sha512-UA91GwWPhFExt3IizW6bOeY/pQ0BkuNwKjk9iQW9KqxluGCrg4VenZ0/L+2Y0+ZOtme72EVvg6v0zo3AMQRCeA==
+  version "2.3.0"
+  resolved "https://registry.yarnpkg.com/@pnpm/npm-conf/-/npm-conf-2.3.0.tgz#c687bd4eecd16347e197db3bfe7e28b12aa80bfd"
+  integrity sha512-DqrO+oXGR7HCuicNy6quk6ALJSDDPKI7RZz1bP5im8mSL8J2e+9w26LdkjuAfpAjOutYUJVbnXnx4IbTQeIgfw==
   dependencies:
     "@pnpm/config.env-replace" "^1.1.0"
     "@pnpm/network.ca-file" "^1.0.1"
@@ -1857,9 +1857,9 @@ camelcase@^7.0.1:
   integrity sha512-xlx1yCK2Oc1APsPXDL2LdlNP6+uu8OCDdhOBSVT279M/S+y75O30C2VuD8T2ogdePBBl7PfPF4504tnLgX3zfw==
 
 caniuse-lite@^1.0.30001646:
-  version "1.0.30001646"
-  resolved "https://registry.yarnpkg.com/caniuse-lite/-/caniuse-lite-1.0.30001646.tgz#d472f2882259ba032dd73ee069ff01bfd059b25d"
-  integrity sha512-dRg00gudiBDDTmUhClSdv3hqRfpbOnU28IpI1T6PBTLWa+kOj0681C8uML3PifYfREuBrVjDGhL3adYpBT6spw==
+  version "1.0.30001647"
+  resolved "https://registry.yarnpkg.com/caniuse-lite/-/caniuse-lite-1.0.30001647.tgz#56d58c5a4ef72913a4465f9766af895a4ead0165"
+  integrity sha512-n83xdNiyeNcHpzWY+1aFbqCK7LuLfBricc4+alSQL2Xb6OR3XpnQAmlDG+pQcdTfiHRuLcQ96VOfrPSGiNJYSg==
 
 case@^1.6.3:
   version "1.6.3"
@@ -6424,9 +6424,9 @@ typedarray-to-buffer@^3.1.5:
     is-typedarray "^1.0.0"
 
 typescript@next:
-  version "5.6.0-dev.20240802"
-  resolved "https://registry.yarnpkg.com/typescript/-/typescript-5.6.0-dev.20240802.tgz#e1bc3608d960151ddfa7dafb22852dbebad1d101"
-  integrity sha512-aPQg1SL05JivtUdMmXq3BBa9NqhNbDvOlDPXvCf3K+kZ5jkxDdf2El6BLEkkzxkWOczoxma8l40ppGsC6pF40A==
+  version "5.6.0-dev.20240804"
+  resolved "https://registry.yarnpkg.com/typescript/-/typescript-5.6.0-dev.20240804.tgz#937a91e7de129b3257bf9896d2d6dea3aaf20c5c"
+  integrity sha512-ceiGncJ10hB9IgD3BxGc5e9Ug+4a/JVQKZFQR+ctQGzktWKH/vUZZNwg+PadUipPk/EH4WLFUc7infEUCNOtLQ==
 
 typescript@~3.9.10:
   version "3.9.10"
