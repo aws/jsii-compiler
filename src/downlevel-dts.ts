@@ -15,7 +15,7 @@ import { main as downlevel } from 'downlevel-dts';
 import * as log4js from 'log4js';
 import { SemVer } from 'semver';
 import * as ts from 'typescript';
-import type { PackageJson, ProjectInfo } from './project-info';
+import type { PackageJson } from './project-info';
 import type { Mutable } from './utils';
 
 export const TYPES_COMPAT = '.types-compat';
@@ -39,14 +39,14 @@ const DOWNLEVEL_BREAKPOINTS: readonly SemVer[] = ['3.9'].map((ver) => new SemVer
 
 /**
  * Produces down-leveled declaration files to ensure compatibility with previous
- * compiler releases (macthing TypeScript's `major.minor` versioning scheme).
+ * compiler releases (matching TypeScript's `major.minor` versioning scheme).
  * This is necessary in order to ensure a package change compiler release lines
  * does not force all it's consumers to do the same (and vice-versa).
  *
  * @returns the `typesVersions` object that should be recorded in `package.json`
  */
-export function emitDownleveledDeclarations({ packageJson, projectRoot, tsc }: ProjectInfo) {
-  const compatRoot = join(projectRoot, ...(tsc?.outDir != null ? [tsc?.outDir] : []), TYPES_COMPAT);
+export function emitDownleveledDeclarations(projectRoot: string, packageJson: PackageJson, outDir?: string) {
+  const compatRoot = join(projectRoot, ...(outDir != null ? [outDir] : []), TYPES_COMPAT);
   rmSync(compatRoot, { force: true, recursive: true });
 
   const rewrites = new Set<`${number}.${number}`>();
@@ -65,8 +65,8 @@ export function emitDownleveledDeclarations({ packageJson, projectRoot, tsc }: P
     const workdir = mkdtempSync(join(tmpdir(), `downlevel-dts-${breakpoint}-${basename(projectRoot)}-`));
     try {
       downlevel(projectRoot, workdir, breakpoint.version);
-      const projectOutDir = tsc?.outDir != null ? join(projectRoot, tsc.outDir) : projectRoot;
-      const workOutDir = tsc?.outDir != null ? join(workdir, tsc.outDir) : workdir;
+      const projectOutDir = outDir != null ? join(projectRoot, outDir) : projectRoot;
+      const workOutDir = outDir != null ? join(workdir, outDir) : workdir;
       for (const dts of walkDirectory(workOutDir)) {
         const original = readFileSync(join(projectOutDir, dts), 'utf-8');
         const downleveledPath = join(workOutDir, dts);
@@ -106,8 +106,10 @@ export function emitDownleveledDeclarations({ packageJson, projectRoot, tsc }: P
           copyFileSync(downleveledPath, rewritten);
         }
       }
+    } catch (error) {
+      LOG.error(error);
     } finally {
-      // Clean up after outselves...
+      // Clean up after ourselves...
       rmSync(workdir, { force: true, recursive: true });
     }
   }
@@ -117,8 +119,8 @@ export function emitDownleveledDeclarations({ packageJson, projectRoot, tsc }: P
   for (const version of rewrites) {
     // Register the type redirect in the typesVersions configuration
     typesVersions ??= {};
-    const from = [...(tsc?.outDir != null ? [tsc?.outDir] : []), '*'].join('/');
-    const to = [...(tsc?.outDir != null ? [tsc?.outDir] : []), TYPES_COMPAT, `ts${version}`, '*'].join('/');
+    const from = [...(outDir != null ? [outDir] : []), '*'].join('/');
+    const to = [...(outDir != null ? [outDir] : []), TYPES_COMPAT, `ts${version}`, '*'].join('/');
     // We put 2 candidate redirects (first match wins), so that it works for nested imports, too (see: https://github.com/microsoft/TypeScript/issues/43133)
     typesVersions[`<=${version}`] = { [from]: [to, `${to}/index.d.ts`] };
   }
