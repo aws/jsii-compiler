@@ -474,6 +474,7 @@ function tsconfigForNode18Strict() {
       skipLibCheck: true,
       noEmitOnError: true,
       moduleResolution: 'node16',
+      declaration: true,
     },
     exclude: ['node_modules', TYPES_COMPAT],
     include: [join('**', '*.ts')],
