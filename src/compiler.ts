@@ -8,6 +8,7 @@ import { Assembler } from './assembler';
 import { findDependencyDirectory } from './common/find-utils';
 import { emitDownleveledDeclarations, TYPES_COMPAT } from './downlevel-dts';
 import { Emitter } from './emitter';
+import { normalizeConfigPath } from './helpers';
 import { JsiiDiagnostic } from './jsii-diagnostic';
 import { ProjectInfo } from './project-info';
 import { WARNINGSCODE_FILE_NAME } from './transforms/deprecation-warnings';
@@ -314,7 +315,12 @@ export class Compiler implements Emitter {
     }
 
     if (!hasErrors) {
-      emitDownleveledDeclarations(this.options.projectInfo);
+      emitDownleveledDeclarations(
+        this.projectRoot,
+        this.options.projectInfo.packageJson,
+        // outDir might be absolute. Need to normalize it.
+        normalizeConfigPath(this.projectRoot, this.tsconfig.compilerOptions.outDir),
+      );
     }
 
     // Some extra validation on the config.
@@ -359,6 +365,9 @@ export class Compiler implements Emitter {
     }
 
     const pi = this.options.projectInfo;
+    const configDir = path.dirname(this.configPath);
+    const absoluteTypesCompat = path.resolve(configDir, pi.tsc?.outDir ?? '.', TYPES_COMPAT);
+    const relativeTypesCompat = path.relative(configDir, absoluteTypesCompat);
 
     return {
       compilerOptions: {
@@ -372,7 +381,7 @@ export class Compiler implements Emitter {
       include: [pi.tsc?.rootDir != null ? path.join(pi.tsc.rootDir, '**', '*.ts') : path.join('**', '*.ts')],
       exclude: [
         'node_modules',
-        pi.tsc?.outDir != null ? path.resolve(pi.tsc.outDir, TYPES_COMPAT) : TYPES_COMPAT,
+        relativeTypesCompat,
         ...(pi.excludeTypescript ?? []),
         ...(pi.tsc?.outDir != null &&
         (pi.tsc?.rootDir == null || path.resolve(pi.tsc.outDir).startsWith(path.resolve(pi.tsc.rootDir) + path.sep))
