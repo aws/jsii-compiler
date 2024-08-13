@@ -326,3 +326,18 @@ export class TestWorkspace {
 
 // Alias for backwards compatibility
 export type PackageInfo = PackageJson;
+
+/**
+ * TSConfig paths can either be relative to the project or absolute.
+ * This function normalizes paths to be relative to the provided root.
+ * After normalization, code using these paths can be much simpler.
+ *
+ * @param root the project root
+ * @param pathToNormalize the path to normalize, might be empty
+ */
+export function normalizeConfigPath(root: string, pathToNormalize?: string): string | undefined {
+  if (pathToNormalize == null || !path.isAbsolute(pathToNormalize)) {
+    return pathToNormalize;
+  }
+  return path.relative(root, pathToNormalize);
+}
