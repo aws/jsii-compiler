@@ -6,5 +6,6 @@ const incompatibleOptions = new RuleSet();
 incompatibleOptions.shouldFail('noEmit', Match.TRUE);
 incompatibleOptions.shouldFail('noLib', Match.TRUE);
 incompatibleOptions.shouldFail('declaration', Match.FALSE);
+incompatibleOptions.shouldFail('emitDeclarationOnly', Match.TRUE);
 
 export default incompatibleOptions;
