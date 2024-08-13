@@ -65,6 +65,7 @@ describe('ruleset: strict', () => {
         esModuleInterop: true,
         skipLibCheck: true,
         noEmitOnError: true,
+        declaration: true,
       },
     });
   });

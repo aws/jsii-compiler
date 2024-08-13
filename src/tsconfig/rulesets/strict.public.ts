@@ -30,6 +30,7 @@ strict.shouldPass('esModuleInterop', Match.TRUE);
 strict.shouldPass('skipLibCheck', Match.TRUE);
 strict.shouldPass('stripInternal', Match.optional(Match.FALSE));
 strict.shouldPass('noEmitOnError', Match.TRUE);
+strict.shouldPass('declaration', Match.TRUE);
 
 // Deprecated ts options that should not be used with jsii
 strict.import(deprecatedOptions);
