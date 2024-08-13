@@ -13,6 +13,7 @@ import { symbolIdentifier } from './common/symbol-id';
 import { Directives } from './directives';
 import { getReferencedDocParams, parseSymbolDocumentation, TypeSystemHints } from './docs';
 import { Emitter } from './emitter';
+import { normalizeConfigPath } from './helpers';
 import { JsiiDiagnostic } from './jsii-diagnostic';
 import * as literate from './literate';
 import * as bindings from './node-bindings';
@@ -102,7 +103,8 @@ export class Assembler implements Emitter {
 
     // If out-of-source build was configured (tsc's outDir and rootDir), the
     // main file's path needs to be re-rooted from the outDir into the rootDir.
-    const tscOutDir = program.getCompilerOptions().outDir;
+    // outDir might be also be absolute, so we need to normalize it.
+    const tscOutDir = normalizeConfigPath(projectInfo.projectRoot, program.getCompilerOptions().outDir);
     if (tscOutDir != null) {
       mainFile = path.relative(tscOutDir, mainFile);
 
