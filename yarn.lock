@@ -21,9 +21,9 @@
     "@octokit/plugin-rest-endpoint-methods" "^5.13.0"
 
 "@actions/http-client@^2.0.1":
-  version "2.2.1"
-  resolved "https://registry.yarnpkg.com/@actions/http-client/-/http-client-2.2.1.tgz#ed3fe7a5a6d317ac1d39886b0bb999ded229bb38"
-  integrity sha512-KhC/cZsq7f8I4LfZSJKgCvEwfkE8o1538VoBeoGzokVLLnbFDEAdFD3UhoMklxo2un9NJVBdANOresx7vTHlHw==
+  version "2.2.2"
+  resolved "https://registry.yarnpkg.com/@actions/http-client/-/http-client-2.2.2.tgz#4fd561ee9b5b8ebf74cf09cc6c596a677337e382"
+  integrity sha512-2TvX5LskKQzDDQI+bobIDGAjkn0NJiQlg4MTrKnZ8HfQ7nDEUbtJ1ytxPDb2bfk3Hr2XD99X8oAJISAmIoiSAQ==
   dependencies:
     tunnel "^0.0.6"
     undici "^5.25.4"
@@ -1221,11 +1221,11 @@
   integrity sha512-K0VQKziLUWkVKiRVrx4a40iPaxTUefQmjtkQofBkYRcoaaL/8rhwDWww9qWbrgicNOgnpIsMxyNIUM4+n6dUIA==
 
 "@types/node@*":
-  version "22.3.0"
-  resolved "https://registry.yarnpkg.com/@types/node/-/node-22.3.0.tgz#7f8da0e2b72c27c4f9bd3cb5ef805209d04d4f9e"
-  integrity sha512-nrWpWVaDZuaVc5X84xJ0vNrLvomM205oQyLsRt7OHNZbSHslcWsvgFR7O7hire2ZonjLrWBbedmotmIlJDVd6g==
+  version "22.4.0"
+  resolved "https://registry.yarnpkg.com/@types/node/-/node-22.4.0.tgz#c295fe1d6f5f58916cc61dbef8cf65b5b9b71de9"
+  integrity sha512-49AbMDwYUz7EXxKU/r7mXOsxwFr4BYbvB7tWYxVuLdb2ibd30ijjXINSMAHiEEZk5PCRBmW1gUeisn2VMKt3cQ==
   dependencies:
-    undici-types "~6.18.2"
+    undici-types "~6.19.2"
 
 "@types/node@^18":
   version "18.19.44"
@@ -2396,9 +2396,9 @@ ejs@^3.1.10:
     jake "^10.8.5"
 
 electron-to-chromium@^1.5.4:
-  version "1.5.7"
-  resolved "https://registry.yarnpkg.com/electron-to-chromium/-/electron-to-chromium-1.5.7.tgz#425d2a7f76ecfa564fdca1040d11fb1979851f3c"
-  integrity sha512-6FTNWIWMxMy/ZY6799nBlPtF1DFDQ6VQJ7yyDP27SJNt5lwtQ5ufqVvHylb3fdQefvRcgA3fKcFMJi9OLwBRNw==
+  version "1.5.10"
+  resolved "https://registry.yarnpkg.com/electron-to-chromium/-/electron-to-chromium-1.5.10.tgz#2791f966880389f96078d5e784b0d500f71abd14"
+  integrity sha512-C3RDERDjrNW262GCRvpoer3a0Ksd66CtgDLxMHhzShQ8fhL4kwnpVXsJPAKg9xJjIROXUbLBrvtOzVAjALMIWA==
 
 emittery@^0.13.1:
   version "0.13.1"
@@ -6448,9 +6448,9 @@ typedarray-to-buffer@^3.1.5:
     is-typedarray "^1.0.0"
 
 typescript@next:
-  version "5.6.0-dev.20240814"
-  resolved "https://registry.yarnpkg.com/typescript/-/typescript-5.6.0-dev.20240814.tgz#55f6eb373301a6fd987e6b70c28bd72f4a73332b"
-  integrity sha512-7N6qhxVbJ3E1LdEZ68/WbvZMwlXp9bErVUs2yNA7XaSVDkg+iAYPM24ba0VeGkpR105+e5gaGhAYShD274qBWQ==
+  version "5.6.0-dev.20240816"
+  resolved "https://registry.yarnpkg.com/typescript/-/typescript-5.6.0-dev.20240816.tgz#8379bca47a0cc4d015f729e1bea55935fd86d285"
+  integrity sha512-q6FNh1r9BcrpYEeblr50Kh7l1G+TZkYHt73Cr0VljCILUYBEyJ4kd6C5MB/cLr6EN9vJaud1CKijp2yl8ZlRuw==
 
 typescript@~3.9.10:
   version "3.9.10"
@@ -6477,10 +6477,10 @@ undici-types@~5.26.4:
   resolved "https://registry.yarnpkg.com/undici-types/-/undici-types-5.26.5.tgz#bcd539893d00b56e964fd2657a4866b221a65617"
   integrity sha512-JlCMO+ehdEIKqlFxk6IfVoAUVmgz7cU7zD/h9XZ0qzeosSHmUJVOzSQvvYSYWXkFXC+IfLKSIffhv0sVZup6pA==
 
-undici-types@~6.18.2:
-  version "6.18.2"
-  resolved "https://registry.yarnpkg.com/undici-types/-/undici-types-6.18.2.tgz#8b678cf939d4fc9ec56be3c68ed69c619dee28b0"
-  integrity sha512-5ruQbENj95yDYJNS3TvcaxPMshV7aizdv/hWYjGIKoANWKjhWNBsr2YEuYZKodQulB1b8l7ILOuDQep3afowQQ==
+undici-types@~6.19.2:
+  version "6.19.6"
+  resolved "https://registry.yarnpkg.com/undici-types/-/undici-types-6.19.6.tgz#e218c3df0987f4c0e0008ca00d6b6472d9b89b36"
+  integrity sha512-e/vggGopEfTKSvj4ihnOLTsqhrKRN3LeO6qSN/GxohhuRv8qH9bNQ4B8W7e/vFL+0XTnmHPB4/kegunZGA4Org==
 
 undici@^5.25.4:
   version "5.28.4"
