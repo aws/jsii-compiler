@@ -11,8 +11,8 @@ import { UpgradeDependencies } from './projenrc/upgrade-dependencies';
 // 1. Fork the current `main` to a maintenance branch:
 //    `git push origin main:maintenance/vx.y` (x.y is the TS version that is about to be replaced by a new release)
 // 2. Add a branch protection rule for the new maintenance branch
-// 3. Edit `support.ts`, maintenance EOL date for the current version is 6 months from
-//    today, make the new version current.
+// 3. Edit `support.ts`, maintenance EOL date for the current version to be 6 months from
+//    today (round up to the mid-point or end of month), make the new version current.
 // 4. Update `minNodeVersion` to the oldest LTS version of Node (i.e. dropping support for EOL versions of Node)
 // 5. `npx projen`
 // 6. Update the version list in the README (remember to remove EOS versions)
