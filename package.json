@@ -81,7 +81,11 @@
     "semver-intersect": "^1.5.0",
     "sort-json": "^2.0.1",
     "spdx-license-list": "^6.9.0",
+<<<<<<< HEAD
     "typescript": "~5.3",
+=======
+    "typescript": "~5.5",
+>>>>>>> b69ed87 (feat: TypeScript 5.5 (#1256))
     "yargs": "^17.7.2"
   },
   "engines": {
