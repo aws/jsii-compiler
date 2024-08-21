@@ -138,55 +138,74 @@ const ruleSets: {
             global: true,
           }),
       async (argv) => {
-        _configureLog4js(argv.verbose);
+        try {
+          _configureLog4js(argv.verbose);
 
-        if (argv['generate-tsconfig'] != null && argv.tsconfig != null) {
-          throw new Error('Options --generate-tsconfig and --tsconfig are mutually exclusive');
-        }
-
-        const projectRoot = path.normalize(path.resolve(process.cwd(), argv.PROJECT_ROOT));
-
-        const { projectInfo, diagnostics: projectInfoDiagnostics } = loadProjectInfo(projectRoot);
-
-        // disable all silenced warnings
-        for (const key of argv['silence-warnings']) {
-          if (!(key in enabledWarnings)) {
-            throw new Error(`Unknown warning type ${key as any}. Must be one of: ${warningTypes.join(', ')}`);
+          if (argv['generate-tsconfig'] != null && argv.tsconfig != null) {
+            throw new utils.JsiiError('Options --generate-tsconfig and --tsconfig are mutually exclusive');
           }
 
-          enabledWarnings[key] = false;
-        }
+          const projectRoot = path.normalize(path.resolve(process.cwd(), argv.PROJECT_ROOT));
 
-        configureCategories(projectInfo.diagnostics ?? {});
+          const { projectInfo, diagnostics: projectInfoDiagnostics } = loadProjectInfo(projectRoot);
 
-        const typeScriptConfig = argv.tsconfig ?? projectInfo.packageJson.jsii?.tsconfig;
-        const validateTypeScriptConfig =
-          (argv['validate-tsconfig'] as TypeScriptConfigValidationRuleSet) ??
-          projectInfo.packageJson.jsii?.validateTsconfig ??
-          TypeScriptConfigValidationRuleSet.STRICT;
+          // disable all silenced warnings
+          for (const key of argv['silence-warnings']) {
+            if (!(key in enabledWarnings)) {
+              throw new utils.JsiiError(
+                `Unknown warning type ${key as any}. Must be one of: ${warningTypes.join(', ')}`,
+              );
+            }
 
-        const compiler = new Compiler({
-          projectInfo,
-          projectReferences: argv['project-references'],
-          failOnWarnings: argv['fail-on-warnings'],
-          stripDeprecated: argv['strip-deprecated'] != null,
-          stripDeprecatedAllowListFile: argv['strip-deprecated'],
-          addDeprecationWarnings: argv['add-deprecation-warnings'],
-          generateTypeScriptConfig: argv['generate-tsconfig'],
-          typeScriptConfig,
-          validateTypeScriptConfig,
-          compressAssembly: argv['compress-assembly'],
-        });
+            enabledWarnings[key] = false;
+          }
 
-        const emitResult = argv.watch ? await compiler.watch() : compiler.emit();
+          configureCategories(projectInfo.diagnostics ?? {});
 
-        const allDiagnostics = [...projectInfoDiagnostics, ...emitResult.diagnostics];
+          const typeScriptConfig = argv.tsconfig ?? projectInfo.packageJson.jsii?.tsconfig;
+          const validateTypeScriptConfig =
+            (argv['validate-tsconfig'] as TypeScriptConfigValidationRuleSet) ??
+            projectInfo.packageJson.jsii?.validateTsconfig ??
+            TypeScriptConfigValidationRuleSet.STRICT;
 
-        for (const diagnostic of allDiagnostics) {
-          utils.logDiagnostic(diagnostic, projectRoot);
-        }
-        if (emitResult.emitSkipped) {
-          process.exitCode = 1;
+          const compiler = new Compiler({
+            projectInfo,
+            projectReferences: argv['project-references'],
+            failOnWarnings: argv['fail-on-warnings'],
+            stripDeprecated: argv['strip-deprecated'] != null,
+            stripDeprecatedAllowListFile: argv['strip-deprecated'],
+            addDeprecationWarnings: argv['add-deprecation-warnings'],
+            generateTypeScriptConfig: argv['generate-tsconfig'],
+            typeScriptConfig,
+            validateTypeScriptConfig,
+            compressAssembly: argv['compress-assembly'],
+          });
+
+          const emitResult = argv.watch ? await compiler.watch() : compiler.emit();
+
+          const allDiagnostics = [...projectInfoDiagnostics, ...emitResult.diagnostics];
+
+          for (const diagnostic of allDiagnostics) {
+            utils.logDiagnostic(diagnostic, projectRoot);
+          }
+          if (emitResult.emitSkipped) {
+            process.exitCode = 1;
+          }
+        } catch (e: unknown) {
+          if (e instanceof utils.JsiiError) {
+            if (e.showHelp) {
+              console.log();
+              yargs.showHelp();
+              console.log();
+            }
+
+            const LOG = log4js.getLogger(utils.CLI_LOGGER);
+            LOG.error(e.message);
+
+            process.exitCode = -1;
+          } else {
+            throw e;
+          }
         }
       },
     )
@@ -212,18 +231,30 @@ function _configureLog4js(verbosity: number) {
         type: 'stderr',
         layout: { type: stderrColor ? 'colored' : 'basic' },
       },
+
       [utils.DIAGNOSTICS]: {
         type: 'stdout',
         layout: {
           type: stdoutColor ? 'messagePassThrough' : ('passThroughNoColor' as any),
         },
       },
+      [utils.CLI_LOGGER]: {
+        type: 'stderr',
+        layout: {
+          type: 'pattern',
+          pattern: stdoutColor ? '%[[%p]%] %m' : '[%p] %m',
+        },
+      },
     },
     categories: {
       default: { appenders: ['console'], level: _logLevel() },
+      [utils.CLI_LOGGER]: {
+        appenders: [utils.CLI_LOGGER],
+        level: _logLevel(),
+      },
       // The diagnostics logger must be set to INFO or more verbose, or watch won't show important messages
       [utils.DIAGNOSTICS]: {
-        appenders: ['diagnostics'],
+        appenders: [utils.DIAGNOSTICS],
         level: _logLevel(Math.max(verbosity, 1)),
       },
     },

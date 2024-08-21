@@ -4,6 +4,10 @@ import * as ts from 'typescript';
 import { JsiiDiagnostic } from './jsii-diagnostic';
 
 /**
+ * Name of the logger for cli errors
+ */
+export const CLI_LOGGER = 'jsii/cli';
+/**
  * Name of the logger for diagnostics information
  */
 export const DIAGNOSTICS = 'diagnostics';
@@ -115,7 +119,7 @@ const PERSON_REGEX = /^\s*(.+?)(?:\s*<([^>]+)>)?(?:\s*\(([^)]+)\))?\s*$/;
 export function parsePerson(value: string) {
   const match = PERSON_REGEX.exec(value);
   if (!match) {
-    throw new Error(`Invalid stringified "person" value: ${value}`);
+    throw new JsiiError(`Invalid stringified "person" value: ${value}`);
   }
   const [, name, email, url] = match;
   const result: { name: string; email?: string; url?: string } = {
@@ -147,7 +151,7 @@ export function parseRepository(value: string): { url: string } {
     case 'gitlab':
       return { url: `https://gitlab.com/${slug}.git` };
     default:
-      throw new Error(`Unknown host service: ${host}`);
+      throw new JsiiError(`Unknown repository hosting service: ${host}`);
   }
 }
 
@@ -163,3 +167,20 @@ export function stripAnsi(x: string): string {
  * Maps the provided type to stip all `readonly` modifiers from its properties.
  */
 export type Mutable<T> = { -readonly [K in keyof T]: Mutable<T[K]> };
+
+/**
+ * Throws an error that is intended as CLI output.
+ */
+export class JsiiError extends Error {
+  /**
+   * An expected error that can be nicely formatted where needed (e.g. in CLI output)
+   * This should only be used for errors that a user can fix themselves.
+   *
+   * @param message The error message to be printed to the user.
+   * @param showHelp Print the help before the error.
+   */
+  constructor(public override readonly message: string, public readonly showHelp = false) {
+    super(message);
+    Object.setPrototypeOf(this, JsiiError.prototype);
+  }
+}
