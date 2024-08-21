@@ -1,5 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { JsiiError } from '../utils';
 
 /**
  * Find a directory up the tree from a starting directory matching a condition
@@ -55,7 +56,7 @@ export function findDependencyDirectory(dependencyName: string, searchStart: str
   const depPkgJsonPath = findPackageJsonUp(dependencyName, path.dirname(entryPoint));
 
   if (!depPkgJsonPath) {
-    throw new Error(`Could not find dependency '${dependencyName}' from '${searchStart}'`);
+    throw new JsiiError(`Could not find dependency '${dependencyName}' from '${searchStart}'`);
   }
 
   return depPkgJsonPath;
