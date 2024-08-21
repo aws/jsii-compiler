@@ -23,6 +23,7 @@ import { DeprecatedRemover } from './transforms/deprecated-remover';
 import { DeprecationWarningsInjector } from './transforms/deprecation-warnings';
 import { RuntimeTypeInfoInjector } from './transforms/runtime-info';
 import { combinedTransformers } from './transforms/utils';
+import { JsiiError } from './utils';
 import { Validator } from './validator';
 import { SHORT_VERSION, VERSION } from './version';
 import { enabledWarnings } from './warnings';
@@ -82,7 +83,7 @@ export class Assembler implements Emitter {
       let allowlistedDeprecations: Set<string> | undefined;
       if (options.stripDeprecatedAllowListFile) {
         if (!fs.existsSync(options.stripDeprecatedAllowListFile)) {
-          throw new Error(`--strip-deprecated file not found: ${options.stripDeprecatedAllowListFile}`);
+          throw new JsiiError(`--strip-deprecated file not found: ${options.stripDeprecatedAllowListFile}`);
         }
         allowlistedDeprecations = new Set<string>(
           fs.readFileSync(options.stripDeprecatedAllowListFile, 'utf8').split('\n'),
@@ -1348,7 +1349,7 @@ export class Assembler implements Emitter {
   private _getTypeFromTypeNode(t: ts.TypeNode) {
     const type = this._typeChecker.getTypeFromTypeNode(t);
     if (isErrorType(type)) {
-      throw new Error(
+      throw new JsiiError(
         `Unable to resolve type: ${t.getFullText()}. This typically happens if something is wrong with your dependency closure.`,
       );
     }
@@ -1484,7 +1485,7 @@ export class Assembler implements Emitter {
       symbol = getSymbolFromDeclaration(decl, this._typeChecker);
     }
     if (!decl || !symbol || !ts.isEnumDeclaration(decl)) {
-      throw new Error(`Unable to resolve enum declaration for ${type.symbol.name}!`);
+      throw new JsiiError(`Unable to resolve enum declaration for ${type.symbol.name}!`);
     }
 
     if (_hasInternalJsDocTag(symbol)) {

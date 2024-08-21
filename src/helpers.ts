@@ -15,7 +15,7 @@ import { DiagnosticCategory } from 'typescript';
 
 import { Compiler, CompilerOptions } from './compiler';
 import { loadProjectInfo, ProjectInfo } from './project-info';
-import { formatDiagnostic } from './utils';
+import { formatDiagnostic, JsiiError } from './utils';
 
 /**
  * A set of source files for `sourceToAssemblyHelper`, at least containing 'index.ts'
@@ -113,7 +113,7 @@ export function compileJsiiForTest(
       // logDiagnostic() doesn't work out of the box, so console.error() it is.
     }
     if (errors.length > 0 || emitResult.emitSkipped) {
-      throw new Error('There were compiler errors');
+      throw new JsiiError('There were compiler errors');
     }
     const assembly = loadAssemblyFromPath(process.cwd(), false);
     const files: Record<string, string> = {};
@@ -280,7 +280,7 @@ export class TestWorkspace {
    */
   public addDependency(dependencyAssembly: HelperCompilationResult) {
     if (this.installed.has(dependencyAssembly.assembly.name)) {
-      throw new Error(
+      throw new JsiiError(
         `A dependency with name '${dependencyAssembly.assembly.name}' was already installed. Give one a different name.`,
       );
     }
@@ -314,7 +314,7 @@ export class TestWorkspace {
 
   public dependencyDir(name: string) {
     if (!this.installed.has(name)) {
-      throw new Error(`No dependency with name '${name}' has been installed`);
+      throw new JsiiError(`No dependency with name '${name}' has been installed`);
     }
     return path.join(this.rootDirectory, 'node_modules', name);
   }

@@ -9,7 +9,7 @@ import * as ts from 'typescript';
 import { findDependencyDirectory } from './common/find-utils';
 import { JsiiDiagnostic } from './jsii-diagnostic';
 import { TypeScriptConfigValidationRuleSet } from './tsconfig';
-import { parsePerson, parseRepository } from './utils';
+import { JsiiError, parsePerson, parseRepository } from './utils';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-require-imports
 const spdx: Set<string> = require('spdx-license-list/simple');
@@ -154,13 +154,15 @@ export function loadProjectInfo(projectRoot: string): ProjectInfoResult {
   for (const name of pkg.bundleDependencies ?? pkg.bundledDependencies ?? []) {
     const version = pkg.dependencies?.[name];
     if (!version) {
-      throw new Error(
+      throw new JsiiError(
         `The "package.json" file has "${name}" in "bundleDependencies", but it is not declared in "dependencies"`,
       );
     }
 
     if (pkg.peerDependencies && name in pkg.peerDependencies) {
-      throw new Error(`The "package.json" file has "${name}" in "bundleDependencies", and also in "peerDependencies"`);
+      throw new JsiiError(
+        `The "package.json" file has "${name}" in "bundleDependencies", and also in "peerDependencies"`,
+      );
     }
 
     bundleDependencies = bundleDependencies ?? {};
@@ -283,7 +285,9 @@ function _guessRepositoryType(url: string): string {
   if (parts?.[1] !== 'http' && parts?.[1] !== 'https') {
     return parts![1];
   }
-  throw new Error(`The "package.json" file must specify the "repository.type" attribute (could not guess from ${url})`);
+  throw new JsiiError(
+    `The "package.json" file must specify the "repository.type" attribute (could not guess from ${url})`,
+  );
 }
 
 function _sourceMapPreferences({ declarationMap, inlineSourceMap, inlineSources, sourceMap }: TSCompilerOptions = {}) {
@@ -335,7 +339,7 @@ class DependencyResolver {
 
       const actualVersion = resolved.dependencyInfo.assembly.version;
       if (!semver.satisfies(actualVersion, declaration)) {
-        throw new Error(
+        throw new JsiiError(
           `Declared dependency on version ${declaration} of ${name}, but version ${actualVersion} was found`,
         );
       }
@@ -371,7 +375,7 @@ class DependencyResolver {
     const { version: versionString, localPackage } = _resolveVersion(declaration, root);
     const version = new semver.Range(versionString);
     if (!version) {
-      throw new Error(`Invalid semver expression for ${name}: ${versionString}`);
+      throw new JsiiError(`Invalid semver expression for ${name}: ${versionString}`);
     }
     const jsiiFile = _tryResolveAssembly(name, localPackage, root);
     LOG.debug(`Resolved dependency ${name} to ${jsiiFile}`);
@@ -406,7 +410,7 @@ class DependencyResolver {
 
 function _required<T>(value: T | undefined, message: string): T {
   if (value == null) {
-    throw new Error(message);
+    throw new JsiiError(message);
   }
   return value;
 }
@@ -443,7 +447,7 @@ function _tryResolveAssembly(mod: string, localPackage: string | undefined, sear
   if (localPackage) {
     const result = findAssemblyFile(localPackage);
     if (!fs.existsSync(result)) {
-      throw new Error(`Assembly does not exist: ${result}`);
+      throw new JsiiError(`Assembly does not exist: ${result}`);
     }
     return result;
   }
@@ -451,7 +455,7 @@ function _tryResolveAssembly(mod: string, localPackage: string | undefined, sear
     const dependencyDir = findDependencyDirectory(mod, searchPath);
     return findAssemblyFile(dependencyDir);
   } catch (e: any) {
-    throw new Error(
+    throw new JsiiError(
       `Unable to locate jsii assembly for "${mod}". If this module is not jsii-enabled, it must also be declared under bundledDependencies: ${e}`,
     );
   }
@@ -459,7 +463,7 @@ function _tryResolveAssembly(mod: string, localPackage: string | undefined, sear
 
 function _validateLicense(id: string | undefined): string {
   if (id == null) {
-    throw new Error(
+    throw new JsiiError(
       'No "license" was specified in "package.json", see valid license identifiers at https://spdx.org/licenses/',
     );
   }
@@ -467,14 +471,16 @@ function _validateLicense(id: string | undefined): string {
     return id;
   }
   if (!spdx.has(id)) {
-    throw new Error(`Invalid license identifier "${id}", see valid license identifiers at https://spdx.org/licenses/`);
+    throw new JsiiError(
+      `Invalid license identifier "${id}", see valid license identifiers at https://spdx.org/licenses/`,
+    );
   }
   return id;
 }
 
 function _validateVersionFormat(format: string): 'short' | 'full' {
   if (format !== 'short' && format !== 'full') {
-    throw new Error(`Invalid jsii.versionFormat "${format}", it must be either "short" or "full" (the default)`);
+    throw new JsiiError(`Invalid jsii.versionFormat "${format}", it must be either "short" or "full" (the default)`);
   }
   return format;
 }
@@ -491,7 +497,9 @@ function _validateStability(stability: string | undefined, deprecated: string | 
     return undefined;
   }
   if (!Object.values(spec.Stability).includes(stability as any)) {
-    throw new Error(`Invalid stability "${stability}", it must be one of ${Object.values(spec.Stability).join(', ')}`);
+    throw new JsiiError(
+      `Invalid stability "${stability}", it must be one of ${Object.values(spec.Stability).join(', ')}`,
+    );
   }
   return stability as spec.Stability;
 }
@@ -501,7 +509,7 @@ function _validateTsconfigRuleSet(ruleSet: string): TypeScriptConfigValidationRu
     return undefined;
   }
   if (!Object.values(TypeScriptConfigValidationRuleSet).includes(ruleSet as any)) {
-    throw new Error(
+    throw new JsiiError(
       `Invalid validateTsconfig "${ruleSet}", it must be one of ${Object.values(TypeScriptConfigValidationRuleSet).join(
         ', ',
       )}`,
@@ -593,7 +601,7 @@ function _loadDiagnostics(entries?: { [key: string]: string }):
         category = ts.DiagnosticCategory.Message;
         break;
       default:
-        throw new Error(`Invalid category '${entries[code]}' for code '${code}'`);
+        throw new JsiiError(`Invalid category '${entries[code]}' for code '${code}'`);
     }
     result[code] = category;
   }
