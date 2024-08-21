@@ -18,5 +18,8 @@ configurableOptions.shouldPass('noUnusedParameters', Match.ANY);
 configurableOptions.shouldPass('resolveJsonModule', Match.ANY);
 configurableOptions.shouldPass('experimentalDecorators', Match.ANY);
 configurableOptions.shouldPass('noFallthroughCasesInSwitch', Match.ANY);
+configurableOptions.shouldPass('verbatimModuleSyntax', Match.ANY);
+configurableOptions.shouldPass('isolatedModules', Match.ANY);
+configurableOptions.shouldPass('isolatedDeclarations', Match.ANY);
 
 export default configurableOptions;
