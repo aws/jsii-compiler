@@ -142,7 +142,7 @@ const ruleSets: {
           _configureLog4js(argv.verbose);
 
           if (argv['generate-tsconfig'] != null && argv.tsconfig != null) {
-            throw new utils.JsiiError('Options --generate-tsconfig and --tsconfig are mutually exclusive');
+            throw new utils.JsiiError('Options --generate-tsconfig and --tsconfig are mutually exclusive', true);
           }
 
           const projectRoot = path.normalize(path.resolve(process.cwd(), argv.PROJECT_ROOT));
