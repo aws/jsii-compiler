@@ -22,6 +22,7 @@ import * as ts from 'typescript';
 
 import { JsiiDiagnostic } from '../jsii-diagnostic';
 import * as bindings from '../node-bindings';
+import { JsiiError } from '../utils';
 
 export class DeprecatedRemover {
   private readonly transformations = new Array<Transformation>();
@@ -361,7 +362,7 @@ class Transformation {
   ) {
     return new Transformation(typeChecker, node, (declaration) => {
       if (!ts.isClassDeclaration(declaration) && !ts.isInterfaceDeclaration(declaration)) {
-        throw new Error(
+        throw new JsiiError(
           `Expected a ClassDeclaration or InterfaceDeclaration, found a ${ts.SyntaxKind[declaration.kind]}`,
         );
       }
@@ -419,7 +420,7 @@ class Transformation {
   ) {
     return new Transformation(typeChecker, node, (declaration) => {
       if (!ts.isClassDeclaration(declaration)) {
-        throw new Error(`Expected a ClassDeclaration, found a ${ts.SyntaxKind[declaration.kind]}`);
+        throw new JsiiError(`Expected a ClassDeclaration, found a ${ts.SyntaxKind[declaration.kind]}`);
       }
       const { typeExpression: newBaseClass, syntheticImport } = Transformation.typeReference(
         baseClass,
@@ -451,7 +452,7 @@ class Transformation {
   public static removeBaseClass(typeChecker: ts.TypeChecker, node: ts.ClassDeclaration) {
     return new Transformation(typeChecker, node, (declaration) => {
       if (!ts.isClassDeclaration(declaration)) {
-        throw new Error(`Expected a ClassDeclaration, found a ${ts.SyntaxKind[declaration.kind]}`);
+        throw new JsiiError(`Expected a ClassDeclaration, found a ${ts.SyntaxKind[declaration.kind]}`);
       }
       return {
         node: ts.factory.updateClassDeclaration(
@@ -497,7 +498,7 @@ class Transformation {
           ),
         };
       }
-      throw new Error(
+      throw new JsiiError(
         `Expected a ClassDeclaration or InterfaceDeclaration, found a ${ts.SyntaxKind[declaration.kind]}`,
       );
     });
