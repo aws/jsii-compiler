@@ -56,8 +56,4 @@ jobs:
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
       - name: Tag PreRelease
-<<<<<<< HEAD
         run: yarn tag-release --idempotent --no-sign --push --prerelease=dev --release-line=5.3
-=======
-        run: yarn tag-release --idempotent --no-sign --push --prerelease=dev --release-line=5.5
->>>>>>> b69ed87 (feat: TypeScript 5.5 (#1256))

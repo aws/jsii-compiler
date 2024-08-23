@@ -186,11 +186,7 @@
     },
     {
       "name": "typescript",
-<<<<<<< HEAD
       "version": "~5.3",
-=======
-      "version": "~5.5",
->>>>>>> b69ed87 (feat: TypeScript 5.5 (#1256))
       "type": "runtime"
     },
     {

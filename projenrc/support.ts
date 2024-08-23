@@ -2,11 +2,7 @@ import { JsonFile, Project } from 'projen';
 import type { ReleasesDocument } from '../src/support';
 
 export const SUPPORT_POLICY: ReleasesDocument = {
-<<<<<<< HEAD
   current: '5.3',
-=======
-  current: '5.5',
->>>>>>> b69ed87 (feat: TypeScript 5.5 (#1256))
   maintenance: {
     // version: End-of-support date
     '5.0': new Date('2024-01-31'),
