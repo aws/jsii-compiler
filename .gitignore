@@ -59,10 +59,10 @@ jspm_packages/
 !/.github/workflows/release.yml
 !/.github/workflows/auto-tag-dev.yml
 !/.github/workflows/auto-tag-releases.yml
-!/.github/workflows/auto-tag-dev-v5.3.yml
-!/.github/workflows/auto-tag-releases-v5.3.yml
 !/.github/workflows/auto-tag-dev-v5.4.yml
 !/.github/workflows/auto-tag-releases-v5.4.yml
+!/.github/workflows/auto-tag-dev-v5.3.yml
+!/.github/workflows/auto-tag-releases-v5.3.yml
 !/.backportrc.json
 !/.github/workflows/backport.yml
 !/.projenrc.ts
