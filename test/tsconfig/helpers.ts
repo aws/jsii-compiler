@@ -189,7 +189,6 @@ export function fcTsconfig(
     verbatimModuleSyntax: fc.boolean(),
     esModuleInterop: fc.boolean(),
     useDefineForClassFields: fc.boolean(),
-    isolatedDeclarations: fc.boolean(),
   };
 
   // limit to only allowed keys
