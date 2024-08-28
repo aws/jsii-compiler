@@ -64,14 +64,14 @@
     "npm": "^9.9.3",
     "npm-check-updates": "^16",
     "prettier": "^2.8.8",
-    "projen": "^0.86.4",
+    "projen": "^0.86.5",
     "tar": "^6.2.1",
     "ts-jest": "^29.2.5",
     "ts-node": "^10.9.2"
   },
   "dependencies": {
-    "@jsii/check-node": "1.102.0",
-    "@jsii/spec": "^1.102.0",
+    "@jsii/check-node": "1.103.0",
+    "@jsii/spec": "^1.103.0",
     "case": "^1.6.3",
     "chalk": "^4",
     "downlevel-dts": "^0.11.0",
