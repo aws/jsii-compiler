@@ -50,7 +50,7 @@ export class BenchmarkTest {
           ACTIONS_SETUP_NODE(undefined, false),
           {
             name: 'Download artifact',
-            uses: 'actions/download-artifact@v3',
+            uses: 'actions/download-artifact@v4',
             with: { name: artifactName },
           },
           YARN_INSTALL('--check-files'),
