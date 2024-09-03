@@ -51,10 +51,11 @@ jobs:
           git diff --cached --patch --exit-code > .repo.patch || echo "needed=true" >> $GITHUB_OUTPUT
       - name: Upload patch
         if: steps.self-mutation.outputs.needed
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4.3.6
         with:
           name: .repo.patch
           path: .repo.patch
+          overwrite: true
       - name: Fail if self-mutation is needed
         if: steps.self-mutation.outputs.needed
         run: |-
@@ -62,7 +63,7 @@ jobs:
           cat .repo.patch
           exit 1
       - name: Upload artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4.3.6
         with:
           name: build-output
           path: |-
@@ -70,6 +71,7 @@ jobs:
             ${{ github.workspace }}/dist/private
             !${{ github.workspace }}/node_modules
             !${{ github.workspace }}/fixtures/node_modules
+          overwrite: true
       - name: Version Line
         id: version
         run: |-
@@ -91,7 +93,7 @@ jobs:
           repository: ${{ github.event.pull_request.head.repo.full_name }}
           token: ${{ secrets.PROJEN_GITHUB_TOKEN }}
       - name: Download patch
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: .repo.patch
           path: ${{ runner.temp }}
@@ -116,7 +118,7 @@ jobs:
     if: success()
     steps:
       - name: Download artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: build-output
           path: ${{ github.workspace }}
@@ -163,7 +165,7 @@ jobs:
       CI: "true"
     steps:
       - name: Download artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: build-output
           path: ${{ github.workspace }}
@@ -177,10 +179,11 @@ jobs:
       - name: Package
         run: npx projen package
       - name: Upload artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4.3.6
         with:
           name: release-package
           path: ${{ github.workspace }}/dist
+          overwrite: true
   install-test:
     name: Install Test (${{ matrix.runs-on }} | node ${{ matrix.node-version }} | ${{ matrix.package-manager }})
     needs: package
@@ -194,7 +197,7 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
       - name: Download Artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: release-package
           path: ${{ runner.temp }}/release-package
@@ -248,7 +251,7 @@ jobs:
         uses: actions/setup-node@v4
         with: {}
       - name: Download Artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: release-package
           path: ${{ runner.temp }}/release-package
@@ -326,7 +329,7 @@ jobs:
         uses: actions/setup-node@v4
         with: {}
       - name: Download artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: build-output
       - name: Install dependencies
