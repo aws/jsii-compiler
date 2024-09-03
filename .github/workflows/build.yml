@@ -93,7 +93,7 @@ jobs:
           repository: ${{ github.event.pull_request.head.repo.full_name }}
           token: ${{ secrets.PROJEN_GITHUB_TOKEN }}
       - name: Download patch
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: .repo.patch
           path: ${{ runner.temp }}
@@ -118,7 +118,7 @@ jobs:
     if: success()
     steps:
       - name: Download artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: build-output
           path: ${{ github.workspace }}
@@ -165,7 +165,7 @@ jobs:
       CI: "true"
     steps:
       - name: Download artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: build-output
           path: ${{ github.workspace }}
@@ -197,7 +197,7 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
       - name: Download Artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: release-package
           path: ${{ runner.temp }}/release-package
@@ -251,7 +251,7 @@ jobs:
         uses: actions/setup-node@v4
         with: {}
       - name: Download Artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: release-package
           path: ${{ runner.temp }}/release-package
@@ -329,7 +329,7 @@ jobs:
         uses: actions/setup-node@v4
         with: {}
       - name: Download artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: build-output
       - name: Install dependencies

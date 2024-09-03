@@ -118,7 +118,7 @@ export class ReleaseWorkflow {
 
     const downloadArtifactStep: github.workflows.JobStep = {
       name: 'Download artifact',
-      uses: 'actions/download-artifact@v3',
+      uses: 'actions/download-artifact@v4',
       with: {
         name: releasePackageName,
       },
