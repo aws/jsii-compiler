@@ -106,10 +106,11 @@ export class ReleaseWorkflow {
         },
         {
           name: 'Upload artifact',
-          uses: 'actions/upload-artifact@v3',
+          uses: 'actions/upload-artifact@v4.3.6',
           with: {
             name: releasePackageName,
             path: '${{ github.workspace }}/dist',
+            overwrite: true,
           },
         },
       ],

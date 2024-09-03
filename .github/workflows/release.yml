@@ -69,10 +69,11 @@ jobs:
           unset passphrase
           find ${GNUPGHOME} -type f -exec shred --remove {} \;
       - name: Upload artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4.3.6
         with:
           name: release-package
           path: ${{ github.workspace }}/dist
+          overwrite: true
   release-to-github:
     name: Create GitHub Release
     needs: build
