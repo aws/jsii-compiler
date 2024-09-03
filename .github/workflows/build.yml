@@ -70,15 +70,7 @@ jobs:
             ${{ github.workspace }}/dist/private
             !${{ github.workspace }}/node_modules
             !${{ github.workspace }}/fixtures/node_modules
-<<<<<<< HEAD
-=======
           overwrite: true
-      - name: Version Line
-        id: version
-        run: |-
-          VERSION=$(node -p "require('./lib/version.js').RELEASE_LINE")
-          echo "release-line=${VERSION}" >> $GITHUB_OUTPUT
->>>>>>> fa0b0a0 (chore(deps): upgrade projen dependencies (#1299))
   self-mutation:
     needs: build
     runs-on: ubuntu-latest
