@@ -86,10 +86,11 @@ export class BuildWorkflow {
           {
             name: 'Upload patch',
             if: 'steps.self-mutation.outputs.needed',
-            uses: 'actions/upload-artifact@v3',
+            uses: 'actions/upload-artifact@v4.3.6',
             with: {
               name: '.repo.patch',
               path: '.repo.patch',
+              overwrite: true,
             },
           },
           {
@@ -105,7 +106,7 @@ export class BuildWorkflow {
           // Upload artifacts...
           {
             name: 'Upload artifact',
-            uses: 'actions/upload-artifact@v3',
+            uses: 'actions/upload-artifact@v4.3.6',
             with: {
               name: 'build-output',
               path: [
@@ -115,6 +116,7 @@ export class BuildWorkflow {
                 '!${{ github.workspace }}/node_modules',
                 '!${{ github.workspace }}/fixtures/node_modules',
               ].join('\n'),
+              overwrite: true,
             },
           },
         ],
@@ -137,7 +139,7 @@ export class BuildWorkflow {
           },
           {
             name: 'Download patch',
-            uses: 'actions/download-artifact@v3',
+            uses: 'actions/download-artifact@v4',
             with: {
               name: '.repo.patch',
               path: '${{ runner.temp }}',
@@ -186,7 +188,7 @@ export class BuildWorkflow {
         steps: [
           {
             name: 'Download artifact',
-            uses: 'actions/download-artifact@v3',
+            uses: 'actions/download-artifact@v4',
             with: { name: 'build-output', path: '${{ github.workspace }}' },
           },
           {
@@ -242,7 +244,7 @@ export class BuildWorkflow {
         steps: [
           {
             name: 'Download artifact',
-            uses: 'actions/download-artifact@v3',
+            uses: 'actions/download-artifact@v4',
             with: { name: 'build-output', path: '${{ github.workspace }}' },
           },
           {
@@ -263,10 +265,11 @@ export class BuildWorkflow {
           },
           {
             name: 'Upload artifact',
-            uses: 'actions/upload-artifact@v3',
+            uses: 'actions/upload-artifact@v4.3.6',
             with: {
               name: 'release-package',
               path: '${{ github.workspace }}/dist',
+              overwrite: true,
             },
           },
         ],
@@ -297,7 +300,7 @@ export class BuildWorkflow {
           ACTIONS_SETUP_NODE('${{ matrix.node-version }}', false),
           {
             name: 'Download Artifact',
-            uses: 'actions/download-artifact@v3',
+            uses: 'actions/download-artifact@v4',
             with: {
               name: 'release-package',
               path: '${{ runner.temp }}/release-package',
@@ -348,7 +351,7 @@ export class BuildWorkflow {
           ACTIONS_SETUP_NODE(undefined, false),
           {
             name: 'Download Artifact',
-            uses: 'actions/download-artifact@v3',
+            uses: 'actions/download-artifact@v4',
             with: {
               name: 'release-package',
               path: '${{ runner.temp }}/release-package',
