@@ -314,14 +314,14 @@ export class Compiler implements Emitter {
       LOG.error('Compilation errors prevented the JSII assembly from being created');
     }
 
-    if (!hasErrors) {
-      emitDownleveledDeclarations(
-        this.projectRoot,
-        this.options.projectInfo.packageJson,
-        // outDir might be absolute. Need to normalize it.
-        normalizeConfigPath(this.projectRoot, this.tsconfig.compilerOptions.outDir),
-      );
-    }
+    // if (!hasErrors) {
+    //   emitDownleveledDeclarations(
+    //     this.projectRoot,
+    //     this.options.projectInfo.packageJson,
+    //     // outDir might be absolute. Need to normalize it.
+    //     normalizeConfigPath(this.projectRoot, this.tsconfig.compilerOptions.outDir),
+    //   );
+    // }
 
     // Some extra validation on the config.
     // Make sure that { "./.warnings.jsii.js": "./.warnings.jsii.js" } is in the set of
