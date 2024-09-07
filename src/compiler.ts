@@ -6,9 +6,8 @@ import * as ts from 'typescript';
 
 import { Assembler } from './assembler';
 import { findDependencyDirectory } from './common/find-utils';
-import { emitDownleveledDeclarations, TYPES_COMPAT } from './downlevel-dts';
+import { TYPES_COMPAT } from './downlevel-dts';
 import { Emitter } from './emitter';
-import { normalizeConfigPath } from './helpers';
 import { JsiiDiagnostic } from './jsii-diagnostic';
 import { ProjectInfo } from './project-info';
 import { WARNINGSCODE_FILE_NAME } from './transforms/deprecation-warnings';
