@@ -6,9 +6,8 @@ import * as ts from 'typescript';
 
 import { Assembler } from './assembler';
 import { findDependencyDirectory } from './common/find-utils';
-import { emitDownleveledDeclarations, TYPES_COMPAT } from './downlevel-dts';
+import { TYPES_COMPAT } from './downlevel-dts';
 import { Emitter } from './emitter';
-import { normalizeConfigPath } from './helpers';
 import { JsiiDiagnostic } from './jsii-diagnostic';
 import { ProjectInfo } from './project-info';
 import { WARNINGSCODE_FILE_NAME } from './transforms/deprecation-warnings';
@@ -314,14 +313,14 @@ export class Compiler implements Emitter {
       LOG.error('Compilation errors prevented the JSII assembly from being created');
     }
 
-    if (!hasErrors) {
-      emitDownleveledDeclarations(
-        this.projectRoot,
-        this.options.projectInfo.packageJson,
-        // outDir might be absolute. Need to normalize it.
-        normalizeConfigPath(this.projectRoot, this.tsconfig.compilerOptions.outDir),
-      );
-    }
+    // if (!hasErrors) {
+    //   emitDownleveledDeclarations(
+    //     this.projectRoot,
+    //     this.options.projectInfo.packageJson,
+    //     // outDir might be absolute. Need to normalize it.
+    //     normalizeConfigPath(this.projectRoot, this.tsconfig.compilerOptions.outDir),
+    //   );
+    // }
 
     // Some extra validation on the config.
     // Make sure that { "./.warnings.jsii.js": "./.warnings.jsii.js" } is in the set of
