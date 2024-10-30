@@ -2,7 +2,6 @@ import * as assert from 'node:assert';
 import * as spec from '@jsii/spec';
 import * as deepEqual from 'fast-deep-equal';
 import * as ts from 'typescript';
-
 import * as Case from './case';
 import { Emitter } from './emitter';
 import { JsiiDiagnostic } from './jsii-diagnostic';
@@ -41,6 +40,7 @@ function _defaultValidations(): ValidationFunction[] {
     _allTypeReferencesAreValid,
     _inehritanceDoesNotChangeContracts,
     _staticMembersAndNestedTypesMustNotSharePascalCaseName,
+    _abstractClassesMustImplementAllProperties,
   ];
 
   function _enumMembersMustUserUpperSnakeCase(_: Validator, assembly: spec.Assembly, diagnostic: DiagnosticEmitter) {
@@ -382,7 +382,7 @@ function _defaultValidations(): ValidationFunction[] {
             expectedNode?.modifiers?.find(
               (mod) => mod.kind === ts.SyntaxKind.PublicKeyword || mod.kind === ts.SyntaxKind.ProtectedKeyword,
             ) ?? declarationName(expectedNode),
-            'The implemented delcaration is here.',
+            'The implemented declaration is here.',
           ),
         );
       }
@@ -396,7 +396,7 @@ function _defaultValidations(): ValidationFunction[] {
             expected.type,
           ).maybeAddRelatedInformation(
             expectedNode?.type ?? declarationName(expectedNode),
-            'The implemented delcaration is here.',
+            'The implemented declaration is here.',
           ),
         );
       }
@@ -412,7 +412,7 @@ function _defaultValidations(): ValidationFunction[] {
           ).maybeAddRelatedInformation(
             expectedNode?.modifiers?.find((mod) => mod.kind === ts.SyntaxKind.ReadonlyKeyword) ??
               declarationName(expectedNode),
-            'The implemented delcaration is here.',
+            'The implemented declaration is here.',
           ),
         );
       }
@@ -426,9 +426,86 @@ function _defaultValidations(): ValidationFunction[] {
             expected.optional,
           ).maybeAddRelatedInformation(
             expectedNode?.questionToken ?? expectedNode?.type ?? declarationName(expectedNode),
-            'The implemented delcaration is here.',
+            'The implemented declaration is here.',
           ),
         );
+      }
+    }
+  }
+
+  /**
+   * Abstract classes that implement an interface should have a declaration for every member.
+   *
+   * For non-optional members, TypeScript already enforces this. This leaves the user the
+   * ability to forget optional properties (`readonly prop?: string`).
+   *
+   * At least our codegen for this case fails in C#, and I'm not convinced it does the right
+   * thing in Java either. So we will disallow this, and require users to declare these
+   * fields on the class. It can always be `public abstract readonly prop?: string` if they
+   * don't want to give an implementation yet.
+   */
+  function _abstractClassesMustImplementAllProperties(
+    validator: Validator,
+    assembly: spec.Assembly,
+    diagnostic: DiagnosticEmitter,
+  ) {
+    for (const type of _allTypes(assembly)) {
+      if (!spec.isClassType(type) || !type.abstract) {
+        continue;
+      }
+
+      const classProps = collectClassProps(type, new Set());
+
+      for (const implFqn of type.interfaces ?? []) {
+        checkInterfacePropsImplemented(implFqn, type, classProps);
+      }
+    }
+
+    /**
+     * Return all property names declared on this class and its base classes
+     */
+    function collectClassProps(type: spec.ClassType, into: Set<string>): Set<string> {
+      for (const prop of type.properties ?? []) {
+        into.add(prop.name);
+      }
+
+      if (type.base) {
+        const base = _dereference(type.base, assembly, validator);
+        if (spec.isClassType(base)) {
+          collectClassProps(base, into);
+        }
+      }
+
+      return into;
+    }
+
+    function checkInterfacePropsImplemented(interfaceFqn: string, cls: spec.ClassType, propNames: Set<string>) {
+      const intf = _dereference(interfaceFqn, assembly, validator);
+      if (!spec.isInterfaceType(intf)) {
+        return;
+      }
+
+      // We only have to check for optional properties, because anything required
+      // would have been caught by the TypeScript compiler already.
+      for (const prop of intf.properties ?? []) {
+        if (!prop.optional) {
+          continue;
+        }
+
+        if (!propNames.has(prop.name)) {
+          diagnostic(
+            JsiiDiagnostic.JSII_5021_ABSTRACT_CLASS_MISSING_PROP_IMPL.create(
+              bindings.getClassOrInterfaceRelatedNode(cls),
+              intf,
+              cls,
+              prop.name,
+            ).maybeAddRelatedInformation(bindings.getPropertyRelatedNode(prop), 'The implemented declaration is here.'),
+          );
+        }
+      }
+
+      for (const extFqn of intf.interfaces ?? []) {
+        checkInterfacePropsImplemented(extFqn, cls, propNames);
       }
     }
   }
