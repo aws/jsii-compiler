@@ -574,6 +574,21 @@ error JSII5001: Methods and properties cannot have names like "setXxx": those co
 
 `;
 
+exports[`missing-abstract 1`] = `
+neg.missing-abstract.ts:5:1 - error JSII5021: A declaration of "ISomeInterface.xyz" is missing on class "SomeClass". Declare it as "public abstract" if the omission was on purpose.
+
+5 export abstract class SomeClass implements ISomeInterface {
+  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+6 }
+  ~
+
+  neg.missing-abstract.ts:2:3
+    2   readonly xyz?: string;
+        ~~~~~~~~~~~~~~~~~~~~~~
+    The implemented delcaration is here.
+
+`;
+
 exports[`mix-datatype-and-arg-name 1`] = `
 neg.mix-datatype-and-arg-name.ts:10:3 - error JSII5017: Parameter name "dontWorry" is also the name of a property in a struct parameter. Rename the positional parameter.
 

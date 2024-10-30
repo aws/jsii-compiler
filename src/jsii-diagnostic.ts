@@ -628,6 +628,13 @@ export class JsiiDiagnostic implements ts.Diagnostic {
     name: 'language-compatibility/static-member-name-conflicts-with-nested-type',
   });
 
+  public static readonly JSII_5021_ABSTRACT_CLASS_MISSING_PROP_IMPL = Code.error({
+    code: 5021,
+    formatter: (intf: spec.InterfaceType, cls: spec.ClassType, prop: string) =>
+      `A declaration of "${intf.name}.${prop}" is missing on class "${cls.name}". Declare it as "public abstract" if the omission was on purpose.`,
+    name: 'language-compatibility/abstract-class-missing-prop-impl',
+  });
+
   //////////////////////////////////////////////////////////////////////////////
   // 6000 => 6999 -- RESERVED
 
