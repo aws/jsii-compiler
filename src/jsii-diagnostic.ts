@@ -631,7 +631,7 @@ export class JsiiDiagnostic implements ts.Diagnostic {
   public static readonly JSII_5021_ABSTRACT_CLASS_MISSING_PROP_IMPL = Code.error({
     code: 5021,
     formatter: (intf: spec.InterfaceType, cls: spec.ClassType, prop: string) =>
-      `A declaration of "${intf.name}.${prop}" is missing on class "${cls.name}". Declare it as "public abstract" if the omission was on purpose.`,
+      `A declaration of "${intf.name}.${prop}" is missing on class "${cls.name}". Declare the property as "public abstract" if you want to defer it to subclasses.`,
     name: 'language-compatibility/abstract-class-missing-prop-impl',
   });
 

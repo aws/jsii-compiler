@@ -575,7 +575,7 @@ error JSII5001: Methods and properties cannot have names like "setXxx": those co
 `;
 
 exports[`missing-abstract 1`] = `
-neg.missing-abstract.ts:5:1 - error JSII5021: A declaration of "ISomeInterface.xyz" is missing on class "SomeClass". Declare it as "public abstract" if the omission was on purpose.
+neg.missing-abstract.ts:5:1 - error JSII5021: A declaration of "ISomeInterface.xyz" is missing on class "SomeClass". Declare the property as "public abstract" if you want to defer it to subclasses.
 
 5 export abstract class SomeClass implements ISomeInterface {
   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
