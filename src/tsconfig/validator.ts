@@ -192,6 +192,12 @@ function wrapMatcher(matcher: Matcher, message: (actual: any) => string, allowed
  */
 function looseEqual(a: any, b: any): boolean {
   try {
+    // if one of the values is an object (or array), but the other isn't - never consider them the same
+    if ([typeof a, typeof b].filter((t) => t === 'object').length === 1) {
+      return false;
+    }
+    // if both values are the same object
+    // or if both values are loose equal
     return Object.is(a, b) || a == b;
   } catch {
     return false;
