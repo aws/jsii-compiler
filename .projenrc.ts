@@ -12,14 +12,14 @@ import { UpgradeDependencies } from './projenrc/upgrade-dependencies';
 //     `git switch main && git fetch --all && git pull`
 //     `git push origin main:maintenance/vX.Y` (X.Y is the TS version that is about to be replaced by a new release)
 //  2. Add a branch protection rule for the new maintenance branch.
-//     Copy the settings from the branch for the version that is about to be replaced.
-//  3. Edit `projenrc/support.ts`, maintenance EOL date for the current version to be 6 months from
+//     Copy the settings from the most recent maintenance branch. 
+//  3. Edit `projenrc/support.ts`, set maintenance EOL date for the new maintenance version to be 6 months from
 //     today (round up to the mid-point or end of month), make the new version current.
 //  4. Update `minNodeVersion` to the oldest LTS version of Node (i.e. dropping support for EOL versions of Node)
 //  5. `npx projen`
 //  6. Update the version list in the README (remember to remove EOS versions)
 //  7. If any versions dropped into EOS, change the respective branch protection rule to include "Lock branch"
-//  8. Create a PR, with title "eat: TypeScript X.Y"
+//  8. Create a PR, with title "feat: TypeScript X.Y"
 //  9. Note that merging the PR doesn't trigger a release. Release are performed on a weekly schedule.
 //     You need to manually create a release by triggering this workflow:
 //     https://github.com/aws/jsii-compiler/actions/workflows/auto-tag-releases.yml
