@@ -16,14 +16,15 @@ import { UpgradeDependencies } from './projenrc/upgrade-dependencies';
 //  3. Edit `projenrc/support.ts`, set maintenance EOL date for the new maintenance version to be 6 months from
 //     today (round up to the mid-point or end of month), make the new version current.
 //  4. Update `minNodeVersion` to the oldest LTS version of Node (i.e. dropping support for EOL versions of Node)
-//  5. `npx projen`
-//  6. Update the version list in the README (remember to remove EOS versions)
-//  7. If any versions dropped into EOS, change the respective branch protection rule to include "Lock branch"
-//  8. Create a PR, with title "feat: TypeScript X.Y"
-//  9. Note that merging the PR doesn't trigger a release. Release are performed on a weekly schedule.
+//  5. Update the version list in the README (remember to remove EOS versions)
+//  6. If any versions dropped into EOS, change the respective branch protection rule to include "Lock branch"
+//  7. `npx projen`
+//  8. `npx projen build` and resolve any new test failures that might be introduced by the new TS version
+//  9. Create a PR, with title "feat: TypeScript X.Y"
+// 10. Note that merging the PR doesn't trigger a release. Release are performed on a weekly schedule.
 //     You need to manually create a release by triggering this workflow:
 //     https://github.com/aws/jsii-compiler/actions/workflows/auto-tag-releases.yml
-// 10. Perform new version steps for `jsii-rosetta`
+// 11. Perform new version steps for `jsii-rosetta`
 
 const project = new typescript.TypeScriptProject({
   projenrcTs: true,
