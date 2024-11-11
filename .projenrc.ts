@@ -12,7 +12,7 @@ import { UpgradeDependencies } from './projenrc/upgrade-dependencies';
 //     `git switch main && git fetch --all && git pull`
 //     `git push origin main:maintenance/vX.Y` (X.Y is the TS version that is about to be replaced by a new release)
 //  2. Add a branch protection rule for the new maintenance branch.
-//     Copy the settings from the most recent maintenance branch. 
+//     Copy the settings from the most recent maintenance branch.
 //  3. Edit `projenrc/support.ts`, set maintenance EOL date for the new maintenance version to be 6 months from
 //     today (round up to the mid-point or end of month), make the new version current.
 //  4. Update `minNodeVersion` to the oldest LTS version of Node (i.e. dropping support for EOL versions of Node)
