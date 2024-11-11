@@ -44,6 +44,7 @@ jspm_packages/
 !/.eslintrc.json
 !/.github/workflows/upgrade-main.yml
 !/.github/workflows/upgrade-maintenance-v5.4.yml
+!/.github/workflows/upgrade-maintenance-v5.5.yml
 /build-tools/tsconfig.json
 /projenrc/tsconfig.json
 /test/tsconfig.json
@@ -60,6 +61,8 @@ jspm_packages/
 !/.github/workflows/auto-tag-releases.yml
 !/.github/workflows/auto-tag-dev-v5.4.yml
 !/.github/workflows/auto-tag-releases-v5.4.yml
+!/.github/workflows/auto-tag-dev-v5.5.yml
+!/.github/workflows/auto-tag-releases-v5.5.yml
 !/.backportrc.json
 !/.github/workflows/backport.yml
 !/.projenrc.ts

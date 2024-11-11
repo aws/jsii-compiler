@@ -190,6 +190,8 @@ export function fcTsconfig(
     esModuleInterop: fc.boolean(),
     useDefineForClassFields: fc.boolean(),
     isolatedDeclarations: fc.boolean(),
+    strictBuiltinIteratorReturn: fc.boolean(),
+    noUncheckedSideEffectImports: fc.boolean(),
   };
 
   // limit to only allowed keys
