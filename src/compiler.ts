@@ -6,9 +6,7 @@ import * as ts from 'typescript';
 
 import { Assembler } from './assembler';
 import { findDependencyDirectory } from './common/find-utils';
-import { emitDownleveledDeclarations, TYPES_COMPAT } from './downlevel-dts';
 import { Emitter } from './emitter';
-import { normalizeConfigPath } from './helpers';
 import { JsiiDiagnostic } from './jsii-diagnostic';
 import { ProjectInfo } from './project-info';
 import { WARNINGSCODE_FILE_NAME } from './transforms/deprecation-warnings';
@@ -21,6 +19,7 @@ import * as utils from './utils';
 const LOG = log4js.getLogger('jsii/compiler');
 export const DIAGNOSTICS = 'diagnostics';
 export const JSII_DIAGNOSTICS_CODE = 9999;
+export const TYPES_COMPAT = '.types-compat';
 
 export interface CompilerOptions {
   /** The information about the project to be built */
@@ -312,15 +311,6 @@ export class Compiler implements Emitter {
     if (!hasErrors && (emit.emitSkipped || this.diagsHaveAbortableErrors(emit.diagnostics))) {
       hasErrors = true;
       LOG.error('Compilation errors prevented the JSII assembly from being created');
-    }
-
-    if (!hasErrors) {
-      emitDownleveledDeclarations(
-        this.projectRoot,
-        this.options.projectInfo.packageJson,
-        // outDir might be absolute. Need to normalize it.
-        normalizeConfigPath(this.projectRoot, this.tsconfig.compilerOptions.outDir),
-      );
     }
 
     // Some extra validation on the config.
