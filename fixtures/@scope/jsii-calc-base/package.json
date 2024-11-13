@@ -23,14 +23,6 @@
   },
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
-  "typesVersions": {
-    "<=3.9": {
-      "*": [
-        ".types-compat/ts3.9/*",
-        ".types-compat/ts3.9/*/index.d.ts"
-      ]
-    }
-  },
   "exports": {
     ".": {
       "types": "./lib/index.d.ts",

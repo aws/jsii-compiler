@@ -32,14 +32,6 @@
   },
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
-  "typesVersions": {
-    "<=3.9": {
-      "*": [
-        ".types-compat/ts3.9/*",
-        ".types-compat/ts3.9/*/index.d.ts"
-      ]
-    }
-  },
   "dependencies": {
     "@fixtures/jsii-calc-bundled": "file:../@fixtures/jsii-calc-bundled",
     "@scope/jsii-calc-base": "^0.0.0",

@@ -1,10 +1,9 @@
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
+import { mkdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { Assembly, loadAssemblyFromPath } from '@jsii/spec';
-import { compileJsiiForTest as compileJsiiV1 } from 'jsii-1.x';
 
-import { compile, FIXTURES_ROOT, Lock } from './fixtures';
+import { compile, Lock } from './fixtures';
 
 let lock: Lock | undefined;
 
@@ -51,50 +50,6 @@ test('integration test', () => {
     expect(spawnSync('npm', ['pack', `--pack-destination=${distPrivate}`, dir]).status).toBe(0);
   }
 }, 120_000);
-
-test('v1 compatibility check', () => {
-  const compilationDirectory = mkdtempSync(join(FIXTURES_ROOT, '.jsii-v1.'));
-  try {
-    const result = compileJsiiV1(
-      [
-        // Import the `jsii-calc` library... Which includes TypeScript 3.9
-        // unsupported syntax, such as the `type` modifier on import elements,
-        // etc...
-        'import * as calc from "jsii-calc";',
-        'import * as deep from "@scope/jsii-calc-base/lib/deep";',
-        '',
-        // Export some class so the assembly isn't empty (not that it matters,
-        // really), but most use stuff from `calc` so it's not elided by the
-        // compiler.
-        'export class SomeClass extends deep.BarrelImportClass {',
-        '  private constructor() {',
-        '    super();',
-        '',
-        '    const calculator = new calc.Calculator();',
-        '    calculator.add(42);',
-        '    calculator.mul(1337);',
-        '    calculator.expression;',
-        '  }',
-        '}',
-      ].join('\n'),
-      {
-        compilationDirectory,
-        packageJson: {
-          dependencies: { '@scope/jsii-calc-base': '*' },
-          jsii: {
-            tsc: {
-              types: [],
-            },
-          },
-        },
-      },
-    );
-
-    expect(result.assembly).toMatchSnapshot(DEFAULT_MATCHER, 'test output assembly');
-  } finally {
-    rmSync(compilationDirectory, { force: true, recursive: true });
-  }
-});
 
 const DEFAULT_MATCHER: Partial<Assembly> = {
   fingerprint: expect.any(String),

@@ -216,7 +216,6 @@ project.addDeps(
   '@jsii/spec',
   'case',
   'chalk@^4',
-  'downlevel-dts',
   'fast-deep-equal',
   'log4js',
   'semver',

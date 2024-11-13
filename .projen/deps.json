@@ -157,10 +157,6 @@
       "type": "runtime"
     },
     {
-      "name": "downlevel-dts",
-      "type": "runtime"
-    },
-    {
       "name": "fast-deep-equal",
       "type": "runtime"
     },

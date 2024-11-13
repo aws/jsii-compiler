@@ -4,7 +4,6 @@ import { dirname, join } from 'node:path';
 import { loadAssemblyFromPath, SPEC_FILE_NAME, SPEC_FILE_NAME_COMPRESSED } from '@jsii/spec';
 import { compile, Lock } from './fixtures';
 import { Compiler } from '../src/compiler';
-import { TYPES_COMPAT } from '../src/downlevel-dts';
 import { ProjectInfo } from '../src/project-info';
 import { TypeScriptConfigValidationRuleSet } from '../src/tsconfig';
 import { TypeScriptConfigValidator } from '../src/tsconfig/tsconfig-validator';
@@ -453,7 +452,7 @@ function expectedTypeScriptConfig() {
       target: 'es2020',
       tsBuildInfoFile: 'tsconfig.tsbuildinfo',
     },
-    exclude: ['node_modules', TYPES_COMPAT],
+    exclude: ['node_modules'],
     include: [join('**', '*.ts')],
   };
 }
@@ -476,7 +475,7 @@ function tsconfigForNode18Strict() {
       moduleResolution: 'node16',
       declaration: true,
     },
-    exclude: ['node_modules', TYPES_COMPAT],
+    exclude: ['node_modules'],
     include: [join('**', '*.ts')],
   };
 }
