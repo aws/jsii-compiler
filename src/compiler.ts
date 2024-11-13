@@ -354,9 +354,6 @@ export class Compiler implements Emitter {
     }
 
     const pi = this.options.projectInfo;
-    const configDir = path.dirname(this.configPath);
-    const absoluteTypesCompat = path.resolve(configDir, pi.tsc?.outDir ?? '.', TYPES_COMPAT);
-    const relativeTypesCompat = path.relative(configDir, absoluteTypesCompat);
 
     return {
       compilerOptions: {
@@ -370,7 +367,6 @@ export class Compiler implements Emitter {
       include: [pi.tsc?.rootDir != null ? path.join(pi.tsc.rootDir, '**', '*.ts') : path.join('**', '*.ts')],
       exclude: [
         'node_modules',
-        relativeTypesCompat,
         ...(pi.excludeTypescript ?? []),
         ...(pi.tsc?.outDir != null &&
         (pi.tsc?.rootDir == null || path.resolve(pi.tsc.outDir).startsWith(path.resolve(pi.tsc.rootDir) + path.sep))

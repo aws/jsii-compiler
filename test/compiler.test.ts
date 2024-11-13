@@ -452,7 +452,7 @@ function expectedTypeScriptConfig() {
       target: 'es2020',
       tsBuildInfoFile: 'tsconfig.tsbuildinfo',
     },
-    exclude: ['node_modules', TYPES_COMPAT],
+    exclude: ['node_modules'],
     include: [join('**', '*.ts')],
   };
 }
@@ -475,7 +475,7 @@ function tsconfigForNode18Strict() {
       moduleResolution: 'node16',
       declaration: true,
     },
-    exclude: ['node_modules', TYPES_COMPAT],
+    exclude: ['node_modules'],
     include: [join('**', '*.ts')],
   };
 }
