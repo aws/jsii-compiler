@@ -19,7 +19,6 @@ import * as utils from './utils';
 const LOG = log4js.getLogger('jsii/compiler');
 export const DIAGNOSTICS = 'diagnostics';
 export const JSII_DIAGNOSTICS_CODE = 9999;
-export const TYPES_COMPAT = '.types-compat';
 
 export interface CompilerOptions {
   /** The information about the project to be built */
