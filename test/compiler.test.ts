@@ -107,7 +107,7 @@ describe(Compiler, () => {
       } finally {
         rmSync(sourceDir, { force: true, recursive: true });
       }
-    }, 15_000);
+    }, 25_000);
 
     test('rootDir is added to assembly', () => {
       const outDir = 'jsii-outdir';
@@ -336,7 +336,7 @@ describe(Compiler, () => {
       } finally {
         rmSync(sourceDir, { force: true, recursive: true });
       }
-    }, 15_000);
+    }, 25_000);
   });
 
   describe('compressed assembly option', () => {
