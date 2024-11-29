@@ -64,7 +64,8 @@ The current status of `jsii` compiler releases is:
 
 | Release | Status      | EOS        | Comment                                                                                 |
 | ------- | ----------- | ---------- | --------------------------------------------------------------------------------------- |
-| `5.6.x` | Current     | TBD        | ![npm](https://img.shields.io/npm/v/jsii/v5.6-latest?label=jsii%40v5.6-latest&logo=npm) |
+| `5.7.x` | Current     | TBD        | ![npm](https://img.shields.io/npm/v/jsii/v5.7-latest?label=jsii%40v5.7-latest&logo=npm) |
+| `5.6.x` | Maintenance | 2025-07-01 | ![npm](https://img.shields.io/npm/v/jsii/v5.6-latest?label=jsii%40v5.6-latest&logo=npm) |
 | `5.5.x` | Maintenance | 2025-05-15 | ![npm](https://img.shields.io/npm/v/jsii/v5.5-latest?label=jsii%40v5.5-latest&logo=npm) |
 | `5.4.x` | Maintenance | 2025-02-28 | ![npm](https://img.shields.io/npm/v/jsii/v5.4-latest?label=jsii%40v5.4-latest&logo=npm) |
 
