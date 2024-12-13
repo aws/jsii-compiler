@@ -255,7 +255,7 @@ export class Compiler implements Emitter {
     const tsconf = this.tsconfig!;
 
     const prog = ts.createIncrementalProgram({
-      rootNames: this.rootFiles.concat(_pathOfLibraries(this.compilerHost)),
+      rootNames: this.rootFiles.concat(_pathOfLibraries(tsconf.compilerOptions, this.compilerHost)),
       options: tsconf.compilerOptions,
       // Make the references absolute for the compiler
       projectReferences: tsconf.references?.map((ref) => ({
@@ -600,17 +600,19 @@ export interface NonBlockingWatchOptions {
   readonly compilationComplete: (emitResult: ts.EmitResult) => void;
 }
 
-function _pathOfLibraries(host: ts.CompilerHost | ts.WatchCompilerHost<any>): string[] {
-  if (!BASE_COMPILER_OPTIONS.lib || BASE_COMPILER_OPTIONS.lib.length === 0) {
+function _pathOfLibraries(options: ts.CompilerOptions, host: ts.CompilerHost | ts.WatchCompilerHost<any>): string[] {
+  // Prefer user libraries, falling back to a library based on the target if not supplied by the user.
+  // This matches tsc behavior.
+  const libs = options.lib ?? [ts.getDefaultLibFileName(options)] ?? [];
+  if (libs.length === 0) {
     return [];
   }
-  const lib = host.getDefaultLibLocation?.();
-  if (!lib) {
-    throw new Error(
-      `Compiler host doesn't have a default library directory available for ${BASE_COMPILER_OPTIONS.lib.join(', ')}`,
-    );
+
+  const libDir = host.getDefaultLibLocation?.();
+  if (!libDir) {
+    throw new Error(`Compiler host doesn't have a default library directory available for ${libs.join(', ')}`);
   }
-  return BASE_COMPILER_OPTIONS.lib.map((name) => path.join(lib, name));
+  return libs.map((name) => path.join(libDir, name));
 }
 
 function parseConfigHostFromCompilerHost(host: ts.CompilerHost): ts.ParseConfigHost {
