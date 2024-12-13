@@ -2,12 +2,21 @@ import { mkdirSync, existsSync, mkdtempSync, rmSync, writeFileSync, readFileSync
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { loadAssemblyFromPath, SPEC_FILE_NAME, SPEC_FILE_NAME_COMPRESSED } from '@jsii/spec';
+import * as ts from 'typescript';
 import { compile, Lock } from './fixtures';
 import { Compiler } from '../src/compiler';
 import { TYPES_COMPAT } from '../src/downlevel-dts';
 import { ProjectInfo } from '../src/project-info';
 import { TypeScriptConfigValidationRuleSet } from '../src/tsconfig';
 import { TypeScriptConfigValidator } from '../src/tsconfig/tsconfig-validator';
+
+// This is necessary to be able to jest.spyOn to functions in the 'ts' module. Replace the read-only
+// object descriptors with a plain object.
+jest.mock('typescript', () => ({ ...jest.requireActual('typescript') }));
+
+beforeEach(() => {
+  jest.restoreAllMocks();
+});
 
 describe(Compiler, () => {
   describe('generated tsconfig', () => {
@@ -227,9 +236,17 @@ describe(Compiler, () => {
   });
 
   describe('user-provided tsconfig', () => {
+    let sourceDir: string;
+    const tsconfigPath = 'tsconfig.dev.json';
+    beforeEach(() => {
+      sourceDir = mkdtempSync(join(tmpdir(), 'jsii-compiler-user-tsconfig-'));
+    });
+
+    afterEach(() => {
+      rmSync(sourceDir, { force: true, recursive: true });
+    });
+
     test('will use user-provided config', () => {
-      const sourceDir = mkdtempSync(join(tmpdir(), 'jsii-compiler-user-tsconfig-'));
-      const tsconfigPath = 'tsconfig.dev.json';
       writeFileSync(join(sourceDir, tsconfigPath), JSON.stringify(tsconfigForNode18Strict(), null, 2));
 
       writeFileSync(join(sourceDir, 'index.ts'), 'export class MarkerA {}');
@@ -245,9 +262,7 @@ describe(Compiler, () => {
     });
 
     test('use user-provided config uses include and exclude', () => {
-      const sourceDir = mkdtempSync(join(tmpdir(), 'jsii-compiler-user-tsconfig-'));
       mkdirSync(join(sourceDir, 'sub'));
-      const tsconfigPath = 'tsconfig.dev.json';
       writeFileSync(
         join(sourceDir, tsconfigPath),
         JSON.stringify(
@@ -282,9 +297,48 @@ describe(Compiler, () => {
       expect(result.emitSkipped).toBe(false);
     });
 
+    test('respect "lib" setting from user-provided config', () => {
+      const tsconfig = tsconfigForNode18Strict();
+      tsconfig.compilerOptions.lib = ['Decorators.Legacy']; // Something very nonstandard
+      writeFileSync(join(sourceDir, tsconfigPath), JSON.stringify(tsconfig, null, 2));
+
+      const createIncrementalProgram = jest.spyOn(ts, 'createIncrementalProgram');
+
+      const compiler = new Compiler({
+        projectInfo: _makeProjectInfo(sourceDir, 'index.d.ts'),
+        typeScriptConfig: tsconfigPath,
+      });
+      compiler.emit();
+
+      expect(createIncrementalProgram).toHaveBeenCalledWith(
+        expect.objectContaining({
+          rootNames: expect.arrayContaining([expect.stringContaining('lib.decorators.legacy.d.ts')]),
+        }),
+      );
+    });
+
+    test('missing "lib" setting is based on compilation target', () => {
+      const tsconfig = tsconfigForNode18Strict();
+      tsconfig.compilerOptions.target = 'es6';
+      delete tsconfig.compilerOptions.lib;
+      writeFileSync(join(sourceDir, tsconfigPath), JSON.stringify(tsconfig, null, 2));
+
+      const createIncrementalProgram = jest.spyOn(ts, 'createIncrementalProgram');
+
+      const compiler = new Compiler({
+        projectInfo: _makeProjectInfo(sourceDir, 'index.d.ts'),
+        typeScriptConfig: tsconfigPath,
+      });
+      compiler.emit();
+
+      expect(createIncrementalProgram).toHaveBeenCalledWith(
+        expect.objectContaining({
+          rootNames: expect.arrayContaining([expect.stringContaining('lib.es6.d.ts')]),
+        }),
+      );
+    });
+
     test('"watch" mode', async () => {
-      const sourceDir = mkdtempSync(join(tmpdir(), 'jsii-compiler-watch-mode-'));
-      const tsconfigPath = 'tsconfig.dev.json';
       writeFileSync(join(sourceDir, tsconfigPath), JSON.stringify(tsconfigForNode18Strict(), null, 2));
 
       try {
@@ -465,7 +519,7 @@ function expectedTypeScriptConfig() {
 function tsconfigForNode18Strict() {
   return {
     compilerOptions: {
-      lib: ['es2022'],
+      lib: ['es2022'] as string[] | undefined,
       module: 'node16',
       target: 'es2022',
 
