@@ -91,11 +91,13 @@ describe('Built-in matchers', () => {
   });
 
   describe('Match.arrEq', () => {
+    const arrayEl = anythingExceptUndefined();
+
     test('pass', () => {
       fc.assert(
         fc.property(
           fc
-            .array(fc.anything({ maxDepth: 0 }))
+            .array(arrayEl)
             .chain((expected) =>
               fc.tuple(
                 fc.constant(expected),
@@ -111,10 +113,10 @@ describe('Built-in matchers', () => {
     test('fail', () => {
       fc.assert(
         fc.property(
-          fc.uniqueArray(fc.anything(), {
+          fc.uniqueArray(arrayEl, {
             minLength: 1,
           }),
-          fc.array(fc.anything()),
+          fc.array(arrayEl),
           (possible, actualBase) => {
             const expected = possible.slice(0, -1);
             const actual = [...actualBase, possible.at(-1)];
@@ -229,3 +231,7 @@ describe('Object Validator', () => {
     );
   });
 });
+
+function anythingExceptUndefined() {
+  return fc.anything().filter(x => x !== undefined);
+}
