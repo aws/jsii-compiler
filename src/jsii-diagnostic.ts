@@ -86,13 +86,13 @@ export class Code<T extends DiagnosticMessageFormatter = DiagnosticMessageFormat
    */
   public static lookup(codeOrName: string | number): Code | undefined {
     if (typeof codeOrName === 'number') {
-      return this.byCode[codeOrName];
+      return this.byCode.get(codeOrName);
     }
-    return this.byName[codeOrName];
+    return this.byName.get(codeOrName);
   }
 
-  private static readonly byCode: { [code: number]: Code } = {};
-  private static readonly byName: { [name: string]: Code } = {};
+  private static readonly byCode: Map<number, Code> = new Map();
+  private static readonly byName: Map<string, Code> = new Map();
 
   // eslint-disable-next-line @typescript-eslint/explicit-member-accessibility
   readonly #defaultCategory: ts.DiagnosticCategory;
@@ -126,7 +126,8 @@ export class Code<T extends DiagnosticMessageFormatter = DiagnosticMessageFormat
     if (name in Code.byName) {
       throw new Error(`Attempted to create two instances of ${this.constructor.name} with name ${name}`);
     }
-    Code.byCode[code] = Code.byName[name] = this;
+    Code.byCode.set(code, this);
+    Code.byName.set(name, this);
   }
 
   /**
