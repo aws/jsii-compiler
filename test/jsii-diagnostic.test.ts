@@ -10,7 +10,9 @@ describe('jsii diagnostics', () => {
     });
 
     test('throws on __proto__ key', () => {
-      expect(() => configureCategories(JSON.parse('{"__proto__":{"pollutedKey":123}}'))).toThrow(`Unrecognized diagnostic code '__proto__'`);
+      expect(() => configureCategories(JSON.parse('{"__proto__":{"pollutedKey":123}}'))).toThrow(
+        `Unrecognized diagnostic code '__proto__'`,
+      );
     });
 
     test('diagnostic by name', () => {
