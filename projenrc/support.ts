@@ -2,7 +2,7 @@ import { JsonFile, Project } from 'projen';
 import type { ReleasesDocument } from '../src/support';
 
 export const SUPPORT_POLICY: ReleasesDocument = {
-  current: '5.6',
+  current: '5.7',
   maintenance: {
     // version: End-of-support date
     '5.0': new Date('2024-01-31'),
@@ -11,6 +11,7 @@ export const SUPPORT_POLICY: ReleasesDocument = {
     '5.3': new Date('2024-10-15'),
     '5.4': new Date('2025-02-28'),
     '5.5': new Date('2025-05-15'),
+    '5.6': new Date('2025-07-01'),
   },
 };
 

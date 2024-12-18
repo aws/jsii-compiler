@@ -192,6 +192,8 @@ export function fcTsconfig(
     isolatedDeclarations: fc.boolean(),
     strictBuiltinIteratorReturn: fc.boolean(),
     noUncheckedSideEffectImports: fc.boolean(),
+    noCheck: fc.boolean(),
+    rewriteRelativeImportExtensions: fc.boolean(),
   };
 
   // limit to only allowed keys
