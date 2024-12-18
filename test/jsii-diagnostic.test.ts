@@ -9,10 +9,8 @@ describe('jsii diagnostics', () => {
       code.category = DiagnosticCategory.Suggestion;
     });
 
-    test('prototype pollution', () => {
-      const pollution = JSON.parse('{"__proto__":{"pollutedKey":123}}');
-      expect(({ foo: 'bar' } as any).category).toBeUndefined();
-      expect(() => configureCategories(pollution as any)).toThrow(`Unrecognized diagnostic code '__proto__'`);
+    test('throws on __proto__ key', () => {
+      expect(() => configureCategories(JSON.parse('{"__proto__":{"pollutedKey":123}}'))).toThrow(`Unrecognized diagnostic code '__proto__'`);
     });
 
     test('diagnostic by name', () => {
