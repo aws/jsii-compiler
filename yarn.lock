@@ -2451,9 +2451,9 @@ ejs@^3.1.10:
     jake "^10.8.5"
 
 electron-to-chromium@^1.5.73:
-  version "1.5.92"
-  resolved "https://registry.yarnpkg.com/electron-to-chromium/-/electron-to-chromium-1.5.92.tgz#81e8ebe06f8e2a49fdba84bd10e9ad5b63efffe0"
-  integrity sha512-BeHgmNobs05N1HMmMZ7YIuHfYBGlq/UmvlsTgg+fsbFs9xVMj+xJHFg19GN04+9Q+r8Xnh9LXqaYIyEWElnNgQ==
+  version "1.5.94"
+  resolved "https://registry.yarnpkg.com/electron-to-chromium/-/electron-to-chromium-1.5.94.tgz#808f294794af24f9edc63a6e58fc625f718b60a6"
+  integrity sha512-v+oaMuy6AgwZ6Hi2u5UgcM3wxzeFscBTsZBQL2FoDTx/T6k1XEQKz++8fe1VlQ3zjXB6hcvy5JPb5ZSkmVtdIQ==
 
 emittery@^0.13.1:
   version "0.13.1"
@@ -2844,9 +2844,9 @@ expect@^29.0.0, expect@^29.7.0:
     jest-util "^29.7.0"
 
 exponential-backoff@^3.1.1:
-  version "3.1.1"
-  resolved "https://registry.yarnpkg.com/exponential-backoff/-/exponential-backoff-3.1.1.tgz#64ac7526fe341ab18a39016cd22c787d01e00bf6"
-  integrity sha512-dX7e/LHVJ6W3DE1MHWi9S1EYzDESENfLrYohG2G++ovZrYOkm4Knwa0mc1cn84xJOR4KEU0WSchhLbd0UklbHw==
+  version "3.1.2"
+  resolved "https://registry.yarnpkg.com/exponential-backoff/-/exponential-backoff-3.1.2.tgz#a8f26adb96bf78e8cd8ad1037928d5e5c0679d91"
+  integrity sha512-8QxYTVXUkuy7fIIoitQkPwGonB8F3Zj8eEO8Sqg9Zv/bkI7RJAzowee4gr81Hak/dUTpA2Z7VfQgoijjPNlUZA==
 
 external-editor@^3.0.3:
   version "3.1.0"
@@ -6643,9 +6643,9 @@ typedarray-to-buffer@^3.1.5:
     is-typedarray "^1.0.0"
 
 typescript@next:
-  version "5.8.0-dev.20250205"
-  resolved "https://registry.yarnpkg.com/typescript/-/typescript-5.8.0-dev.20250205.tgz#2dba6030c2bf5b258777703036502010afa8f477"
-  integrity sha512-ElowVOyGLZ8RSwHA7UZF8M3n4iT/QaU6jCF9N9z2vT/lTjvM3K2eFliQsmF6Iaz9vOhFVUNfe1Mr8aXnpMXiHA==
+  version "5.8.0-dev.20250206"
+  resolved "https://registry.yarnpkg.com/typescript/-/typescript-5.8.0-dev.20250206.tgz#6eadcaf61437bcc9ee8c8e24e328df0b53a3b87f"
+  integrity sha512-lnf72PhBy8HHFElX7VbfSwtG86LdWnE+p7h5KjlK459t6WYtW4RL/icVhebS4GM++AmJMGpcZLCyWSrF8NCXHg==
 
 typescript@~3.9.10:
   version "3.9.10"
