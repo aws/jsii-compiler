@@ -6152,9 +6152,9 @@ socks-proxy-agent@^7.0.0:
     socks "^2.6.2"
 
 socks@^2.6.2:
-  version "2.8.3"
-  resolved "https://registry.yarnpkg.com/socks/-/socks-2.8.3.tgz#1ebd0f09c52ba95a09750afe3f3f9f724a800cb5"
-  integrity sha512-l5x7VUUWbjVFbafGLxPWkYsHIhEvmF85tbIeFZWc8ZPtoMyybuEhL7Jye/ooC4/d48FgOjSJXgsF/AJPYCW8Zw==
+  version "2.8.4"
+  resolved "https://registry.yarnpkg.com/socks/-/socks-2.8.4.tgz#07109755cdd4da03269bda4725baa061ab56d5cc"
+  integrity sha512-D3YaD0aRxR3mEcqnidIs7ReYJFVzWdd6fXJYUM8ixcQcJRGTka/b3saV0KflYhyVJXKhb947GndU35SxYNResQ==
   dependencies:
     ip-address "^9.0.5"
     smart-buffer "^4.2.0"
@@ -6656,9 +6656,9 @@ typedarray-to-buffer@^3.1.5:
     is-typedarray "^1.0.0"
 
 typescript@next:
-  version "5.8.0-dev.20250208"
-  resolved "https://registry.yarnpkg.com/typescript/-/typescript-5.8.0-dev.20250208.tgz#6e92cf8cb52f2be83d5c4214bbcc1b381bbd94a1"
-  integrity sha512-3kdUK1XCtZVQBK3zRY+rZimH2XT8zEZJgNG5s5vPtV47aomFneIX2hh4L4mxBvqLjr/smtnJXOaM7REu64za7g==
+  version "5.8.0-dev.20250209"
+  resolved "https://registry.yarnpkg.com/typescript/-/typescript-5.8.0-dev.20250209.tgz#747d8067552c0580c6786aed97339e0901ba3e9e"
+  integrity sha512-FVdVTxFbTR7jhSRnYcvv46vf+L7byLonnfUbpfzNFUP4/zDze2ovy+cEIHhNv+Nl9x3qE/eko0YKwzhitiOr3g==
 
 typescript@~3.9.10:
   version "3.9.10"
