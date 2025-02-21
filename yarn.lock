@@ -707,18 +707,18 @@
     chalk "^4.1.2"
     semver "^7.6.3"
 
-"@jsii/check-node@1.106.0":
-  version "1.106.0"
-  resolved "https://registry.yarnpkg.com/@jsii/check-node/-/check-node-1.106.0.tgz#5deb20b0bbe0a506c4bd9edf60b17b0a93f83834"
-  integrity sha512-/T/TUsbHdEbZRFR4Rem9+UXVvgMYncEkrIeC52oIHJ8BDSgqlDsIARio/Eu5DOftF4avSLV/sshR6n19mpK1oA==
+"@jsii/check-node@1.107.0":
+  version "1.107.0"
+  resolved "https://registry.yarnpkg.com/@jsii/check-node/-/check-node-1.107.0.tgz#359099573cf47e3d2f7be19172fbe49e3e2d11a7"
+  integrity sha512-ud21048xxEVbbzjFlE7GQSuypW7/8P6Dyu+jjTwp6wGFbnbpxZiupIMdp6eSVSqo9M3rC14SyjNq2liXoSYBZg==
   dependencies:
     chalk "^4.1.2"
     semver "^7.6.3"
 
-"@jsii/spec@^1.105.0", "@jsii/spec@^1.106.0":
-  version "1.106.0"
-  resolved "https://registry.yarnpkg.com/@jsii/spec/-/spec-1.106.0.tgz#f40010ec8cde14b7a003dd5b6a46480d9d7e222f"
-  integrity sha512-pAIvqEGf0YLmtzFtUKWNEGkCmXMHENy7k+rzCD147wnM4jHhvEL1mEvxi99aA2VcmvLYaAYNOs/XozT+s+kLqQ==
+"@jsii/spec@^1.105.0", "@jsii/spec@^1.107.0":
+  version "1.107.0"
+  resolved "https://registry.yarnpkg.com/@jsii/spec/-/spec-1.107.0.tgz#b5f71fdd408c1449bdbe6ac193ce24bc8a8d12e9"
+  integrity sha512-m3qN+uGudQ9N36kNXJ5SUaqUh7G2Dm61JgmfswnkiCxlRr2fmRYL5mRD0DA+cJX/XG/S9iDjf6NlB/fLmblFHA==
   dependencies:
     ajv "^8.17.1"
 
@@ -2641,10 +2641,10 @@ eslint-import-resolver-node@^0.3.9:
     is-core-module "^2.13.0"
     resolve "^1.22.4"
 
-eslint-import-resolver-typescript@^3.8.2:
-  version "3.8.2"
-  resolved "https://registry.yarnpkg.com/eslint-import-resolver-typescript/-/eslint-import-resolver-typescript-3.8.2.tgz#e5223f19f1cb11f68cad7dd5403cfe48d9b9b67a"
-  integrity sha512-o0nvXxsatYCDTzI1K5b3aYGQ6PjpDGJEVN86zqJw5SEewhmmggfRTotd2dqWr2t2zbeYpIEWGTCkgtUpIEIcaQ==
+eslint-import-resolver-typescript@^3.8.3:
+  version "3.8.3"
+  resolved "https://registry.yarnpkg.com/eslint-import-resolver-typescript/-/eslint-import-resolver-typescript-3.8.3.tgz#1721a1e4417e57a8fe6bf9463d0db8e220285eef"
+  integrity sha512-A0bu4Ks2QqDWNpeEgTQMPTngaMhuDu4yv6xpftBMAf+1ziXnpx+eSR1WRfoPTe2BAiAjHFZ7kSNx1fvr5g5pmQ==
   dependencies:
     "@nolyfill/is-core-module" "1.0.39"
     debug "^4.3.7"
@@ -2652,7 +2652,7 @@ eslint-import-resolver-typescript@^3.8.2:
     get-tsconfig "^4.10.0"
     is-bun-module "^1.0.2"
     stable-hash "^0.0.4"
-    tinyglobby "^0.2.11"
+    tinyglobby "^0.2.12"
 
 eslint-module-utils@^2.12.0:
   version "2.12.0"
@@ -5539,10 +5539,10 @@ progress@^2.0.3:
   resolved "https://registry.yarnpkg.com/progress/-/progress-2.0.3.tgz#7e8cf8d8f5b8f239c1bc68beb4eb78567d572ef8"
   integrity sha512-7PiHtLll5LdnKIMw100I+8xJXR5gW2QwWYkT6iJva0bXitZKa/XMrSbdmg3r2Xnaidz9Qumd0VPaMrZlF9V9sA==
 
-projen@^0.91.12:
-  version "0.91.12"
-  resolved "https://registry.yarnpkg.com/projen/-/projen-0.91.12.tgz#519ccb73926b40edb86cd5a7f41b2638fe75d503"
-  integrity sha512-Fu4GQsGMtYkI/vao/j5U+2DJcDoUR7Oc1gPGfEN1cTZFA3Swnxe51Wau96gcVb1KWnxAkR6He8fcLnvQaso+Ew==
+projen@^0.91.13:
+  version "0.91.13"
+  resolved "https://registry.yarnpkg.com/projen/-/projen-0.91.13.tgz#f8f2051aa8920a3e7d169b147c51117bf7f080a5"
+  integrity sha512-qs06tT0JtE0170QlfsSWgQ2syo5IbKlrCNQwvSezbjPrB2eDUXa+f/bnY70/4To+VcVkHuatgEPBusQLfa71+Q==
   dependencies:
     "@iarna/toml" "^2.2.5"
     case "^1.6.3"
@@ -6465,10 +6465,10 @@ tiny-relative-date@^1.3.0:
   resolved "https://registry.yarnpkg.com/tiny-relative-date/-/tiny-relative-date-1.3.0.tgz#fa08aad501ed730f31cc043181d995c39a935e07"
   integrity sha512-MOQHpzllWxDCHHaDno30hhLfbouoYlOI8YlMNtvKe1zXbjEVhbcEovQxvZrPvtiYW630GQDoMMarCnjfyfHA+A==
 
-tinyglobby@^0.2.11:
-  version "0.2.11"
-  resolved "https://registry.yarnpkg.com/tinyglobby/-/tinyglobby-0.2.11.tgz#9182cff655a0e272aad850d1a84c5e8e0f700426"
-  integrity sha512-32TmKeeKUahv0Go8WmQgiEp9Y21NuxjwjqiRC1nrUB51YacfSwuB44xgXD+HdIppmMRgjQNPdrHyA6vIybYZ+g==
+tinyglobby@^0.2.12:
+  version "0.2.12"
+  resolved "https://registry.yarnpkg.com/tinyglobby/-/tinyglobby-0.2.12.tgz#ac941a42e0c5773bd0b5d08f32de82e74a1a61b5"
+  integrity sha512-qkf4trmKSIiMTs/E63cxH+ojC2unam7rJ0WrauAzpT3ECNTxGRMlaXxVbfxMUC/w0LaYk6jQ4y/nGR9uBO3tww==
   dependencies:
     fdir "^6.4.3"
     picomatch "^4.0.2"
@@ -6660,9 +6660,9 @@ typedarray-to-buffer@^3.1.5:
     is-typedarray "^1.0.0"
 
 typescript@next:
-  version "5.9.0-dev.20250219"
-  resolved "https://registry.yarnpkg.com/typescript/-/typescript-5.9.0-dev.20250219.tgz#5d1625c8c32d7bb5e61d7befe2f06282daf98bad"
-  integrity sha512-BzBFdaj0tnTp9fp9pu1rgi7vt3u7z6EDL3IbjTgkf5GvpXTjWmQkE633De5S3ySeNL6dyZvBeVvLCKXKcOvbQA==
+  version "5.9.0-dev.20250220"
+  resolved "https://registry.yarnpkg.com/typescript/-/typescript-5.9.0-dev.20250220.tgz#99cbb90aef820a7abc05e264f054eb3fd4f6513f"
+  integrity sha512-B0DJklYzD1Dk9xavFC0jllU/id2fa7UFDmjjwx/0IufSTqGZatd6q76dtYTc8zzzMw39jliYeIuvSi+bxuGduw==
 
 typescript@~3.9.10:
   version "3.9.10"
