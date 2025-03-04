@@ -1,4 +1,17 @@
-function classDecorator(x: typeof SomeDecoratedClass, _context: ClassDecoratorContext): typeof SomeDecoratedClass {
+type Constructor = { new (...args: any[]): {} };
+
+export function functionReturnsClasstype<T extends Constructor>(ctr: T) {
+  return class extends ctr {
+  };
+}
+
+/**
+ * A class decorator that changes inherited state and adds a readonly field to the class.
+ *
+ * This wasn't the thing that was exploding, see `function-returning-anonymous-class.ts` for that.
+ * Nevertheless, this makes for a good class decorator demo.
+ */
+export function classDecorator(x: typeof SomeDecoratedClass): typeof SomeDecoratedClass {
   const ret = class extends x {
     constructor() {
       super();
@@ -8,27 +21,22 @@ function classDecorator(x: typeof SomeDecoratedClass, _context: ClassDecoratorCo
 
   // This adds a field to the class, but we can't reflect that in the type because of the limitations
   // of decorators. That's we advertise it through interface merging below.
-  ret.prototype['field'] = 'some_added_field';
+  (ret.prototype as any)['field'] = 'some_added_field';
 
   return ret;
-}
-
-function methodDecorator<A extends Function>(x: A, _context: ClassMethodDecoratorContext): A {
-  return x;
 }
 
 @classDecorator
 export class SomeDecoratedClass {
   protected state = 'state';
 
-  @methodDecorator
   public accessState() {
     return this.state;
   }
 }
 
 export interface SomeDecoratedClass {
-  field: string;
+  readonly field: string;
 }
 
 /**

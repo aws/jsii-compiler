@@ -14627,7 +14627,7 @@ this it would break runtime type checks in the JVM or CLR.",
       "kind": "class",
       "locationInModule": {
         "filename": "lib/decorators.ts",
-        "line": 20,
+        "line": 29,
       },
       "methods": [
         {
@@ -14636,7 +14636,7 @@ this it would break runtime type checks in the JVM or CLR.",
           },
           "locationInModule": {
             "filename": "lib/decorators.ts",
-            "line": 24,
+            "line": 33,
           },
           "name": "accessState",
           "returns": {
@@ -14652,9 +14652,10 @@ this it would break runtime type checks in the JVM or CLR.",
           "docs": {
             "stability": "stable",
           },
+          "immutable": true,
           "locationInModule": {
             "filename": "lib/decorators.ts",
-            "line": 31,
+            "line": 39,
           },
           "name": "field",
           "type": {
@@ -14667,7 +14668,7 @@ this it would break runtime type checks in the JVM or CLR.",
           },
           "locationInModule": {
             "filename": "lib/decorators.ts",
-            "line": 22,
+            "line": 31,
           },
           "name": "state",
           "protected": true,

@@ -4,6 +4,7 @@ import * as Case from '../case';
 export const BASE_COMPILER_OPTIONS: ts.CompilerOptions = {
   alwaysStrict: true,
   declaration: true,
+  experimentalDecorators: true,
   incremental: true,
   lib: ['lib.es2020.d.ts'],
   module: ts.ModuleKind.CommonJS,
