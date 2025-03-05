@@ -1,7 +1,8 @@
 type Constructor = { new (...args: any[]): {} };
 
 /**
- * Just the mere presence of this function is enough to break jsii, even if it's not exported
+ * Just the mere presence of this function is enough to break jsii, even if it's not exported from
+ * the jsii root module.
  *
  * The reason is that when we add deprecation warnings we visit all functions in all files.
  */
