@@ -49,9 +49,13 @@ interface SymbolIdOptions {
  */
 export function symbolIdentifier(
   typeChecker: ts.TypeChecker,
-  sym: ts.Symbol,
+  sym: ts.Symbol | undefined,
   options: SymbolIdOptions = {},
 ): string | undefined {
+  if (!sym) {
+    return undefined;
+  }
+
   // If this symbol happens to be an alias, resolve it first
   // eslint-disable-next-line no-bitwise
   while ((sym.flags & ts.SymbolFlags.Alias) !== 0) {
