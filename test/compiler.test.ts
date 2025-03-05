@@ -484,7 +484,6 @@ function expectedTypeScriptConfig() {
       alwaysStrict: true,
       composite: false,
       declaration: true,
-      experimentalDecorators: true,
       incremental: true,
       inlineSourceMap: true,
       inlineSources: true,
