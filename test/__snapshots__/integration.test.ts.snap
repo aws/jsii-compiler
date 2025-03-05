@@ -1693,14 +1693,14 @@ const foo = 'bar';
     "jsii-calc.anonymous": {
       "locationInModule": {
         "filename": "lib/index.ts",
-        "line": 28,
+        "line": 29,
       },
       "symbolId": "lib/anonymous/index:",
     },
     "jsii-calc.cdk16625": {
       "locationInModule": {
         "filename": "lib/index.ts",
-        "line": 24,
+        "line": 25,
       },
       "symbolId": "lib/cdk16625/index:",
     },
@@ -1714,7 +1714,7 @@ const foo = 'bar';
     "jsii-calc.cdk22369": {
       "locationInModule": {
         "filename": "lib/index.ts",
-        "line": 25,
+        "line": 26,
       },
       "symbolId": "lib/cdk22369/index:",
     },
@@ -1728,7 +1728,7 @@ const foo = 'bar';
     "jsii-calc.homonymousForwardReferences": {
       "locationInModule": {
         "filename": "lib/index.ts",
-        "line": 30,
+        "line": 31,
       },
       "readme": {
         "markdown": "Verifies homonymous forward references don't trip the Python type checker
@@ -1756,35 +1756,35 @@ information, which was reported in https://github.com/aws/jsii/issues/3818.
     "jsii-calc.jsii3656": {
       "locationInModule": {
         "filename": "lib/index.ts",
-        "line": 26,
+        "line": 27,
       },
       "symbolId": "lib/jsii3656/index:",
     },
     "jsii-calc.module2530": {
       "locationInModule": {
         "filename": "lib/index.ts",
-        "line": 21,
+        "line": 22,
       },
       "symbolId": "lib/module2530/index:",
     },
     "jsii-calc.module2617": {
       "locationInModule": {
         "filename": "lib/index.ts",
-        "line": 17,
+        "line": 18,
       },
       "symbolId": "lib/module2617/index:",
     },
     "jsii-calc.module2647": {
       "locationInModule": {
         "filename": "lib/index.ts",
-        "line": 16,
+        "line": 17,
       },
       "symbolId": "lib/module2647/index:",
     },
     "jsii-calc.module2689": {
       "locationInModule": {
         "filename": "lib/index.ts",
-        "line": 18,
+        "line": 19,
       },
       "symbolId": "lib/module2689/index:",
     },
@@ -1819,7 +1819,7 @@ information, which was reported in https://github.com/aws/jsii/issues/3818.
     "jsii-calc.module2692": {
       "locationInModule": {
         "filename": "lib/index.ts",
-        "line": 20,
+        "line": 21,
       },
       "symbolId": "lib/module2692/index:",
     },
@@ -1840,21 +1840,21 @@ information, which was reported in https://github.com/aws/jsii/issues/3818.
     "jsii-calc.module2700": {
       "locationInModule": {
         "filename": "lib/index.ts",
-        "line": 22,
+        "line": 23,
       },
       "symbolId": "lib/module2700/index:",
     },
     "jsii-calc.module2702": {
       "locationInModule": {
         "filename": "lib/index.ts",
-        "line": 19,
+        "line": 20,
       },
       "symbolId": "lib/module2702/index:",
     },
     "jsii-calc.nodirect": {
       "locationInModule": {
         "filename": "lib/index.ts",
-        "line": 15,
+        "line": 16,
       },
       "symbolId": "lib/no-direct-types/index:",
     },
@@ -1875,14 +1875,14 @@ information, which was reported in https://github.com/aws/jsii/issues/3818.
     "jsii-calc.onlystatic": {
       "locationInModule": {
         "filename": "lib/index.ts",
-        "line": 14,
+        "line": 15,
       },
       "symbolId": "lib/only-static/index:",
     },
     "jsii-calc.submodule": {
       "locationInModule": {
         "filename": "lib/index.ts",
-        "line": 13,
+        "line": 14,
       },
       "readme": {
         "markdown": "Read you, read me
@@ -1952,7 +1952,7 @@ This is the readme of the \`jsii-calc.submodule.isolated\` module.
     "jsii-calc.union": {
       "locationInModule": {
         "filename": "lib/index.ts",
-        "line": 29,
+        "line": 30,
       },
       "symbolId": "lib/union:",
     },
@@ -14612,6 +14612,72 @@ this it would break runtime type checks in the JVM or CLR.",
         },
       ],
       "symbolId": "lib/calculator:SmellyStruct",
+    },
+    "jsii-calc.SomeDecoratedClass": {
+      "assembly": "jsii-calc",
+      "docs": {
+        "stability": "stable",
+      },
+      "fqn": "jsii-calc.SomeDecoratedClass",
+      "initializer": {
+        "docs": {
+          "stability": "stable",
+        },
+      },
+      "kind": "class",
+      "locationInModule": {
+        "filename": "lib/decorators.ts",
+        "line": 29,
+      },
+      "methods": [
+        {
+          "docs": {
+            "stability": "stable",
+          },
+          "locationInModule": {
+            "filename": "lib/decorators.ts",
+            "line": 33,
+          },
+          "name": "accessState",
+          "returns": {
+            "type": {
+              "primitive": "string",
+            },
+          },
+        },
+      ],
+      "name": "SomeDecoratedClass",
+      "properties": [
+        {
+          "docs": {
+            "stability": "stable",
+          },
+          "immutable": true,
+          "locationInModule": {
+            "filename": "lib/decorators.ts",
+            "line": 39,
+          },
+          "name": "field",
+          "type": {
+            "primitive": "string",
+          },
+        },
+        {
+          "docs": {
+            "stability": "stable",
+          },
+          "locationInModule": {
+            "filename": "lib/decorators.ts",
+            "line": 31,
+          },
+          "name": "state",
+          "protected": true,
+          "type": {
+            "primitive": "string",
+          },
+        },
+      ],
+      "symbolId": "lib/decorators:SomeDecoratedClass",
     },
     "jsii-calc.SomeTypeJsii976": {
       "assembly": "jsii-calc",
