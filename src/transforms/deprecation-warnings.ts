@@ -469,9 +469,6 @@ class Transformer {
   private getStatementsForDeclaration(
     node: ts.MethodDeclaration | ts.GetAccessorDeclaration | ts.SetAccessorDeclaration | ts.ConstructorDeclaration,
   ): ts.Statement[] {
-    const printer = ts.createPrinter();
-    console.log(printer.printNode(ts.EmitHint.Unspecified, node, node.getSourceFile()));
-
     const klass = node.parent;
     const classSymbolId = symbolIdentifier(this.typeChecker, this.typeChecker.getTypeAtLocation(klass).symbol);
     if (classSymbolId && this.typeIndex.has(classSymbolId)) {
