@@ -10,6 +10,7 @@ import { findDependencyDirectory } from './common/find-utils';
 import { JsiiDiagnostic } from './jsii-diagnostic';
 import { TypeScriptConfigValidationRuleSet } from './tsconfig';
 import { JsiiError, parsePerson, parseRepository } from './utils';
+import { enabledWarnings } from './warnings';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-require-imports
 const spdx: Set<string> = require('spdx-license-list/simple');
@@ -178,16 +179,18 @@ export function loadProjectInfo(projectRoot: string): ProjectInfoResult {
     const range = new semver.Range(_resolveVersion(rng as string, projectRoot).version);
     const minVersion = semver.minVersion(range)?.raw;
 
-    if (!(name in devDependencies) || devDependencies[name] !== `${minVersion}`) {
-      diagnostics.push(
-        JsiiDiagnostic.JSII_0006_MISSING_DEV_DEPENDENCY.createDetached(
-          name,
-          `${rng as any}`,
-          `${minVersion}`,
-          `${devDependencies[name]}`,
-        ),
-      );
-      continue;
+    if (enabledWarnings['metadata/missing-dev-dependency']) {
+      if (!(name in devDependencies) || devDependencies[name] !== `${minVersion}`) {
+        diagnostics.push(
+          JsiiDiagnostic.JSII_0006_MISSING_DEV_DEPENDENCY.createDetached(
+            name,
+            `${rng as any}`,
+            `${minVersion}`,
+            `${devDependencies[name]}`,
+          ),
+        );
+        continue;
+      }
     }
   }
 

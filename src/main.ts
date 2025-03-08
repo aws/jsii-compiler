@@ -13,9 +13,7 @@ import { emitSupportPolicyInformation } from './support';
 import { TypeScriptConfigValidationRuleSet } from './tsconfig';
 import * as utils from './utils';
 import { VERSION } from './version';
-import { enabledWarnings } from './warnings';
-
-const warningTypes = Object.keys(enabledWarnings);
+import { enabledWarnings, silenceWarnings } from './warnings';
 
 function choiceWithDesc(
   choices: { [choice: string]: string },
@@ -91,7 +89,7 @@ const ruleSets: {
             group: OPTION_GROUP.JSII,
             type: 'array',
             default: [],
-            desc: `List of warnings to silence (warnings: ${warningTypes.join(',')})`,
+            desc: `List of warnings to silence (warnings: ${Object.keys(enabledWarnings).join(',')})`,
           })
           .option('strip-deprecated', {
             group: OPTION_GROUP.JSII,
@@ -149,16 +147,7 @@ const ruleSets: {
 
           const { projectInfo, diagnostics: projectInfoDiagnostics } = loadProjectInfo(projectRoot);
 
-          // disable all silenced warnings
-          for (const key of argv['silence-warnings']) {
-            if (!(key in enabledWarnings)) {
-              throw new utils.JsiiError(
-                `Unknown warning type ${key as any}. Must be one of: ${warningTypes.join(', ')}`,
-              );
-            }
-
-            enabledWarnings[key] = false;
-          }
+          silenceWarnings(argv['silence-warnings'] as string[]);
 
           configureCategories(projectInfo.diagnostics ?? {});
 

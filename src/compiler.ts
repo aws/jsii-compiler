@@ -15,6 +15,7 @@ import { BASE_COMPILER_OPTIONS, convertForJson } from './tsconfig/compiler-optio
 import { TypeScriptConfigValidator } from './tsconfig/tsconfig-validator';
 import { ValidationError } from './tsconfig/validator';
 import * as utils from './utils';
+import { enabledWarnings } from './warnings';
 
 const LOG = log4js.getLogger('jsii/compiler');
 export const DIAGNOSTICS = 'diagnostics';
@@ -182,7 +183,10 @@ export class Compiler implements Emitter {
 
       // emit a warning if validation is disabled
       const rules = this.options.validateTypeScriptConfig ?? TypeScriptConfigValidationRuleSet.NONE;
-      if (rules === TypeScriptConfigValidationRuleSet.NONE) {
+      if (
+        rules === TypeScriptConfigValidationRuleSet.NONE &&
+        enabledWarnings['typescript-config/disabled-tsconfig-validation']
+      ) {
         utils.logDiagnostic(
           JsiiDiagnostic.JSII_4009_DISABLED_TSCONFIG_VALIDATION.create(undefined, this.configPath),
           this.projectRoot,

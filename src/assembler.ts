@@ -143,7 +143,9 @@ export class Assembler implements Emitter {
     }
     const readme = _loadReadme.call(this);
     if (readme == null) {
-      this._diagnostics.push(JsiiDiagnostic.JSII_0003_MISSING_README.createDetached());
+      if (enabledWarnings['metadata/missing-readme']) {
+        this._diagnostics.push(JsiiDiagnostic.JSII_0003_MISSING_README.createDetached());
+      }
     }
     const docs = _loadDocs.call(this);
 
@@ -370,7 +372,10 @@ export class Assembler implements Emitter {
       // since we are exposing a type of this assembly in this module's public API,
       // we expect it to appear as a peer dependency instead of a normal dependency.
       if (assembly) {
-        if (!(assembly.name in this.projectInfo.peerDependencies)) {
+        if (
+          !(assembly.name in this.projectInfo.peerDependencies) &&
+          enabledWarnings['metadata/missing-peer-dependency']
+        ) {
           this._diagnostics.push(
             JsiiDiagnostic.JSII_0005_MISSING_PEER_DEPENDENCY.create(
               referencingNode!, // Cheating here for now, until the referencingNode can be made required
@@ -1637,7 +1642,7 @@ export class Assembler implements Emitter {
     const params = getReferencedDocParams(methodSym);
     const actualNames = new Set((method.parameters ?? []).map((p) => p.name));
     for (const param of params) {
-      if (!actualNames.has(param)) {
+      if (!actualNames.has(param) && enabledWarnings['documentation/non-existent-parameter']) {
         this._diagnostics.push(
           JsiiDiagnostic.JSII_7000_NON_EXISTENT_PARAMETER.create(
             methodSym.valueDeclaration ?? methodSym.declarations?.[0],
@@ -1871,7 +1876,10 @@ export class Assembler implements Emitter {
       return;
     }
 
-    if (type.name === Case.pascal(symbol.name)) {
+    if (
+      type.name === Case.pascal(symbol.name) &&
+      enabledWarnings['language-compatibility/member-name-conflicts-with-type-name']
+    ) {
       this._diagnostics.push(
         JsiiDiagnostic.JSII_5019_MEMBER_TYPE_NAME_CONFLICT.create(
           declaration.name,
@@ -1952,15 +1960,17 @@ export class Assembler implements Emitter {
   }
 
   private _warnAboutReservedWords(symbol: ts.Symbol) {
-    if (!enabledWarnings['reserved-word']) {
-      return;
-    }
-
-    const reservingLanguages = isReservedName(symbol.name);
-    if (reservingLanguages) {
-      this._diagnostics.push(
-        JsiiDiagnostic.JSII_5018_RESERVED_WORD.create(_nameOrDeclarationNode(symbol), symbol.name, reservingLanguages),
-      );
+    if (enabledWarnings['language-compatibility/reserved-word']) {
+      const reservingLanguages = isReservedName(symbol.name);
+      if (reservingLanguages) {
+        this._diagnostics.push(
+          JsiiDiagnostic.JSII_5018_RESERVED_WORD.create(
+            _nameOrDeclarationNode(symbol),
+            symbol.name,
+            reservingLanguages,
+          ),
+        );
+      }
     }
   }
 
@@ -1990,7 +2000,10 @@ export class Assembler implements Emitter {
       | ts.AccessorDeclaration
       | ts.ParameterPropertyDeclaration;
 
-    if (type.name === Case.pascal(symbol.name)) {
+    if (
+      type.name === Case.pascal(symbol.name) &&
+      enabledWarnings['language-compatibility/member-name-conflicts-with-type-name']
+    ) {
       this._diagnostics.push(
         JsiiDiagnostic.JSII_5019_MEMBER_TYPE_NAME_CONFLICT.create(
           signature.name,
