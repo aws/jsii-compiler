@@ -52,7 +52,7 @@
     "constructs": "^10.0.0",
     "eslint": "^9",
     "eslint-config-prettier": "^8.10.0",
-    "eslint-import-resolver-typescript": "^3.8.3",
+    "eslint-import-resolver-typescript": "^3.8.5",
     "eslint-plugin-import": "^2.31.0",
     "eslint-plugin-prettier": "^4.2.1",
     "eslint-plugin-unicorn": "^56.0.1",
@@ -70,8 +70,8 @@
     "ts-node": "^10.9.2"
   },
   "dependencies": {
-    "@jsii/check-node": "1.108.0",
-    "@jsii/spec": "^1.108.0",
+    "@jsii/check-node": "1.109.0",
+    "@jsii/spec": "^1.109.0",
     "case": "^1.6.3",
     "chalk": "^4",
     "fast-deep-equal": "^3.1.3",
