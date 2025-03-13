@@ -18,10 +18,10 @@ import { UpgradeDependencies } from './projenrc/upgrade-dependencies';
 //  5. If any versions dropped into EOS, add the respective branch to the "end-of-support" ruleset on GitHub and
 //     remove it from the "current" ruleset.
 //  6. Add `maintenance/vX.Y` to the "current" ruleset in GitHub.
-//  6. `npx projen`
-//  7. `npx projen build` and resolve any new test failures that might be introduced by the new TS version
-//  8. Create a PR, with title "feat: TypeScript X.Y".
-//  9. Note that merging the PR doesn't trigger a release. Release are performed on a weekly schedule.
+//  7. `npx projen`
+//  8. `npx projen build` and resolve any new test failures that might be introduced by the new TS version
+//  9. Create a PR, with title "feat: TypeScript X.Y".
+// 10. Note that merging the PR doesn't trigger a release. Release are performed on a weekly schedule.
 //     You need to manually create a release by triggering this workflow:
 //     https://github.com/aws/jsii-compiler/actions/workflows/auto-tag-releases.yml
 // 10. Perform new version steps for `jsii-rosetta`.
