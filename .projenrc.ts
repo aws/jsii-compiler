@@ -24,7 +24,7 @@ import { UpgradeDependencies } from './projenrc/upgrade-dependencies';
 // 10. Note that merging the PR doesn't trigger a release. Release are performed on a weekly schedule.
 //     You need to manually create a release by triggering this workflow:
 //     https://github.com/aws/jsii-compiler/actions/workflows/auto-tag-releases.yml
-// 10. Perform new version steps for `jsii-rosetta`.
+// 11. Perform new version steps for `jsii-rosetta`.
 
 const project = new typescript.TypeScriptProject({
   projenrcTs: true,
