@@ -52,7 +52,7 @@
     "constructs": "^10.0.0",
     "eslint": "^9",
     "eslint-config-prettier": "^8.10.0",
-    "eslint-import-resolver-typescript": "^3.8.5",
+    "eslint-import-resolver-typescript": "^3.8.6",
     "eslint-plugin-import": "^2.31.0",
     "eslint-plugin-prettier": "^4.2.1",
     "eslint-plugin-unicorn": "^56.0.1",
