@@ -13,16 +13,18 @@ import { UpgradeDependencies } from './projenrc/upgrade-dependencies';
 //     `git push origin main:maintenance/vX.Y` (X.Y is the TS version that is about to be replaced by a new release)
 //  2. Edit `projenrc/support.ts`, set maintenance EOL date for the new maintenance version to be 6 months from
 //     today (round up to the mid-point or end of month), make the new version current.
-//  3. Update `minNodeVersion` to the oldest LTS version of Node (i.e. dropping support for EOL versions of Node)
-//  4. Update the version list in the README (remember to remove EOS versions)
-//  5. If any versions dropped into EOS, add the respective branch to the "end-of-support" ruleset.
-//  6. `npx projen`
-//  7. `npx projen build` and resolve any new test failures that might be introduced by the new TS version
-//  8. Create a PR, with title "feat: TypeScript X.Y"
-//  9. Note that merging the PR doesn't trigger a release. Release are performed on a weekly schedule.
+//  3. In `.projenrc.ts`, update `minNodeVersion` to the oldest LTS version of Node (i.e. dropping support for EOL versions of Node)
+//  4. Update the version list in the README (remember to remove EOS versions).
+//  5. If any versions dropped into EOS, add the respective branch to the "end-of-support" ruleset on GitHub and
+//     remove it from the "current" ruleset.
+//  6. Add `maintenance/vX.Y` to the "current" ruleset in GitHub.
+//  7. `npx projen`
+//  8. `npx projen build` and resolve any new test failures that might be introduced by the new TS version
+//  9. Create a PR, with title "feat: TypeScript X.Y".
+// 10. Note that merging the PR doesn't trigger a release. Release are performed on a weekly schedule.
 //     You need to manually create a release by triggering this workflow:
 //     https://github.com/aws/jsii-compiler/actions/workflows/auto-tag-releases.yml
-// 10. Perform new version steps for `jsii-rosetta`
+// 11. Perform new version steps for `jsii-rosetta`.
 
 const project = new typescript.TypeScriptProject({
   projenrcTs: true,

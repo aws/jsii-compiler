@@ -194,6 +194,8 @@ export function fcTsconfig(
     noUncheckedSideEffectImports: fc.boolean(),
     noCheck: fc.boolean(),
     rewriteRelativeImportExtensions: fc.boolean(),
+    libReplacement: fc.boolean(),
+    erasableSyntaxOnly: fc.boolean(),
   };
 
   // limit to only allowed keys
