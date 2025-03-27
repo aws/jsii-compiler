@@ -1,5 +1,6 @@
 import * as ts from 'typescript';
 import { JsiiDiagnostic } from './jsii-diagnostic';
+import { enabledWarnings } from './warnings';
 
 /**
  * TSDoc-style directives that can be attached to a symbol.
@@ -40,7 +41,7 @@ export class Directives {
           break;
         case 'jsii':
           const comments = getComments(tag);
-          if (comments.length === 0) {
+          if (comments.length === 0 && enabledWarnings['jsii-directive/missing-argument']) {
             onDiagnostic(JsiiDiagnostic.JSII_2000_MISSING_DIRECTIVE_ARGUMENT.create(tag));
             continue;
           }
@@ -50,7 +51,9 @@ export class Directives {
                 this.ignore ??= jsdocNode;
                 break;
               default:
-                onDiagnostic(JsiiDiagnostic.JSII_2999_UNKNOWN_DIRECTIVE.create(jsdocNode, text));
+                if (enabledWarnings['jsii-directive/unknown']) {
+                  onDiagnostic(JsiiDiagnostic.JSII_2999_UNKNOWN_DIRECTIVE.create(jsdocNode, text));
+                }
                 break;
             }
           }
