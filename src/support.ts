@@ -85,7 +85,9 @@ export async function emitSupportPolicyInformation() {
     // End-of-Support within 30 days!
     veryVisibleMessage(
       chalk.bgYellow.black,
-      `The ${RELEASE_LINE} release line of jsii will reach End-of-Support soon, on ${endOfSupportDate.toISOString().split('T')[0]}.`,
+      `The ${RELEASE_LINE} release line of jsii will reach End-of-Support soon, on ${
+        endOfSupportDate.toISOString().split('T')[0]
+      }.`,
       `We strongly recommend you upgrade to the current release line (${data.current}) at your earliest convenience.`,
       ...alternatives,
     );
