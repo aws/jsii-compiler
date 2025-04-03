@@ -70,7 +70,7 @@ export async function emitSupportPolicyInformation() {
       if (acc.length === 0) {
         acc.push('', 'Other actively supported release lines include:');
       }
-      acc.push(`- ${release} (planned End-of-Support date: ${date.toISOString()})`);
+      acc.push(`- ${release} (planned End-of-Support date: ${date.toISOString().split('T')[0]})`);
       return acc;
     }, new Array<string>());
   if (endOfSupportDate <= now) {
@@ -85,7 +85,9 @@ export async function emitSupportPolicyInformation() {
     // End-of-Support within 30 days!
     veryVisibleMessage(
       chalk.bgYellow.black,
-      `The ${RELEASE_LINE} release line of jsii will reach End-of-Support soon, on ${endOfSupportDate.toISOString()}.`,
+      `The ${RELEASE_LINE} release line of jsii will reach End-of-Support soon, on ${
+        endOfSupportDate.toISOString().split('T')[0]
+      }.`,
       `We strongly recommend you upgrade to the current release line (${data.current}) at your earliest convenience.`,
       ...alternatives,
     );
