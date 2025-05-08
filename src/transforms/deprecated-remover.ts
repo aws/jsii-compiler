@@ -241,10 +241,12 @@ export class DeprecatedRemover {
       if (isClassType(type) && type.initializer) {
         result.push(...this.verifyCallable(assembly, strippedFqns, type.initializer));
       }
-      if (type.methods)
+      if (type.methods) {
         for (const method of type.methods) result.push(...this.verifyCallable(assembly, strippedFqns, method));
-      if (type.properties)
+      }
+      if (type.properties) {
         for (const property of type.properties) result.push(...this.verifyProperty(assembly, strippedFqns, property));
+      }
     }
 
     return result;
