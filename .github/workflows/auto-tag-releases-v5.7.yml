@@ -4,7 +4,7 @@ name: auto-tag-releases-v5.7
 run-name: Auto-Tag Release (v5.7)
 on:
   schedule:
-    - cron: 0 15 * * 1
+    - cron: 0 10 * * 1
   workflow_dispatch: {}
 jobs:
   pre-flight:
