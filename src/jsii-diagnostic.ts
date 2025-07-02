@@ -743,7 +743,7 @@ export class JsiiDiagnostic implements ts.Diagnostic {
   public static readonly JSII_9002_UNRESOLVEABLE_TYPE = Code.error({
     code: 9002,
     formatter: (reference: string) =>
-      `Unable to resolve type "${reference}". It may be @internal or not exported from the module's entry point (as configured in "package.json" as "main").`,
+      `Type "${reference}" is part of the public API but not exported (@internal or not exported from the package.json "main" file). Either export it or add @internal explicitly if you want this to be a hidden base class.`,
     name: 'miscellaneous/unresolveable-type',
   });
 
