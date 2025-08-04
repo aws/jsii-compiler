@@ -66,7 +66,7 @@
     "prettier": "^2.8.8",
     "projen": "^0.95.0",
     "tar": "^6.2.1",
-    "ts-jest": "^29.4.0",
+    "ts-jest": "^29.4.1",
     "ts-node": "^10.9.2"
   },
   "dependencies": {
