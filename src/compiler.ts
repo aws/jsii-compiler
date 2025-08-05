@@ -588,7 +588,7 @@ export interface NonBlockingWatchOptions {
 function _pathOfLibraries(options: ts.CompilerOptions, host: ts.CompilerHost | ts.WatchCompilerHost<any>): string[] {
   // Prefer user libraries, falling back to a library based on the target if not supplied by the user.
   // This matches tsc behavior.
-  const libs = options.lib ?? [ts.getDefaultLibFileName(options)] ?? [];
+  const libs = options.lib ?? [ts.getDefaultLibFileName(options)];
   if (libs.length === 0) {
     return [];
   }

@@ -30,7 +30,7 @@
     },
     {
       "name": "@types/node",
-      "version": "^18",
+      "version": "^20",
       "type": "build"
     },
     {
@@ -182,7 +182,7 @@
     },
     {
       "name": "typescript",
-      "version": "~5.8",
+      "version": "~5.9",
       "type": "runtime"
     },
     {
