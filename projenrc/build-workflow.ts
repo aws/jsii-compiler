@@ -41,6 +41,7 @@ export class BuildWorkflow {
     }
 
     const nodeVersion = project.minNodeVersion?.split('.', 1).at(0) ?? 'lts/*';
+    const minNodeMajor = parseInt(project.minNodeVersion?.split('.', 1).at(0) ?? '18', 10);
 
     wf.addJobs({
       'build': {
@@ -185,7 +186,7 @@ export class BuildWorkflow {
           matrix: {
             domain: {
               'node-version': NodeRelease.ALL_RELEASES.flatMap((release) => {
-                if (!release.supported || isOdd(release.majorVersion)) {
+                if (!release.supported || isOdd(release.majorVersion) || release.majorVersion < minNodeMajor) {
                   return [];
                 }
                 return [`${release.majorVersion}.x`];
@@ -300,9 +301,9 @@ export class BuildWorkflow {
           failFast: false,
           matrix: {
             domain: {
-              'node-version': NodeRelease.ALL_RELEASES.filter((release) => release.supported).map(
-                (release) => `${release.majorVersion}.x`,
-              ),
+              'node-version': NodeRelease.ALL_RELEASES.filter(
+                (release) => release.supported && release.majorVersion >= minNodeMajor,
+              ).map((release) => `${release.majorVersion}.x`),
               'package-manager': ['npm', 'yarn'],
               'runs-on': ['ubuntu-latest', 'windows-latest', 'macos-latest'],
             },
