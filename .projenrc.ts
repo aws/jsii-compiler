@@ -6,25 +6,9 @@ import { SUPPORT_POLICY, SupportPolicy } from './projenrc/support';
 import { UpdateIntegPackage } from './projenrc/update-integ-package';
 import { UpgradeDependencies } from './projenrc/upgrade-dependencies';
 
-//  See 'projenrc/support.ts' for TypeScript versions we are tracking. To add a new version:
-//
-//  1. Fork the current `main` to a maintenance branch:
-//     `git switch main && git fetch --all && git pull`
-//     `git push origin main:maintenance/vX.Y` (X.Y is the TS version that is about to be replaced by a new release)
-//  2. Edit `projenrc/support.ts`, set maintenance EOL date for the new maintenance version to be 6 months from
-//     today (round up to the mid-point or end of month), make the new version current.
-//  3. In `.projenrc.ts`, update `minNodeVersion` to the oldest LTS version of Node (i.e. dropping support for EOL versions of Node)
-//  4. Update the version list in the README (remember to remove EOS versions).
-//  5. If any versions dropped into EOS, add the respective branch to the "end-of-support" ruleset on GitHub and
-//     remove it from the "current" ruleset.
-//  6. Add `maintenance/vX.Y` to the "current" ruleset in GitHub.
-//  7. `npx projen`
-//  8. `npx projen build` and resolve any new test failures that might be introduced by the new TS version
-//  9. Create a PR, with title "feat: TypeScript X.Y".
-// 10. Note that merging the PR doesn't trigger a release. Release are performed on a weekly schedule.
-//     You need to manually create a release by triggering this workflow:
-//     https://github.com/aws/jsii-compiler/actions/workflows/auto-tag-releases.yml
-// 11. Perform new version steps for `jsii-rosetta`.
+//  See 'projenrc/support.ts' for TypeScript versions we are tracking.
+//  To add a new TypeScript version, follow the complete process documented in:
+//  .kiro/steering/new-typescript-release.md
 
 const project = new typescript.TypeScriptProject({
   projenrcTs: true,
@@ -50,7 +34,7 @@ const project = new typescript.TypeScriptProject({
 
   autoDetectBin: true,
 
-  minNodeVersion: '18.12.0',
+  minNodeVersion: '20.9.0',
   tsconfig: {
     compilerOptions: {
       // @see https://github.com/microsoft/TypeScript/wiki/Node-Target-Mapping
