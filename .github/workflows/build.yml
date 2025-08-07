@@ -139,6 +139,7 @@ jobs:
       fail-fast: false
       matrix:
         node-version:
+          - 18.x
           - 20.x
           - 22.x
           - 24.x
@@ -172,7 +173,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "18"
           cache: yarn
       - name: Install dependencies
         run: yarn install --frozen-lockfile
@@ -229,6 +230,7 @@ jobs:
       fail-fast: false
       matrix:
         node-version:
+          - 18.x
           - 20.x
           - 22.x
           - 24.x

@@ -47,7 +47,9 @@ Edit `projenrc/support.ts`:
 
 ### 3. Update Minimum Node.js Version
 
-In `.projenrc.ts`, update `minNodeVersion` to the oldest LTS version of Node.js, dropping support for EOL versions.
+In `.projenrc.ts`, update `minNodeVersion` following the AWS CDK Node.js support policy. The AWS CDK extends support for Node.js versions 6 months beyond their official End-of-Life (EOL) dates.
+
+Refer to the [AWS CDK Node.js version timeline](https://docs.aws.amazon.com/cdk/v2/guide/node-versions.html#node-version-timeline) for the current support status and drop support only for versions that have exceeded the extended 6-month support period.
 
 ### 4. Update README Version Table
 
@@ -178,6 +180,8 @@ If the build workflow still includes old Node.js versions after updating `minNod
 2. Ensure `minNodeMajor` calculation is correct
 3. Run `npx projen` to regenerate workflows
 
+**Note:** Follow the AWS CDK Node.js support policy which extends support 6 months beyond official Node.js EOL dates. Do not drop support for Node.js versions that are still within the extended support period.
+
 ### EOS Date Calculation
 
 Always calculate EOS dates as **6 months from the current date**, not from the release date:
@@ -213,5 +217,6 @@ After the PR is merged and release is triggered:
 
 - [TypeScript Release Blog Posts](https://devblogs.microsoft.com/typescript/)
 - [Node.js Release Schedule](https://nodejs.org/en/about/releases/)
+- [AWS CDK Node.js Version Timeline](https://docs.aws.amazon.com/cdk/v2/guide/node-versions.html#node-version-timeline)
 - [jsii-compiler Repository](https://github.com/aws/jsii-compiler)
 - [Conventional Commits](https://www.conventionalcommits.org/)
