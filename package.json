@@ -43,7 +43,7 @@
     "@types/jest": "^29.5.14",
     "@types/lockfile": "^1.0.4",
     "@types/node": "^18",
-    "@types/semver": "^7.7.0",
+    "@types/semver": "^7.7.1",
     "@types/tar": "^6.1.13",
     "@typescript-eslint/eslint-plugin": "^8",
     "@typescript-eslint/parser": "^8",
@@ -64,7 +64,7 @@
     "npm": "^9.9.4",
     "npm-check-updates": "^16",
     "prettier": "^2.8.8",
-    "projen": "^0.95.2",
+    "projen": "^0.95.6",
     "tar": "^6.2.1",
     "ts-jest": "^29.4.1",
     "ts-node": "^10.9.2"
