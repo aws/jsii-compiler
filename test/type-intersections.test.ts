@@ -236,10 +236,10 @@ describe('intersection type may not be used in output position', () => {
 });
 
 test.each([
-  ['IFoo', 'string', 'Intersection types must combine exclusively interfaces'],
+  ['IFoo', 'string', 'Found non-interface type in type intersection: string'],
   ['boolean', 'string', '"never" type is not allowed'],
-  ['IFoo[]', 'IBar', 'Intersection types must combine exclusively interfaces'],
-  ['IBar', 'SomeClass', 'Intersection types must combine exclusively interfaces'],
+  ['IFoo[]', 'IBar', 'Found non-interface type in type intersection: array'],
+  ['IBar', 'SomeClass', 'Found non-interface type in type intersection: testpkg.SomeClass'],
 ])('intersection type may not combine %s and %s', (lhs, rhs, errorMessage) => {
   const errs = compileJsiiForErrors(
     `
