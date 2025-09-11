@@ -302,14 +302,13 @@ export class JsiiDiagnostic implements ts.Diagnostic {
 
   public static readonly JSII_1008_ONLY_INTERFACE_INTERSECTION = Code.error({
     code: 1008,
-    formatter: () => 'Intersection types must combine exclusively interfaces (IOne & ITwo)',
+    formatter: (type: string) => `Found non-interface type in type intersection: ${type}`,
     name: 'typescript-restriction/only-interface-intersection',
   });
 
   public static readonly JSII_1009_INTERSECTION_ONLY_INPUT = Code.error({
     code: 1009,
-    formatter: (location: string) =>
-      `Intersection types may only be used as inputs, but ${location} is an intersection type used as output`,
+    formatter: (location: string) => `Intersection types may only be used as inputs, but ${location} is used as output`,
     name: 'typescript-restriction/intersection-only-input',
   });
 
