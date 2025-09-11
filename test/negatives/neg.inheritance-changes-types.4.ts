@@ -1,10 +1,15 @@
 export class Superclass {}
 export class Subclass extends Superclass {}
 
-export class SomethingUnspecific {
-  public something = new Superclass();
+export class Something {
+  public takeSomething(_argument: Subclass): void {
+    // Nothing
+  }
 }
 
-export class SomethingSpecific extends SomethingUnspecific {
-  public something: Subclass = new Subclass();
+// This should fail - contravariant parameter types are not allowed
+export class SomethingSpecific extends Something {
+  public takeSomething(_argument: Superclass): void {
+    // Nothing
+  }
 }

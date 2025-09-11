@@ -477,14 +477,14 @@ export class JsiiDiagnostic implements ts.Diagnostic {
   });
 
   public static readonly JSII_5003_OVERRIDE_CHANGES_RETURN_TYPE = Code.error({
-    code: 5003,
+    code: 5003, // allowed
     formatter: (newElement: string, action: string, newValue: string, oldValue: string) =>
       `"${newElement}" changes the return type to "${newValue}" when ${action}. Change it to "${oldValue}"`,
     name: 'language-compatibility/override-changes-return-type',
   });
 
   public static readonly JSII_5004_OVERRIDE_CHANGES_PROP_TYPE = Code.error({
-    code: 5004,
+    code: 5004, // allowed
     formatter: (newElement: string, action: string, newType: spec.TypeReference, oldType: spec.TypeReference) =>
       `"${newElement}" changes the property type to "${spec.describeTypeReference(
         newType,
@@ -500,7 +500,7 @@ export class JsiiDiagnostic implements ts.Diagnostic {
   });
 
   public static readonly JSII_5006_OVERRIDE_CHANGES_PARAM_TYPE = Code.error({
-    code: 5006,
+    code: 5006, // tbd
     formatter: (newElement: string, action: string, newParam: spec.Parameter, oldParam: spec.Parameter) =>
       `"${newElement}" changes the type of parameter "${newParam.name}" to ${spec.describeTypeReference(
         newParam.type,

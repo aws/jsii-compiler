@@ -2,19 +2,15 @@ export class Superclass {}
 export class Subclass extends Superclass {}
 
 export class SomethingBase {
-  public takeSomething(_argument: Subclass): void {
-    // Nothing
-  }
+  public something: Superclass = new Superclass();
 }
 
 export class SomethingElse extends SomethingBase {
   public addUnrelatedMember = 3;
 }
 
-// Should still fail even though 2-level inheritance - contravariant parameters not allowed
+// Should still fail even though 2-level inheritance
 export class SomethingDifferent extends SomethingElse {
-  public takeSomething(_argument: Superclass): void {
-    // Nothing
-  }
+  public something: number = 1;
   public addUnrelatedMember = 1;
 }
