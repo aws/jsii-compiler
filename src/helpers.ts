@@ -26,6 +26,11 @@ export type MultipleSourceFiles = {
 };
 
 /**
+ * Assembly features supported by this compiler
+ */
+export const ASSEMBLY_FEATURES_SUPPORTED: spec.JsiiFeature[] = ['class-covariant-overrides' as any];
+
+/**
  * Compile a piece of source and return the JSII assembly for it
  *
  * Only usable for trivial cases and tests.
@@ -115,7 +120,7 @@ export function compileJsiiForTest(
     if (errors.length > 0 || emitResult.emitSkipped) {
       throw new JsiiError('There were compiler errors');
     }
-    const assembly = loadAssemblyFromPath(process.cwd(), false);
+    const assembly = loadAssemblyFromPath(process.cwd(), false, ASSEMBLY_FEATURES_SUPPORTED);
     const files: Record<string, string> = {};
 
     for (const filename of Object.keys(source)) {

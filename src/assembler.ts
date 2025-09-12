@@ -44,6 +44,7 @@ export class Assembler implements Emitter {
   private readonly mainFile: string;
   private readonly tscRootDir?: string;
   private readonly compressAssembly?: boolean;
+  private readonly usedFeatures = new Set<spec.JsiiFeature>();
 
   private readonly _typeChecker: ts.TypeChecker;
 
@@ -119,6 +120,9 @@ export class Assembler implements Emitter {
 
     this.mainFile = path.resolve(projectInfo.projectRoot, mainFile);
     this.runtimeTypeInfoInjector = new RuntimeTypeInfoInjector(projectInfo.version);
+
+    // Always enabled features
+    this.usedFeatures.add('class-covariant-overrides' as any);
   }
 
   public get customTransformers(): ts.CustomTransformers {
@@ -220,6 +224,7 @@ export class Assembler implements Emitter {
       jsiiVersion,
       bin: this.projectInfo.bin,
       fingerprint: '<TBD>',
+      usedFeatures: this.usedFeatures.size > 0 ? Array.from(this.usedFeatures) : undefined,
     };
 
     if (this.deprecatedRemover) {
