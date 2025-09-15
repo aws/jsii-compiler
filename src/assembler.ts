@@ -224,7 +224,7 @@ export class Assembler implements Emitter {
       jsiiVersion,
       bin: this.projectInfo.bin,
       fingerprint: '<TBD>',
-      usedFeatures: this.usedFeatures.size > 0 ? Array.from(this.usedFeatures) : undefined,
+      usedFeatures: this.usedFeatures.size > 0 ? Array.from(this.usedFeatures).sort() : undefined,
     };
 
     if (this.deprecatedRemover) {
