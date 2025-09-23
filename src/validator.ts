@@ -296,7 +296,7 @@ function _defaultValidations(): ValidationFunction[] {
             property,
             `${type.fqn}#${property.name}`,
             `implementing ${ifaceType.fqn}`,
-            { allowCovariance: false },
+            { allowCovariance: true },
           );
           // We won't replace a previous overrides declaration from a property override, as those
           // have higher precedence than an initial implementation.
@@ -367,9 +367,9 @@ function _defaultValidations(): ValidationFunction[] {
         const expParam = expectedParams[i];
         const actParam = actualParams[i];
         if (!deepEqual(expParam.type, actParam.type)) {
-          diagnostic(
-            JsiiDiagnostic.JSII_5006_OVERRIDE_CHANGES_PARAM_TYPE.createDetached(label, action, actParam, expParam),
-          );
+          // diagnostic(
+          //   JsiiDiagnostic.JSII_5006_OVERRIDE_CHANGES_PARAM_TYPE.createDetached(label, action, actParam, expParam),
+          // );
         }
         // Not-ing those to force the values to a strictly boolean context (they're optional, undefined means false)
         if (expParam.variadic !== actParam.variadic) {
@@ -421,6 +421,10 @@ function _defaultValidations(): ValidationFunction[] {
       // Handle class implementing interface
       if (spec.isClassType(candidateTypeSpec) && spec.isInterfaceType(expectedTypeSpec)) {
         return _classImplementsInterface(candidateTypeSpec, expectedType.fqn);
+      }
+
+      if (spec.isInterfaceType(candidateTypeSpec) && spec.isInterfaceType(expectedTypeSpec)) {
+        return _interfaceExtendsInterface(candidateTypeSpec, expectedType.fqn);
       }
 
       return false;

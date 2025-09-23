@@ -122,7 +122,7 @@ export class Assembler implements Emitter {
     this.runtimeTypeInfoInjector = new RuntimeTypeInfoInjector(projectInfo.version);
 
     // Always enabled features
-    this.usedFeatures.add('class-covariant-overrides' as any);
+    // this.usedFeatures.add('class-covariant-overrides' as any);
   }
 
   public get customTransformers(): ts.CustomTransformers {
@@ -1839,13 +1839,13 @@ export class Assembler implements Emitter {
         const baseMembers = memberNames(base);
         for (const memberName of names) {
           if (baseMembers.includes(memberName)) {
-            this._diagnostics.push(
-              JsiiDiagnostic.JSII_5015_REDECLARED_INTERFACE_MEMBER.create(
-                type.symbol.valueDeclaration ?? type.symbol.declarations?.[0],
-                memberName,
-                jsiiType,
-              ),
-            );
+            // this._diagnostics.push(
+            //   JsiiDiagnostic.JSII_5015_REDECLARED_INTERFACE_MEMBER.create(
+            //     type.symbol.valueDeclaration ?? type.symbol.declarations?.[0],
+            //     memberName,
+            //     jsiiType,
+            //   ),
+            // );
           }
         }
         // Recurse upwards
