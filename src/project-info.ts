@@ -7,6 +7,7 @@ import * as semver from 'semver';
 import * as ts from 'typescript';
 
 import { findDependencyDirectory } from './common/find-utils';
+import { ASSEMBLY_FEATURES_SUPPORTED } from './helpers';
 import { JsiiDiagnostic } from './jsii-diagnostic';
 import { TypeScriptConfigValidationRuleSet } from './tsconfig';
 import { JsiiError, parsePerson, parseRepository } from './utils';
@@ -392,7 +393,7 @@ class DependencyResolver {
       return this.cache.get(jsiiFile)!;
     }
 
-    const assembly = loadAssemblyFromFile(jsiiFile);
+    const assembly = loadAssemblyFromFile(jsiiFile, true, ASSEMBLY_FEATURES_SUPPORTED);
 
     // Continue loading any dependencies declared in the asm
     const resolvedDependencies = assembly.dependencies

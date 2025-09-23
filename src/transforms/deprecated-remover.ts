@@ -5,6 +5,7 @@ import {
   EnumMember,
   Initializer,
   InterfaceType,
+  IntersectionTypeReference,
   isClassOrInterfaceType,
   isClassType,
   isCollectionTypeReference,
@@ -12,11 +13,13 @@ import {
   isMethod,
   isNamedTypeReference,
   isPrimitiveTypeReference,
+  isUnionTypeReference,
   Method,
   Parameter,
   Property,
   Stability,
   TypeReference,
+  UnionTypeReference,
 } from '@jsii/spec';
 import * as ts from 'typescript';
 
@@ -305,7 +308,10 @@ export class DeprecatedRemover {
     if (isCollectionTypeReference(ref)) {
       return this.tryFindReference(ref.collection.elementtype, fqns);
     }
-    return ref.union.types.map((type) => this.tryFindReference(type, fqns)).find((typeRef) => typeRef != null);
+
+    return setTypeMembers(ref)
+      .map((type) => this.tryFindReference(type, fqns))
+      .find((typeRef) => typeRef != null);
   }
 
   private shouldFqnBeStripped(fqn: string) {
@@ -768,5 +774,13 @@ class DeprecationRemovalTransformer {
     return (
       this.nodesToRemove.has(original) && ts.getJSDocTags(original).some((tag) => tag.tagName.text === 'deprecated')
     );
+  }
+}
+
+function setTypeMembers(x: UnionTypeReference | IntersectionTypeReference) {
+  if (isUnionTypeReference(x)) {
+    return x.union.types;
+  } else {
+    return x.intersection.types;
   }
 }

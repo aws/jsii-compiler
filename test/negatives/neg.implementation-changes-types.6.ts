@@ -5,7 +5,7 @@ export interface ISomething {
   something: Superclass;
 }
 
-// This should fail - number is not covariant with Superclass
+// This should fail - covariant changes are not allowed on implementations
 export class SomethingImpl implements ISomething {
-  public something: number = 1;
+  public something: Subclass = new Subclass();
 }
