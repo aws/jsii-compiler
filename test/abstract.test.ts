@@ -1,15 +1,16 @@
 import { PrimitiveType, Type, TypeKind } from '@jsii/spec';
 import { sourceToAssemblyHelper } from '../lib';
+import { compileJsiiForErrors } from './compiler-helpers';
 
 // ----------------------------------------------------------------------
 test('Abstract member cant be marked async', () => {
-  expect(() =>
-    sourceToAssemblyHelper(`
+  expect(
+    compileJsiiForErrors(`
       export abstract class AbstractClass {
         public abstract async abstractMethod(): Promise<void>;
     }
     `),
-  ).toThrow(/There were compiler errors/);
+  ).toContainEqual(expect.stringMatching(/'async' modifier cannot be used with 'abstract' modifier/));
 });
 
 test('Abstract member can have a Promise<void> return type', () => {

@@ -11,7 +11,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { PackageJson, loadAssemblyFromPath, writeAssembly } from '@jsii/spec';
 import * as spec from '@jsii/spec';
-import { DiagnosticCategory } from 'typescript';
+import { Diagnostic, DiagnosticCategory } from 'typescript';
 
 import { Compiler, CompilerOptions } from './compiler';
 import { loadProjectInfo, ProjectInfo } from './project-info';
@@ -24,6 +24,11 @@ export type MultipleSourceFiles = {
   'index.ts': string;
   [name: string]: string;
 };
+
+/**
+ * Assembly features supported by this compiler
+ */
+export const ASSEMBLY_FEATURES_SUPPORTED: spec.JsiiFeature[] = ['intersection-types'];
 
 /**
  * Compile a piece of source and return the JSII assembly for it
@@ -39,10 +44,24 @@ export function sourceToAssemblyHelper(
   source: string | MultipleSourceFiles,
   options?: TestCompilationOptions | ((obj: PackageJson) => void),
 ): spec.Assembly {
-  return compileJsiiForTest(source, options).assembly;
+  const result = compileJsiiForTest(source, options);
+  if (result.type !== 'success') {
+    throw new Error('Compilation failed');
+  }
+  return result.assembly;
 }
 
+export type HelperCompilationOut = HelperCompilationResult | HelperCompilationFailure;
+
+/**
+ * Successful output of a compilation command (for testing)
+ *
+ * A better name would have been `HelperCompilationSuccess`, but the name is part of
+ * the public API surface, so we keep it like this.
+ */
 export interface HelperCompilationResult {
+  readonly type: 'success';
+
   /**
    * The generated assembly
    */
@@ -62,6 +81,22 @@ export interface HelperCompilationResult {
    * Whether to compress the assembly file
    */
   readonly compressAssembly: boolean;
+
+  /**
+   * Diagnostics that occurred during compilation
+   */
+  readonly diagnostics: readonly Diagnostic[];
+}
+
+export interface HelperCompilationFailure {
+  readonly type: 'failure';
+
+  /**
+   * Diagnostics that occurred during compilation
+   *
+   * Contains at least one error.
+   */
+  readonly diagnostics: readonly Diagnostic[];
 }
 
 /**
@@ -74,11 +109,11 @@ export interface HelperCompilationResult {
  * @param options accepts a callback for historical reasons but really expects to
  *                take an options object.
  */
-export function compileJsiiForTest(
+export function compileJsiiForTest<O extends TestCompilationOptions>(
   source: string | { 'index.ts': string; [name: string]: string },
-  options?: TestCompilationOptions | ((obj: PackageJson) => void),
+  options?: O | ((obj: PackageJson) => void),
   compilerOptions?: Omit<CompilerOptions, 'projectInfo' | 'watch'>,
-): HelperCompilationResult {
+): ResultOrSuccess<O> {
   if (typeof source === 'string') {
     source = { 'index.ts': source };
   }
@@ -108,14 +143,25 @@ export function compileJsiiForTest(
     const emitResult = compiler.emit();
 
     const errors = emitResult.diagnostics.filter((d) => d.category === DiagnosticCategory.Error);
-    for (const error of errors) {
-      console.error(formatDiagnostic(error, projectInfo.projectRoot));
-      // logDiagnostic() doesn't work out of the box, so console.error() it is.
+
+    if (typeof options !== 'object' || !options?.captureDiagnostics) {
+      for (const error of errors) {
+        console.error(formatDiagnostic(error, projectInfo.projectRoot));
+        // logDiagnostic() doesn't work out of the box, so console.error() it is.
+      }
     }
+
     if (errors.length > 0 || emitResult.emitSkipped) {
+      if (typeof options === 'object' && options?.captureDiagnostics) {
+        return {
+          type: 'failure',
+          diagnostics: emitResult.diagnostics,
+        } satisfies HelperCompilationFailure;
+      }
       throw new JsiiError('There were compiler errors');
     }
-    const assembly = loadAssemblyFromPath(process.cwd(), false);
+
+    const assembly = loadAssemblyFromPath(process.cwd(), false, ASSEMBLY_FEATURES_SUPPORTED);
     const files: Record<string, string> = {};
 
     for (const filename of Object.keys(source)) {
@@ -141,13 +187,19 @@ export function compileJsiiForTest(
     }
 
     return {
+      type: 'success',
       assembly,
       files,
       packageJson,
       compressAssembly: isOptionsObject(options) && options.compressAssembly ? true : false,
-    } as HelperCompilationResult;
-  });
+      diagnostics: emitResult.diagnostics,
+    } satisfies HelperCompilationResult;
+  }) as ResultOrSuccess<O>;
 }
+
+type ResultOrSuccess<O extends TestCompilationOptions> = O['captureDiagnostics'] extends true
+  ? HelperCompilationOut
+  : HelperCompilationResult;
 
 function inTempDir<T>(block: () => T): T {
   const origDir = process.cwd();
@@ -236,6 +288,13 @@ export interface TestCompilationOptions {
    * @default false
    */
   readonly compressAssembly?: boolean;
+
+  /**
+   * Whether or not to print the diagnostics
+   *
+   * @default false
+   */
+  readonly captureDiagnostics?: boolean;
 }
 
 function isOptionsObject(
@@ -278,7 +337,11 @@ export class TestWorkspace {
   /**
    * Add a test-compiled jsii assembly as a dependency
    */
-  public addDependency(dependencyAssembly: HelperCompilationResult) {
+  public addDependency(dependencyAssembly: HelperCompilationOut) {
+    if (dependencyAssembly.type !== 'success') {
+      throw new JsiiError('Cannot add dependency: assembly compilation failed');
+    }
+
     if (this.installed.has(dependencyAssembly.assembly.name)) {
       throw new JsiiError(
         `A dependency with name '${dependencyAssembly.assembly.name}' was already installed. Give one a different name.`,
