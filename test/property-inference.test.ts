@@ -1,4 +1,5 @@
 import { sourceToAssemblyHelper } from '../lib';
+import { compileJsiiForErrors } from './compiler-helpers';
 
 // ----------------------------------------------------------------------
 test('Class properties are inferred from the constructor', () => {
@@ -58,21 +59,23 @@ test('Class properties are inferred from the constructor', () => {
 });
 
 test('Class property can not be inferred if property is potentially undefinied', () => {
-  expect(() =>
-    sourceToAssemblyHelper(`
+  expect(
+    compileJsiiForErrors(
+      `
       class Square {
         sideLength;
-    
+
         constructor(sideLength: number) {
             if (Math.random()) {
                 this.sideLength = sideLength;
             }
         }
-    
+
         get area() {
             return this.sideLength ** 2;
         }
     }
-      `),
-  ).toThrow(/There were compiler errors/);
+      `,
+    ),
+  ).toContainEqual("Object is possibly 'undefined'.");
 });

@@ -294,6 +294,37 @@ export class JsiiDiagnostic implements ts.Diagnostic {
     name: 'typescript-restriction/generic-type',
   });
 
+  public static readonly JSII_1007_NEVER_TYPE = Code.error({
+    code: 1007,
+    formatter: () => 'The "never" type is not allowed because it cannot be represented in target languages.',
+    name: 'typescript-restriction/no-never-type',
+  });
+
+  public static readonly JSII_1008_ONLY_INTERFACE_INTERSECTION = Code.error({
+    code: 1008,
+    formatter: (type: string) => `Found non-interface type in type intersection: ${type}`,
+    name: 'typescript-restriction/only-interface-intersection',
+  });
+
+  public static readonly JSII_1009_INTERSECTION_ONLY_INPUT = Code.error({
+    code: 1009,
+    formatter: (location: string) => `Intersection types may only be used as inputs, but ${location} is used as output`,
+    name: 'typescript-restriction/intersection-only-input',
+  });
+
+  public static readonly JSII_1010_INTERSECTION_NOT_IN_CTOR = Code.error({
+    code: 1010,
+    formatter: () => `Intersection types cannot be used as constructor arguments`,
+    name: 'typescript-restriction/intersection-no-ctor',
+  });
+
+  public static readonly JSII_1011_INTERSECTION_MEMBER_DIFFERENT = Code.error({
+    code: 1011,
+    formatter: (member: string, type1: string, reason1: string, type2: string, reason2: string) =>
+      `Member ${member} is different between types in a type intersection: ${type1} (${reason1}) and ${type2} (${reason2})`,
+    name: 'typescript-restriction/intersection-member-different',
+  });
+
   public static readonly JSII_1999_UNSUPPORTED = Code.error({
     code: 1999,
     formatter: ({

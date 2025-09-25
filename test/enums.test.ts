@@ -1,6 +1,7 @@
 import { EnumType } from '@jsii/spec';
 
 import { sourceToAssemblyHelper } from '../lib';
+import { compileJsiiForErrors } from './compiler-helpers';
 
 // ----------------------------------------------------------------------
 test('test parsing enum with two members and no values', () => {
@@ -56,8 +57,8 @@ test('enums can have a mix of letters and number', () => {
 });
 
 test('enums with the same assigned value should fail', () => {
-  expect(() =>
-    sourceToAssemblyHelper(`
+  expect(
+    compileJsiiForErrors(`
     export enum Foo {
       BAR = 'Bar',
       BAR_DUPE = 'Bar',
@@ -65,5 +66,5 @@ test('enums with the same assigned value should fail', () => {
       BAZ_DUPE = 'Baz',
     }
   `),
-  ).toThrow(/There were compiler errors/);
+  ).toContainEqual(expect.stringMatching(/Value 'Bar' is used for multiple enum values: BAR, BAR_DUPE/));
 });
