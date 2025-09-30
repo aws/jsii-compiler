@@ -70,8 +70,8 @@
     "ts-node": "^10.9.2"
   },
   "dependencies": {
-    "@jsii/check-node": "1.114.1",
-    "@jsii/spec": "1.114.1",
+    "@jsii/check-node": "1.115.0",
+    "@jsii/spec": "1.115.0",
     "case": "^1.6.3",
     "chalk": "^4",
     "fast-deep-equal": "^3.1.3",
