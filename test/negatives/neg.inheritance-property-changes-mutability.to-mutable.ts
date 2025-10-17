@@ -1,11 +1,10 @@
 export class Superclass {}
-export class Subclass extends Superclass {}
 
 export class SomethingUnspecific {
   public readonly something = new Superclass();
 }
 
-// This should fail - number is not covariant with Superclass
+// This should fail - cannot change to mutability
 export class SomethingSpecific extends SomethingUnspecific {
-  public readonly something: number = 1;
+  public something: Superclass = new Superclass();
 }

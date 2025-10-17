@@ -226,7 +226,7 @@ export class Assembler implements Emitter {
       jsiiVersion,
       bin: this.projectInfo.bin,
       fingerprint: '<TBD>',
-      usedFeatures: this.usedFeatures.size > 0 ? Array.from(this.usedFeatures) : undefined,
+      usedFeatures: _assemblyFeatures(this.usedFeatures), // might be appended later
     };
 
     if (this.deprecatedRemover) {
@@ -249,6 +249,15 @@ export class Assembler implements Emitter {
 
     const validator = new Validator(this.projectInfo, assembly);
     const validationResult = validator.emit();
+
+    // Inject detected features
+    if (validationResult.usedFeatures) {
+      for (const item of validationResult.usedFeatures) {
+        this.usedFeatures.add(item);
+      }
+      assembly.usedFeatures = _assemblyFeatures(this.usedFeatures);
+    }
+
     if (!validationResult.emitSkipped) {
       const zipped = writeAssembly(this.projectInfo.projectRoot, _fingerprint(assembly), {
         compress: this.compressAssembly ?? false,
@@ -267,6 +276,10 @@ export class Assembler implements Emitter {
       };
     } finally {
       this._afterEmit();
+    }
+
+    function _assemblyFeatures(usedFeatures: Set<spec.JsiiFeature>): spec.JsiiFeature[] | undefined {
+      return usedFeatures.size > 0 ? Array.from(usedFeatures).sort() : undefined;
     }
 
     function _loadReadme(this: Assembler) {

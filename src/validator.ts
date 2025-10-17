@@ -9,27 +9,39 @@ import { getRelatedNode } from './node-bindings';
 import * as bindings from './node-bindings';
 import { ProjectInfo } from './project-info';
 
+export interface ValidationResult extends ts.EmitResult {
+  readonly usedFeatures?: spec.JsiiFeature[];
+}
+
 export class Validator implements Emitter {
   public static VALIDATIONS: ValidationFunction[] = _defaultValidations();
 
   public constructor(public readonly projectInfo: ProjectInfo, public readonly assembly: spec.Assembly) {}
 
-  public emit(): ts.EmitResult {
+  public emit(): ValidationResult {
     const diagnostics = new Array<ts.Diagnostic>();
+    const usedFeatures = new Array<spec.JsiiFeature>();
 
     for (const validation of Validator.VALIDATIONS) {
-      validation(this, this.assembly, diagnostics.push.bind(diagnostics));
+      validation(this, this.assembly, diagnostics.push.bind(diagnostics), usedFeatures.push.bind(usedFeatures));
     }
 
     return {
       diagnostics: diagnostics,
       emitSkipped: diagnostics.some((diag) => diag.category === ts.DiagnosticCategory.Error),
+      usedFeatures,
     };
   }
 }
 
 export type DiagnosticEmitter = (diag: JsiiDiagnostic) => void;
-export type ValidationFunction = (validator: Validator, assembly: spec.Assembly, diagnostic: DiagnosticEmitter) => void;
+export type FeatureTracker = (feat: spec.JsiiFeature) => void;
+export type ValidationFunction = (
+  validator: Validator,
+  assembly: spec.Assembly,
+  diagnostic: DiagnosticEmitter,
+  useFeatures: FeatureTracker,
+) => void;
 
 function _defaultValidations(): ValidationFunction[] {
   return [
@@ -38,7 +50,7 @@ function _defaultValidations(): ValidationFunction[] {
     _staticConstantNamesMustUseUpperSnakeCase,
     _memberNamesMustNotLookLikeJavaGettersOrSetters,
     _allTypeReferencesAreValid,
-    _inehritanceDoesNotChangeContracts,
+    _inheritanceDoesNotChangeContracts,
     _staticMembersAndNestedTypesMustNotSharePascalCaseName,
     _abstractClassesMustImplementAllProperties,
   ];
@@ -131,10 +143,11 @@ function _defaultValidations(): ValidationFunction[] {
     }
   }
 
-  function _inehritanceDoesNotChangeContracts(
+  function _inheritanceDoesNotChangeContracts(
     validator: Validator,
     assembly: spec.Assembly,
     diagnostic: DiagnosticEmitter,
+    useFeature: FeatureTracker,
   ) {
     for (const type of _allTypes(assembly)) {
       if (spec.isClassType(type)) {
@@ -220,7 +233,9 @@ function _defaultValidations(): ValidationFunction[] {
       if (!overridden) {
         return _validateMethodOverride(method, baseType);
       }
-      _assertSignaturesMatch(overridden, method, `${type.fqn}#${method.name}`, `overriding ${baseType.fqn}`);
+      _assertSignaturesMatch(overridden, method, `${type.fqn}#${method.name}`, `overriding ${baseType.fqn}`, {
+        returnTypeCovariance: true,
+      });
       method.overrides = baseType.fqn;
       return true;
     }
@@ -237,7 +252,9 @@ function _defaultValidations(): ValidationFunction[] {
       if (!overridden) {
         return _validatePropertyOverride(property, baseType);
       }
-      _assertPropertiesMatch(overridden, property, `${type.fqn}#${property.name}`, `overriding ${baseType.fqn}`);
+      _assertPropertiesMatch(overridden, property, `${type.fqn}#${property.name}`, `overriding ${baseType.fqn}`, {
+        covariance: true,
+      });
       property.overrides = baseType.fqn;
       return true;
     }
@@ -254,7 +271,9 @@ function _defaultValidations(): ValidationFunction[] {
         const ifaceType = _dereference(iface, assembly, validator) as spec.InterfaceType;
         const implemented = (ifaceType.methods ?? []).find((m) => m.name === method.name);
         if (implemented) {
-          _assertSignaturesMatch(implemented, method, `${type.fqn}#${method.name}`, `implementing ${ifaceType.fqn}`);
+          _assertSignaturesMatch(implemented, method, `${type.fqn}#${method.name}`, `implementing ${ifaceType.fqn}`, {
+            returnTypeCovariance: false,
+          });
           // We won't replace a previous overrides declaration from a method override, as those have
           // higher precedence than an initial implementation.
           method.overrides = method.overrides ?? iface;
@@ -290,6 +309,7 @@ function _defaultValidations(): ValidationFunction[] {
             property,
             `${type.fqn}#${property.name}`,
             `implementing ${ifaceType.fqn}`,
+            { covariance: false },
           );
           // We won't replace a previous overrides declaration from a property override, as those
           // have higher precedence than an initial implementation.
@@ -303,7 +323,15 @@ function _defaultValidations(): ValidationFunction[] {
       return false;
     }
 
-    function _assertSignaturesMatch(expected: spec.Method, actual: spec.Method, label: string, action: string) {
+    function _assertSignaturesMatch(
+      expected: spec.Method,
+      actual: spec.Method,
+      label: string,
+      action: string,
+      opts: {
+        returnTypeCovariance: boolean;
+      },
+    ) {
       if (!!expected.protected !== !!actual.protected) {
         const expVisibility = expected.protected ? 'protected' : 'public';
         const actVisibility = actual.protected ? 'protected' : 'public';
@@ -316,12 +344,28 @@ function _defaultValidations(): ValidationFunction[] {
           ),
         );
       }
+
+      // Types must generally be the same, but can be covariant sometimes
       if (!deepEqual(actual.returns, expected.returns)) {
-        const expType = spec.describeTypeReference(expected.returns?.type);
-        const actType = spec.describeTypeReference(actual.returns?.type);
-        diagnostic(
-          JsiiDiagnostic.JSII_5003_OVERRIDE_CHANGES_RETURN_TYPE.createDetached(label, action, actType, expType),
-        );
+        const actualReturnType = actual.returns?.type;
+        const expectedReturnType = expected.returns?.type;
+
+        if (
+          // return type covariance is allowed
+          opts.returnTypeCovariance &&
+          // static members can never change
+          !actual.static &&
+          // this is a valid covariant return type (actual is more specific than expected)
+          _isCovariantOf(actualReturnType, expectedReturnType)
+        ) {
+          useFeature('class-covariant-overrides');
+        } else {
+          const expType = spec.describeTypeReference(expectedReturnType);
+          const actType = spec.describeTypeReference(actualReturnType);
+          diagnostic(
+            JsiiDiagnostic.JSII_5003_OVERRIDE_CHANGES_RETURN_TYPE.createDetached(label, action, actType, expType),
+          );
+        }
       }
       const expectedParams = expected.parameters ?? [];
       const actualParams = actual.parameters ?? [];
@@ -363,7 +407,121 @@ function _defaultValidations(): ValidationFunction[] {
       }
     }
 
-    function _assertPropertiesMatch(expected: spec.Property, actual: spec.Property, label: string, action: string) {
+    /**
+     * Check if subType is indeed covariant to superType
+     */
+    function _isCovariantOf(subType?: spec.TypeReference, superType?: spec.TypeReference): boolean {
+      // one void, while other isn't => not covariant
+      if ((subType === undefined) !== (superType === undefined)) {
+        return false;
+      }
+
+      // Same type is always covariant
+      if (deepEqual(subType, superType)) {
+        return true;
+      }
+
+      // We only support classes, not primitives, not lists
+      if (!spec.isNamedTypeReference(subType) || !spec.isNamedTypeReference(superType)) {
+        return false;
+      }
+
+      const subTypeSpec = _dereference(subType.fqn, assembly, validator);
+      const superTypeSpec = _dereference(superType.fqn, assembly, validator);
+
+      if (!subTypeSpec || !superTypeSpec) {
+        return false;
+      }
+
+      // Handle class-to-class inheritance
+      if (spec.isClassType(subTypeSpec) && spec.isClassType(superTypeSpec)) {
+        return _classExtendsClass(subTypeSpec, superType.fqn);
+      }
+
+      // Handle interface-to-interface inheritance
+      if (spec.isInterfaceType(subTypeSpec) && spec.isInterfaceType(superTypeSpec)) {
+        return _interfaceExtendsInterface(subTypeSpec, superType.fqn);
+      }
+
+      // Handle class implementing interface
+      if (spec.isClassType(subTypeSpec) && spec.isInterfaceType(superTypeSpec)) {
+        return _classImplementsInterface(subTypeSpec, superType.fqn);
+      }
+
+      return false;
+    }
+
+    function _classExtendsClass(classType: spec.ClassType, targetFqn: string): boolean {
+      let current = classType;
+      while (current.base) {
+        if (current.base === targetFqn) {
+          return true;
+        }
+        const baseType = _dereference(current.base, assembly, validator);
+        if (!spec.isClassType(baseType)) {
+          break;
+        }
+        current = baseType;
+      }
+      return false;
+    }
+
+    function _classImplementsInterface(classType: spec.ClassType, interfaceFqn: string): boolean {
+      // Check direct interfaces
+      if (classType.interfaces?.includes(interfaceFqn)) {
+        return true;
+      }
+
+      // Check inherited interfaces
+      if (classType.interfaces) {
+        for (const iface of classType.interfaces) {
+          const ifaceType = _dereference(iface, assembly, validator);
+          if (spec.isInterfaceType(ifaceType) && _interfaceExtendsInterface(ifaceType, interfaceFqn)) {
+            return true;
+          }
+        }
+      }
+
+      // Check base class interfaces
+      if (classType.base) {
+        const baseType = _dereference(classType.base, assembly, validator);
+        if (spec.isClassType(baseType)) {
+          return _classImplementsInterface(baseType, interfaceFqn);
+        }
+      }
+
+      return false;
+    }
+
+    function _interfaceExtendsInterface(interfaceType: spec.InterfaceType, targetFqn: string): boolean {
+      if (interfaceType.fqn === targetFqn) {
+        return true;
+      }
+
+      if (interfaceType.interfaces) {
+        for (const iface of interfaceType.interfaces) {
+          if (iface === targetFqn) {
+            return true;
+          }
+          const ifaceType = _dereference(iface, assembly, validator);
+          if (spec.isInterfaceType(ifaceType) && _interfaceExtendsInterface(ifaceType, targetFqn)) {
+            return true;
+          }
+        }
+      }
+
+      return false;
+    }
+
+    function _assertPropertiesMatch(
+      expected: spec.Property,
+      actual: spec.Property,
+      label: string,
+      action: string,
+      opts: {
+        covariance: boolean;
+      },
+    ) {
       const actualNode = bindings.getPropertyRelatedNode(actual);
       const expectedNode = bindings.getPropertyRelatedNode(expected);
       if (!!expected.protected !== !!actual.protected) {
@@ -386,19 +544,33 @@ function _defaultValidations(): ValidationFunction[] {
           ),
         );
       }
-      if (!deepEqual(expected.type, actual.type)) {
-        diagnostic(
-          JsiiDiagnostic.JSII_5004_OVERRIDE_CHANGES_PROP_TYPE.create(
-            actualNode?.type ?? declarationName(actualNode),
-            label,
-            action,
-            actual.type,
-            expected.type,
-          ).maybeAddRelatedInformation(
-            expectedNode?.type ?? declarationName(expectedNode),
-            'The implemented declaration is here.',
-          ),
-        );
+
+      // Types must generally be the same, but can be covariant sometimes
+      if (!deepEqual(actual.type, expected.type)) {
+        if (
+          // return type covariance is allowed
+          opts.covariance &&
+          // static members can never change
+          !actual.static &&
+          // immutable properties may change in some case, as long as they are covariant
+          actual.immutable &&
+          _isCovariantOf(actual.type, expected.type)
+        ) {
+          useFeature('class-covariant-overrides');
+        } else {
+          diagnostic(
+            JsiiDiagnostic.JSII_5004_OVERRIDE_CHANGES_PROP_TYPE.create(
+              actualNode?.type ?? declarationName(actualNode),
+              label,
+              action,
+              actual.type,
+              expected.type,
+            ).maybeAddRelatedInformation(
+              expectedNode?.type ?? declarationName(expectedNode),
+              'The implemented declaration is here.',
+            ),
+          );
+        }
       }
       if (expected.immutable !== actual.immutable) {
         diagnostic(
