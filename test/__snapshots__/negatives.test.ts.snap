@@ -273,12 +273,12 @@ neg.implement-struct.ts:6:1 - error JSII3007: Attempt to extend or implement str
 `;
 
 exports[`implementation-changes-types.1 1`] = `
-error JSII5003: "jsii.Something#returnSomething" changes the return type to "jsii.Subclass" when implementing jsii.ISomething. Change it to "jsii.Superclass"
+error JSII5003: "jsii.Something#returnSomething" changes the return type to "jsii.UnrelatedClass" when implementing jsii.ISomething. Change it to "jsii.Superclass"
 
 `;
 
 exports[`implementation-changes-types.2 1`] = `
-error JSII5003: "jsii.ISomethingElse#returnSomething" changes the return type to "jsii.Subclass" when implementing jsii.ISomething. Change it to "jsii.Superclass"
+error JSII5006: "jsii.SomethingElse#takeSomething" changes the type of parameter "_argument" to jsii.Superclass when implementing jsii.ISomething. Change it to jsii.Subclass
 
 `;
 
@@ -288,25 +288,30 @@ error JSII5006: "jsii.Something#takeSomething" changes the type of parameter "_a
 `;
 
 exports[`implementation-changes-types.4 1`] = `
-neg.implementation-changes-types.4.ts:9:21 - error JSII5004: "jsii.SomethingImpl#something" changes the property type to "jsii.Subclass" when implementing jsii.ISomething. Change it to "jsii.Superclass"
+error JSII5006: "jsii.ISomethingElse#takeSomething" changes the type of parameter "_argument" to jsii.Subclass when implementing jsii.ISomething. Change it to jsii.Superclass
 
-9   public something: Subclass = new Subclass();
-                      ~~~~~~~~
+`;
 
-  neg.implementation-changes-types.4.ts:5:14
+exports[`implementation-changes-types.5 1`] = `
+neg.implementation-changes-types.5.ts:10:21 - error JSII5004: "jsii.SomethingImpl#something" changes the property type to "number" when implementing jsii.ISomething. Change it to "jsii.Superclass"
+
+10   public something: number = 1;
+                       ~~~~~~
+
+  neg.implementation-changes-types.5.ts:5:14
     5   something: Superclass;
                    ~~~~~~~~~~
     The implemented declaration is here.
 
 `;
 
-exports[`implementation-changes-types.5 1`] = `
-neg.implementation-changes-types.5.ts:14:21 - error JSII5004: "jsii.ISomethingElse#something" changes the property type to "jsii.Subclass" when implementing jsii.ISomething. Change it to "jsii.Superclass"
+exports[`implementation-changes-types.6 1`] = `
+neg.implementation-changes-types.6.ts:10:21 - error JSII5004: "jsii.SomethingImpl#something" changes the property type to "jsii.Subclass" when implementing jsii.ISomething. Change it to "jsii.Superclass"
 
-14   public something: Subclass = new Subclass();
+10   public something: Subclass = new Subclass();
                        ~~~~~~~~
 
-  neg.implementation-changes-types.5.ts:5:14
+  neg.implementation-changes-types.6.ts:5:14
     5   something: Superclass;
                    ~~~~~~~~~~
     The implemented declaration is here.
@@ -398,12 +403,12 @@ neg.index-signatures.ts:9:3 - error JSII1999: Index signatures are not supported
 `;
 
 exports[`inheritance-changes-types.1 1`] = `
-error JSII5003: "jsii.SomethingSpecific#returnSomething" changes the return type to "jsii.Subclass" when overriding jsii.Something. Change it to "jsii.Superclass"
+error JSII5003: "jsii.SomethingSpecific#returnSomething" changes the return type to "jsii.UnrelatedClass" when overriding jsii.Something. Change it to "jsii.Superclass"
 
 `;
 
 exports[`inheritance-changes-types.2 1`] = `
-error JSII5003: "jsii.SomethingSpecific#returnSomething" changes the return type to "jsii.Subclass" when overriding jsii.Something. Change it to "jsii.Superclass"
+error JSII5006: "jsii.SomethingSpecific#takeSomething" changes the type of parameter "_argument" to jsii.Superclass when overriding jsii.Something. Change it to jsii.Subclass
 
 `;
 
@@ -413,27 +418,65 @@ error JSII5006: "jsii.SomethingSpecific#takeSomething" changes the type of param
 `;
 
 exports[`inheritance-changes-types.4 1`] = `
-neg.inheritance-changes-types.4.ts:9:21 - error JSII5004: "jsii.SomethingSpecific#something" changes the property type to "jsii.Subclass" when overriding jsii.SomethingUnspecific. Change it to "jsii.Superclass"
+error JSII5006: "jsii.SomethingElse#takeSomething" changes the type of parameter "_argument" to jsii.Subclass when overriding jsii.Something. Change it to jsii.Superclass
 
-9   public something: Subclass = new Subclass();
-                      ~~~~~~~~
+`;
 
-  neg.inheritance-changes-types.4.ts:5:10
+exports[`inheritance-changes-types.5 1`] = `
+neg.inheritance-changes-types.5.ts:10:30 - error JSII5004: "jsii.SomethingSpecific#something" changes the property type to "number" when overriding jsii.SomethingUnspecific. Change it to "jsii.Superclass"
+
+10   public readonly something: number = 1;
+                                ~~~~~~
+
+  neg.inheritance-changes-types.5.ts:5:19
+    5   public readonly something = new Superclass();
+                        ~~~~~~~~~
+    The implemented declaration is here.
+
+`;
+
+exports[`inheritance-changes-types.6 1`] = `
+neg.inheritance-changes-types.6.ts:10:30 - error JSII5004: "jsii.SomethingSpecific#something" changes the property type to "jsii.Superclass" when overriding jsii.SomethingUnspecific. Change it to "jsii.Subclass"
+
+10   public readonly something: Superclass = new Superclass();
+                                ~~~~~~~~~~
+
+  neg.inheritance-changes-types.6.ts:5:19
+    5   public readonly something = new Subclass();
+                        ~~~~~~~~~
+    The implemented declaration is here.
+
+`;
+
+exports[`inheritance-changes-types.7 1`] = `
+neg.inheritance-changes-types.7.ts:10:21 - error JSII5004: "jsii.SomethingSpecific#something" changes the property type to "jsii.Subclass" when overriding jsii.SomethingUnspecific. Change it to "jsii.Superclass"
+
+10   public something: Subclass = new Subclass();
+                       ~~~~~~~~
+
+  neg.inheritance-changes-types.7.ts:5:10
     5   public something = new Superclass();
                ~~~~~~~~~
     The implemented declaration is here.
 
 `;
 
-exports[`inheritance-changes-types.5 1`] = `
-neg.inheritance-changes-types.5.ts:14:21 - error JSII5004: "jsii.SomethingElse#something" changes the property type to "jsii.Subclass" when overriding jsii.SomethingBase. Change it to "jsii.Superclass"
+exports[`inheritance-changes-types.8 1`] = `
+error JSII5000: Methods and properties cannot have names like "getXxx": those conflict with Java property getters. Rename "SomethingSpecific.getItems"
+error JSII5000: Methods and properties cannot have names like "getXxx": those conflict with Java property getters. Rename "SomethingUnspecific.getItems"
+error JSII5003: "jsii.SomethingSpecific#getItems" changes the return type to "map<jsii.Subclass>" when overriding jsii.SomethingUnspecific. Change it to "map<jsii.Superclass>"
 
-14   public something: Subclass = new Subclass();
-                       ~~~~~~~~
+`;
 
-  neg.inheritance-changes-types.5.ts:5:21
-    5   public something: Superclass = new Superclass();
-                          ~~~~~~~~~~
+exports[`inheritance-changes-types.9 1`] = `
+neg.inheritance-changes-types.9.ts:10:26 - error JSII5004: "jsii.SomethingSpecific#items" changes the property type to "map<jsii.Subclass>" when overriding jsii.SomethingUnspecific. Change it to "map<jsii.Superclass>"
+
+10   public readonly items: Record<string, Subclass> = {};
+                            ~~~~~~~~~~~~~~~~~~~~~~~~
+
+  neg.inheritance-changes-types.9.ts:5:26
+    5   public readonly items: Record<string, Superclass> = {};
+                               ~~~~~~~~~~~~~~~~~~~~~~~~~~
     The implemented declaration is here.
 
 `;
@@ -447,6 +490,32 @@ neg.inheritance-changes-types.from-base.ts:6:30 - error JSII5009: "jsii.HasRequi
   neg.inheritance-changes-types.from-base.ts:2:28
     2   readonly optionalProperty?: number;
                                  ~
+    The implemented declaration is here.
+
+`;
+
+exports[`inheritance-property-changes-mutability.to-mutable 1`] = `
+neg.inheritance-property-changes-mutability.to-mutable.ts:9:10 - error JSII5010: "jsii.SomethingSpecific#something" turns mutable when overriding jsii.SomethingUnspecific. Make it readonly
+
+9   public something: Superclass = new Superclass();
+           ~~~~~~~~~
+
+  neg.inheritance-property-changes-mutability.to-mutable.ts:4:10
+    4   public readonly something = new Superclass();
+               ~~~~~~~~
+    The implemented declaration is here.
+
+`;
+
+exports[`inheritance-property-changes-mutability.to-readonly 1`] = `
+neg.inheritance-property-changes-mutability.to-readonly.ts:9:10 - error JSII5010: "jsii.SomethingSpecific#something" turns readonly when overriding jsii.SomethingUnspecific. Make it mutable
+
+9   public readonly something: Superclass = new Superclass();
+           ~~~~~~~~
+
+  neg.inheritance-property-changes-mutability.to-readonly.ts:4:10
+    4   public something = new Superclass();
+               ~~~~~~~~~
     The implemented declaration is here.
 
 `;
