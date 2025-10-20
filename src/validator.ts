@@ -234,7 +234,7 @@ function _defaultValidations(): ValidationFunction[] {
         return _validateMethodOverride(method, baseType);
       }
       _assertSignaturesMatch(overridden, method, `${type.fqn}#${method.name}`, `overriding ${baseType.fqn}`, {
-        returnTypeCovariance: true,
+        allowReturnTypeCovariance: true,
       });
       method.overrides = baseType.fqn;
       return true;
@@ -253,7 +253,7 @@ function _defaultValidations(): ValidationFunction[] {
         return _validatePropertyOverride(property, baseType);
       }
       _assertPropertiesMatch(overridden, property, `${type.fqn}#${property.name}`, `overriding ${baseType.fqn}`, {
-        covariance: true,
+        allowCovariance: true,
       });
       property.overrides = baseType.fqn;
       return true;
@@ -272,7 +272,7 @@ function _defaultValidations(): ValidationFunction[] {
         const implemented = (ifaceType.methods ?? []).find((m) => m.name === method.name);
         if (implemented) {
           _assertSignaturesMatch(implemented, method, `${type.fqn}#${method.name}`, `implementing ${ifaceType.fqn}`, {
-            returnTypeCovariance: false,
+            allowReturnTypeCovariance: false,
           });
           // We won't replace a previous overrides declaration from a method override, as those have
           // higher precedence than an initial implementation.
@@ -309,7 +309,7 @@ function _defaultValidations(): ValidationFunction[] {
             property,
             `${type.fqn}#${property.name}`,
             `implementing ${ifaceType.fqn}`,
-            { covariance: false },
+            { allowCovariance: false },
           );
           // We won't replace a previous overrides declaration from a property override, as those
           // have higher precedence than an initial implementation.
@@ -329,7 +329,7 @@ function _defaultValidations(): ValidationFunction[] {
       label: string,
       action: string,
       opts: {
-        returnTypeCovariance: boolean;
+        allowReturnTypeCovariance: boolean;
       },
     ) {
       if (!!expected.protected !== !!actual.protected) {
@@ -352,11 +352,11 @@ function _defaultValidations(): ValidationFunction[] {
 
         if (
           // return type covariance is allowed
-          opts.returnTypeCovariance &&
+          opts.allowReturnTypeCovariance &&
           // static members can never change
           !actual.static &&
           // this is a valid covariant return type (actual is more specific than expected)
-          _isCovariantOf(actualReturnType, expectedReturnType)
+          _isAllowedCovariantSubtype(actualReturnType, expectedReturnType)
         ) {
           useFeature('class-covariant-overrides');
         } else {
@@ -408,9 +408,13 @@ function _defaultValidations(): ValidationFunction[] {
     }
 
     /**
-     * Check if subType is indeed covariant to superType
+     * Check if subType is an allowed covariant subtype to superType
+     *
+     * This is not a generic check for subtypes or covariance, but a specific implementation
+     * that checks the currently allowed conditions for class covariance.
+     * In practice, this is driven by C# limitations.
      */
-    function _isCovariantOf(subType?: spec.TypeReference, superType?: spec.TypeReference): boolean {
+    function _isAllowedCovariantSubtype(subType?: spec.TypeReference, superType?: spec.TypeReference): boolean {
       // one void, while other isn't => not covariant
       if ((subType === undefined) !== (superType === undefined)) {
         return false;
@@ -424,13 +428,32 @@ function _defaultValidations(): ValidationFunction[] {
       // Handle array collections (covariant)
       if (spec.isCollectionTypeReference(subType) && spec.isCollectionTypeReference(superType)) {
         if (subType.collection.kind === 'array' && superType.collection.kind === 'array') {
-          return _isCovariantOf(subType.collection.elementtype, superType.collection.elementtype);
+          return _isAllowedCovariantSubtype(subType.collection.elementtype, superType.collection.elementtype);
         }
-        // Maps/Records are not allowed to be covariant in C#, so we exclude them here
+        // Maps are not allowed to be covariant in C#, so we exclude them here.
+        // This seems to be because we use C# Dictionary to implements Maps, which are using generics and generics are not allowed to be covariant
         return false;
       }
 
-      // We only support classes for named types
+      // Union types are currently not allowed, because we have not seen the need for it.
+      // Technically narrowing (removing `| Type` or subtyping) could be allowed and this works in C#.
+      if (spec.isUnionTypeReference(subType) || spec.isUnionTypeReference(superType)) {
+        return false;
+      }
+
+      // Intersection types are invalid, because intersections are only allowed as inputs
+      // and covariance is only allowed in outputs.
+      if (spec.isIntersectionTypeReference(subType) || spec.isIntersectionTypeReference(superType)) {
+        return false;
+      }
+
+      // Primitives can never be covariant to each other in C#
+      if (spec.isPrimitiveTypeReference(subType) || spec.isPrimitiveTypeReference(superType)) {
+        return false;
+      }
+
+      // We really only support covariance for named types (and lists of named types).
+      // To be safe, let's guard against any unknown cases.
       if (!spec.isNamedTypeReference(subType) || !spec.isNamedTypeReference(superType)) {
         return false;
       }
@@ -528,7 +551,7 @@ function _defaultValidations(): ValidationFunction[] {
       label: string,
       action: string,
       opts: {
-        covariance: boolean;
+        allowCovariance: boolean;
       },
     ) {
       const actualNode = bindings.getPropertyRelatedNode(actual);
@@ -558,12 +581,12 @@ function _defaultValidations(): ValidationFunction[] {
       if (!deepEqual(actual.type, expected.type)) {
         if (
           // return type covariance is allowed
-          opts.covariance &&
+          opts.allowCovariance &&
           // static members can never change
           !actual.static &&
           // immutable properties may change in some case, as long as they are covariant
           actual.immutable &&
-          _isCovariantOf(actual.type, expected.type)
+          _isAllowedCovariantSubtype(actual.type, expected.type)
         ) {
           useFeature('class-covariant-overrides');
         } else {
