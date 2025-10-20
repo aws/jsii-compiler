@@ -1,10 +1,10 @@
-## Maintenance & Support Policy
+# Maintenance & Support Policy
 
 This document describes the Maintenance & Support Policy applicable to releases
 of the `jsii` compiler ([`npm:jsii`](https://npmjs.com/packages/jsii)) with
 versions `5.0.x` and newer.
 
-### Versioning Scheme
+## Versioning Scheme
 
 In-scope `jsii` release lines use the same `major.minor` version as the
 TypeScript compiler ([`npm:typescript`](https://npmjs.com/packages/typescript))
@@ -12,7 +12,7 @@ they are built with. This means that `jsii@5.0.x` is built on top of
 `typescript@5.0.x`.
 
 Since the `typescript` package does not follow [Semantic Versioning][semver],
-the `jsii` package does not eiher. The `typescript` compiler guarantees no
+the `jsii` package does not either. The `typescript` compiler guarantees no
 breaking change is introduced within a given `major.minor` release line, and
 `jsii` upholds the same guarantee. As a consequence, users are advised to use
 `~` ranges (also referred to as minor-pinned ranges) when declaring dependencies
@@ -24,7 +24,7 @@ is issued).
 
 [semver]: https://semver.org
 
-### Release Lines Lifecycle Stages
+## Release Lines Lifecycle Stages
 
 This Maintenance & Support Policy assigns one of the following lifecycle stages
 to each in-scope `jsii` release line in existence:
@@ -33,7 +33,7 @@ to each in-scope `jsii` release line in existence:
    the release under active development, receiving new features, bug fixes and
    security updates.
 
-1. **Maintenace**: Release lines in **Maintenance** stage are no longer
+1. **Maintenance**: Release lines in **Maintenance** stage are no longer
    considered in active development, and no new features will be added to these.
    They however continue to receive bug fixes and security updates. Users can
    continue to use release lines in **Maintenance** stage indefinitely, but we
@@ -47,7 +47,7 @@ to each in-scope `jsii` release line in existence:
    changes in newer releases at any time. Users are advised to migrate away from
    **End-of-Support** release lines at the earliest convenience.
 
-### Stage Transitions
+## Stage Transitions
 
 ```mermaid
 ---
@@ -66,7 +66,7 @@ stateDiagram-v2
 
 Whenever a new release line is started (typically with a new `x.y.0` release,
 excluding pre-releases), it becomes **Current** and the release line it replaced
-immediately enters the **Maintenace** stage.
+immediately enters the **Maintenance** stage.
 
 Releases stay in the **Maintenance** stage for a minimum of 6 months before they
 reach **End-of-Support**.
@@ -74,7 +74,7 @@ reach **End-of-Support**.
 Once a release line has reached **End-of-Support**, it remains in this stage
 indefinitely.
 
-### Timelines & Communication
+## Timelines & Communication
 
 The `typescript` compiler maintainers start a new release line on a quarterly
 basis, and users should expect the `jsii` compiler maintainers to do the same.
@@ -99,7 +99,7 @@ manifest document.
 The current status of `jsii` compiler release lines is also documented on the
 [repository's `README.md` document][readme].
 
-### Modification
+## Modification
 
 The maintainers of the jsii project reserve the right to modify this Maintenance
 and Support Policy as necessary. Updates will be proposed by way of a pull
@@ -108,13 +108,13 @@ timeline of release lines will be broadly announced to the community via
 established communication channels (such as the `cdk.dev` Slack), and will
 remain open for the community to comment on for a minimum of 15 days.
 
-Community members are welcome to propose changes to the support and maintenace
+Community members are welcome to propose changes to the support and maintenance
 policy through the same process.
 
-### Derogation
+## Derogation
 
 Under _exceptional_ circumstances, the project maintainers may elect to derogate
-from this Support & Maintenance Policy. In cases where the decisision to
+from this Support & Maintenance Policy. In cases where the decision to
 derogate extends supplemental maintenance & support coverage for a release line,
 the increased coverage will be documented in the
 [repository's `README.md` document][readme].
