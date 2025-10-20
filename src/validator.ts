@@ -8,6 +8,8 @@ import { JsiiDiagnostic } from './jsii-diagnostic';
 import { getRelatedNode } from './node-bindings';
 import * as bindings from './node-bindings';
 import { ProjectInfo } from './project-info';
+import { isAllowedCovariantSubtype } from './type-analysis';
+import { createTypeResolver } from './type-reference';
 
 export interface ValidationResult extends ts.EmitResult {
   readonly usedFeatures?: spec.JsiiFeature[];
@@ -149,6 +151,8 @@ function _defaultValidations(): ValidationFunction[] {
     diagnostic: DiagnosticEmitter,
     useFeature: FeatureTracker,
   ) {
+    const _dereference = createTypeResolver(assembly, validator.projectInfo.dependencyClosure);
+
     for (const type of _allTypes(assembly)) {
       if (spec.isClassType(type)) {
         for (const method of type.methods ?? []) {
@@ -194,7 +198,7 @@ function _defaultValidations(): ValidationFunction[] {
 
       if (spec.isClassType(type) && type.base) {
         // We have a parent class, collect their concrete members, too (recursively)...
-        const base = _dereference(type.base, assembly, validator);
+        const base = _dereference(type.base);
         assert(base != null && spec.isClassType(base));
         for (const member of _allImplementations(base, getter)) {
           if (known.has(member.name)) {
@@ -225,7 +229,7 @@ function _defaultValidations(): ValidationFunction[] {
       if (!type.base) {
         return false;
       }
-      const baseType = _dereference(type.base, assembly, validator) as spec.ClassType;
+      const baseType = _dereference(type.base) as spec.ClassType;
       if (!baseType) {
         return false;
       }
@@ -244,7 +248,7 @@ function _defaultValidations(): ValidationFunction[] {
       if (!type.base) {
         return false;
       }
-      const baseType = _dereference(type.base, assembly, validator) as spec.ClassType;
+      const baseType = _dereference(type.base) as spec.ClassType;
       if (!baseType) {
         return false;
       }
@@ -263,12 +267,12 @@ function _defaultValidations(): ValidationFunction[] {
       if (!type.interfaces) {
         // Abstract classes may not directly implement all members, need to check their supertypes...
         if (spec.isClassType(type) && type.base && type.abstract) {
-          return _validateMethodImplementation(method, _dereference(type.base, assembly, validator) as spec.ClassType);
+          return _validateMethodImplementation(method, _dereference(type.base) as spec.ClassType);
         }
         return false;
       }
       for (const iface of type.interfaces) {
-        const ifaceType = _dereference(iface, assembly, validator) as spec.InterfaceType;
+        const ifaceType = _dereference(iface) as spec.InterfaceType;
         const implemented = (ifaceType.methods ?? []).find((m) => m.name === method.name);
         if (implemented) {
           _assertSignaturesMatch(implemented, method, `${type.fqn}#${method.name}`, `implementing ${ifaceType.fqn}`, {
@@ -293,15 +297,12 @@ function _defaultValidations(): ValidationFunction[] {
       if (!type.interfaces) {
         // Abstract classes may not directly implement all members, need to check their supertypes...
         if (spec.isClassType(type) && type.base && type.abstract) {
-          return _validatePropertyImplementation(
-            property,
-            _dereference(type.base, assembly, validator) as spec.ClassType,
-          );
+          return _validatePropertyImplementation(property, _dereference(type.base) as spec.ClassType);
         }
         return false;
       }
       for (const iface of type.interfaces) {
-        const ifaceType = _dereference(iface, assembly, validator) as spec.InterfaceType;
+        const ifaceType = _dereference(iface) as spec.InterfaceType;
         const implemented = (ifaceType.properties ?? []).find((p) => p.name === property.name);
         if (implemented) {
           _assertPropertiesMatch(
@@ -356,7 +357,7 @@ function _defaultValidations(): ValidationFunction[] {
           // static members can never change
           !actual.static &&
           // this is a valid covariant return type (actual is more specific than expected)
-          _isAllowedCovariantSubtype(actualReturnType, expectedReturnType)
+          isAllowedCovariantSubtype(actualReturnType, expectedReturnType, _dereference)
         ) {
           useFeature('class-covariant-overrides');
         } else {
@@ -407,144 +408,6 @@ function _defaultValidations(): ValidationFunction[] {
       }
     }
 
-    /**
-     * Check if subType is an allowed covariant subtype to superType
-     *
-     * This is not a generic check for subtypes or covariance, but a specific implementation
-     * that checks the currently allowed conditions for class covariance.
-     * In practice, this is driven by C# limitations.
-     */
-    function _isAllowedCovariantSubtype(subType?: spec.TypeReference, superType?: spec.TypeReference): boolean {
-      // one void, while other isn't => not covariant
-      if ((subType === undefined) !== (superType === undefined)) {
-        return false;
-      }
-
-      // Same type is always covariant
-      if (deepEqual(subType, superType)) {
-        return true;
-      }
-
-      // Handle array collections (covariant)
-      if (spec.isCollectionTypeReference(subType) && spec.isCollectionTypeReference(superType)) {
-        if (subType.collection.kind === 'array' && superType.collection.kind === 'array') {
-          return _isAllowedCovariantSubtype(subType.collection.elementtype, superType.collection.elementtype);
-        }
-        // Maps are not allowed to be covariant in C#, so we exclude them here.
-        // This seems to be because we use C# Dictionary to implements Maps, which are using generics and generics are not allowed to be covariant
-        return false;
-      }
-
-      // Union types are currently not allowed, because we have not seen the need for it.
-      // Technically narrowing (removing `| Type` or subtyping) could be allowed and this works in C#.
-      if (spec.isUnionTypeReference(subType) || spec.isUnionTypeReference(superType)) {
-        return false;
-      }
-
-      // Intersection types are invalid, because intersections are only allowed as inputs
-      // and covariance is only allowed in outputs.
-      if (spec.isIntersectionTypeReference(subType) || spec.isIntersectionTypeReference(superType)) {
-        return false;
-      }
-
-      // Primitives can never be covariant to each other in C#
-      if (spec.isPrimitiveTypeReference(subType) || spec.isPrimitiveTypeReference(superType)) {
-        return false;
-      }
-
-      // We really only support covariance for named types (and lists of named types).
-      // To be safe, let's guard against any unknown cases.
-      if (!spec.isNamedTypeReference(subType) || !spec.isNamedTypeReference(superType)) {
-        return false;
-      }
-
-      const subTypeSpec = _dereference(subType.fqn, assembly, validator);
-      const superTypeSpec = _dereference(superType.fqn, assembly, validator);
-
-      if (!subTypeSpec || !superTypeSpec) {
-        return false;
-      }
-
-      // Handle class-to-class inheritance
-      if (spec.isClassType(subTypeSpec) && spec.isClassType(superTypeSpec)) {
-        return _classExtendsClass(subTypeSpec, superType.fqn);
-      }
-
-      // Handle interface-to-interface inheritance
-      if (spec.isInterfaceType(subTypeSpec) && spec.isInterfaceType(superTypeSpec)) {
-        return _interfaceExtendsInterface(subTypeSpec, superType.fqn);
-      }
-
-      // Handle class implementing interface
-      if (spec.isClassType(subTypeSpec) && spec.isInterfaceType(superTypeSpec)) {
-        return _classImplementsInterface(subTypeSpec, superType.fqn);
-      }
-
-      return false;
-    }
-
-    function _classExtendsClass(classType: spec.ClassType, targetFqn: string): boolean {
-      let current = classType;
-      while (current.base) {
-        if (current.base === targetFqn) {
-          return true;
-        }
-        const baseType = _dereference(current.base, assembly, validator);
-        if (!spec.isClassType(baseType)) {
-          break;
-        }
-        current = baseType;
-      }
-      return false;
-    }
-
-    function _classImplementsInterface(classType: spec.ClassType, interfaceFqn: string): boolean {
-      // Check direct interfaces
-      if (classType.interfaces?.includes(interfaceFqn)) {
-        return true;
-      }
-
-      // Check inherited interfaces
-      if (classType.interfaces) {
-        for (const iface of classType.interfaces) {
-          const ifaceType = _dereference(iface, assembly, validator);
-          if (spec.isInterfaceType(ifaceType) && _interfaceExtendsInterface(ifaceType, interfaceFqn)) {
-            return true;
-          }
-        }
-      }
-
-      // Check base class interfaces
-      if (classType.base) {
-        const baseType = _dereference(classType.base, assembly, validator);
-        if (spec.isClassType(baseType)) {
-          return _classImplementsInterface(baseType, interfaceFqn);
-        }
-      }
-
-      return false;
-    }
-
-    function _interfaceExtendsInterface(interfaceType: spec.InterfaceType, targetFqn: string): boolean {
-      if (interfaceType.fqn === targetFqn) {
-        return true;
-      }
-
-      if (interfaceType.interfaces) {
-        for (const iface of interfaceType.interfaces) {
-          if (iface === targetFqn) {
-            return true;
-          }
-          const ifaceType = _dereference(iface, assembly, validator);
-          if (spec.isInterfaceType(ifaceType) && _interfaceExtendsInterface(ifaceType, targetFqn)) {
-            return true;
-          }
-        }
-      }
-
-      return false;
-    }
-
     function _assertPropertiesMatch(
       expected: spec.Property,
       actual: spec.Property,
@@ -586,7 +449,7 @@ function _defaultValidations(): ValidationFunction[] {
           !actual.static &&
           // immutable properties may change in some case, as long as they are covariant
           actual.immutable &&
-          _isAllowedCovariantSubtype(actual.type, expected.type)
+          isAllowedCovariantSubtype(actual.type, expected.type, _dereference)
         ) {
           useFeature('class-covariant-overrides');
         } else {
@@ -653,6 +516,8 @@ function _defaultValidations(): ValidationFunction[] {
     assembly: spec.Assembly,
     diagnostic: DiagnosticEmitter,
   ) {
+    const _dereference = createTypeResolver(assembly, validator.projectInfo.dependencyClosure);
+
     for (const type of _allTypes(assembly)) {
       if (!spec.isClassType(type) || !type.abstract) {
         continue;
@@ -674,7 +539,7 @@ function _defaultValidations(): ValidationFunction[] {
       }
 
       if (type.base) {
-        const base = _dereference(type.base, assembly, validator);
+        const base = _dereference(type.base);
         if (spec.isClassType(base)) {
           collectClassProps(base, into);
         }
@@ -684,7 +549,7 @@ function _defaultValidations(): ValidationFunction[] {
     }
 
     function checkInterfacePropsImplemented(interfaceFqn: string, cls: spec.ClassType, propNames: Set<string>) {
-      const intf = _dereference(interfaceFqn, assembly, validator);
+      const intf = _dereference(interfaceFqn);
       if (!spec.isInterfaceType(intf)) {
         return;
       }
@@ -853,22 +718,6 @@ function _allTypeReferences(assm: spec.Assembly): readonly AnnotatedTypeReferenc
       for (const t of type.union.types) _collectTypeReferences(t, node);
     }
   }
-}
-
-function _dereference(
-  typeRef: string | spec.NamedTypeReference,
-  assembly: spec.Assembly,
-  validator: Validator,
-): spec.Type | undefined {
-  if (typeof typeRef !== 'string') {
-    typeRef = typeRef.fqn;
-  }
-  const [assm] = typeRef.split('.');
-  if (assembly.name === assm) {
-    return assembly.types?.[typeRef];
-  }
-  const foreignAssm = validator.projectInfo.dependencyClosure.find((dep) => dep.name === assm);
-  return foreignAssm?.types?.[typeRef];
 }
 
 function _isEmpty(array: undefined | any[]): array is undefined {

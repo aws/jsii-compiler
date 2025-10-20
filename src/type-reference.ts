@@ -53,3 +53,32 @@ export function typeReferenceEqual(a: spec.TypeReference, b: spec.TypeReference)
   }
   return false;
 }
+
+export type TypeResolver = (typeRef: string | spec.NamedTypeReference) => spec.Type | undefined;
+
+/**
+ * Creates a type resolver function for a given context (assembly + dependency closure).
+ */
+export function createTypeResolver(assembly: spec.Assembly, dependencyClosure: readonly spec.Assembly[]): TypeResolver {
+  return (typeRef) => resolveType(typeRef, assembly, dependencyClosure);
+}
+
+/**
+ * Resolve a type from a name to the actual type.
+ * Uses a given assembly and dependency closure for lookup.
+ */
+export function resolveType(
+  typeRef: string | spec.NamedTypeReference,
+  assembly: spec.Assembly,
+  dependencyClosure: readonly spec.Assembly[],
+): spec.Type | undefined {
+  if (typeof typeRef !== 'string') {
+    typeRef = typeRef.fqn;
+  }
+  const [assm] = typeRef.split('.');
+  if (assembly.name === assm) {
+    return assembly.types?.[typeRef];
+  }
+  const foreignAssm = dependencyClosure.find((dep) => dep.name === assm);
+  return foreignAssm?.types?.[typeRef];
+}
