@@ -2,11 +2,12 @@ export class Superclass {}
 export class Subclass extends Superclass {}
 
 export interface ISomething {
-  returnSomething(): Superclass;
+  takeSomething(_argument: Subclass): void;
 }
 
-export class ISomethingElse implements ISomething {
-  public returnSomething(): Subclass {
-    return new Subclass();
+// This should fail - contravariant parameter types are not allowed
+export class SomethingElse implements ISomething {
+  public takeSomething(_argument: Superclass): void {
+    // Nothing
   }
 }

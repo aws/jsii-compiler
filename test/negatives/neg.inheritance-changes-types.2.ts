@@ -2,13 +2,14 @@ export class Superclass {}
 export class Subclass extends Superclass {}
 
 export class Something {
-  public returnSomething(): Superclass {
-    return new Superclass();
+  public takeSomething(_argument: Subclass): void {
+    // Nothing
   }
 }
 
+// This should fail - contravariant parameter types are not allowed
 export class SomethingSpecific extends Something {
-  public returnSomething(): Subclass {
-    return new Subclass();
+  public takeSomething(_argument: Superclass): void {
+    // Nothing
   }
 }
