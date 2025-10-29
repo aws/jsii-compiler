@@ -28,6 +28,7 @@
     "noImplicitOverride": true,
     "skipLibCheck": true,
     "moduleResolution": "node16",
+    "isolatedModules": true,
     "sourceMap": true
   },
   "include": [
