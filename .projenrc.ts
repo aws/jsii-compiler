@@ -62,6 +62,7 @@ const project = new typescript.TypeScriptProject({
       skipLibCheck: true,
       moduleResolution: javascript.TypeScriptModuleResolution.NODE16,
       module: 'node16',
+      isolatedModules: true,
 
       sourceMap: true,
       inlineSourceMap: false,
