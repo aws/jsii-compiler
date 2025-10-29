@@ -1,10 +1,11 @@
 import * as spec from '@jsii/spec';
-import { sourceToAssemblyHelper } from '../src';
+import { compileJsiiForTest } from '../src';
+import { compileJsiiForErrors } from './compiler-helpers';
 
 describe('Covariant overrides in classes are allowed', () => {
   describe('Class properties can be narrowed (covariant)', () => {
     test('direct subclass property override', () => {
-      const assembly = sourceToAssemblyHelper(`
+      const result = compileJsiiForTest(`
         export class Superclass {}
         export class Subclass extends Superclass {}
 
@@ -17,9 +18,9 @@ describe('Covariant overrides in classes are allowed', () => {
         }
       `);
 
-      expect(assembly.usedFeatures).toContain('class-covariant-overrides');
+      expect(result.assembly.usedFeatures).toContain('class-covariant-overrides');
 
-      expect(assembly.types!['testpkg.SomethingSpecific']).toEqual(
+      expect(result.assembly.types!['testpkg.SomethingSpecific']).toEqual(
         expect.objectContaining({
           base: 'testpkg.SomethingUnspecific',
           fqn: 'testpkg.SomethingSpecific',
@@ -39,7 +40,7 @@ describe('Covariant overrides in classes are allowed', () => {
     });
 
     test('multi-level inheritance property override', () => {
-      const assembly = sourceToAssemblyHelper(`
+      const result = compileJsiiForTest(`
         export class Superclass {}
         export class Subclass extends Superclass {}
         export class SubSubclass extends Subclass {}
@@ -57,9 +58,9 @@ describe('Covariant overrides in classes are allowed', () => {
         }
       `);
 
-      expect(assembly.usedFeatures).toContain('class-covariant-overrides');
+      expect(result.assembly.usedFeatures).toContain('class-covariant-overrides');
 
-      const derivedType = assembly.types!['testpkg.Derived'] as spec.ClassType;
+      const derivedType = result.assembly.types!['testpkg.Derived'] as spec.ClassType;
       expect(derivedType.properties).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
@@ -75,7 +76,7 @@ describe('Covariant overrides in classes are allowed', () => {
 
   describe('Method return types can be narrowed (covariant)', () => {
     test('method return type override', () => {
-      const assembly = sourceToAssemblyHelper(`
+      const result = compileJsiiForTest(`
         export class Superclass {}
         export class Subclass extends Superclass {}
 
@@ -92,9 +93,9 @@ describe('Covariant overrides in classes are allowed', () => {
         }
       `);
 
-      expect(assembly.usedFeatures).toContain('class-covariant-overrides');
+      expect(result.assembly.usedFeatures).toContain('class-covariant-overrides');
 
-      const derivedType = assembly.types!['testpkg.Derived'] as spec.ClassType;
+      const derivedType = result.assembly.types!['testpkg.Derived'] as spec.ClassType;
       expect(derivedType.methods).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
@@ -109,8 +110,8 @@ describe('Covariant overrides in classes are allowed', () => {
 
   describe('Interface implementation cannot be covariant', () => {
     test('property implementation with narrower type', () => {
-      expect(() => {
-        sourceToAssemblyHelper(`
+      expect(
+        compileJsiiForErrors(`
         export class Superclass {}
         export class Subclass extends Superclass {}
 
@@ -121,13 +122,15 @@ describe('Covariant overrides in classes are allowed', () => {
         export class SomethingImpl implements ISomething {
           public readonly something: Subclass = new Subclass();
         }
-      `);
-      }).toThrow('There were compiler errors');
+      `),
+      ).toContainEqual(
+        expect.stringMatching('changes the property type to "testpkg.Subclass" when implementing testpkg.ISomething'),
+      );
     });
 
     test('method implementation with narrower return type', () => {
-      expect(() => {
-        sourceToAssemblyHelper(`
+      expect(
+        compileJsiiForErrors(`
         export class Superclass {}
         export class Subclass extends Superclass {}
 
@@ -140,15 +143,17 @@ describe('Covariant overrides in classes are allowed', () => {
             return new Subclass();
           }
         }
-      `);
-      }).toThrow('There were compiler errors');
+      `),
+      ).toContainEqual(
+        expect.stringMatching('changes the return type to "testpkg.Subclass" when implementing testpkg.ISomething'),
+      );
     });
   });
 
   describe('Static members cannot be covariant', () => {
     test('static properties must have exact same type', () => {
-      expect(() => {
-        sourceToAssemblyHelper(`
+      expect(
+        compileJsiiForErrors(`
           export class Superclass {}
           export class Subclass extends Superclass {}
 
@@ -159,13 +164,15 @@ describe('Covariant overrides in classes are allowed', () => {
           export class Derived extends Base {
             public static something: Subclass = new Subclass();
           }
-        `);
-      }).toThrow('There were compiler errors');
+        `),
+      ).toContainEqual(
+        expect.stringMatching('changes the property type to "testpkg.Subclass" when overriding testpkg.Base'),
+      );
     });
 
     test('static methods must have exact same return type', () => {
-      expect(() => {
-        sourceToAssemblyHelper(`
+      expect(
+        compileJsiiForErrors(`
           export class Superclass {}
           export class Subclass extends Superclass {}
 
@@ -180,15 +187,17 @@ describe('Covariant overrides in classes are allowed', () => {
               return new Subclass();
             }
           }
-        `);
-      }).toThrow('There were compiler errors');
+        `),
+      ).toContainEqual(
+        expect.stringMatching('changes the return type to "testpkg.Subclass" when overriding testpkg.Base'),
+      );
     });
   });
 
   describe('Parameter types cannot be contravariant', () => {
     test('method parameters cannot widen types in overrides', () => {
-      expect(() => {
-        sourceToAssemblyHelper(`
+      expect(
+        compileJsiiForErrors(`
           export class Superclass {}
           export class Subclass extends Superclass {}
 
@@ -199,13 +208,17 @@ describe('Covariant overrides in classes are allowed', () => {
           export class Derived extends Base {
             public takeSomething(param: Superclass): void {}
           }
-        `);
-      }).toThrow('There were compiler errors');
+        `),
+      ).toContainEqual(
+        expect.stringMatching(
+          'changes the type of parameter "param" to testpkg.Superclass when overriding testpkg.Base',
+        ),
+      );
     });
 
     test('method parameters cannot widen types in implementations', () => {
-      expect(() => {
-        sourceToAssemblyHelper(`
+      expect(
+        compileJsiiForErrors(`
           export class Superclass {}
           export class Subclass extends Superclass {}
 
@@ -216,15 +229,19 @@ describe('Covariant overrides in classes are allowed', () => {
           export class SomethingImpl implements ISomething {
             public takeSomething(param: Superclass): void {}
           }
-        `);
-      }).toThrow('There were compiler errors');
+        `),
+      ).toContainEqual(
+        expect.stringMatching(
+          'changes the type of parameter "param" to testpkg.Superclass when implementing testpkg.ISomething',
+        ),
+      );
     });
   });
 
   describe('Covariant overrides in collections', () => {
     describe('Lists support covariant overrides', () => {
       test('property with list type can be narrowed', () => {
-        const assembly = sourceToAssemblyHelper(`
+        const result = compileJsiiForTest(`
           export class Superclass {}
           export class Subclass extends Superclass {}
 
@@ -237,9 +254,9 @@ describe('Covariant overrides in classes are allowed', () => {
           }
         `);
 
-        expect(assembly.usedFeatures).toContain('class-covariant-overrides');
+        expect(result.assembly.usedFeatures).toContain('class-covariant-overrides');
 
-        const derivedType = assembly.types!['testpkg.Derived'] as spec.ClassType;
+        const derivedType = result.assembly.types!['testpkg.Derived'] as spec.ClassType;
         expect(derivedType.properties).toEqual(
           expect.arrayContaining([
             expect.objectContaining({
@@ -257,7 +274,7 @@ describe('Covariant overrides in classes are allowed', () => {
       });
 
       test('method return with list type can be narrowed', () => {
-        const assembly = sourceToAssemblyHelper(`
+        const result = compileJsiiForTest(`
           export class Superclass {}
           export class Subclass extends Superclass {}
 
@@ -274,9 +291,9 @@ describe('Covariant overrides in classes are allowed', () => {
           }
         `);
 
-        expect(assembly.usedFeatures).toContain('class-covariant-overrides');
+        expect(result.assembly.usedFeatures).toContain('class-covariant-overrides');
 
-        const derivedType = assembly.types!['testpkg.Derived'] as spec.ClassType;
+        const derivedType = result.assembly.types!['testpkg.Derived'] as spec.ClassType;
         expect(derivedType.methods).toEqual(
           expect.arrayContaining([
             expect.objectContaining({
@@ -298,8 +315,8 @@ describe('Covariant overrides in classes are allowed', () => {
 
     describe('Record mappings do not support covariant overrides', () => {
       test('property with Record<string, T> type cannot be narrowed', () => {
-        expect(() => {
-          sourceToAssemblyHelper(`
+        expect(
+          compileJsiiForErrors(`
             export class Superclass {}
             export class Subclass extends Superclass {}
 
@@ -310,13 +327,15 @@ describe('Covariant overrides in classes are allowed', () => {
             export class Derived extends Base {
               public readonly items: Record<string, Subclass> = {};
             }
-          `);
-        }).toThrow('There were compiler errors');
+          `),
+        ).toContainEqual(
+          expect.stringMatching('changes the property type to "map<testpkg.Subclass>" when overriding testpkg.Base'),
+        );
       });
 
       test('method return with Record<string, T> type cannot be narrowed', () => {
-        expect(() => {
-          sourceToAssemblyHelper(`
+        expect(
+          compileJsiiForErrors(`
             export class Superclass {}
             export class Subclass extends Superclass {}
 
@@ -331,8 +350,10 @@ describe('Covariant overrides in classes are allowed', () => {
                 return {};
               }
             }
-          `);
-        }).toThrow('There were compiler errors');
+          `),
+        ).toContainEqual(
+          expect.stringMatching('changes the return type to "map<testpkg.Subclass>" when overriding testpkg.Base'),
+        );
       });
     });
   });
