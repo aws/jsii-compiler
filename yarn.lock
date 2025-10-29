@@ -736,17 +736,17 @@
     chalk "^4.1.2"
     semver "^7.7.2"
 
-<<<<<<< HEAD
-"@jsii/spec@^1.105.0", "@jsii/spec@^1.117.0":
-  version "1.117.0"
-  resolved "https://registry.yarnpkg.com/@jsii/spec/-/spec-1.117.0.tgz#c2e73ceac03d48504d2f0d0a2fc6b0860ea38656"
-  integrity sha512-Uru/sg3RN9Rr0smN3MS5gueeGdQdPHQ9fTVSxEOuzpxr5z1gej51rs73luj1cYPncMryHo+YkygpucCdLiQItg==
-=======
-"@jsii/spec@1.114.1", "@jsii/spec@^1.105.0":
+"@jsii/spec@^1.105.0":
   version "1.114.1"
   resolved "https://registry.yarnpkg.com/@jsii/spec/-/spec-1.114.1.tgz#9c064d57f062d913bcfda25b5496bdf4c9c95c46"
   integrity sha512-SdjVQaNqLkTUK+2R0/t/MnM/NBvv1vzqxO5sn1nnoFD5Wlih8TFOIjl+Q8npzYmOtN+et3D+BMVYrxmVfq4X0w==
->>>>>>> 4ea0b82 (feat: intersection types (#2325))
+  dependencies:
+    ajv "^8.17.1"
+
+"@jsii/spec@^1.117.0":
+  version "1.117.0"
+  resolved "https://registry.yarnpkg.com/@jsii/spec/-/spec-1.117.0.tgz#c2e73ceac03d48504d2f0d0a2fc6b0860ea38656"
+  integrity sha512-Uru/sg3RN9Rr0smN3MS5gueeGdQdPHQ9fTVSxEOuzpxr5z1gej51rs73luj1cYPncMryHo+YkygpucCdLiQItg==
   dependencies:
     ajv "^8.17.1"
 
