@@ -213,7 +213,10 @@ export class Assembler implements Emitter {
       bundled: this.projectInfo.bundleDependencies,
       types: Object.fromEntries(this._types),
       submodules: noEmptyDict(toSubmoduleDeclarations(this.mySubmodules())),
-      targets: this.projectInfo.targets,
+
+      // Force this into shape
+      targets: this.projectInfo.targets as spec.Assembly['targets'],
+
       metadata: {
         ...this.projectInfo.metadata,
 

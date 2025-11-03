@@ -6,7 +6,7 @@ import { writeAssembly } from '@jsii/spec';
 import * as clone from 'clone';
 import * as ts from 'typescript';
 
-import { loadProjectInfo } from '../src/project-info';
+import { loadProjectInfo, PackageJson } from '../src/project-info';
 import { TypeScriptConfigValidationRuleSet } from '../src/tsconfig';
 import { VERSION } from '../src/version';
 
@@ -28,7 +28,7 @@ const BASE_PROJECT = {
   },
   dependencies: { 'jsii-test-dep': '^1.2.3' } as { [name: string]: string },
   peerDependencies: { 'jsii-test-dep': '^1.2.3' } as { [name: string]: string },
-};
+} satisfies PackageJson;
 
 describe('loadProjectInfo', () => {
   test('loads valid project', () =>
@@ -236,7 +236,7 @@ describe('loadProjectInfo', () => {
             diagCode2: 'warning',
             diagCode3: 'suggestion',
             diagCode4: 'message',
-          };
+          } as const;
           info.jsii.diagnostics = diagnostics;
         },
       );
@@ -248,11 +248,56 @@ describe('loadProjectInfo', () => {
         (info) => {
           const diagnostics = {
             diagCode1: 'invalid-category',
-          };
+          } as any;
           info.jsii.diagnostics = diagnostics;
         },
       );
     });
+  });
+
+  describe('invalid target configuration', () => {
+    test('invalid Go packageName is rejected', () => {
+      expectProjectLoadError(/contains non-identifier characters/, (proj) => {
+        proj.jsii.targets.go = {
+          moduleName: 'asdf',
+          packageName: 'as-df',
+        };
+      });
+    });
+
+    test('invalid .NET namespace is rejected', () => {
+      expectProjectLoadError(/contains non-identifier characters/, (proj) => {
+        proj.jsii.targets.dotnet = {
+          namespace: 'a-x',
+          packageId: 'asdf',
+        };
+      });
+    });
+
+    test('invalid Java package is rejected', () => {
+      expectProjectLoadError(/contains non-identifier characters/, (proj) => {
+        proj.jsii.targets.java = {
+          package: 'as-df',
+          maven: {
+            artifactId: 'asdf',
+            groupId: 'asdf',
+          },
+        };
+      });
+    });
+
+    test('invalid Python module is rejected', () => {
+      expectProjectLoadError(/contains non-identifier characters/, (proj) => {
+        proj.jsii.targets.python = {
+          module: 'as-df',
+          distName: 'as-df',
+        };
+      });
+    });
+
+    function expectProjectLoadError(error: RegExp, gremlin: Parameters<typeof _withTestProject>[1]) {
+      _withTestProject((root) => expect(() => loadProjectInfo(root)).toThrow(error), gremlin);
+    }
   });
 
   describe('user-provided tsconfig', () => {
@@ -355,6 +400,11 @@ const TEST_DEP_DEP_ASSEMBLY: spec.Assembly = {
 };
 
 /**
+ * A type to represent the package.json type that gets mutated by testproject gremlins
+ */
+type HalfFilledPackageJson = DeepWriteable<PackageJson> & typeof BASE_PROJECT;
+
+/**
  * Creates a throw-away directory with a ``package.json`` file. Cleans up after itself.
  *
  * @param cb      a callback that will be invoked with the temporary directory's path
@@ -364,7 +414,7 @@ const TEST_DEP_DEP_ASSEMBLY: spec.Assembly = {
  */
 function _withTestProject<T>(
   cb: (projectRoot: string) => T,
-  gremlin?: (packageInfo: any) => void,
+  gremlin?: (packageInfo: HalfFilledPackageJson) => void,
   compressAssembly = false,
 ): T {
   const tmpdir = fs.mkdtempSync(path.join(os.tmpdir(), path.basename(__filename)));
@@ -430,3 +480,5 @@ function _stripUndefined(obj: { [key: string]: any } | undefined): { [key: strin
   }
   return obj;
 }
+
+type DeepWriteable<T> = T extends object ? { -readonly [P in keyof T]: DeepWriteable<T[P]> } : T;
