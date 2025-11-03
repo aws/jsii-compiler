@@ -41,6 +41,25 @@ export type TSCompilerOptions = Partial<
   >
 >;
 
+/**
+ * The assembly targets have some typing in `spec.PackageJson`, extract it.
+ *
+ * The types in the upstream spec library:
+ *
+ * - Missing the user-visible `go` target
+ * - Missing the synthetic `js` target
+ */
+export type AssemblyTargets = spec.PackageJson['jsii']['targets'] & {
+  js?: {
+    npm: string;
+  };
+  go?: {
+    moduleName: string;
+    packageName: string;
+  };
+  [otherLanguage: string]: unknown;
+};
+
 export interface ProjectInfo {
   readonly projectRoot: string;
   readonly packageJson: PackageJson;
@@ -65,7 +84,7 @@ export interface ProjectInfo {
   readonly peerDependencies: { readonly [name: string]: string };
   readonly dependencyClosure: readonly spec.Assembly[];
   readonly bundleDependencies?: { readonly [name: string]: string };
-  readonly targets: spec.AssemblyTargets;
+  readonly targets: AssemblyTargets;
   readonly metadata?: { readonly [key: string]: any };
   readonly jsiiVersionFormat: 'short' | 'full';
   readonly diagnostics?: { readonly [code: string]: ts.DiagnosticCategory };
@@ -85,6 +104,12 @@ export interface ProjectInfo {
   readonly validateTsconfig?: TypeScriptConfigValidationRuleSet;
 }
 
+/**
+ * A type representing the contents of a `package.json` file.
+ *
+ * Note that there is also a `PackageJson` type in `@jsii/spec`, and this one is
+ * not the same.  Do not ask me why.
+ */
 export interface PackageJson {
   readonly description?: string;
   readonly homepage?: string;
@@ -121,7 +146,7 @@ export interface PackageJson {
     // main jsii config
     readonly diagnostics?: { readonly [id: string]: 'error' | 'warning' | 'suggestion' | 'message' };
     readonly metadata?: { readonly [key: string]: unknown };
-    readonly targets?: { readonly [name: string]: unknown };
+    readonly targets?: AssemblyTargets;
     readonly versionFormat?: 'short' | 'full';
 
     // Either user-provided config ...
@@ -241,8 +266,10 @@ export function loadProjectInfo(projectRoot: string): ProjectInfoResult {
     dependencyClosure: transitiveDependencies,
     bundleDependencies,
     targets: {
-      ..._required(pkg.jsii, 'The "package.json" file must specify the "jsii" attribute').targets,
-      js: { npm: pkg.name },
+      ...validateTargets(
+        _required(pkg.jsii, 'The "package.json" file must specify the "jsii" attribute').targets as AssemblyTargets,
+      ),
+      js: { npm: pkg.name! },
     },
     metadata,
     jsiiVersionFormat: _validateVersionFormat(pkg.jsii?.versionFormat ?? 'full'),
@@ -276,6 +303,53 @@ export function loadProjectInfo(projectRoot: string): ProjectInfoResult {
     validateTsconfig: _validateTsconfigRuleSet(pkg.jsii?.validateTsconfig ?? 'strict'),
   };
   return { projectInfo, diagnostics };
+}
+
+/**
+ * Validate the values of the `.jsii.targets` field
+ */
+function validateTargets(targets: AssemblyTargets | undefined): AssemblyTargets | undefined {
+  if (!targets) {
+    return undefined;
+  }
+
+  // Go package names must be valid identifiers
+  if (targets.go) {
+    if (!isIdentifier(targets.go.packageName)) {
+      throw new JsiiError(`jsii.targets.go.packageName contains non-identifier characters: ${targets.go.packageName}`);
+    }
+  }
+
+  if (targets.dotnet) {
+    if (!targets.dotnet.namespace.split('.').every(isIdentifier)) {
+      throw new JsiiError(
+        `jsii.targets.dotnet.namespace contains non-identifier characters: ${targets.dotnet.namespace}`,
+      );
+    }
+  }
+
+  if (targets.java) {
+    if (!targets.java.package.split('.').every(isIdentifier)) {
+      throw new JsiiError(`jsii.targets.java.package contains non-identifier characters: ${targets.java.package}`);
+    }
+  }
+
+  if (targets.python) {
+    if (!targets.python.module.split('.').every(isIdentifier)) {
+      throw new JsiiError(`jsii.targets.python.module contains non-identifier characters: ${targets.python.module}`);
+    }
+  }
+
+  return targets;
+
+  /**
+   * Regexp-check for matching an identifier
+   *
+   * Conveniently, all identifiers look more or less the same in all languages.
+   */
+  function isIdentifier(x: string) {
+    return /^[\w_][\w\d_]*$/u.test(x);
+  }
 }
 
 function _guessRepositoryType(url: string): string {
