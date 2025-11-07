@@ -705,8 +705,18 @@ export class Assembler implements Emitter {
     }
 
     function loadSubmoduleTargetConfig(submoduleMain: string): SubmoduleSpec['targets'] {
-      const jsiirc = path.resolve(submoduleMain, '..', '.jsiirc.json');
-      if (!fs.existsSync(jsiirc)) {
+      const mainWithoutExtension = submoduleMain.replace(/\.ts$/, '');
+      console.log(mainWithoutExtension);
+
+      let jsiirc;
+      if (path.basename(mainWithoutExtension) === 'index') {
+        jsiirc = path.resolve(submoduleMain, '..', '.jsiirc.json');
+      } else {
+        jsiirc = path.resolve(mainWithoutExtension) + '.jsiirc.json';
+        console.log(jsiirc);
+      }
+
+      if (!jsiirc || !fs.existsSync(jsiirc)) {
         return undefined;
       }
       const data = JSON.parse(fs.readFileSync(jsiirc, 'utf-8'));
