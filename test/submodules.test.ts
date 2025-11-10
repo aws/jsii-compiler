@@ -59,7 +59,7 @@ test('submodules loaded from files can have targets', () => {
   const assembly = sourceToAssemblyHelper({
     'index.ts': 'export * as submodule from "./subfile"',
     'subfile.ts': 'export class Foo { }',
-    'subfile.jsiirc.json': JSON.stringify({
+    '.subfile.jsiirc.json': JSON.stringify({
       targets: {
         python: 'fun',
       },
