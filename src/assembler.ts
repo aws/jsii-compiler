@@ -17,7 +17,7 @@ import { normalizeConfigPath } from './helpers';
 import { JsiiDiagnostic } from './jsii-diagnostic';
 import * as literate from './literate';
 import * as bindings from './node-bindings';
-import { ProjectInfo } from './project-info';
+import { AssemblyTargets, ProjectInfo } from './project-info';
 import { isReservedName } from './reserved-words';
 import { Sets } from './sets';
 import { DeprecatedRemover } from './transforms/deprecated-remover';
@@ -180,6 +180,8 @@ export class Assembler implements Emitter {
     this.callDeferredsInOrder();
 
     this.validateTypesAgainstPositions();
+
+    this.validateSubmoduleConfigs();
 
     // Skip emitting if any diagnostic message is an error
     if (this._diagnostics.find((diag) => diag.category === ts.DiagnosticCategory.Error) != null) {
@@ -705,8 +707,17 @@ export class Assembler implements Emitter {
     }
 
     function loadSubmoduleTargetConfig(submoduleMain: string): SubmoduleSpec['targets'] {
-      const jsiirc = path.resolve(submoduleMain, '..', '.jsiirc.json');
-      if (!fs.existsSync(jsiirc)) {
+      const dirname = path.dirname(submoduleMain);
+      const basenameWithoutExtension = path.basename(submoduleMain).replace(/\.ts$/, '');
+
+      let jsiirc;
+      if (basenameWithoutExtension === 'index') {
+        jsiirc = path.resolve(submoduleMain, '..', '.jsiirc.json');
+      } else {
+        jsiirc = path.resolve(dirname, `.${basenameWithoutExtension}.jsiirc.json`);
+      }
+
+      if (!jsiirc || !fs.existsSync(jsiirc)) {
         return undefined;
       }
       const data = JSON.parse(fs.readFileSync(jsiirc, 'utf-8'));
@@ -2747,6 +2758,56 @@ export class Assembler implements Emitter {
         interfaceType: () => {},
         enumType: () => {},
       });
+    }
+  }
+
+  /**
+   * Make sure that no 2 submodules are emitting into the same target namespaces
+   */
+  private validateSubmoduleConfigs() {
+    const self = this;
+    const dotNetnamespaces: Record<string, string[]> = {};
+    const javaPackages: Record<string, string[]> = {};
+    const pythonModules: Record<string, string[]> = {};
+    const goPackages: Record<string, string[]> = {};
+
+    for (const submodule of this._submodules.values()) {
+      const targets = submodule.targets as AssemblyTargets | undefined;
+
+      if (targets?.dotnet?.namespace) {
+        accumList(dotNetnamespaces, targets.dotnet.namespace, submodule.fqn);
+      }
+      if (targets?.java?.package) {
+        accumList(javaPackages, targets.java.package, submodule.fqn);
+      }
+      if (targets?.python?.module) {
+        accumList(pythonModules, targets.python.module, submodule.fqn);
+      }
+      if (targets?.go?.packageName) {
+        accumList(goPackages, targets.go.packageName, submodule.fqn);
+      }
+    }
+
+    maybeError('dotnet', dotNetnamespaces);
+    maybeError('java', javaPackages);
+    maybeError('python', pythonModules);
+    maybeError('go', goPackages);
+
+    function accumList(set: Record<string, string[]>, key: string, value: string) {
+      if (!set[key]) {
+        set[key] = [];
+      }
+      set[key].push(value);
+    }
+
+    function maybeError(language: string, set: Record<string, string[]>) {
+      for (const [namespace, modules] of Object.entries(set)) {
+        if (modules.length > 1) {
+          self._diagnostics.push(
+            JsiiDiagnostic.JSII_4010_SUBMODULE_NAMESPACE_CONFLICT.create(undefined, language, namespace, modules),
+          );
+        }
+      }
     }
   }
 }

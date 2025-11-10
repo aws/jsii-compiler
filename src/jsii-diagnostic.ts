@@ -479,6 +479,13 @@ export class JsiiDiagnostic implements ts.Diagnostic {
     name: 'typescript-config/disabled-tsconfig-validation',
   });
 
+  public static readonly JSII_4010_SUBMODULE_NAMESPACE_CONFLICT = Code.warning({
+    code: 4010,
+    formatter: (language: string, namespace: string, modules: string[]) =>
+      `Multiple modules emit to the same ${language} namespace "${namespace}": ${modules.join(', ')}`,
+    name: 'jsii-config/submodule-conflict',
+  });
+
   //////////////////////////////////////////////////////////////////////////////
   // 5000 => 5999 -- LANGUAGE COMPATIBILITY ERRORS
 
