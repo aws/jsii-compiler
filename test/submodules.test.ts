@@ -1,7 +1,9 @@
 import * as spec from '@jsii/spec';
 import { writeAssembly, loadAssemblyFromPath } from '@jsii/spec';
+import * as ts from 'typescript';
 
 import { sourceToAssemblyHelper, TestWorkspace, compileJsiiForTest } from '../lib';
+import { compileJsiiForErrors } from './compiler-helpers';
 
 test('submodules loaded from directories can have a README', () => {
   const assembly = sourceToAssemblyHelper({
@@ -322,3 +324,170 @@ function makeDependencyWithSubmoduleAndNamespace() {
     'subdir/README.md': 'This is the README',
   });
 }
+
+describe('invalid .jsiirc.json target configuration', () => {
+  test('invalid Go packageName is rejected', () => {
+    const errors = compileJsiiForErrors({
+      'index.ts': 'export * as submodule from "./subdir"',
+      'subdir/index.ts': 'export class Foo { }',
+      'subdir/.jsiirc.json': JSON.stringify({
+        targets: {
+          go: {
+            moduleName: 'asdf',
+            packageName: 'as-df',
+          },
+        },
+      }),
+    });
+    expect(errors).toContainEqual(
+      expect.stringMatching(/jsii\.targets\.go\.packageName contains non-identifier characters/),
+    );
+  });
+
+  test('invalid .NET namespace is rejected', () => {
+    const errors = compileJsiiForErrors({
+      'index.ts': 'export * as submodule from "./subdir"',
+      'subdir/index.ts': 'export class Foo { }',
+      'subdir/.jsiirc.json': JSON.stringify({
+        targets: {
+          dotnet: {
+            namespace: 'a-x',
+            packageId: 'asdf',
+          },
+        },
+      }),
+    });
+    expect(errors).toContainEqual(
+      expect.stringMatching(/jsii\.targets\.dotnet\.namespace contains non-identifier characters/),
+    );
+  });
+
+  test('invalid Java package is rejected', () => {
+    const errors = compileJsiiForErrors({
+      'index.ts': 'export * as submodule from "./subdir"',
+      'subdir/index.ts': 'export class Foo { }',
+      'subdir/.jsiirc.json': JSON.stringify({
+        targets: {
+          java: {
+            package: 'as-df',
+            maven: {
+              artifactId: 'asdf',
+              groupId: 'asdf',
+            },
+          },
+        },
+      }),
+    });
+    expect(errors).toContainEqual(
+      expect.stringMatching(/jsii\.targets\.java\.package contains non-identifier characters/),
+    );
+  });
+
+  test('invalid Python module is rejected', () => {
+    const errors = compileJsiiForErrors({
+      'index.ts': 'export * as submodule from "./subdir"',
+      'subdir/index.ts': 'export class Foo { }',
+      'subdir/.jsiirc.json': JSON.stringify({
+        targets: {
+          python: {
+            module: 'as-df',
+            distName: 'as-df',
+          },
+        },
+      }),
+    });
+    expect(errors).toContainEqual(
+      expect.stringMatching(/jsii\.targets\.python\.module contains non-identifier characters/),
+    );
+  });
+});
+
+describe('submodule namespace conflicts', () => {
+  test('conflicting .NET namespaces produce warnings', () => {
+    const result = compileJsiiForTest(
+      {
+        'index.ts': 'export * as sub1 from "./sub1"; export * as sub2 from "./sub2"',
+        'sub1.ts': 'export class Foo { }',
+        'sub2.ts': 'export class Bar { }',
+        '.sub1.jsiirc.json': JSON.stringify({
+          targets: { dotnet: { namespace: 'Same.Namespace', packageId: 'pkg1' } },
+        }),
+        '.sub2.jsiirc.json': JSON.stringify({
+          targets: { dotnet: { namespace: 'Same.Namespace', packageId: 'pkg2' } },
+        }),
+      },
+      { captureDiagnostics: true },
+    );
+    const warnings = result.diagnostics
+      .filter((d) => d.category === ts.DiagnosticCategory.Warning)
+      .map((d) => `${d.messageText}`);
+    expect(warnings).toContainEqual(expect.stringMatching(/dotnet.*Same\.Namespace.*testpkg\.sub1.*testpkg\.sub2/));
+  });
+
+  test('conflicting Java packages produce warnings', () => {
+    const result = compileJsiiForTest(
+      {
+        'index.ts': 'export * as sub1 from "./sub1"; export * as sub2 from "./sub2"',
+        'sub1.ts': 'export class Foo { }',
+        'sub2.ts': 'export class Bar { }',
+        '.sub1.jsiirc.json': JSON.stringify({
+          targets: { java: { package: 'same.pkg', maven: { artifactId: 'a', groupId: 'g' } } },
+        }),
+        '.sub2.jsiirc.json': JSON.stringify({
+          targets: { java: { package: 'same.pkg', maven: { artifactId: 'b', groupId: 'g' } } },
+        }),
+      },
+      { captureDiagnostics: true },
+    );
+    const warnings = result.diagnostics
+      .filter((d) => d.category === ts.DiagnosticCategory.Warning)
+      .map((d) => `${d.messageText}`);
+    expect(warnings).toContainEqual(expect.stringMatching(/java.*same\.pkg.*testpkg\.sub1.*testpkg\.sub2/));
+  });
+
+  test('conflicting Python modules produce warnings', () => {
+    const result = compileJsiiForTest(
+      {
+        'index.ts': 'export * as sub1 from "./sub1"; export * as sub2 from "./sub2"',
+        'sub1.ts': 'export class Foo { }',
+        'sub2.ts': 'export class Bar { }',
+        '.sub1.jsiirc.json': JSON.stringify({ targets: { python: { module: 'same_module', distName: 'dist1' } } }),
+        '.sub2.jsiirc.json': JSON.stringify({ targets: { python: { module: 'same_module', distName: 'dist2' } } }),
+      },
+      { captureDiagnostics: true },
+    );
+    const warnings = result.diagnostics
+      .filter((d) => d.category === ts.DiagnosticCategory.Warning)
+      .map((d) => `${d.messageText}`);
+    expect(warnings).toContainEqual(expect.stringMatching(/python.*same_module.*testpkg\.sub1.*testpkg\.sub2/));
+  });
+
+  test('conflicting Go packages produce warnings', () => {
+    const result = compileJsiiForTest(
+      {
+        'index.ts': 'export * as sub1 from "./sub1"; export * as sub2 from "./sub2"',
+        'sub1.ts': 'export class Foo { }',
+        'sub2.ts': 'export class Bar { }',
+        '.sub1.jsiirc.json': JSON.stringify({ targets: { go: { moduleName: 'mod1', packageName: 'samepkg' } } }),
+        '.sub2.jsiirc.json': JSON.stringify({ targets: { go: { moduleName: 'mod2', packageName: 'samepkg' } } }),
+      },
+      { captureDiagnostics: true },
+    );
+    const warnings = result.diagnostics
+      .filter((d) => d.category === ts.DiagnosticCategory.Warning)
+      .map((d) => `${d.messageText}`);
+    expect(warnings).toContainEqual(expect.stringMatching(/go.*samepkg.*testpkg\.sub1.*testpkg\.sub2/));
+  });
+
+  test('directory and file submodules with different configs do not conflict', () => {
+    const assembly = sourceToAssemblyHelper({
+      'index.ts': 'export * as sub1 from "./subdir"; export * as sub2 from "./sub2"',
+      'subdir/index.ts': 'export class Foo { }',
+      'sub2.ts': 'export class Bar { }',
+      'subdir/.jsiirc.json': JSON.stringify({ targets: { python: 'dir_module' } }),
+      '.sub2.jsiirc.json': JSON.stringify({ targets: { python: 'file_module' } }),
+    });
+    expect(assembly.submodules!['testpkg.sub1'].targets).toEqual({ python: 'dir_module' });
+    expect(assembly.submodules!['testpkg.sub2'].targets).toEqual({ python: 'file_module' });
+  });
+});
