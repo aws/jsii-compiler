@@ -400,6 +400,24 @@ describe('invalid .jsiirc.json target configuration', () => {
       expect.stringMatching(/jsii\.targets\.python\.module contains non-identifier characters/),
     );
   });
+
+  test('invalid Python module in file-based config is rejected', () => {
+    const errors = compileJsiiForErrors({
+      'index.ts': 'export * as submodule from "./subfile"',
+      'subfile.ts': 'export class Foo { }',
+      '.subfile.jsiirc.json': JSON.stringify({
+        targets: {
+          python: {
+            module: 'invalid-name',
+            distName: 'dist',
+          },
+        },
+      }),
+    });
+    expect(errors).toContainEqual(
+      expect.stringMatching(/jsii\.targets\.python\.module contains non-identifier characters/),
+    );
+  });
 });
 
 describe('submodule namespace conflicts', () => {
