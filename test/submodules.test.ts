@@ -548,7 +548,11 @@ describe('submodule namespace conflicts', () => {
       'subdir/.jsiirc.json': JSON.stringify({ targets: { python: { module: 'dir_module', distName: 'dir-dist' } } }),
       '.sub2.jsiirc.json': JSON.stringify({ targets: { python: { module: 'file_module', distName: 'file-dist' } } }),
     });
-    expect(assembly.submodules!['testpkg.sub1'].targets).toEqual({ python: { module: 'dir_module', distName: 'dir-dist' } });
-    expect(assembly.submodules!['testpkg.sub2'].targets).toEqual({ python: { module: 'file_module', distName: 'file-dist' } });
+    expect(assembly.submodules!['testpkg.sub1'].targets).toEqual({
+      python: { module: 'dir_module', distName: 'dir-dist' },
+    });
+    expect(assembly.submodules!['testpkg.sub2'].targets).toEqual({
+      python: { module: 'file_module', distName: 'file-dist' },
+    });
   });
 });
