@@ -24,7 +24,7 @@ const BASE_PROJECT = {
   main: 'index.js',
   types: 'index.d.ts',
   jsii: {
-    targets: { foo: { bar: 'baz' } },
+    targets: { python: { module: 'test_module', distName: 'test-dist' } },
   },
   dependencies: { 'jsii-test-dep': '^1.2.3' } as { [name: string]: string },
   peerDependencies: { 'jsii-test-dep': '^1.2.3' } as { [name: string]: string },

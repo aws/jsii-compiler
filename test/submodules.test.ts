@@ -43,7 +43,7 @@ test('submodules loaded from directories can have targets', () => {
     'subdir/index.ts': 'export class Foo { }',
     'subdir/.jsiirc.json': JSON.stringify({
       targets: {
-        python: 'fun',
+        python: { module: 'fun', distName: 'fun-dist' },
       },
     }),
   });
@@ -51,7 +51,7 @@ test('submodules loaded from directories can have targets', () => {
   expect(assembly.submodules!['testpkg.submodule']).toEqual(
     expect.objectContaining({
       targets: {
-        python: 'fun',
+        python: { module: 'fun', distName: 'fun-dist' },
       },
     }),
   );
@@ -63,7 +63,7 @@ test('submodules loaded from files can have targets', () => {
     'subfile.ts': 'export class Foo { }',
     '.subfile.jsiirc.json': JSON.stringify({
       targets: {
-        python: 'fun',
+        python: { module: 'fun', distName: 'fun-dist' },
       },
     }),
   });
@@ -71,7 +71,7 @@ test('submodules loaded from files can have targets', () => {
   expect(assembly.submodules!['testpkg.submodule']).toEqual(
     expect.objectContaining({
       targets: {
-        python: 'fun',
+        python: { module: 'fun', distName: 'fun-dist' },
       },
     }),
   );
@@ -545,10 +545,10 @@ describe('submodule namespace conflicts', () => {
       'index.ts': 'export * as sub1 from "./subdir"; export * as sub2 from "./sub2"',
       'subdir/index.ts': 'export class Foo { }',
       'sub2.ts': 'export class Bar { }',
-      'subdir/.jsiirc.json': JSON.stringify({ targets: { python: 'dir_module' } }),
-      '.sub2.jsiirc.json': JSON.stringify({ targets: { python: 'file_module' } }),
+      'subdir/.jsiirc.json': JSON.stringify({ targets: { python: { module: 'dir_module', distName: 'dir-dist' } } }),
+      '.sub2.jsiirc.json': JSON.stringify({ targets: { python: { module: 'file_module', distName: 'file-dist' } } }),
     });
-    expect(assembly.submodules!['testpkg.sub1'].targets).toEqual({ python: 'dir_module' });
-    expect(assembly.submodules!['testpkg.sub2'].targets).toEqual({ python: 'file_module' });
+    expect(assembly.submodules!['testpkg.sub1'].targets).toEqual({ python: { module: 'dir_module', distName: 'dir-dist' } });
+    expect(assembly.submodules!['testpkg.sub2'].targets).toEqual({ python: { module: 'file_module', distName: 'file-dist' } });
   });
 });
