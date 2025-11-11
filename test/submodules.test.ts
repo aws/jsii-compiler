@@ -418,6 +418,49 @@ describe('invalid .jsiirc.json target configuration', () => {
       expect.stringMatching(/jsii\.targets\.python\.module contains non-identifier characters/),
     );
   });
+
+  test('non-object target language config is rejected', () => {
+    const errors = compileJsiiForErrors({
+      'index.ts': 'export * as submodule from "./subfile"',
+      'subfile.ts': 'export class Foo { }',
+      '.subfile.jsiirc.json': JSON.stringify({
+        targets: {
+          python: 'not-an-object',
+        },
+      }),
+    });
+    expect(errors).toContainEqual(expect.stringMatching(/jsii\.targets\.python must be an object/));
+  });
+
+  test('unknown target language is rejected', () => {
+    const errors = compileJsiiForErrors({
+      'index.ts': 'export * as submodule from "./subfile"',
+      'subfile.ts': 'export class Foo { }',
+      '.subfile.jsiirc.json': JSON.stringify({
+        targets: {
+          rust: { package: 'my-crate' },
+        },
+      }),
+    });
+    expect(errors).toContainEqual(expect.stringMatching(/Unknown target language: rust/));
+  });
+
+  test('unknown key in target config is rejected', () => {
+    const errors = compileJsiiForErrors({
+      'index.ts': 'export * as submodule from "./subfile"',
+      'subfile.ts': 'export class Foo { }',
+      '.subfile.jsiirc.json': JSON.stringify({
+        targets: {
+          python: {
+            module: 'valid_module',
+            distName: 'dist',
+            unknownKey: 'value',
+          },
+        },
+      }),
+    });
+    expect(errors).toContainEqual(expect.stringMatching(/Unknown key in jsii\.targets\.python: unknownKey/));
+  });
 });
 
 describe('submodule namespace conflicts', () => {

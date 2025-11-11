@@ -313,6 +313,30 @@ export function validateTargets(targets: AssemblyTargets | undefined): AssemblyT
     return undefined;
   }
 
+  const VALID_TARGET_KEYS: Record<string, string[]> = {
+    java: ['package', 'maven', 'versionSuffix'],
+    python: ['module', 'distName', 'classifiers'],
+    dotnet: ['namespace', 'packageId', 'iconUrl', 'versionSuffix'],
+    go: ['moduleName', 'packageName', 'versionSuffix'],
+  };
+
+  for (const [language, config] of Object.entries(targets)) {
+    if (!(language in VALID_TARGET_KEYS)) {
+      throw new JsiiError(`Unknown target language: ${language}`);
+    }
+
+    if (typeof config !== 'object' || config === null) {
+      throw new JsiiError(`jsii.targets.${language} must be an object`);
+    }
+
+    const validKeys = VALID_TARGET_KEYS[language];
+    for (const key of Object.keys(config)) {
+      if (!validKeys.includes(key)) {
+        throw new JsiiError(`Unknown key in jsii.targets.${language}: ${key}`);
+      }
+    }
+  }
+
   // Go package names must be valid identifiers
   if (
     targets.go &&
