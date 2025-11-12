@@ -17,7 +17,7 @@ import { normalizeConfigPath } from './helpers';
 import { JsiiDiagnostic } from './jsii-diagnostic';
 import * as literate from './literate';
 import * as bindings from './node-bindings';
-import { AssemblyTargets, ProjectInfo } from './project-info';
+import { AssemblyTargets, ProjectInfo, validateTargets } from './project-info';
 import { isReservedName } from './reserved-words';
 import { Sets } from './sets';
 import { DeprecatedRemover } from './transforms/deprecated-remover';
@@ -721,7 +721,7 @@ export class Assembler implements Emitter {
         return undefined;
       }
       const data = JSON.parse(fs.readFileSync(jsiirc, 'utf-8'));
-      return data.targets;
+      return validateTargets(data.targets as AssemblyTargets) as SubmoduleSpec['targets'];
     }
 
     /**
