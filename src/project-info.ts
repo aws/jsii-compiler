@@ -308,19 +308,53 @@ export function loadProjectInfo(projectRoot: string): ProjectInfoResult {
 /**
  * Validate the values of the `.jsii.targets` field
  */
-function validateTargets(targets: AssemblyTargets | undefined): AssemblyTargets | undefined {
+export function validateTargets(targets: AssemblyTargets | undefined): AssemblyTargets | undefined {
   if (!targets) {
     return undefined;
   }
 
+  const VALID_TARGET_KEYS: Record<string, string[]> = {
+    java: ['package', 'maven', 'versionSuffix'],
+    python: ['module', 'distName', 'classifiers'],
+    dotnet: ['namespace', 'packageId', 'iconUrl', 'versionSuffix'],
+    go: ['moduleName', 'packageName', 'versionSuffix'],
+  };
+
+  for (const [language, config] of Object.entries(targets)) {
+    if (!(language in VALID_TARGET_KEYS)) {
+      throw new JsiiError(`Unknown target language: ${language}`);
+    }
+
+    if (typeof config !== 'object' || config === null) {
+      throw new JsiiError(`jsii.targets.${language} must be an object`);
+    }
+
+    const validKeys = VALID_TARGET_KEYS[language];
+    for (const key of Object.keys(config)) {
+      if (!validKeys.includes(key)) {
+        throw new JsiiError(`Unknown key in jsii.targets.${language}: ${key}`);
+      }
+    }
+  }
+
   // Go package names must be valid identifiers
-  if (targets.go) {
+  if (
+    targets.go &&
+    typeof targets.go === 'object' &&
+    'packageName' in targets.go &&
+    typeof targets.go.packageName === 'string'
+  ) {
     if (!isIdentifier(targets.go.packageName)) {
       throw new JsiiError(`jsii.targets.go.packageName contains non-identifier characters: ${targets.go.packageName}`);
     }
   }
 
-  if (targets.dotnet) {
+  if (
+    targets.dotnet &&
+    typeof targets.dotnet === 'object' &&
+    'namespace' in targets.dotnet &&
+    typeof targets.dotnet.namespace === 'string'
+  ) {
     if (!targets.dotnet.namespace.split('.').every(isIdentifier)) {
       throw new JsiiError(
         `jsii.targets.dotnet.namespace contains non-identifier characters: ${targets.dotnet.namespace}`,
@@ -328,13 +362,23 @@ function validateTargets(targets: AssemblyTargets | undefined): AssemblyTargets 
     }
   }
 
-  if (targets.java) {
+  if (
+    targets.java &&
+    typeof targets.java === 'object' &&
+    'package' in targets.java &&
+    typeof targets.java.package === 'string'
+  ) {
     if (!targets.java.package.split('.').every(isIdentifier)) {
       throw new JsiiError(`jsii.targets.java.package contains non-identifier characters: ${targets.java.package}`);
     }
   }
 
-  if (targets.python) {
+  if (
+    targets.python &&
+    typeof targets.python === 'object' &&
+    'module' in targets.python &&
+    typeof targets.python.module === 'string'
+  ) {
     if (!targets.python.module.split('.').every(isIdentifier)) {
       throw new JsiiError(`jsii.targets.python.module contains non-identifier characters: ${targets.python.module}`);
     }
