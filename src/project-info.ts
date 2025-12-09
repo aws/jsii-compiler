@@ -78,7 +78,7 @@ export interface ProjectInfo {
   readonly keywords?: readonly string[];
 
   readonly main: string;
-  readonly types: string;
+  readonly types?: string;
 
   readonly dependencies: { readonly [name: string]: string };
   readonly peerDependencies: { readonly [name: string]: string };
@@ -259,7 +259,7 @@ export function loadProjectInfo(projectRoot: string): ProjectInfoResult {
     keywords: pkg.keywords,
 
     main: _required(pkg.main, 'The "package.json" file must specify the "main" attribute'),
-    types: _required(pkg.types, 'The "package.json" file must specify the "types" attribute'),
+    types: pkg.types,
 
     dependencies,
     peerDependencies,

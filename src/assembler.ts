@@ -103,7 +103,7 @@ export class Assembler implements Emitter {
 
     this.compressAssembly = options.compressAssembly;
 
-    const dts = projectInfo.types;
+    const dts = projectInfo.types ?? 'index.d.ts';
     let mainFile = dts.replace(/\.d\.ts(x?)$/, '.ts$1');
 
     // If out-of-source build was configured (tsc's outDir and rootDir), the
