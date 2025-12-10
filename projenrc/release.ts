@@ -11,8 +11,12 @@ export const enum PublishTargetOutput {
 // The ARN of the OpenPGP key used to sign release artifacts uploaded to GH Releases.
 const CODE_SIGNING_USER_ID = 'aws-jsii@amazon.com';
 
+export interface ReleaseWorkflowProps {
+  readonly workflowNodeVersion?: string;
+}
+
 export class ReleaseWorkflow {
-  public constructor(private readonly project: typescript.TypeScriptProject) {
+  public constructor(private readonly project: typescript.TypeScriptProject, props: ReleaseWorkflowProps) {
     new ReleaseTask(project);
     new TagReleaseTask(project);
 
@@ -22,7 +26,7 @@ export class ReleaseWorkflow {
 
     release.on({ push: { tags: ['v*.*.*'] } });
 
-    const nodeVersion = project.minNodeVersion?.split('.', 1).at(0) ?? 'lts/*';
+    const nodeVersion = props.workflowNodeVersion ?? 'lts/*';
 
     const releasePackageName = 'release-package';
     const publishTarget = 'publish-target';
