@@ -10,6 +10,8 @@ import { UpgradeDependencies } from './projenrc/upgrade-dependencies';
 //  To add a new TypeScript version, follow the complete process documented in:
 //  .kiro/steering/new-typescript-release.md
 
+const workflowNodeVersion = 'lts/*';
+
 const project = new typescript.TypeScriptProject({
   projenrcTs: true,
 
@@ -93,7 +95,7 @@ const project = new typescript.TypeScriptProject({
   buildWorkflow: false, // We have our own build workflow (need matrix test)
   release: false, // We have our own release workflow
   defaultReleaseBranch: 'main',
-  workflowNodeVersion: 'lts/*', // upgrade workflows should run on latest lts version
+  workflowNodeVersion,
 
   autoApproveUpgrades: true,
   autoApproveOptions: {
@@ -262,7 +264,7 @@ new BuildWorkflow(project);
 
 // Add support policy documents & release workflows
 const supported = new SupportPolicy(project);
-const releases = new ReleaseWorkflow(project)
+const releases = new ReleaseWorkflow(project, { workflowNodeVersion })
   .autoTag({
     releaseLine: SUPPORT_POLICY.current,
     preReleaseId: 'dev',
