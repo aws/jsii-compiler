@@ -79,7 +79,7 @@
     "semver": "^7.7.3",
     "semver-intersect": "^1.5.0",
     "sort-json": "^2.0.1",
-    "spdx-license-list": "^6.10.0",
+    "spdx-license-list": "^6.11.0",
     "typescript": "~5.8",
     "yargs": "^17.7.2"
   },
