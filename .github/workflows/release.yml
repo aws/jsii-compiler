@@ -42,7 +42,7 @@ jobs:
         run: yarn ts-node projenrc/publish-target.ts ${{ github.ref_name }}
       - name: Federate to AWS
         if: fromJSON(steps.publish-target.outputs.github-release)
-        uses: aws-actions/configure-aws-credentials@v1
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           aws-region: us-east-1
           role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
@@ -134,7 +134,7 @@ jobs:
           node-version: lts/*
           registry-url: https://registry.npmjs.org/
       - name: Federate to AWS
-        uses: aws-actions/configure-aws-credentials@v1
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           aws-region: us-east-1
           role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
