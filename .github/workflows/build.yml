@@ -20,18 +20,18 @@ jobs:
       CI: "true"
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v6
         with:
           repository: ${{ github.repository }}
           lfs: true
           ref: ${{ github.ref }}
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           cache: yarn
       - name: Cache build outputs
         if: github.event_name == 'pull_request'
-        uses: actions/cache@v3
+        uses: actions/cache@v5
         with:
           key: build-outputs-${{ hashFiles('tsconfig.json', 'build-tools/**/*.ts', 'src/**/*.ts', 'package.json', 'yarn.lock') }}
           path: |-
@@ -51,7 +51,7 @@ jobs:
           git diff --cached --patch --exit-code > .repo.patch || echo "needed=true" >> $GITHUB_OUTPUT
       - name: Upload patch
         if: steps.self-mutation.outputs.needed
-        uses: actions/upload-artifact@v4.3.6
+        uses: actions/upload-artifact@v6.0.0
         with:
           name: .repo.patch
           path: .repo.patch
@@ -63,7 +63,7 @@ jobs:
           cat .repo.patch
           exit 1
       - name: Upload artifact
-        uses: actions/upload-artifact@v4.3.6
+        uses: actions/upload-artifact@v6.0.0
         with:
           name: build-output
           path: |-
@@ -87,13 +87,13 @@ jobs:
     if: always() && (github.event_name == 'pull_request') && needs.build.outputs.self-mutation-needed && (github.event.pull_request.head.repo.full_name == github.repository)
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v6
         with:
           ref: ${{ github.event.pull_request.head.ref }}
           repository: ${{ github.event.pull_request.head.repo.full_name }}
           token: ${{ secrets.PROJEN_GITHUB_TOKEN }}
       - name: Download patch
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: .repo.patch
           path: ${{ runner.temp }}
@@ -118,12 +118,12 @@ jobs:
     if: success()
     steps:
       - name: Download artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: build-output
           path: ${{ github.workspace }}
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: ${{ matrix.node-version }}
           cache: yarn
@@ -165,12 +165,12 @@ jobs:
       CI: "true"
     steps:
       - name: Download artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: build-output
           path: ${{ github.workspace }}
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: "20"
           cache: yarn
@@ -179,7 +179,7 @@ jobs:
       - name: Package
         run: npx projen package
       - name: Upload artifact
-        uses: actions/upload-artifact@v4.3.6
+        uses: actions/upload-artifact@v6.0.0
         with:
           name: release-package
           path: ${{ github.workspace }}/dist
@@ -193,11 +193,11 @@ jobs:
       CI: "true"
     steps:
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: ${{ matrix.node-version }}
       - name: Download Artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: release-package
           path: ${{ runner.temp }}/release-package
@@ -248,10 +248,10 @@ jobs:
       CI: "true"
     steps:
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with: {}
       - name: Download Artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: release-package
           path: ${{ runner.temp }}/release-package
@@ -326,10 +326,10 @@ jobs:
       CI: "true"
     steps:
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with: {}
       - name: Download artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: build-output
       - name: Install dependencies
