@@ -63,9 +63,17 @@ function _defaultValidations(): ValidationFunction[] {
         continue;
       }
 
+      const enumNode = bindings.getEnumRelatedNode(type);
       for (const member of type.members) {
         if (member.name && !isConstantCase(member.name)) {
-          diagnostic(JsiiDiagnostic.JSII_8001_ALL_CAPS_ENUM_MEMBERS.createDetached(member.name, type.fqn));
+          const memberNode = enumNode?.members.find((m) => m.name.getText() === member.name);
+          diagnostic(
+            JsiiDiagnostic.JSII_8001_ALL_CAPS_ENUM_MEMBERS.create(
+              memberNode?.name ?? declarationName(enumNode),
+              member.name,
+              type.fqn,
+            ),
+          );
         }
       }
     }
@@ -77,7 +85,13 @@ function _defaultValidations(): ValidationFunction[] {
         continue;
       }
       if (member.name && member.name !== Case.camel(member.name)) {
-        diagnostic(JsiiDiagnostic.JSII_8002_CAMEL_CASED_MEMBERS.createDetached(member.name, type.fqn));
+        diagnostic(
+          JsiiDiagnostic.JSII_8002_CAMEL_CASED_MEMBERS.create(
+            declarationName(bindings.getRelatedNode(member)),
+            member.name,
+            type.fqn,
+          ),
+        );
       }
     }
   }
@@ -97,7 +111,13 @@ function _defaultValidations(): ValidationFunction[] {
         member.name !== Case.pascal(member.name) &&
         member.name !== Case.camel(member.name)
       ) {
-        diagnostic(JsiiDiagnostic.JSII_8003_STATIC_CONST_CASING.createDetached(member.name, type.name));
+        diagnostic(
+          JsiiDiagnostic.JSII_8003_STATIC_CONST_CASING.create(
+            declarationName(bindings.getRelatedNode(member)),
+            member.name,
+            type.name,
+          ),
+        );
       }
     }
   }
@@ -113,9 +133,21 @@ function _defaultValidations(): ValidationFunction[] {
       }
       const snakeName = Case.snake(member.name);
       if (snakeName.startsWith('get_') && _isEmpty((member as spec.Method).parameters)) {
-        diagnostic(JsiiDiagnostic.JSII_5000_JAVA_GETTERS.createDetached(member.name, type.name));
+        diagnostic(
+          JsiiDiagnostic.JSII_5000_JAVA_GETTERS.create(
+            declarationName(bindings.getRelatedNode(member)),
+            member.name,
+            type.name,
+          ),
+        );
       } else if (snakeName.startsWith('set_') && ((member as spec.Method).parameters ?? []).length === 1) {
-        diagnostic(JsiiDiagnostic.JSII_5001_JAVA_SETTERS.createDetached(member.name, type.name));
+        diagnostic(
+          JsiiDiagnostic.JSII_5001_JAVA_SETTERS.create(
+            declarationName(bindings.getRelatedNode(member)),
+            member.name,
+            type.name,
+          ),
+        );
       }
     }
   }
@@ -136,11 +168,11 @@ function _defaultValidations(): ValidationFunction[] {
       }
       const foreignAssm = validator.projectInfo.dependencyClosure.find((dep) => dep.name === assm);
       if (!foreignAssm) {
-        diagnostic(JsiiDiagnostic.JSII_9000_UNKNOWN_MODULE.createDetached(assm));
+        diagnostic(JsiiDiagnostic.JSII_9000_UNKNOWN_MODULE.create(typeRef.node, assm));
         continue;
       }
       if (!(typeRef.fqn in (foreignAssm.types ?? {}))) {
-        diagnostic(JsiiDiagnostic.JSII_9001_TYPE_NOT_FOUND.createDetached(typeRef));
+        diagnostic(JsiiDiagnostic.JSII_9001_TYPE_NOT_FOUND.create(typeRef.node, typeRef));
       }
     }
   }
@@ -333,15 +365,26 @@ function _defaultValidations(): ValidationFunction[] {
         allowReturnTypeCovariance: boolean;
       },
     ) {
+      const actualNode = bindings.getMethodRelatedNode(actual);
+      const expectedNode = bindings.getMethodRelatedNode(expected);
+
       if (!!expected.protected !== !!actual.protected) {
         const expVisibility = expected.protected ? 'protected' : 'public';
         const actVisibility = actual.protected ? 'protected' : 'public';
         diagnostic(
-          JsiiDiagnostic.JSII_5002_OVERRIDE_CHANGES_VISIBILITY.createDetached(
+          JsiiDiagnostic.JSII_5002_OVERRIDE_CHANGES_VISIBILITY.create(
+            actualNode?.modifiers?.find(
+              (mod) => mod.kind === ts.SyntaxKind.PublicKeyword || mod.kind === ts.SyntaxKind.ProtectedKeyword,
+            ) ?? declarationName(actualNode),
             label,
             action,
             actVisibility,
             expVisibility,
+          ).maybeAddRelatedInformation(
+            expectedNode?.modifiers?.find(
+              (mod) => mod.kind === ts.SyntaxKind.PublicKeyword || mod.kind === ts.SyntaxKind.ProtectedKeyword,
+            ) ?? declarationName(expectedNode),
+            'The implemented declaration is here.',
           ),
         );
       }
@@ -364,7 +407,16 @@ function _defaultValidations(): ValidationFunction[] {
           const expType = spec.describeTypeReference(expectedReturnType);
           const actType = spec.describeTypeReference(actualReturnType);
           diagnostic(
-            JsiiDiagnostic.JSII_5003_OVERRIDE_CHANGES_RETURN_TYPE.createDetached(label, action, actType, expType),
+            JsiiDiagnostic.JSII_5003_OVERRIDE_CHANGES_RETURN_TYPE.create(
+              actualNode?.type ?? declarationName(actualNode),
+              label,
+              action,
+              actType,
+              expType,
+            ).maybeAddRelatedInformation(
+              expectedNode?.type ?? declarationName(expectedNode),
+              'The implemented declaration is here.',
+            ),
           );
         }
       }
@@ -372,37 +424,62 @@ function _defaultValidations(): ValidationFunction[] {
       const actualParams = actual.parameters ?? [];
       if (expectedParams.length !== actualParams.length) {
         diagnostic(
-          JsiiDiagnostic.JSII_5005_OVERRIDE_CHANGES_PARAM_COUNT.createDetached(
+          JsiiDiagnostic.JSII_5005_OVERRIDE_CHANGES_PARAM_COUNT.create(
+            declarationName(actualNode),
             label,
             action,
             actualParams.length,
             expectedParams.length,
-          ),
+          ).maybeAddRelatedInformation(declarationName(expectedNode), 'The implemented declaration is here.'),
         );
         return;
       }
       for (let i = 0; i < expectedParams.length; i++) {
         const expParam = expectedParams[i];
         const actParam = actualParams[i];
+        const actParamNode = bindings.getRelatedNode<ts.ParameterDeclaration>(actParam);
+        const expParamNode = bindings.getRelatedNode<ts.ParameterDeclaration>(expParam);
         if (!deepEqual(expParam.type, actParam.type)) {
           diagnostic(
-            JsiiDiagnostic.JSII_5006_OVERRIDE_CHANGES_PARAM_TYPE.createDetached(label, action, actParam, expParam),
+            JsiiDiagnostic.JSII_5006_OVERRIDE_CHANGES_PARAM_TYPE.create(
+              actParamNode?.type ?? declarationName(actParamNode),
+              label,
+              action,
+              actParam,
+              expParam,
+            ).maybeAddRelatedInformation(
+              expParamNode?.type ?? declarationName(expParamNode),
+              'The implemented declaration is here.',
+            ),
           );
         }
         // Not-ing those to force the values to a strictly boolean context (they're optional, undefined means false)
         if (expParam.variadic !== actParam.variadic) {
           diagnostic(
-            JsiiDiagnostic.JSII_5007_OVERRIDE_CHANGES_VARIADIC.createDetached(
+            JsiiDiagnostic.JSII_5007_OVERRIDE_CHANGES_VARIADIC.create(
+              actParamNode?.dotDotDotToken ?? declarationName(actParamNode),
               label,
               action,
               actParam.variadic,
               expParam.variadic,
+            ).maybeAddRelatedInformation(
+              expParamNode?.dotDotDotToken ?? declarationName(expParamNode),
+              'The implemented declaration is here.',
             ),
           );
         }
         if (expParam.optional !== actParam.optional) {
           diagnostic(
-            JsiiDiagnostic.JSII_5008_OVERRIDE_CHANGES_PARAM_OPTIONAL.createDetached(label, action, actParam, expParam),
+            JsiiDiagnostic.JSII_5008_OVERRIDE_CHANGES_PARAM_OPTIONAL.create(
+              actParamNode?.questionToken ?? actParamNode?.type ?? declarationName(actParamNode),
+              label,
+              action,
+              actParam,
+              expParam,
+            ).maybeAddRelatedInformation(
+              expParamNode?.questionToken ?? expParamNode?.type ?? declarationName(expParamNode),
+              'The implemented declaration is here.',
+            ),
           );
         }
       }
