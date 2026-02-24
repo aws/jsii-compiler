@@ -1,11 +1,10 @@
 import { spawn } from 'node:child_process';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { github, typescript } from 'projen';
 import { JobPermission } from 'projen/lib/github/workflows-model';
 import * as tar from 'tar';
-import * as ts from 'typescript';
 import * as yargs from 'yargs';
 import { ACTIONS_SETUP_NODE, YARN_INSTALL } from './common';
 
@@ -53,7 +52,7 @@ export class BenchmarkTest {
             uses: 'actions/download-artifact@v4',
             with: { name: artifactName },
           },
-          YARN_INSTALL('--check-files'),
+          YARN_INSTALL('--frozen-lockfile'),
           {
             id: 'run',
             name: 'Benchmark',
@@ -198,7 +197,7 @@ export class BenchmarkTest {
 
 if (require.main === module) {
   (async function () {
-    const { compiler, silent } = await yargs
+    const { compiler, silent, clean } = await yargs
       .scriptName('yarn projen test:benchmark')
       .option('silent', {
         default: false,
@@ -219,10 +218,17 @@ if (require.main === module) {
           }
         },
       })
+      .option('clean', {
+        default: true,
+        desc: 'Clean the build output. Use --no-clean to keep the output for inspection.',
+        type: 'boolean',
+      })
       .help()
       .parseAsync();
 
     const workDir = mkdtempSync(join(tmpdir(), 'jsii-compiler-benchmark-'));
+    // Non timing messages must go to stderr, otherwise the timings cannot be captured
+    console.error('Running benchmark in', workDir);
     try {
       // Extract the fixture tarball into the work directory
       await tar.x({
@@ -231,7 +237,7 @@ if (require.main === module) {
       });
 
       await new Promise<void>((ok, ko) => {
-        const child = spawn('yarn', ['install', '--frozen-lockfile'], {
+        const child = spawn('npm', ['ci', '--legacy-peer-deps'], {
           stdio: silent ? 'ignore' : ['ignore', process.stderr, process.stderr],
           cwd: workDir,
         });
@@ -251,45 +257,7 @@ if (require.main === module) {
             case 'jsii':
               return [require.resolve('../lib/main.js'), workDir, '--silence-warnings=reserved-word'];
             case 'tsc':
-              const tsconfig = join(workDir, 'tsconfig.tsc.json');
-              writeFileSync(
-                tsconfig,
-                JSON.stringify(
-                  {
-                    compilerOptions: {
-                      alwaysStrict: true,
-                      composite: false,
-                      declaration: true,
-                      declarationMap: false,
-                      experimentalDecorators: true,
-                      incremental: true,
-                      inlineSourceMap: true,
-                      inlineSources: true,
-                      lib: ['es2020'],
-                      module: 'CommonJS',
-                      noEmitOnError: true,
-                      noFallthroughCasesInSwitch: true,
-                      noImplicitAny: true,
-                      noImplicitReturns: true,
-                      noImplicitThis: true,
-                      noUnusedLocals: true,
-                      noUnusedParameters: true,
-                      resolveJsonModule: true,
-                      skipLibCheck: true,
-                      strictNullChecks: true,
-                      strictPropertyInitialization: true,
-                      stripInternal: false,
-                      target: 'ES2020',
-                      tsBuildInfoFile: 'tsconfig.tsbuildinfo',
-                    } satisfies Serialized<ts.CompilerOptions>,
-                    include: ['**/*.ts'],
-                    exclude: ['node_modules', '.types-compat', 'build-tools/*'],
-                  },
-                  null,
-                  2,
-                ),
-              );
-              return [require.resolve('typescript/bin/tsc'), '--build', tsconfig];
+              return [require.resolve('typescript/bin/tsc'), '--build', workDir];
           }
         })();
 
@@ -311,18 +279,12 @@ if (require.main === module) {
 
       console.log(JSON.stringify({ time }));
     } finally {
-      rmSync(workDir, { force: true, recursive: true });
+      if (clean) {
+        rmSync(workDir, { force: true, recursive: true });
+      }
     }
   })().catch((cause) => {
     console.error(cause);
     process.exitCode = -1;
   });
 }
-
-type Serialized<T> = {
-  [P in keyof T]: T[P] extends ts.ModuleKind | undefined
-    ? undefined | keyof typeof ts.ModuleKind
-    : T[P] extends ts.ScriptTarget | undefined
-    ? undefined | keyof typeof ts.ScriptTarget
-    : T[P];
-};

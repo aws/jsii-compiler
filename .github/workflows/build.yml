@@ -333,7 +333,7 @@ jobs:
         with:
           name: build-output
       - name: Install dependencies
-        run: yarn install --check-files
+        run: yarn install --frozen-lockfile
       - name: Benchmark
         id: run
         run: |-
