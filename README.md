@@ -95,6 +95,30 @@ jsii --silence-warnings language-compatibility
 jsii --silence-warnings reserved-word JSII5019
 ```
 
+### Inline Suppression
+
+Individual warnings can be suppressed directly in source code using the `@jsii suppress` directive. This is useful
+when you want `--fail-on-warnings` enabled globally but need to allow specific instances of a warning.
+
+Each directive accepts a single warning identifier using the same formats as `--silence-warnings`. An optional text after
+the identifier is treated as an explanation comment. Use multiple directives to suppress multiple warnings:
+
+```ts
+export class MyClass {
+  /**
+   * @jsii suppress JSII5019 this name is intentional
+   * @jsii suppress reserved-word
+   */
+  public myClass(): void { }
+}
+```
+
+The suppression applies to the annotated declaration and all of its members. For example, a `@jsii suppress`
+directive on a class will suppress matching warnings on all methods and properties within that class.
+
+Only warnings that reference a source code location can be suppressed inline. Warnings not tied to a specific node
+(e.g. `JSII0003` for a missing README) are not affected.
+
 ## :balance_scale: License
 
 **jsii** is distributed under the [Apache License, Version 2.0][apache-2.0].

@@ -1,5 +1,6 @@
 import * as ts from 'typescript';
 
+import { Directives } from './directives';
 import { Code, JsiiDiagnostic } from './jsii-diagnostic';
 
 /**
@@ -40,17 +41,55 @@ export function parseWarningCodes(input: string): number[] {
 }
 
 /**
- * Check if a diagnostic is a silenced warning.
+ * Check if a diagnostic is a silenced warning (globally or inline).
  */
 export function isSilenced(diagnostic: ts.Diagnostic): boolean {
-  if (silencedWarnings.size === 0) {
-    return false;
-  }
   if (diagnostic.category !== ts.DiagnosticCategory.Warning) {
     return false;
   }
   if (!JsiiDiagnostic.isJsiiDiagnostic(diagnostic)) {
     return false;
   }
-  return silencedWarnings.has(diagnostic.jsiiCode);
+  if (silencedWarnings.has(diagnostic.jsiiCode)) {
+    return true;
+  }
+  return isInlineSuppressed(diagnostic);
+}
+
+/**
+ * Check if a diagnostic is suppressed inline via a `@jsii suppress` directive.
+ *
+ * Diagnostics reference a source position (typically the name identifier of a
+ * declaration), but JSDoc tags are attached to the enclosing declaration node,
+ * not the identifier. We therefore start at the token at the diagnostic
+ * position and walk up the AST, checking each ancestor for `@jsii suppress`
+ * directives. This means a directive on a class suppresses matching warnings
+ * on all its members.
+ */
+function isInlineSuppressed(diagnostic: JsiiDiagnostic): boolean {
+  if (diagnostic.file == null || diagnostic.start == null) {
+    return false;
+  }
+
+  // `getTokenAtPosition` is exported from the `typescript` module but is not
+  // included in the public type declarations. It has been stable since TS 2.0
+  // and is used extensively by the language service. We cast through `any` to
+  // access it. Internally it descends through `node.getChildren()` to find the
+  // deepest node at a given position.
+  const getTokenAtPosition: (sf: ts.SourceFile, pos: number) => ts.Node = (ts as any).getTokenAtPosition;
+  let current: ts.Node | undefined = getTokenAtPosition(diagnostic.file, diagnostic.start);
+  while (current) {
+    const directives = Directives.of(current, () => {});
+    for (const code of directives.suppressions) {
+      try {
+        if (parseWarningCodes(code).includes(diagnostic.jsiiCode)) {
+          return true;
+        }
+      } catch {
+        // Unknown code — ignore
+      }
+    }
+    current = current.parent;
+  }
+  return false;
 }

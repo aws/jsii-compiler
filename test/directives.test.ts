@@ -257,6 +257,55 @@ describe('@jsii', () => {
     expect(directives.tsInternal).toBeFalsy();
     expect(directives.ignore).toBeTruthy();
   });
+
+  test('suppress directive', () => {
+    // Given
+    const sourceFile = ts.createSourceFile(
+      'test.ts',
+      `export class Foo {
+        public constructor() {}
+        /** @jsii suppress JSII5019 this name is intentional */
+        public foo(): void {}
+      }`,
+      ts.ScriptTarget.Latest,
+      true,
+      ts.ScriptKind.TS,
+    );
+    const classDecl = sourceFile.statements[0] as ts.ClassDeclaration;
+    const methodDecl = classDecl.members[1];
+
+    // When
+    const directives = Directives.of(methodDecl, unexpectedDiagnostic);
+
+    // Then
+    expect(directives.suppressions).toEqual(['JSII5019']);
+  });
+
+  test('multiple suppress directives', () => {
+    // Given
+    const sourceFile = ts.createSourceFile(
+      'test.ts',
+      `export class Foo {
+        public constructor() {}
+        /**
+         * @jsii suppress JSII5018
+         * @jsii suppress JSII5019
+         */
+        public foo(): void {}
+      }`,
+      ts.ScriptTarget.Latest,
+      true,
+      ts.ScriptKind.TS,
+    );
+    const classDecl = sourceFile.statements[0] as ts.ClassDeclaration;
+    const methodDecl = classDecl.members[1];
+
+    // When
+    const directives = Directives.of(methodDecl, unexpectedDiagnostic);
+
+    // Then
+    expect(directives.suppressions).toEqual(['JSII5018', 'JSII5019']);
+  });
 });
 
 function unexpectedDiagnostic(diag: JsiiDiagnostic) {

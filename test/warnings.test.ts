@@ -168,3 +168,164 @@ describe('silencing integration', () => {
     expect(result.type).toBe('failure');
   });
 });
+
+describe('inline @jsii suppress', () => {
+  afterEach(() => {
+    silencedWarnings.clear();
+  });
+
+  test('suppresses by JSII code on a method', () => {
+    silencedWarnings.add(3);
+    const result = compileJsiiForTest(
+      `
+      export class Foo {
+        /** @jsii suppress JSII5019 */
+        public foo(): void { /* noop */ }
+      }
+    `,
+      { captureDiagnostics: true },
+      { failOnWarnings: true },
+    );
+    expect(result.type).toBe('success');
+  });
+
+  test('suppresses by JSII code on a property', () => {
+    silencedWarnings.add(3);
+    const result = compileJsiiForTest(
+      `
+      export class Foo {
+        /** @jsii suppress JSII5019 */
+        public readonly foo: string = 'bar';
+      }
+    `,
+      { captureDiagnostics: true },
+      { failOnWarnings: true },
+    );
+    expect(result.type).toBe('success');
+  });
+
+  test('suppresses by plain number', () => {
+    silencedWarnings.add(3);
+    const result = compileJsiiForTest(
+      `
+      export class Foo {
+        /** @jsii suppress 5019 */
+        public foo(): void { /* noop */ }
+      }
+    `,
+      { captureDiagnostics: true },
+      { failOnWarnings: true },
+    );
+    expect(result.type).toBe('success');
+  });
+
+  test('suppresses by diagnostic name', () => {
+    silencedWarnings.add(3);
+    const result = compileJsiiForTest(
+      `
+      export class Foo {
+        /** @jsii suppress member-name-conflicts-with-type-name */
+        public foo(): void { /* noop */ }
+      }
+    `,
+      { captureDiagnostics: true },
+      { failOnWarnings: true },
+    );
+    expect(result.type).toBe('success');
+  });
+
+  test('suppresses by category name', () => {
+    silencedWarnings.add(3);
+    const result = compileJsiiForTest(
+      `
+      export class Foo {
+        /** @jsii suppress language-compatibility */
+        public foo(): void { /* noop */ }
+      }
+    `,
+      { captureDiagnostics: true },
+      { failOnWarnings: true },
+    );
+    expect(result.type).toBe('success');
+  });
+
+  test('ignores explanation text after the code', () => {
+    silencedWarnings.add(3);
+    const result = compileJsiiForTest(
+      `
+      export class Foo {
+        /** @jsii suppress JSII5019 this name is intentional */
+        public foo(): void { /* noop */ }
+      }
+    `,
+      { captureDiagnostics: true },
+      { failOnWarnings: true },
+    );
+    expect(result.type).toBe('success');
+  });
+
+  test('multiple tags suppress multiple warnings', () => {
+    silencedWarnings.add(3);
+    const result = compileJsiiForTest(
+      `
+      export class Do {
+        /**
+         * @jsii suppress JSII5018
+         * @jsii suppress JSII5019
+         */
+        public do(): void { /* noop */ }
+      }
+    `,
+      { captureDiagnostics: true },
+      { failOnWarnings: true },
+    );
+    expect(result.type).toBe('success');
+  });
+
+  test('does not suppress a different warning code', () => {
+    silencedWarnings.add(3);
+    const result = compileJsiiForTest(
+      `
+      export class Foo {
+        /** @jsii suppress JSII9999 */
+        public foo(): void { /* noop */ }
+      }
+    `,
+      { captureDiagnostics: true },
+      { failOnWarnings: true },
+    );
+    expect(result.type).toBe('failure');
+  });
+
+  test('diagnostic is still emitted when suppressed', () => {
+    silencedWarnings.add(3);
+    const result = compileJsiiForTest(
+      `
+      export class Foo {
+        /** @jsii suppress JSII5019 */
+        public foo(): void { /* noop */ }
+      }
+    `,
+      { captureDiagnostics: true },
+      { failOnWarnings: true },
+    );
+    expect(result.type).toBe('success');
+    const diags5019 = result.diagnostics.filter((d) => JsiiDiagnostic.isJsiiDiagnostic(d) && d.jsiiCode === 5019);
+    expect(diags5019.length).toBeGreaterThan(0);
+  });
+
+  test('class-level suppression applies to members', () => {
+    silencedWarnings.add(3);
+    const result = compileJsiiForTest(
+      `
+      /** @jsii suppress JSII5019 */
+      export class Foo {
+        public foo(): void { /* noop */ }
+      }
+    `,
+      { captureDiagnostics: true },
+      { failOnWarnings: true },
+    );
+    expect(result.type).toBe('success');
+  });
+});
