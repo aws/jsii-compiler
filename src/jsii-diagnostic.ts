@@ -91,6 +91,24 @@ export class Code<T extends DiagnosticMessageFormatter = DiagnosticMessageFormat
     return this.byName.get(codeOrName);
   }
 
+  /**
+   * Find all codes matching a name or partial name.
+   *
+   * If the input contains a `/`, it must match a full diagnostic name exactly.
+   * Otherwise it matches any diagnostic whose category (before `/`) or specific
+   * name (after `/`) equals the input.
+   */
+  public static lookupByPartialName(name: string): Code[] {
+    if (name.includes('/')) {
+      const exact = this.byName.get(name);
+      return exact ? [exact] : [];
+    }
+    return [...this.byName.values()].filter((c) => {
+      const [category, specific] = c.name.split('/', 2);
+      return category === name || specific === name;
+    });
+  }
+
   private static readonly byCode: Map<number, Code> = new Map();
   private static readonly byName: Map<string, Code> = new Map();
 

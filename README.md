@@ -65,8 +65,35 @@ The current status of `jsii` compiler releases is:
 | Release | Status      | EOS        | Comment                                                                                 |
 | ------- | ----------- | ---------- | --------------------------------------------------------------------------------------- |
 | `5.9.x` | Current     | TBD        | ![npm](https://img.shields.io/npm/v/jsii/v5.9-latest?label=jsii%40v5.9-latest&logo=npm) |
-| `5.8.x` | Maintenance | 2026-02-15 | ![npm](https://img.shields.io/npm/v/jsii/v5.8-latest?label=jsii%40v5.8-latest&logo=npm) |
-| `5.7.x` | Maintenance | 2025-09-15 | ![npm](https://img.shields.io/npm/v/jsii/v5.7-latest?label=jsii%40v5.7-latest&logo=npm) |
+| `5.8.x` | Unsupported | 2026-02-15 | ![npm](https://img.shields.io/npm/v/jsii/v5.8-latest?label=jsii%40v5.8-latest&logo=npm) |
+
+## :mute: Silencing Warnings
+
+The `--silence-warnings` option allows you to suppress specific warnings from the compiler output. Silenced warnings
+are still emitted internally (e.g. they are still part of the assembly), but are not printed to the console. When
+`--fail-on-warnings` (`-Werr`) is set, silenced warnings are not treated as errors.
+
+Warnings can be identified by JSII code, number, or diagnostic name:
+
+```sh
+# By full JSII code
+jsii --silence-warnings JSII5018
+
+# By number only
+jsii --silence-warnings 5018
+
+# By specific diagnostic name (the part after the slash)
+jsii --silence-warnings reserved-word
+
+# By full diagnostic name
+jsii --silence-warnings language-compatibility/reserved-word
+
+# By category (silences ALL warnings in that category)
+jsii --silence-warnings language-compatibility
+
+# Multiple warnings
+jsii --silence-warnings reserved-word JSII5019
+```
 
 ## :balance_scale: License
 

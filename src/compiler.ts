@@ -15,6 +15,7 @@ import { BASE_COMPILER_OPTIONS, convertForJson } from './tsconfig/compiler-optio
 import { TypeScriptConfigValidator } from './tsconfig/tsconfig-validator';
 import { ValidationError } from './tsconfig/validator';
 import * as utils from './utils';
+import { isSilenced } from './warnings';
 
 const LOG = log4js.getLogger('jsii/compiler');
 export const DIAGNOSTICS = 'diagnostics';
@@ -553,7 +554,7 @@ export class Compiler implements Emitter {
     return diags.some(
       (d) =>
         d.category === ts.DiagnosticCategory.Error ||
-        (this.options.failOnWarnings && d.category === ts.DiagnosticCategory.Warning),
+        (this.options.failOnWarnings && d.category === ts.DiagnosticCategory.Warning && !isSilenced(d)),
     );
   }
 }
