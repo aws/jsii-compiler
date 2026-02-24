@@ -135,6 +135,7 @@ neg.enum-duplicate-values.ts:4:3 - error JSII1004: Value 'bar' is used for multi
 exports[`enum-members.1 1`] = `
 error JSII8001: Enum members must be ALL_CAPS. Rename "jsii.MyEnum.Goo" to "GOO" [code-style/enum-members-must-use-all-caps]
 
+
 `;
 
 exports[`enum-name.1 1`] = `
@@ -275,20 +276,24 @@ neg.implement-struct.ts:6:1 - error JSII3007: Attempt to extend or implement str
 exports[`implementation-changes-types.1 1`] = `
 error JSII5003: "jsii.Something#returnSomething" changes the return type to "jsii.UnrelatedClass" when implementing jsii.ISomething. Change it to "jsii.Superclass" [language-compatibility/override-changes-return-type]
 
+
 `;
 
 exports[`implementation-changes-types.2 1`] = `
 error JSII5006: "jsii.SomethingElse#takeSomething" changes the type of parameter "_argument" to jsii.Superclass when implementing jsii.ISomething. Change it to jsii.Subclass [language-compatibility/override-changes-param-type]
+
 
 `;
 
 exports[`implementation-changes-types.3 1`] = `
 error JSII5006: "jsii.Something#takeSomething" changes the type of parameter "_argument" to jsii.Subclass when implementing jsii.ISomething. Change it to jsii.Superclass [language-compatibility/override-changes-param-type]
 
+
 `;
 
 exports[`implementation-changes-types.4 1`] = `
 error JSII5006: "jsii.ISomethingElse#takeSomething" changes the type of parameter "_argument" to jsii.Subclass when implementing jsii.ISomething. Change it to jsii.Superclass [language-compatibility/override-changes-param-type]
+
 
 `;
 
@@ -321,15 +326,18 @@ neg.implementation-changes-types.6.ts:10:21 - error JSII5004: "jsii.SomethingImp
 exports[`implementing-method-changes-optionality 1`] = `
 error JSII5008: "jsii.Implementor#method" turns parameter "_optional" required when implementing jsii.IInterface. Make it optional [language-compatibility/override-changes-param-optional]
 
+
 `;
 
 exports[`implementing-method-changes-optionality.1 1`] = `
 error JSII5008: "jsii.Implementor#method" turns parameter "_optional" required when overriding jsii.AbstractClass. Make it optional [language-compatibility/override-changes-param-optional]
 
+
 `;
 
 exports[`implementing-method-changes-optionality.2 1`] = `
 error JSII5008: "jsii.Implementor#method" turns parameter "_optional" required when overriding jsii.ParentClass. Make it optional [language-compatibility/override-changes-param-optional]
+
 
 `;
 
@@ -405,20 +413,24 @@ neg.index-signatures.ts:9:3 - error JSII1999: Index signatures are not supported
 exports[`inheritance-changes-types.1 1`] = `
 error JSII5003: "jsii.SomethingSpecific#returnSomething" changes the return type to "jsii.UnrelatedClass" when overriding jsii.Something. Change it to "jsii.Superclass" [language-compatibility/override-changes-return-type]
 
+
 `;
 
 exports[`inheritance-changes-types.2 1`] = `
 error JSII5006: "jsii.SomethingSpecific#takeSomething" changes the type of parameter "_argument" to jsii.Superclass when overriding jsii.Something. Change it to jsii.Subclass [language-compatibility/override-changes-param-type]
+
 
 `;
 
 exports[`inheritance-changes-types.3 1`] = `
 error JSII5006: "jsii.SomethingSpecific#takeSomething" changes the type of parameter "_argument" to jsii.Subclass when overriding jsii.Something. Change it to jsii.Superclass [language-compatibility/override-changes-param-type]
 
+
 `;
 
 exports[`inheritance-changes-types.4 1`] = `
 error JSII5006: "jsii.SomethingElse#takeSomething" changes the type of parameter "_argument" to jsii.Subclass when overriding jsii.Something. Change it to jsii.Superclass [language-compatibility/override-changes-param-type]
+
 
 `;
 
@@ -463,8 +475,11 @@ neg.inheritance-changes-types.7.ts:10:21 - error JSII5004: "jsii.SomethingSpecif
 
 exports[`inheritance-changes-types.8 1`] = `
 error JSII5000: Methods and properties cannot have names like "getXxx": those conflict with Java property getters. Rename "SomethingSpecific.getItems" [language-compatibility/potential-java-getter-conflict]
+
 error JSII5000: Methods and properties cannot have names like "getXxx": those conflict with Java property getters. Rename "SomethingUnspecific.getItems" [language-compatibility/potential-java-getter-conflict]
+
 error JSII5003: "jsii.SomethingSpecific#getItems" changes the return type to "map<jsii.Subclass>" when overriding jsii.SomethingUnspecific. Change it to "map<jsii.Superclass>" [language-compatibility/override-changes-return-type]
+
 
 `;
 
@@ -626,20 +641,24 @@ neg.member-named-after-type.ts:8:10 - warning JSII5019: The method name "otherTy
 exports[`method-name.1 1`] = `
 error JSII8002: Method and property (unless they are static readonly) names must use camelCase. Rename "jsii.MyClass.METHOD" to "method" [code-style/member-names-must-use-camel-case]
 
+
 `;
 
 exports[`method-name.2 1`] = `
 error JSII8002: Method and property (unless they are static readonly) names must use camelCase. Rename "jsii.MyClass.hello_world" to "helloWorld" [code-style/member-names-must-use-camel-case]
+
 
 `;
 
 exports[`method-name.3 1`] = `
 error JSII5000: Methods and properties cannot have names like "getXxx": those conflict with Java property getters. Rename "MyClass.getFoo" [language-compatibility/potential-java-getter-conflict]
 
+
 `;
 
 exports[`method-name.4 1`] = `
 error JSII5001: Methods and properties cannot have names like "setXxx": those conflict with Java property setters. Rename "MyClass.setFoo" [language-compatibility/potential-java-setter-conflict]
+
 
 `;
 
@@ -743,6 +762,8 @@ neg.omit.4.ts:8:13 - error JSII1003: Only string-indexed map types are supported
 `;
 
 exports[`override-changes-visibility 1`] = `
+error JSII5002: "jsii.ChildClass#method" changes visibility to public when overriding jsii.BaseClass. Change it to protected [language-compatibility/override-changes-visibility]
+
 neg.override-changes-visibility.ts:14:3 - error JSII5002: "jsii.ChildClass#property" changes visibility to public when overriding jsii.BaseClass. Change it to protected [language-compatibility/override-changes-visibility]
 
 14   public readonly property?: string;
@@ -752,7 +773,6 @@ neg.override-changes-visibility.ts:14:3 - error JSII5002: "jsii.ChildClass#prope
     5   protected readonly property?: string;
         ~~~~~~~~~
     The implemented declaration is here.
-error JSII5002: "jsii.ChildClass#method" changes visibility to public when overriding jsii.BaseClass. Change it to protected [language-compatibility/override-changes-visibility]
 
 `;
 
@@ -768,15 +788,18 @@ neg.prohibited-member-name.ts:4:10 - error JSII5016: Members cannot be named "eq
 exports[`property-name.1 1`] = `
 error JSII8002: Method and property (unless they are static readonly) names must use camelCase. Rename "jsii.MyClass.PROP" to "prop" [code-style/member-names-must-use-camel-case]
 
+
 `;
 
 exports[`property-name.2 1`] = `
 error JSII8002: Method and property (unless they are static readonly) names must use camelCase. Rename "jsii.MyClass.my_Prop" to "myProp" [code-style/member-names-must-use-camel-case]
 
+
 `;
 
 exports[`property-name.3 1`] = `
 error JSII5000: Methods and properties cannot have names like "getXxx": those conflict with Java property getters. Rename "MyClass.getFoo" [language-compatibility/potential-java-getter-conflict]
+
 
 `;
 
@@ -815,6 +838,7 @@ neg.separate-write-type.ts:8:26 - error JSII1005: Visible property signatures ca
 exports[`static-const-name 1`] = `
 error JSII8003: Static constant names must use ALL_CAPS, PascalCase, or camelCase. Rename "MyClass.snake_case" to "SNAKE_CASE" [code-style/static-readonly-property-casing]
 
+
 `;
 
 exports[`static-member-mixing.1 1`] = `
@@ -852,10 +876,12 @@ neg.static-member-mixing.2.ts:1:1 - error JSII5013: Member "funFunction" of clas
 exports[`static-method-name 1`] = `
 error JSII8002: Method and property (unless they are static readonly) names must use camelCase. Rename "jsii.MyClass.METHOD" to "method" [code-style/member-names-must-use-camel-case]
 
+
 `;
 
 exports[`static-method-name.1 1`] = `
 error JSII8002: Method and property (unless they are static readonly) names must use camelCase. Rename "jsii.MyClass.MethodIsNotCamelCase" to "methodIsNotCamelCase" [code-style/member-names-must-use-camel-case]
+
 
 `;
 
@@ -883,10 +909,12 @@ neg.static-nested-conflict.ts:5:3 - error JSII5020: The static member "ParentCla
 exports[`static-prop-name.1 1`] = `
 error JSII8002: Method and property (unless they are static readonly) names must use camelCase. Rename "jsii.MyClass.Prop" to "prop" [code-style/member-names-must-use-camel-case]
 
+
 `;
 
 exports[`static-prop-name.2 1`] = `
 error JSII8002: Method and property (unless they are static readonly) names must use camelCase. Rename "jsii.MyClass.PROP" to "prop" [code-style/member-names-must-use-camel-case]
+
 
 `;
 
