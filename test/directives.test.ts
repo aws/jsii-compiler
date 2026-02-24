@@ -80,10 +80,11 @@ describe('@jsii', () => {
       expect(hadDiagnostic).toBeFalsy();
       const formatted = formatDiagnostic(diag, __dirname);
       expect(stripAnsi(formatted)).toMatchInlineSnapshot(`
-        "test.ts:1:5 - warning JSII2000: Missing argument to @jsii directive. Refer to the jsii compiler documentation for more information.
+        "test.ts:1:5 - warning JSII2000: Missing argument to @jsii directive. Refer to the jsii compiler documentation for more information. [jsii-directive/missing-argument]
 
         1 /** @jsii */ export class Internal { public constructor() {} }
-              ~~~~~~ [jsii-directive/missing-argument]
+              ~~~~~~
+
         "
       `);
       hadDiagnostic = true;
@@ -113,10 +114,11 @@ describe('@jsii', () => {
       expect(hadDiagnostic).toBeFalsy();
       const formatted = formatDiagnostic(diag, __dirname);
       expect(stripAnsi(formatted)).toMatchInlineSnapshot(`
-        "test.ts:1:5 - warning JSII2999: Unknown @jsii directive: "absolutely-not-a-directive". Refer to the jsii compiler documentation for more information.
+        "test.ts:1:5 - warning JSII2999: Unknown @jsii directive: "absolutely-not-a-directive". Refer to the jsii compiler documentation for more information. [jsii-directive/unknown]
 
         1 /** @jsii absolutely-not-a-directive */ export class Internal { public constructor() {} }
-              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ [jsii-directive/unknown]
+              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
         "
       `);
       hadDiagnostic = true;
@@ -150,12 +152,13 @@ describe('@jsii', () => {
       expect(hadDiagnostic).toBeFalsy();
       const formatted = formatDiagnostic(diag, __dirname);
       expect(stripAnsi(formatted)).toMatchInlineSnapshot(`
-        "test.ts:2:10 - warning JSII2999: Unknown @jsii directive: "absolutely-not-a-directive". Refer to the jsii compiler documentation for more information.
+        "test.ts:2:10 - warning JSII2999: Unknown @jsii directive: "absolutely-not-a-directive". Refer to the jsii compiler documentation for more information. [jsii-directive/unknown]
 
         2        * @jsii absolutely-not-a-directive
                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         3        * @jsii ignore
-          ~~~~~~~~~ [jsii-directive/unknown]
+          ~~~~~~~~~
+
         "
       `);
       hadDiagnostic = true;
@@ -189,14 +192,15 @@ describe('@jsii', () => {
       expect(hadDiagnostic).toBeFalsy();
       const formatted = formatDiagnostic(diag, __dirname);
       expect(stripAnsi(formatted)).toMatchInlineSnapshot(`
-        "test.ts:2:10 - warning JSII2999: Unknown @jsii directive: "absolutely-not-a-directive". Refer to the jsii compiler documentation for more information.
+        "test.ts:2:10 - warning JSII2999: Unknown @jsii directive: "absolutely-not-a-directive". Refer to the jsii compiler documentation for more information. [jsii-directive/unknown]
 
         2        * @jsii absolutely-not-a-directive
                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         3        *       ignore
           ~~~~~~~~~~~~~~~~~~~~~
         4        */
-          ~~~~~~~ [jsii-directive/unknown]
+          ~~~~~~~
+
         "
       `);
       hadDiagnostic = true;

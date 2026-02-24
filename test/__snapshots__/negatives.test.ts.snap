@@ -1,26 +1,29 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
 exports[`behavior-requires-iprefix 1`] = `
-neg.behavior-requires-iprefix.ts:1:18 - error JSII8007: Interface contains behavior. Rename "Something" to "ISomething"
+neg.behavior-requires-iprefix.ts:1:18 - error JSII8007: Interface contains behavior. Rename "Something" to "ISomething" [code-style/behavioral-interface-name]
 
 1 export interface Something {
-                   ~~~~~~~~~ [code-style/behavioral-interface-name]
+                   ~~~~~~~~~
+
 
 `;
 
 exports[`class-name 1`] = `
-neg.class-name.ts:1:14 - error JSII8000: Type names must be PascalCased. Rename "myclass" to "Myclass"
+neg.class-name.ts:1:14 - error JSII8000: Type names must be PascalCased. Rename "myclass" to "Myclass" [code-style/type-names-must-use-pascal-case]
 
 1 export class myclass {}
-               ~~~~~~~ [code-style/type-names-must-use-pascal-case]
+               ~~~~~~~
+
 
 `;
 
 exports[`class-name.1 1`] = `
-neg.class-name.1.ts:1:14 - error JSII8000: Type names must be PascalCased. Rename "My_class" to "MyClass"
+neg.class-name.1.ts:1:14 - error JSII8000: Type names must be PascalCased. Rename "My_class" to "MyClass" [code-style/type-names-must-use-pascal-case]
 
 1 export class My_class {}
-               ~~~~~~~~ [code-style/type-names-must-use-pascal-case]
+               ~~~~~~~~
+
 
 `;
 
@@ -37,59 +40,65 @@ neg.compilation-error.ts:1:9 - error TS2304: Cannot find name 'CompilerErrorIsHe
 `;
 
 exports[`const-enum 1`] = `
-neg.const-enum.ts:1:8 - error JSII1000: Exported "const enum" declarations are not allowed
+neg.const-enum.ts:1:8 - error JSII1000: Exported "const enum" declarations are not allowed [typescript-restrictions/no-const-enum]
 
 1 export const enum NotAllowed {
-         ~~~~~ [typescript-restrictions/no-const-enum]
+         ~~~~~
+
 
 `;
 
 exports[`double-interface-members 1`] = `
-neg.double-interface-members.ts:2:3 - error JSII3008: The "foo" property of struct "jsii.A" must be "readonly". Rename "jsii.A" to "IA" if it is meant to be a behavioral interface.
+neg.double-interface-members.ts:2:3 - error JSII3008: The "foo" property of struct "jsii.A" must be "readonly". Rename "jsii.A" to "IA" if it is meant to be a behavioral interface. [type-model/struct-props-must-be-readonly]
 
 2   foo: number;
-    ~~~ [type-model/struct-props-must-be-readonly]
-neg.double-interface-members.ts:4:1 - error JSII5015: Interface "jsii.B" re-declares member "foo". This is not supported as it results in invalid C#.
+    ~~~
+
+neg.double-interface-members.ts:4:1 - error JSII5015: Interface "jsii.B" re-declares member "foo". This is not supported as it results in invalid C#. [language-compatibility/redeclared-interface-member]
 
 4 export interface B extends A {
   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 5   foo: number;
   ~~~~~~~~~~~~~~
 6 }
-  ~ [language-compatibility/redeclared-interface-member]
-neg.double-interface-members.ts:5:3 - error JSII3008: The "foo" property of struct "jsii.B" must be "readonly". Rename "jsii.B" to "IB" if it is meant to be a behavioral interface.
+  ~
+
+neg.double-interface-members.ts:5:3 - error JSII3008: The "foo" property of struct "jsii.B" must be "readonly". Rename "jsii.B" to "IB" if it is meant to be a behavioral interface. [type-model/struct-props-must-be-readonly]
 
 5   foo: number;
-    ~~~ [type-model/struct-props-must-be-readonly]
+    ~~~
+
 
 `;
 
 exports[`double-interface-members-deeper 1`] = `
-neg.double-interface-members-deeper.ts:9:1 - error JSII5015: Interface "jsii.IC" re-declares member "foo". This is not supported as it results in invalid C#.
+neg.double-interface-members-deeper.ts:9:1 - error JSII5015: Interface "jsii.IC" re-declares member "foo". This is not supported as it results in invalid C#. [language-compatibility/redeclared-interface-member]
 
  9 export interface IC extends IB {
    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 10   foo(): void;
    ~~~~~~~~~~~~~~
 11 }
-   ~ [language-compatibility/redeclared-interface-member]
+   ~
+
 
 `;
 
 exports[`double-interface-members-method 1`] = `
-neg.double-interface-members-method.ts:4:1 - error JSII5015: Interface "jsii.IB" re-declares member "foo". This is not supported as it results in invalid C#.
+neg.double-interface-members-method.ts:4:1 - error JSII5015: Interface "jsii.IB" re-declares member "foo". This is not supported as it results in invalid C#. [language-compatibility/redeclared-interface-member]
 
 4 export interface IB extends IA {
   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 5   foo(): void;
   ~~~~~~~~~~~~~~
 6 }
-  ~ [language-compatibility/redeclared-interface-member]
+  ~
+
 
 `;
 
 exports[`downgrade-to-readonly 1`] = `
-neg.downgrade-to-readonly.ts:8:24 - error JSII5010: "jsii.Implementation#property" turns readonly when implementing jsii.IInterface. Make it mutable
+neg.downgrade-to-readonly.ts:8:24 - error JSII5010: "jsii.Implementation#property" turns readonly when implementing jsii.IInterface. Make it mutable [language-compatibility/override-changes-mutability]
 
 8     constructor(public readonly property: string) {}
                          ~~~~~~~~
@@ -97,12 +106,12 @@ neg.downgrade-to-readonly.ts:8:24 - error JSII5010: "jsii.Implementation#propert
   neg.downgrade-to-readonly.ts:4:5
     4     property: string;
           ~~~~~~~~
-    The implemented declaration is here. [language-compatibility/override-changes-mutability]
+    The implemented declaration is here.
 
 `;
 
 exports[`enum-duplicate-values 1`] = `
-neg.enum-duplicate-values.ts:2:3 - error JSII1004: Value 'foo' is used for multiple enum values: FOO, FOO_DUPLICATE
+neg.enum-duplicate-values.ts:2:3 - error JSII1004: Value 'foo' is used for multiple enum values: FOO, FOO_DUPLICATE [typescript-restrictions/duplicate-enum-value]
 
 2   FOO = 'foo',
     ~~~
@@ -110,8 +119,8 @@ neg.enum-duplicate-values.ts:2:3 - error JSII1004: Value 'foo' is used for multi
   neg.enum-duplicate-values.ts:3:3
     3   FOO_DUPLICATE = 'foo',
         ~~~~~~~~~~~~~
-    The conflicting declaration is here [typescript-restrictions/duplicate-enum-value]
-neg.enum-duplicate-values.ts:4:3 - error JSII1004: Value 'bar' is used for multiple enum values: BAR, BAR_COPY
+    The conflicting declaration is here
+neg.enum-duplicate-values.ts:4:3 - error JSII1004: Value 'bar' is used for multiple enum values: BAR, BAR_COPY [typescript-restrictions/duplicate-enum-value]
 
 4   BAR = 'bar',
     ~~~
@@ -119,7 +128,7 @@ neg.enum-duplicate-values.ts:4:3 - error JSII1004: Value 'bar' is used for multi
   neg.enum-duplicate-values.ts:5:3
     5   BAR_COPY = 'bar',
         ~~~~~~~~
-    The conflicting declaration is here [typescript-restrictions/duplicate-enum-value]
+    The conflicting declaration is here
 
 `;
 
@@ -129,39 +138,43 @@ error JSII8001: Enum members must be ALL_CAPS. Rename "jsii.MyEnum.Goo" to "GOO"
 `;
 
 exports[`enum-name.1 1`] = `
-neg.enum-name.1.ts:1:13 - error JSII8000: Type names must be PascalCased. Rename "myEnum" to "MyEnum"
+neg.enum-name.1.ts:1:13 - error JSII8000: Type names must be PascalCased. Rename "myEnum" to "MyEnum" [code-style/type-names-must-use-pascal-case]
 
 1 export enum myEnum {
-              ~~~~~~ [code-style/type-names-must-use-pascal-case]
+              ~~~~~~
+
 
 `;
 
 exports[`enum-name.2 1`] = `
-neg.enum-name.2.ts:1:13 - error JSII8000: Type names must be PascalCased. Rename "My_Enum" to "MyEnum"
+neg.enum-name.2.ts:1:13 - error JSII8000: Type names must be PascalCased. Rename "My_Enum" to "MyEnum" [code-style/type-names-must-use-pascal-case]
 
 1 export enum My_Enum {
-              ~~~~~~~ [code-style/type-names-must-use-pascal-case]
+              ~~~~~~~
+
 
 `;
 
 exports[`expose-unexported-type-constructor-param 1`] = `
-neg.expose-unexported-type-constructor-param.ts:6:29 - error JSII3000: Exported APIs cannot use un-exported type "jsii.UnexportedProps"
+neg.expose-unexported-type-constructor-param.ts:6:29 - error JSII3000: Exported APIs cannot use un-exported type "jsii.UnexportedProps" [type-model/exported-api-cannot-use-unexported-type]
 
 6   public constructor(props: UnexportedProps) {
-                              ~~~~~~~~~~~~~~~ [type-model/exported-api-cannot-use-unexported-type]
+                              ~~~~~~~~~~~~~~~
+
 
 `;
 
 exports[`expose-unexported-type-external 1`] = `
-neg.expose-unexported-type-external.ts:7:14 - error JSII3000: Exported APIs cannot use un-exported type "jsii.UnexportedType"
+neg.expose-unexported-type-external.ts:7:14 - error JSII3000: Exported APIs cannot use un-exported type "jsii.UnexportedType" [type-model/exported-api-cannot-use-unexported-type]
 
 7   public p?: UnexportedType;
-               ~~~~~~~~~~~~~~ [type-model/exported-api-cannot-use-unexported-type]
+               ~~~~~~~~~~~~~~
+
 
 `;
 
 exports[`expose-unexported-type-internal 1`] = `
-neg.expose-unexported-type-internal.ts:7:14 - error JSII3001: Type "UnexportedType" cannot be used as the property type because it is private or @internal
+neg.expose-unexported-type-internal.ts:7:14 - error JSII3001: Type "UnexportedType" cannot be used as the property type because it is private or @internal [type-model/use-of-internal-type]
 
 7   public p?: UnexportedType;
                ~~~~~~~~~~~~~~
@@ -169,12 +182,12 @@ neg.expose-unexported-type-internal.ts:7:14 - error JSII3001: Type "UnexportedTy
   neg.expose-unexported-type-internal.ts:4:1
     4 class UnexportedType {}
       ~~~~~~~~~~~~~~~~~~~~~~~
-    The referenced type is declared here [type-model/use-of-internal-type]
+    The referenced type is declared here
 
 `;
 
 exports[`expose-unexported-type-internal-in-namespace 1`] = `
-neg.expose-unexported-type-internal-in-namespace.ts:9:14 - error JSII3001: Type "UnexportedType" cannot be used as the property type because it is private or @internal
+neg.expose-unexported-type-internal-in-namespace.ts:9:14 - error JSII3001: Type "UnexportedType" cannot be used as the property type because it is private or @internal [type-model/use-of-internal-type]
 
 9   public p?: MyNamespace.UnexportedType;
                ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -182,16 +195,17 @@ neg.expose-unexported-type-internal-in-namespace.ts:9:14 - error JSII3001: Type 
   neg.expose-unexported-type-internal-in-namespace.ts:5:3
     5   export class UnexportedType {}
         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    The referenced type is declared here [type-model/use-of-internal-type]
+    The referenced type is declared here
 
 `;
 
 exports[`expose-unexported-type-this 1`] = `
-neg.expose-unexported-type-this.ts:10:38 - warning JSII5018: "boolean" is a reserved word in Java. Using this name may cause problems when generating language bindings. Consider a different name.
+neg.expose-unexported-type-this.ts:10:38 - warning JSII5018: "boolean" is a reserved word in Java. Using this name may cause problems when generating language bindings. Consider a different name. [language-compatibility/reserved-word]
 
 10   public constructor(public readonly boolean = true) {
-                                        ~~~~~~~ [language-compatibility/reserved-word]
-neg.expose-unexported-type-this.ts:4:10 - error JSII3001: Type "HiddenBaseClass" cannot be used as the return type because it is private or @internal
+                                        ~~~~~~~
+
+neg.expose-unexported-type-this.ts:4:10 - error JSII3001: Type "HiddenBaseClass" cannot be used as the return type because it is private or @internal [type-model/use-of-internal-type]
 
 4   public returnsThis() {
            ~~~~~~~~~~~
@@ -206,40 +220,44 @@ neg.expose-unexported-type-this.ts:4:10 - error JSII3001: Type "HiddenBaseClass"
         ~~~
       7 }
         ~
-    The referenced type is declared here [type-model/use-of-internal-type]
+    The referenced type is declared here
 
 `;
 
 exports[`extend-struct 1`] = `
-neg.extend-struct.ts:6:1 - error JSII3007: Attempt to extend or implement struct "jsii.Struct" from "jsii.IIllegal"
+neg.extend-struct.ts:6:1 - error JSII3007: Attempt to extend or implement struct "jsii.Struct" from "jsii.IIllegal" [type-model/illegal-struct-extension]
 
 6 export interface IIllegal extends Struct {
   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 7   method(): void;
   ~~~~~~~~~~~~~~~~~
 8 }
-  ~ [type-model/illegal-struct-extension]
+  ~
+
 
 `;
 
 exports[`generics 1`] = `
-neg.generics.ts:1:27 - error JSII1006: Generic types are not supported because semantics are not uniform in target languages.
+neg.generics.ts:1:27 - error JSII1006: Generic types are not supported because semantics are not uniform in target languages. [typescript-restriction/generic-type]
 
 1 export class GenericClass<T extends object> {
-                            ~~~~~~~~~~~~~~~~ [typescript-restriction/generic-type]
-neg.generics.ts:13:35 - error JSII1006: Generic types are not supported because semantics are not uniform in target languages.
+                            ~~~~~~~~~~~~~~~~
+
+neg.generics.ts:13:35 - error JSII1006: Generic types are not supported because semantics are not uniform in target languages. [typescript-restriction/generic-type]
 
 13 export interface IGenericBehavior<T extends object | string> {
-                                     ~~~~~~~~~~~~~~~~~~~~~~~~~ [typescript-restriction/generic-type]
-neg.generics.ts:9:32 - error JSII1006: Generic types are not supported because semantics are not uniform in target languages.
+                                     ~~~~~~~~~~~~~~~~~~~~~~~~~
+
+neg.generics.ts:9:32 - error JSII1006: Generic types are not supported because semantics are not uniform in target languages. [typescript-restriction/generic-type]
 
 9 export interface GenericStruct<T> {
-                                 ~ [typescript-restriction/generic-type]
+                                 ~
+
 
 `;
 
 exports[`implement-struct 1`] = `
-neg.implement-struct.ts:6:1 - error JSII3007: Attempt to extend or implement struct "jsii.Struct" from "jsii.Illegal"
+neg.implement-struct.ts:6:1 - error JSII3007: Attempt to extend or implement struct "jsii.Struct" from "jsii.Illegal" [type-model/illegal-struct-extension]
 
   6 export class Illegal implements Struct {
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -249,7 +267,8 @@ neg.implement-struct.ts:6:1 - error JSII3007: Attempt to extend or implement str
  11   }
     ~~~
  12 }
-    ~ [type-model/illegal-struct-extension]
+    ~
+
 
 `;
 
@@ -274,7 +293,7 @@ error JSII5006: "jsii.ISomethingElse#takeSomething" changes the type of paramete
 `;
 
 exports[`implementation-changes-types.5 1`] = `
-neg.implementation-changes-types.5.ts:10:21 - error JSII5004: "jsii.SomethingImpl#something" changes the property type to "number" when implementing jsii.ISomething. Change it to "jsii.Superclass"
+neg.implementation-changes-types.5.ts:10:21 - error JSII5004: "jsii.SomethingImpl#something" changes the property type to "number" when implementing jsii.ISomething. Change it to "jsii.Superclass" [language-compatibility/override-changes-property-type]
 
 10   public something: number = 1;
                        ~~~~~~
@@ -282,12 +301,12 @@ neg.implementation-changes-types.5.ts:10:21 - error JSII5004: "jsii.SomethingImp
   neg.implementation-changes-types.5.ts:5:14
     5   something: Superclass;
                    ~~~~~~~~~~
-    The implemented declaration is here. [language-compatibility/override-changes-property-type]
+    The implemented declaration is here.
 
 `;
 
 exports[`implementation-changes-types.6 1`] = `
-neg.implementation-changes-types.6.ts:10:21 - error JSII5004: "jsii.SomethingImpl#something" changes the property type to "jsii.Subclass" when implementing jsii.ISomething. Change it to "jsii.Superclass"
+neg.implementation-changes-types.6.ts:10:21 - error JSII5004: "jsii.SomethingImpl#something" changes the property type to "jsii.Subclass" when implementing jsii.ISomething. Change it to "jsii.Superclass" [language-compatibility/override-changes-property-type]
 
 10   public something: Subclass = new Subclass();
                        ~~~~~~~~
@@ -295,7 +314,7 @@ neg.implementation-changes-types.6.ts:10:21 - error JSII5004: "jsii.SomethingImp
   neg.implementation-changes-types.6.ts:5:14
     5   something: Superclass;
                    ~~~~~~~~~~
-    The implemented declaration is here. [language-compatibility/override-changes-property-type]
+    The implemented declaration is here.
 
 `;
 
@@ -315,7 +334,7 @@ error JSII5008: "jsii.Implementor#method" turns parameter "_optional" required w
 `;
 
 exports[`implementing-property-changes-optionality 1`] = `
-neg.implementing-property-changes-optionality.ts:7:20 - error JSII5009: "jsii.Implementor#property" turns required when implementing jsii.IInterface. Make it optional
+neg.implementing-property-changes-optionality.ts:7:20 - error JSII5009: "jsii.Implementor#property" turns required when implementing jsii.IInterface. Make it optional [language-compatibility/override-changes-prop-optional]
 
 7   public property: string;
                      ~~~~~~
@@ -323,12 +342,12 @@ neg.implementing-property-changes-optionality.ts:7:20 - error JSII5009: "jsii.Im
   neg.implementing-property-changes-optionality.ts:3:11
     3   property?: string;
                 ~
-    The implemented declaration is here. [language-compatibility/override-changes-prop-optional]
+    The implemented declaration is here.
 
 `;
 
 exports[`implementing-property-changes-optionality.1 1`] = `
-neg.implementing-property-changes-optionality.1.ts:7:20 - error JSII5009: "jsii.Implementor#property" turns required when overriding jsii.AbstractClass. Make it optional
+neg.implementing-property-changes-optionality.1.ts:7:20 - error JSII5009: "jsii.Implementor#property" turns required when overriding jsii.AbstractClass. Make it optional [language-compatibility/override-changes-prop-optional]
 
 7   public property: string;
                      ~~~~~~
@@ -336,12 +355,12 @@ neg.implementing-property-changes-optionality.1.ts:7:20 - error JSII5009: "jsii.
   neg.implementing-property-changes-optionality.1.ts:3:27
     3   public abstract property?: string;
                                 ~
-    The implemented declaration is here. [language-compatibility/override-changes-prop-optional]
+    The implemented declaration is here.
 
 `;
 
 exports[`implementing-property-changes-optionality.2 1`] = `
-neg.implementing-property-changes-optionality.2.ts:7:20 - error JSII5009: "jsii.Implementor#property" turns required when overriding jsii.ParentClass. Make it optional
+neg.implementing-property-changes-optionality.2.ts:7:20 - error JSII5009: "jsii.Implementor#property" turns required when overriding jsii.ParentClass. Make it optional [language-compatibility/override-changes-prop-optional]
 
 7   public property: string;
                      ~~~~~~
@@ -349,12 +368,12 @@ neg.implementing-property-changes-optionality.2.ts:7:20 - error JSII5009: "jsii.
   neg.implementing-property-changes-optionality.2.ts:3:18
     3   public property?: string = undefined;
                        ~
-    The implemented declaration is here. [language-compatibility/override-changes-prop-optional]
+    The implemented declaration is here.
 
 `;
 
 exports[`implements-class 1`] = `
-neg.implements-class.ts:1:1 - error JSII3005: Type "jsii.NotAnInterface" cannot be used as an interface
+neg.implements-class.ts:1:1 - error JSII3005: Type "jsii.NotAnInterface" cannot be used as an interface [type-model/type-used-as-interface]
 
   1 export class NotAnInterface {
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -364,19 +383,22 @@ neg.implements-class.ts:1:1 - error JSII3005: Type "jsii.NotAnInterface" cannot 
   4   }
     ~~~
   5 }
-    ~ [type-model/type-used-as-interface]
+    ~
+
 
 `;
 
 exports[`index-signatures 1`] = `
-neg.index-signatures.ts:4:3 - error JSII1999: Index signatures are not supported in jsii APIs. This declaration must be marked "@internal" or "@jsii ignore".
+neg.index-signatures.ts:4:3 - error JSII1999: Index signatures are not supported in jsii APIs. This declaration must be marked "@internal" or "@jsii ignore". [typescript-restrictions/unsupported]
 
 4   readonly [key: symbol]: number;
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ [typescript-restrictions/unsupported]
-neg.index-signatures.ts:9:3 - error JSII1999: Index signatures are not supported in jsii APIs. This declaration must be marked "@internal" or "@jsii ignore".
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+neg.index-signatures.ts:9:3 - error JSII1999: Index signatures are not supported in jsii APIs. This declaration must be marked "@internal" or "@jsii ignore". [typescript-restrictions/unsupported]
 
 9   static readonly [key: symbol]: string;
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ [typescript-restrictions/unsupported]
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 
 `;
 
@@ -401,7 +423,7 @@ error JSII5006: "jsii.SomethingElse#takeSomething" changes the type of parameter
 `;
 
 exports[`inheritance-changes-types.5 1`] = `
-neg.inheritance-changes-types.5.ts:10:30 - error JSII5004: "jsii.SomethingSpecific#something" changes the property type to "number" when overriding jsii.SomethingUnspecific. Change it to "jsii.Superclass"
+neg.inheritance-changes-types.5.ts:10:30 - error JSII5004: "jsii.SomethingSpecific#something" changes the property type to "number" when overriding jsii.SomethingUnspecific. Change it to "jsii.Superclass" [language-compatibility/override-changes-property-type]
 
 10   public readonly something: number = 1;
                                 ~~~~~~
@@ -409,12 +431,12 @@ neg.inheritance-changes-types.5.ts:10:30 - error JSII5004: "jsii.SomethingSpecif
   neg.inheritance-changes-types.5.ts:5:19
     5   public readonly something = new Superclass();
                         ~~~~~~~~~
-    The implemented declaration is here. [language-compatibility/override-changes-property-type]
+    The implemented declaration is here.
 
 `;
 
 exports[`inheritance-changes-types.6 1`] = `
-neg.inheritance-changes-types.6.ts:10:30 - error JSII5004: "jsii.SomethingSpecific#something" changes the property type to "jsii.Superclass" when overriding jsii.SomethingUnspecific. Change it to "jsii.Subclass"
+neg.inheritance-changes-types.6.ts:10:30 - error JSII5004: "jsii.SomethingSpecific#something" changes the property type to "jsii.Superclass" when overriding jsii.SomethingUnspecific. Change it to "jsii.Subclass" [language-compatibility/override-changes-property-type]
 
 10   public readonly something: Superclass = new Superclass();
                                 ~~~~~~~~~~
@@ -422,12 +444,12 @@ neg.inheritance-changes-types.6.ts:10:30 - error JSII5004: "jsii.SomethingSpecif
   neg.inheritance-changes-types.6.ts:5:19
     5   public readonly something = new Subclass();
                         ~~~~~~~~~
-    The implemented declaration is here. [language-compatibility/override-changes-property-type]
+    The implemented declaration is here.
 
 `;
 
 exports[`inheritance-changes-types.7 1`] = `
-neg.inheritance-changes-types.7.ts:10:21 - error JSII5004: "jsii.SomethingSpecific#something" changes the property type to "jsii.Subclass" when overriding jsii.SomethingUnspecific. Change it to "jsii.Superclass"
+neg.inheritance-changes-types.7.ts:10:21 - error JSII5004: "jsii.SomethingSpecific#something" changes the property type to "jsii.Subclass" when overriding jsii.SomethingUnspecific. Change it to "jsii.Superclass" [language-compatibility/override-changes-property-type]
 
 10   public something: Subclass = new Subclass();
                        ~~~~~~~~
@@ -435,7 +457,7 @@ neg.inheritance-changes-types.7.ts:10:21 - error JSII5004: "jsii.SomethingSpecif
   neg.inheritance-changes-types.7.ts:5:10
     5   public something = new Superclass();
                ~~~~~~~~~
-    The implemented declaration is here. [language-compatibility/override-changes-property-type]
+    The implemented declaration is here.
 
 `;
 
@@ -447,7 +469,7 @@ error JSII5003: "jsii.SomethingSpecific#getItems" changes the return type to "ma
 `;
 
 exports[`inheritance-changes-types.9 1`] = `
-neg.inheritance-changes-types.9.ts:10:26 - error JSII5004: "jsii.SomethingSpecific#items" changes the property type to "map<jsii.Subclass>" when overriding jsii.SomethingUnspecific. Change it to "map<jsii.Superclass>"
+neg.inheritance-changes-types.9.ts:10:26 - error JSII5004: "jsii.SomethingSpecific#items" changes the property type to "map<jsii.Subclass>" when overriding jsii.SomethingUnspecific. Change it to "map<jsii.Superclass>" [language-compatibility/override-changes-property-type]
 
 10   public readonly items: Record<string, Subclass> = {};
                             ~~~~~~~~~~~~~~~~~~~~~~~~
@@ -455,12 +477,12 @@ neg.inheritance-changes-types.9.ts:10:26 - error JSII5004: "jsii.SomethingSpecif
   neg.inheritance-changes-types.9.ts:5:26
     5   public readonly items: Record<string, Superclass> = {};
                                ~~~~~~~~~~~~~~~~~~~~~~~~~~
-    The implemented declaration is here. [language-compatibility/override-changes-property-type]
+    The implemented declaration is here.
 
 `;
 
 exports[`inheritance-changes-types.from-base 1`] = `
-neg.inheritance-changes-types.from-base.ts:6:30 - error JSII5009: "jsii.HasRequiredProperty#optionalProperty" turns required when implementing jsii.IHasOptionalProperty. Make it optional
+neg.inheritance-changes-types.from-base.ts:6:30 - error JSII5009: "jsii.HasRequiredProperty#optionalProperty" turns required when implementing jsii.IHasOptionalProperty. Make it optional [language-compatibility/override-changes-prop-optional]
 
 6   readonly optionalProperty: number; // Does not implement IHasOptionalProperty.optionalProperty
                                ~~~~~~
@@ -468,12 +490,12 @@ neg.inheritance-changes-types.from-base.ts:6:30 - error JSII5009: "jsii.HasRequi
   neg.inheritance-changes-types.from-base.ts:2:28
     2   readonly optionalProperty?: number;
                                  ~
-    The implemented declaration is here. [language-compatibility/override-changes-prop-optional]
+    The implemented declaration is here.
 
 `;
 
 exports[`inheritance-property-changes-mutability.to-mutable 1`] = `
-neg.inheritance-property-changes-mutability.to-mutable.ts:9:10 - error JSII5010: "jsii.SomethingSpecific#something" turns mutable when overriding jsii.SomethingUnspecific. Make it readonly
+neg.inheritance-property-changes-mutability.to-mutable.ts:9:10 - error JSII5010: "jsii.SomethingSpecific#something" turns mutable when overriding jsii.SomethingUnspecific. Make it readonly [language-compatibility/override-changes-mutability]
 
 9   public something: Superclass = new Superclass();
            ~~~~~~~~~
@@ -481,12 +503,12 @@ neg.inheritance-property-changes-mutability.to-mutable.ts:9:10 - error JSII5010:
   neg.inheritance-property-changes-mutability.to-mutable.ts:4:10
     4   public readonly something = new Superclass();
                ~~~~~~~~
-    The implemented declaration is here. [language-compatibility/override-changes-mutability]
+    The implemented declaration is here.
 
 `;
 
 exports[`inheritance-property-changes-mutability.to-readonly 1`] = `
-neg.inheritance-property-changes-mutability.to-readonly.ts:9:10 - error JSII5010: "jsii.SomethingSpecific#something" turns readonly when overriding jsii.SomethingUnspecific. Make it mutable
+neg.inheritance-property-changes-mutability.to-readonly.ts:9:10 - error JSII5010: "jsii.SomethingSpecific#something" turns readonly when overriding jsii.SomethingUnspecific. Make it mutable [language-compatibility/override-changes-mutability]
 
 9   public readonly something: Superclass = new Superclass();
            ~~~~~~~~
@@ -494,76 +516,84 @@ neg.inheritance-property-changes-mutability.to-readonly.ts:9:10 - error JSII5010
   neg.inheritance-property-changes-mutability.to-readonly.ts:4:10
     4   public something = new Superclass();
                ~~~~~~~~~
-    The implemented declaration is here. [language-compatibility/override-changes-mutability]
+    The implemented declaration is here.
 
 `;
 
 exports[`internal-underscore-class.5 1`] = `
-neg.internal-underscore-class.5.ts:3:10 - error JSII8005: Members marked with @internal must have a name starting with "_". Rename "propertyWithInternalButNotUnderscorePrefix" to "_propertyWithInternalButNotUnderscorePrefix"
+neg.internal-underscore-class.5.ts:3:10 - error JSII8005: Members marked with @internal must have a name starting with "_". Rename "propertyWithInternalButNotUnderscorePrefix" to "_propertyWithInternalButNotUnderscorePrefix" [code-style/internal-members-underscore-prefix]
 
 3   public propertyWithInternalButNotUnderscorePrefix?: string;
-           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ [code-style/internal-members-underscore-prefix]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 
 `;
 
 exports[`internal-underscore-class.6 1`] = `
-neg.internal-underscore-class.6.ts:2:10 - error JSII8006: Members with a name starting with "_" (e.g: "_propertyWithUnderscoreButNoInternal") must be marked @internal
+neg.internal-underscore-class.6.ts:2:10 - error JSII8006: Members with a name starting with "_" (e.g: "_propertyWithUnderscoreButNoInternal") must be marked @internal [code-style/underscored-members-must-be-internal]
 
 2   public _propertyWithUnderscoreButNoInternal?: string;
-           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ [code-style/underscored-members-must-be-internal]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 
 `;
 
 exports[`internal-underscore-class.7 1`] = `
-neg.internal-underscore-class.7.ts:3:10 - error JSII8005: Members marked with @internal must have a name starting with "_". Rename "methodWithInternalButNoUnderscore" to "_methodWithInternalButNoUnderscore"
+neg.internal-underscore-class.7.ts:3:10 - error JSII8005: Members marked with @internal must have a name starting with "_". Rename "methodWithInternalButNoUnderscore" to "_methodWithInternalButNoUnderscore" [code-style/internal-members-underscore-prefix]
 
 3   public methodWithInternalButNoUnderscore(): string {
-           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ [code-style/internal-members-underscore-prefix]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 
 `;
 
 exports[`internal-underscore-class.8 1`] = `
-neg.internal-underscore-class.8.ts:2:3 - error JSII8006: Members with a name starting with "_" (e.g: "_methodWithUnderscoreButNoInternal") must be marked @internal
+neg.internal-underscore-class.8.ts:2:3 - error JSII8006: Members with a name starting with "_" (e.g: "_methodWithUnderscoreButNoInternal") must be marked @internal [code-style/underscored-members-must-be-internal]
 
 2   _methodWithUnderscoreButNoInternal(): void;
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ [code-style/underscored-members-must-be-internal]
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 
 `;
 
 exports[`internal-underscore-interface.1 1`] = `
-neg.internal-underscore-interface.1.ts:3:3 - error JSII8005: Members marked with @internal must have a name starting with "_". Rename "propertyWithInternalButNotUnderscorePrefix" to "_propertyWithInternalButNotUnderscorePrefix"
+neg.internal-underscore-interface.1.ts:3:3 - error JSII8005: Members marked with @internal must have a name starting with "_". Rename "propertyWithInternalButNotUnderscorePrefix" to "_propertyWithInternalButNotUnderscorePrefix" [code-style/internal-members-underscore-prefix]
 
 3   propertyWithInternalButNotUnderscorePrefix: string;
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ [code-style/internal-members-underscore-prefix]
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 
 `;
 
 exports[`internal-underscore-interface.2 1`] = `
-neg.internal-underscore-interface.2.ts:2:3 - error JSII8006: Members with a name starting with "_" (e.g: "_propertyWithUnderscoreButNoInternal") must be marked @internal
+neg.internal-underscore-interface.2.ts:2:3 - error JSII8006: Members with a name starting with "_" (e.g: "_propertyWithUnderscoreButNoInternal") must be marked @internal [code-style/underscored-members-must-be-internal]
 
 2   _propertyWithUnderscoreButNoInternal: string;
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ [code-style/underscored-members-must-be-internal]
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 
 `;
 
 exports[`internal-underscore-interface.3 1`] = `
-neg.internal-underscore-interface.3.ts:3:3 - error JSII8005: Members marked with @internal must have a name starting with "_". Rename "methodWithInternalButNoUnderscore" to "_methodWithInternalButNoUnderscore"
+neg.internal-underscore-interface.3.ts:3:3 - error JSII8005: Members marked with @internal must have a name starting with "_". Rename "methodWithInternalButNoUnderscore" to "_methodWithInternalButNoUnderscore" [code-style/internal-members-underscore-prefix]
 
 3   methodWithInternalButNoUnderscore(): string;
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ [code-style/internal-members-underscore-prefix]
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 
 `;
 
 exports[`internal-underscore-interface.4 1`] = `
-neg.internal-underscore-interface.4.ts:2:10 - error JSII8006: Members with a name starting with "_" (e.g: "_methodWithUnderscoreButNoInternal") must be marked @internal
+neg.internal-underscore-interface.4.ts:2:10 - error JSII8006: Members with a name starting with "_" (e.g: "_methodWithUnderscoreButNoInternal") must be marked @internal [code-style/underscored-members-must-be-internal]
 
 2   public _methodWithUnderscoreButNoInternal() {
-           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ [code-style/underscored-members-must-be-internal]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 
 `;
 
 exports[`member-named-after-type 1`] = `
-neg.member-named-after-type.ts:14:12 - warning JSII5019: The property name "myStruct" conflicts with the declaring interface "MyStruct". This will result in renaming the interface to "_MyStruct" in C#. Consider renaming "myStruct".
+neg.member-named-after-type.ts:14:12 - warning JSII5019: The property name "myStruct" conflicts with the declaring interface "MyStruct". This will result in renaming the interface to "_MyStruct" in C#. Consider renaming "myStruct". [language-compatibility/member-name-conflicts-with-type-name]
 
 14   readonly myStruct: string;
               ~~~~~~~~
@@ -571,8 +601,8 @@ neg.member-named-after-type.ts:14:12 - warning JSII5019: The property name "mySt
   neg.member-named-after-type.ts:13:18
     13 export interface MyStruct {
                         ~~~~~~~~
-    The declaring interface is introduced here [language-compatibility/member-name-conflicts-with-type-name]
-neg.member-named-after-type.ts:4:19 - warning JSII5019: The property name "typeName" conflicts with the declaring class "TypeName". This will result in renaming the class to "_TypeName" in C#. Consider renaming "typeName".
+    The declaring interface is introduced here
+neg.member-named-after-type.ts:4:19 - warning JSII5019: The property name "typeName" conflicts with the declaring class "TypeName". This will result in renaming the class to "_TypeName" in C#. Consider renaming "typeName". [language-compatibility/member-name-conflicts-with-type-name]
 
 4   public readonly typeName = 1337;
                     ~~~~~~~~
@@ -580,8 +610,8 @@ neg.member-named-after-type.ts:4:19 - warning JSII5019: The property name "typeN
   neg.member-named-after-type.ts:3:14
     3 export class TypeName {
                    ~~~~~~~~
-    The declaring class is introduced here [language-compatibility/member-name-conflicts-with-type-name]
-neg.member-named-after-type.ts:8:10 - warning JSII5019: The method name "otherType" conflicts with the declaring class "OtherType". This will result in renaming the class to "_OtherType" in C#. Consider renaming "otherType".
+    The declaring class is introduced here
+neg.member-named-after-type.ts:8:10 - warning JSII5019: The method name "otherType" conflicts with the declaring class "OtherType". This will result in renaming the class to "_OtherType" in C#. Consider renaming "otherType". [language-compatibility/member-name-conflicts-with-type-name]
 
 8   public otherType() {
            ~~~~~~~~~
@@ -589,7 +619,7 @@ neg.member-named-after-type.ts:8:10 - warning JSII5019: The method name "otherTy
   neg.member-named-after-type.ts:7:14
     7 export class OtherType {
                    ~~~~~~~~~
-    The declaring class is introduced here [language-compatibility/member-name-conflicts-with-type-name]
+    The declaring class is introduced here
 
 `;
 
@@ -614,7 +644,7 @@ error JSII5001: Methods and properties cannot have names like "setXxx": those co
 `;
 
 exports[`missing-abstract 1`] = `
-neg.missing-abstract.ts:5:1 - error JSII5021: A declaration of "ISomeInterface.xyz" is missing on class "SomeClass". Declare the property as "public abstract" if you want to defer it to subclasses.
+neg.missing-abstract.ts:5:1 - error JSII5021: A declaration of "ISomeInterface.xyz" is missing on class "SomeClass". Declare the property as "public abstract" if you want to defer it to subclasses. [language-compatibility/abstract-class-missing-prop-impl]
 
 5 export abstract class SomeClass implements ISomeInterface {
   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -624,88 +654,96 @@ neg.missing-abstract.ts:5:1 - error JSII5021: A declaration of "ISomeInterface.x
   neg.missing-abstract.ts:2:3
     2   readonly xyz?: string;
         ~~~~~~~~~~~~~~~~~~~~~~
-    The implemented declaration is here. [language-compatibility/abstract-class-missing-prop-impl]
+    The implemented declaration is here.
 
 `;
 
 exports[`mix-datatype-and-arg-name 1`] = `
-neg.mix-datatype-and-arg-name.ts:10:3 - error JSII5017: Parameter name "dontWorry" is also the name of a property in a struct parameter. Rename the positional parameter.
+neg.mix-datatype-and-arg-name.ts:10:3 - error JSII5017: Parameter name "dontWorry" is also the name of a property in a struct parameter. Rename the positional parameter. [language-compatibility/positional-keyword-conflict]
 
 10   public dance(dontWorry: string, lyrics: Lyrics) {
      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 11     return \`\${dontWorry}: \${lyrics.beHappy}\`;
    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 12   }
-   ~~~ [language-compatibility/positional-keyword-conflict]
+   ~~~
+
 
 `;
 
 exports[`mutable-datatype 1`] = `
-neg.mutable-datatype.ts:3:3 - error JSII3008: The "notOkay" property of struct "jsii.DataType" must be "readonly". Rename "jsii.DataType" to "IDataType" if it is meant to be a behavioral interface.
+neg.mutable-datatype.ts:3:3 - error JSII3008: The "notOkay" property of struct "jsii.DataType" must be "readonly". Rename "jsii.DataType" to "IDataType" if it is meant to be a behavioral interface. [type-model/struct-props-must-be-readonly]
 
 3   notOkay: number; // properties should be "readonly"
-    ~~~~~~~ [type-model/struct-props-must-be-readonly]
+    ~~~~~~~
+
 
 `;
 
 exports[`non-optional-after-optional-ctor 1`] = `
-neg.non-optional-after-optional-ctor.ts:2:3 - error JSII3009: Parameter "_arg2" cannot be optional, as it precedes required parameter "_arg3"
+neg.non-optional-after-optional-ctor.ts:2:3 - error JSII3009: Parameter "_arg2" cannot be optional, as it precedes required parameter "_arg3" [type-model/optional-parameter-before-required]
 
 2   constructor(_arg1: string, _arg2 = 'hello', _arg3: string) {
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 3     return;
   ~~~~~~~~~~~
 4   }
-  ~~~ [type-model/optional-parameter-before-required]
+  ~~~
+
 
 `;
 
 exports[`non-optional-after-optional-method 1`] = `
-neg.non-optional-after-optional-method.ts:2:3 - error JSII3009: Parameter "_arg2" cannot be optional, as it precedes required parameter "_argX"
+neg.non-optional-after-optional-method.ts:2:3 - error JSII3009: Parameter "_arg2" cannot be optional, as it precedes required parameter "_argX" [type-model/optional-parameter-before-required]
 
 2   public foo(_arg1: string, _arg2 = 'hello', _argX: string, _arg4?: boolean) {
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 3     return;
   ~~~~~~~~~~~
 4   }
-  ~~~ [type-model/optional-parameter-before-required]
+  ~~~
+
 
 `;
 
 exports[`omit.1 1`] = `
-neg.omit.1.ts:7:33 - error JSII3004: Illegal extends clause for an exported API: MappedType
+neg.omit.1.ts:7:33 - error JSII3004: Illegal extends clause for an exported API: MappedType [type-model/invalid-supertype]
 
 7 export interface BarBaz extends Omit<FooBar, 'foo'> {
-                                  ~~~~~~~~~~~~~~~~~~~ [type-model/invalid-supertype]
+                                  ~~~~~~~~~~~~~~~~~~~
+
 
 `;
 
 exports[`omit.2 1`] = `
-neg.omit.2.ts:7:32 - error JSII3004: Illegal implements clause for an exported API: MappedType
+neg.omit.2.ts:7:32 - error JSII3004: Illegal implements clause for an exported API: MappedType [type-model/invalid-supertype]
 
 7 export class BarBaz implements Omit<FooBar, 'foo'> {
-                                 ~~~~~~~~~~~~~~~~~~~ [type-model/invalid-supertype]
+                                 ~~~~~~~~~~~~~~~~~~~
+
 
 `;
 
 exports[`omit.3 1`] = `
-neg.omit.3.ts:8:10 - error JSII1003: Only string-indexed map types are supported
+neg.omit.3.ts:8:10 - error JSII1003: Only string-indexed map types are supported [typescript-restrictions/unsupported-type]
 
 8   bar(): Omit<FooBar, 'foo'>;
-           ~~~~~~~~~~~~~~~~~~~ [typescript-restrictions/unsupported-type]
+           ~~~~~~~~~~~~~~~~~~~
+
 
 `;
 
 exports[`omit.4 1`] = `
-neg.omit.4.ts:8:13 - error JSII1003: Only string-indexed map types are supported
+neg.omit.4.ts:8:13 - error JSII1003: Only string-indexed map types are supported [typescript-restrictions/unsupported-type]
 
 8   bar(opts: Omit<FooBar, 'foo'>): void;
-              ~~~~~~~~~~~~~~~~~~~ [typescript-restrictions/unsupported-type]
+              ~~~~~~~~~~~~~~~~~~~
+
 
 `;
 
 exports[`override-changes-visibility 1`] = `
-neg.override-changes-visibility.ts:14:3 - error JSII5002: "jsii.ChildClass#property" changes visibility to public when overriding jsii.BaseClass. Change it to protected
+neg.override-changes-visibility.ts:14:3 - error JSII5002: "jsii.ChildClass#property" changes visibility to public when overriding jsii.BaseClass. Change it to protected [language-compatibility/override-changes-visibility]
 
 14   public readonly property?: string;
      ~~~~~~
@@ -713,16 +751,17 @@ neg.override-changes-visibility.ts:14:3 - error JSII5002: "jsii.ChildClass#prope
   neg.override-changes-visibility.ts:5:3
     5   protected readonly property?: string;
         ~~~~~~~~~
-    The implemented declaration is here. [language-compatibility/override-changes-visibility]
+    The implemented declaration is here.
 error JSII5002: "jsii.ChildClass#method" changes visibility to public when overriding jsii.BaseClass. Change it to protected [language-compatibility/override-changes-visibility]
 
 `;
 
 exports[`prohibited-member-name 1`] = `
-neg.prohibited-member-name.ts:4:10 - error JSII5016: Members cannot be named "equals" as it conflicts with synthetic declarations in some languages.
+neg.prohibited-member-name.ts:4:10 - error JSII5016: Members cannot be named "equals" as it conflicts with synthetic declarations in some languages. [language-compatibility/prohibited-member-name]
 
 4   public equals(): boolean {
-           ~~~~~~ [language-compatibility/prohibited-member-name]
+           ~~~~~~
+
 
 `;
 
@@ -742,23 +781,26 @@ error JSII5000: Methods and properties cannot have names like "getXxx": those co
 `;
 
 exports[`reserved.emits-warning 1`] = `
-neg.reserved.emits-warning.ts:2:14 - warning JSII5018: "None" is a reserved word in Python. Using this name may cause problems when generating language bindings. Consider a different name.
+neg.reserved.emits-warning.ts:2:14 - warning JSII5018: "None" is a reserved word in Python. Using this name may cause problems when generating language bindings. Consider a different name. [language-compatibility/reserved-word]
 
 2 export class None {
-               ~~~~ [language-compatibility/reserved-word]
-neg.reserved.emits-warning.ts:3:19 - warning JSII5018: "do" is a reserved word in C#, Java. Using this name may cause problems when generating language bindings. Consider a different name.
+               ~~~~
+
+neg.reserved.emits-warning.ts:3:19 - warning JSII5018: "do" is a reserved word in C#, Java. Using this name may cause problems when generating language bindings. Consider a different name. [language-compatibility/reserved-word]
 
 3   public readonly do: boolean = true;
-                    ~~ [language-compatibility/reserved-word]
-neg.reserved.emits-warning.ts:5:10 - warning JSII5018: "assert" is a reserved word in Java, Python. Using this name may cause problems when generating language bindings. Consider a different name.
+                    ~~
+
+neg.reserved.emits-warning.ts:5:10 - warning JSII5018: "assert" is a reserved word in Java, Python. Using this name may cause problems when generating language bindings. Consider a different name. [language-compatibility/reserved-word]
 
 5   public assert(_internal: boolean): void {
-           ~~~~~~ [language-compatibility/reserved-word]
+           ~~~~~~
+
 
 `;
 
 exports[`separate-write-type 1`] = `
-neg.separate-write-type.ts:8:26 - error JSII1005: Visible property signatures cannot use a separate write type. Use the same type as the getter.
+neg.separate-write-type.ts:8:26 - error JSII1005: Visible property signatures cannot use a separate write type. Use the same type as the getter. [typescript-restrictions/separate-write-type]
 
 8   public set size(value: string | number | boolean) {
                            ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -766,7 +808,7 @@ neg.separate-write-type.ts:8:26 - error JSII1005: Visible property signatures ca
   neg.separate-write-type.ts:4:22
     4   public get size(): number {
                            ~~~~~~
-    The getter signature is declared here [typescript-restrictions/separate-write-type]
+    The getter signature is declared here
 
 `;
 
@@ -776,7 +818,7 @@ error JSII8003: Static constant names must use ALL_CAPS, PascalCase, or camelCas
 `;
 
 exports[`static-member-mixing.1 1`] = `
-neg.static-member-mixing.1.ts:11:1 - error JSII5014: Instance member "funFunction" of class "jsii.Sub" conflicts with static member in ancestor "jsii.SuperDuper"
+neg.static-member-mixing.1.ts:11:1 - error JSII5014: Instance member "funFunction" of class "jsii.Sub" conflicts with static member in ancestor "jsii.SuperDuper" [language-compatibility/inherited-static-conflict]
 
  11 export class Sub extends Super {
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -786,12 +828,13 @@ neg.static-member-mixing.1.ts:11:1 - error JSII5014: Instance member "funFunctio
  14   }
     ~~~
  15 }
-    ~ [language-compatibility/inherited-static-conflict]
+    ~
+
 
 `;
 
 exports[`static-member-mixing.2 1`] = `
-neg.static-member-mixing.2.ts:1:1 - error JSII5013: Member "funFunction" of class "jsii.TheClass" has both a static and an instance delcaration
+neg.static-member-mixing.2.ts:1:1 - error JSII5013: Member "funFunction" of class "jsii.TheClass" has both a static and an instance delcaration [language-compatibility/static-instance-conflict]
 
   1 export class TheClass {
     ~~~~~~~~~~~~~~~~~~~~~~~
@@ -801,7 +844,8 @@ neg.static-member-mixing.2.ts:1:1 - error JSII5013: Member "funFunction" of clas
   8   }
     ~~~
   9 }
-    ~ [language-compatibility/static-instance-conflict]
+    ~
+
 
 `;
 
@@ -816,7 +860,7 @@ error JSII8002: Method and property (unless they are static readonly) names must
 `;
 
 exports[`static-nested-conflict 1`] = `
-neg.static-nested-conflict.ts:5:3 - error JSII5020: The static member "ParentClass.nestedStruct" has the same PascalCased representation as nested type "ParentClass.NestedStruct". This would result in invalid code in Go.
+neg.static-nested-conflict.ts:5:3 - error JSII5020: The static member "ParentClass.nestedStruct" has the same PascalCased representation as nested type "ParentClass.NestedStruct". This would result in invalid code in Go. [language-compatibility/static-member-name-conflicts-with-nested-type]
 
 5   public static nestedStruct(): boolean {
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -832,7 +876,7 @@ neg.static-nested-conflict.ts:5:3 - error JSII5020: The static member "ParentCla
        ~~~~~~~~~~~~~~~~~~~~~~~~~~~
     15   }
        ~~~
-    This is the conflicting nested type declaration [language-compatibility/static-member-name-conflicts-with-nested-type]
+    This is the conflicting nested type declaration
 
 `;
 
@@ -847,11 +891,12 @@ error JSII8002: Method and property (unless they are static readonly) names must
 `;
 
 exports[`stripped-deprecated 1`] = `
-neg.stripped-deprecated.ts:11:25 - error JSII3000: Exported APIs cannot use un-exported type "jsii.DeprecatedInterface"
+neg.stripped-deprecated.ts:11:25 - error JSII3000: Exported APIs cannot use un-exported type "jsii.DeprecatedInterface" [type-model/exported-api-cannot-use-unexported-type]
 
 11   public bad(parameter: DeprecatedInterface): DeprecatedInterface {
-                           ~~~~~~~~~~~~~~~~~~~ [type-model/exported-api-cannot-use-unexported-type]
-neg.stripped-deprecated.ts:11:25 - error JSII3999: Parameter has @deprecated type jsii.DeprecatedInterface, and it is erased by --strip-deprecated.
+                           ~~~~~~~~~~~~~~~~~~~
+
+neg.stripped-deprecated.ts:11:25 - error JSII3999: Parameter has @deprecated type jsii.DeprecatedInterface, and it is erased by --strip-deprecated. [type-model/incoherent-type-model]
 
 11   public bad(parameter: DeprecatedInterface): DeprecatedInterface {
                            ~~~~~~~~~~~~~~~~~~~
@@ -859,12 +904,13 @@ neg.stripped-deprecated.ts:11:25 - error JSII3999: Parameter has @deprecated typ
   neg.stripped-deprecated.ts:4:18
     4 export interface DeprecatedInterface {}
                        ~~~~~~~~~~~~~~~~~~~
-    The @deprecated type is declared here [type-model/incoherent-type-model]
-neg.stripped-deprecated.ts:11:47 - error JSII3000: Exported APIs cannot use un-exported type "jsii.DeprecatedInterface"
+    The @deprecated type is declared here
+neg.stripped-deprecated.ts:11:47 - error JSII3000: Exported APIs cannot use un-exported type "jsii.DeprecatedInterface" [type-model/exported-api-cannot-use-unexported-type]
 
 11   public bad(parameter: DeprecatedInterface): DeprecatedInterface {
-                                                 ~~~~~~~~~~~~~~~~~~~ [type-model/exported-api-cannot-use-unexported-type]
-neg.stripped-deprecated.ts:11:47 - error JSII3999: Method has @deprecated type jsii.DeprecatedInterface, and it is erased by --strip-deprecated.
+                                                 ~~~~~~~~~~~~~~~~~~~
+
+neg.stripped-deprecated.ts:11:47 - error JSII3999: Method has @deprecated type jsii.DeprecatedInterface, and it is erased by --strip-deprecated. [type-model/incoherent-type-model]
 
 11   public bad(parameter: DeprecatedInterface): DeprecatedInterface {
                                                  ~~~~~~~~~~~~~~~~~~~
@@ -872,12 +918,13 @@ neg.stripped-deprecated.ts:11:47 - error JSII3999: Method has @deprecated type j
   neg.stripped-deprecated.ts:4:18
     4 export interface DeprecatedInterface {}
                        ~~~~~~~~~~~~~~~~~~~
-    The @deprecated type is declared here [type-model/incoherent-type-model]
-neg.stripped-deprecated.ts:7:17 - error JSII3000: Exported APIs cannot use un-exported type "jsii.DeprecatedInterface"
+    The @deprecated type is declared here
+neg.stripped-deprecated.ts:7:17 - error JSII3000: Exported APIs cannot use un-exported type "jsii.DeprecatedInterface" [type-model/exported-api-cannot-use-unexported-type]
 
 7   public ouch?: DeprecatedInterface;
-                  ~~~~~~~~~~~~~~~~~~~ [type-model/exported-api-cannot-use-unexported-type]
-neg.stripped-deprecated.ts:7:17 - error JSII3999: Property has @deprecated type jsii.DeprecatedInterface, and it is erased by --strip-deprecated.
+                  ~~~~~~~~~~~~~~~~~~~
+
+neg.stripped-deprecated.ts:7:17 - error JSII3999: Property has @deprecated type jsii.DeprecatedInterface, and it is erased by --strip-deprecated. [type-model/incoherent-type-model]
 
 7   public ouch?: DeprecatedInterface;
                   ~~~~~~~~~~~~~~~~~~~
@@ -885,12 +932,13 @@ neg.stripped-deprecated.ts:7:17 - error JSII3999: Property has @deprecated type 
   neg.stripped-deprecated.ts:4:18
     4 export interface DeprecatedInterface {}
                        ~~~~~~~~~~~~~~~~~~~
-    The @deprecated type is declared here [type-model/incoherent-type-model]
-neg.stripped-deprecated.ts:9:42 - error JSII3000: Exported APIs cannot use un-exported type "jsii.DeprecatedInterface"
+    The @deprecated type is declared here
+neg.stripped-deprecated.ts:9:42 - error JSII3000: Exported APIs cannot use un-exported type "jsii.DeprecatedInterface" [type-model/exported-api-cannot-use-unexported-type]
 
 9   public constructor(public readonly no: DeprecatedInterface) {}
-                                           ~~~~~~~~~~~~~~~~~~~ [type-model/exported-api-cannot-use-unexported-type]
-neg.stripped-deprecated.ts:9:42 - error JSII3999: Parameter has @deprecated type jsii.DeprecatedInterface, and it is erased by --strip-deprecated.
+                                           ~~~~~~~~~~~~~~~~~~~
+
+neg.stripped-deprecated.ts:9:42 - error JSII3999: Parameter has @deprecated type jsii.DeprecatedInterface, and it is erased by --strip-deprecated. [type-model/incoherent-type-model]
 
 9   public constructor(public readonly no: DeprecatedInterface) {}
                                            ~~~~~~~~~~~~~~~~~~~
@@ -898,8 +946,8 @@ neg.stripped-deprecated.ts:9:42 - error JSII3999: Parameter has @deprecated type
   neg.stripped-deprecated.ts:4:18
     4 export interface DeprecatedInterface {}
                        ~~~~~~~~~~~~~~~~~~~
-    The @deprecated type is declared here [type-model/incoherent-type-model]
-neg.stripped-deprecated.ts:9:42 - error JSII3999: Property has @deprecated type jsii.DeprecatedInterface, and it is erased by --strip-deprecated.
+    The @deprecated type is declared here
+neg.stripped-deprecated.ts:9:42 - error JSII3999: Property has @deprecated type jsii.DeprecatedInterface, and it is erased by --strip-deprecated. [type-model/incoherent-type-model]
 
 9   public constructor(public readonly no: DeprecatedInterface) {}
                                            ~~~~~~~~~~~~~~~~~~~
@@ -907,20 +955,21 @@ neg.stripped-deprecated.ts:9:42 - error JSII3999: Property has @deprecated type 
   neg.stripped-deprecated.ts:4:18
     4 export interface DeprecatedInterface {}
                        ~~~~~~~~~~~~~~~~~~~
-    The @deprecated type is declared here [type-model/incoherent-type-model]
+    The @deprecated type is declared here
 
 `;
 
 exports[`struct-extends-interface 1`] = `
-neg.struct-extends-interface.ts:6:18 - error JSII8007: Interface contains behavior. Rename "Struct" to "IStruct"
+neg.struct-extends-interface.ts:6:18 - error JSII8007: Interface contains behavior. Rename "Struct" to "IStruct" [code-style/behavioral-interface-name]
 
 6 export interface Struct extends IInterface {
-                   ~~~~~~ [code-style/behavioral-interface-name]
+                   ~~~~~~
+
 
 `;
 
 exports[`struct-hint-on-class 1`] = `
-neg.struct-hint-on-class.ts:4:4 - error JSII7001: Illegal use of "@struct" hint. It is only valid on interfaces with only readonly properties.
+neg.struct-hint-on-class.ts:4:4 - error JSII7001: Illegal use of "@struct" hint. It is only valid on interfaces with only readonly properties. [documentation/illegal-hint]
 
 4  * @struct
      ~~~~~~~
@@ -930,12 +979,12 @@ neg.struct-hint-on-class.ts:4:4 - error JSII7001: Illegal use of "@struct" hint.
   neg.struct-hint-on-class.ts:6:14
     6 export class ClassName { }
                    ~~~~~~~~~
-    The annotated declaration is here [documentation/illegal-hint]
+    The annotated declaration is here
 
 `;
 
 exports[`struct-hint-on-enum 1`] = `
-neg.struct-hint-on-enum.ts:4:4 - error JSII7001: Illegal use of "@struct" hint. It is only valid on interfaces with only readonly properties.
+neg.struct-hint-on-enum.ts:4:4 - error JSII7001: Illegal use of "@struct" hint. It is only valid on interfaces with only readonly properties. [documentation/illegal-hint]
 
 4  * @struct
      ~~~~~~~
@@ -945,12 +994,12 @@ neg.struct-hint-on-enum.ts:4:4 - error JSII7001: Illegal use of "@struct" hint. 
   neg.struct-hint-on-enum.ts:6:13
     6 export enum EnumName { A, B }
                   ~~~~~~~~
-    The annotated declaration is here [documentation/illegal-hint]
+    The annotated declaration is here
 
 `;
 
 exports[`struct-hint-with-methods 1`] = `
-neg.struct-hint-with-methods.ts:4:4 - error JSII7001: Illegal use of "@struct" hint. It is only valid on interfaces with only readonly properties.
+neg.struct-hint-with-methods.ts:4:4 - error JSII7001: Illegal use of "@struct" hint. It is only valid on interfaces with only readonly properties. [documentation/illegal-hint]
 
 4  * @struct
      ~~~~~~~
@@ -964,12 +1013,12 @@ neg.struct-hint-with-methods.ts:4:4 - error JSII7001: Illegal use of "@struct" h
   neg.struct-hint-with-methods.ts:7:3
     7   method(): void;
         ~~~~~~
-    A method is declared here [documentation/illegal-hint]
+    A method is declared here
 
 `;
 
 exports[`submodules-cannot-have-colliding-names 1`] = `
-neg.submodules-cannot-have-colliding-names.ts:3:14 - error JSII5011: Submodule "ns1" conflicts with "Ns1, as different languages could represent it as: "ns1", "Ns1""
+neg.submodules-cannot-have-colliding-names.ts:3:14 - error JSII5011: Submodule "ns1" conflicts with "Ns1, as different languages could represent it as: "ns1", "Ns1"" [language-compatibility/submodule-name-conflicts]
 
 3 export class Ns1 {
                ~~~
@@ -977,12 +1026,12 @@ neg.submodules-cannot-have-colliding-names.ts:3:14 - error JSII5011: Submodule "
   neg.submodules-cannot-have-colliding-names.ts:1:13
     1 export * as ns1 from './namespaced';
                   ~~~
-    This is the conflicting submodule declaration [language-compatibility/submodule-name-conflicts]
+    This is the conflicting submodule declaration
 
 `;
 
 exports[`submodules-cannot-share-symbols 1`] = `
-namespaced/index.ts:1:14 - error JSII3003: Symbol is exported under two distinct submodules: ns1 and ns2
+namespaced/index.ts:1:14 - error JSII3003: Symbol is exported under two distinct submodules: ns1 and ns2 [type-model/symbol-is-exported-twice]
 
 1 export class Declaration {
                ~~~~~~~~~~~
@@ -994,34 +1043,39 @@ namespaced/index.ts:1:14 - error JSII3003: Symbol is exported under two distinct
   neg.submodules-cannot-share-symbols.ts:2:8
     2 export * as ns2 from './namespaced';
              ~~~~~~~~
-    Symbol is exported under the "ns2" submodule [type-model/symbol-is-exported-twice]
+    Symbol is exported under the "ns2" submodule
 
 `;
 
 exports[`submodules-must-be-camel-cased 1`] = `
-neg.submodules-must-be-camel-cased.ts:1:13 - error JSII8004: Submodule namespaces must be camelCased or snake_cased. Rename "Ns1" to ns1
+neg.submodules-must-be-camel-cased.ts:1:13 - error JSII8004: Submodule namespaces must be camelCased or snake_cased. Rename "Ns1" to ns1 [code-style/submodule-name-casing]
 
 1 export * as Ns1 from './namespaced';
-              ~~~ [code-style/submodule-name-casing]
+              ~~~
+
 
 `;
 
 exports[`tuple 1`] = `
-neg.tuple.ts:2:26 - error JSII1999: Tuple types are not supported in jsii APIs. Consider using arrays instead.
+neg.tuple.ts:2:26 - error JSII1999: Tuple types are not supported in jsii APIs. Consider using arrays instead. [typescript-restrictions/unsupported]
 
 2   readonly stringNumber: [string, number];
-                           ~~~~~~~~~~~~~~~~ [typescript-restrictions/unsupported]
-neg.tuple.ts:3:26 - error JSII1999: Tuple types are not supported in jsii APIs. Consider using arrays instead.
+                           ~~~~~~~~~~~~~~~~
+
+neg.tuple.ts:3:26 - error JSII1999: Tuple types are not supported in jsii APIs. Consider using arrays instead. [typescript-restrictions/unsupported]
 
 3   readonly stringString: [string, string];
-                           ~~~~~~~~~~~~~~~~ [typescript-restrictions/unsupported]
-neg.tuple.ts:4:27 - error JSII1999: Tuple types are not supported in jsii APIs. Consider using arrays instead.
+                           ~~~~~~~~~~~~~~~~
+
+neg.tuple.ts:4:27 - error JSII1999: Tuple types are not supported in jsii APIs. Consider using arrays instead. [typescript-restrictions/unsupported]
 
 4   readonly stringNumbers: [string, ...number[]];
-                            ~~~~~~~~~~~~~~~~~~~~~ [typescript-restrictions/unsupported]
-neg.tuple.ts:5:24 - error JSII1999: Tuple types are not supported in jsii APIs. Consider using arrays instead.
+                            ~~~~~~~~~~~~~~~~~~~~~
+
+neg.tuple.ts:5:24 - error JSII1999: Tuple types are not supported in jsii APIs. Consider using arrays instead. [typescript-restrictions/unsupported]
 
 5   readonly namedTuple: [first: string, second: number, ...rest: boolean[]];
-                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ [typescript-restrictions/unsupported]
+                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 
 `;
