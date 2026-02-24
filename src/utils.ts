@@ -100,6 +100,11 @@ export function _formatDiagnostic(diagnostic: ts.Diagnostic, projectRoot: string
   const formatted = message.replace(` TS${JSII_DIAGNOSTICS_CODE}: `, ` JSII${diagnostic.jsiiCode}: `);
   const diagName = Code.lookup(diagnostic.jsiiCode)?.name;
   if (diagName) {
+    // Insert the diagnostic name after the message text on the first line
+    const firstNewline = formatted.indexOf('\n');
+    if (firstNewline !== -1) {
+      return `${formatted.slice(0, firstNewline)} [${diagName}]${formatted.slice(firstNewline)}`;
+    }
     return formatted.trimEnd() + ` [${diagName}]\n`;
   }
   return formatted;
