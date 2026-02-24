@@ -1,7 +1,8 @@
 import * as log4js from 'log4js';
 import * as ts from 'typescript';
 
-import { JsiiDiagnostic } from './jsii-diagnostic';
+import { Code, JsiiDiagnostic } from './jsii-diagnostic';
+import { isSilenced } from './warnings';
 
 /**
  * Name of the logger for cli errors
@@ -96,10 +97,18 @@ export function _formatDiagnostic(diagnostic: ts.Diagnostic, projectRoot: string
   }
 
   // This is our own diagnostics, so we'll format appropriately (replacing TS#### with JSII####).
-  return message.replace(` TS${JSII_DIAGNOSTICS_CODE}: `, ` JSII${diagnostic.jsiiCode}: `);
+  const formatted = message.replace(` TS${JSII_DIAGNOSTICS_CODE}: `, ` JSII${diagnostic.jsiiCode}: `);
+  const diagName = Code.lookup(diagnostic.jsiiCode)?.name;
+  if (diagName) {
+    return formatted.trimEnd() + ` [${diagName}]\n`;
+  }
+  return formatted;
 }
 
 export function logDiagnostic(diagnostic: ts.Diagnostic, projectRoot: string) {
+  if (isSilenced(diagnostic)) {
+    return;
+  }
   const logFunc = diagnosticsLogger(log4js.getLogger(DIAGNOSTICS), diagnostic);
   if (!logFunc) {
     return;

@@ -29,7 +29,6 @@ import { isBehavioralInterfaceType, visitType, visitTypeReference } from './type
 import { JsiiError } from './utils';
 import { Validator } from './validator';
 import { SHORT_VERSION, VERSION } from './version';
-import { enabledWarnings } from './warnings';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-require-imports
 const sortJson = require('sort-json');
@@ -2002,10 +2001,6 @@ export class Assembler implements Emitter {
   }
 
   private _warnAboutReservedWords(symbol: ts.Symbol) {
-    if (!enabledWarnings['reserved-word']) {
-      return;
-    }
-
     const reservingLanguages = isReservedName(symbol.name);
     if (reservingLanguages) {
       this._diagnostics.push(
