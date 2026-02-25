@@ -71,7 +71,7 @@ The current status of `jsii` compiler releases is:
 
 The `--silence-warnings` option allows you to suppress specific warnings from the compiler output. Silenced warnings
 are still emitted internally (e.g. they are still part of the assembly), but are not printed to the console. When
-`--fail-on-warnings` (`-Werr`) is set, silenced warnings are not treated as errors.
+`--fail-on-warnings` (`--Werr`) is set, silenced warnings are not treated as errors.
 
 Warnings can be identified by JSII code, number, or diagnostic name:
 
