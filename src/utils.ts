@@ -87,10 +87,7 @@ export function _formatDiagnostic(diagnostic: ts.Diagnostic, projectRoot: string
     getNewLine: () => ts.sys.newLine,
   };
 
-  const message =
-    diagnostic.file != null
-      ? ts.formatDiagnosticsWithColorAndContext([diagnostic], formatDiagnosticsHost)
-      : ts.formatDiagnostic(diagnostic, formatDiagnosticsHost);
+  const message = ts.formatDiagnosticsWithColorAndContext([diagnostic], formatDiagnosticsHost);
 
   if (!JsiiDiagnostic.isJsiiDiagnostic(diagnostic)) {
     return message;
