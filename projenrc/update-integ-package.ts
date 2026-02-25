@@ -48,6 +48,7 @@ function snapshotAwsCdk(tag: string, file: string) {
   );
 
   // build aws-cdk-lib and dependencies
+  // we need this to generate the L1s, which are required to compile aws-cdk-lib
   assert.strictEqual(
     0,
     cp.spawnSync(
@@ -78,6 +79,8 @@ function snapshotAwsCdk(tag: string, file: string) {
   const artifacts = glob.globSync([
     path.join(intermediate, '**/*@(.js|.js.map|.d.ts|.d.ts.map|.tsbuildinfo)'),
     path.join(intermediate, '**/@(.jsii|.jsii.gz|.jsii.tabl.*)'),
+    // remove any markdown files, we want to bench pure compilation performance not markdown features
+    path.join(intermediate, '**/*.md'),
   ]);
   const exceptions = new Set([
     // Need to keep some declarations files that are part of the source...
@@ -88,6 +91,15 @@ function snapshotAwsCdk(tag: string, file: string) {
       continue;
     }
     fs.rmSync(artifact, { force: true, recursive: true });
+  }
+
+  // Clean up tsconfig.json: remove references and exclude test files
+  const tsconfigPath = path.resolve(intermediate, 'tsconfig.json');
+  if (fs.existsSync(tsconfigPath)) {
+    const tsconfig = JSON.parse(fs.readFileSync(tsconfigPath, 'utf-8'));
+    delete tsconfig.references;
+    tsconfig.exclude = [...(tsconfig.exclude ?? []), '**/*.test.ts', '**/test/**'];
+    fs.writeFileSync(tsconfigPath, JSON.stringify(tsconfig, undefined, 2));
   }
 
   // Remove @aws-cdk/* deps from package.json so we can npm install to get hoisted dependencies
@@ -106,7 +118,7 @@ function snapshotAwsCdk(tag: string, file: string) {
       '@types/aws-lambda': '*',
       '@types/fs-extra': '9.x',
       '@types/minimatch': '3.x',
-      '@types/node': '14.x',
+      '@types/node': '18.x',
       '@types/punycode': '2.x',
       '@types/semver': '7.x',
       'aws-sdk': '2.x',
@@ -120,7 +132,8 @@ function snapshotAwsCdk(tag: string, file: string) {
   // Run npm install to get package-lock.json for reproducible dependency tree
   assert.strictEqual(
     0,
-    cp.spawnSync(npm, ['install'], { cwd: intermediate, stdio: ['ignore', 'inherit', 'inherit'] }).status,
+    cp.spawnSync(npm, ['install', '--legacy-peer-deps'], { cwd: intermediate, stdio: ['ignore', 'inherit', 'inherit'] })
+      .status,
   );
   fs.rmSync(path.resolve(intermediate, 'node_modules'), { force: true, recursive: true });
   tar.c(
@@ -146,7 +159,7 @@ if (require.main === module) {
   fs.writeFileSync(path.join(fixturesDir, '.gitattributes'), '*.tgz filter=lfs diff=lfs merge=lfs -text\n');
 
   const { ref } = yargs
-    .scriptName('npx projen update-integ-package')
+    .scriptName('yarn projen test:benchmark:update-aws-cdk-lib-snapshot')
     .option('ref', {
       type: 'string',
       desc: 'The git ref to the aws/aws-cdk version to snapshot',

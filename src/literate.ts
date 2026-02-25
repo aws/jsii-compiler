@@ -1,7 +1,7 @@
 /**
  * A tiny module to include annotated (working!) code snippets into the documentation
  *
- * Not using 'literate-programming' or 'erasumus' projects because they work
+ * Not using 'literate-programming' or 'erasmus' projects because they work
  * the other way around: take code from MarkDown, save it as a file, then
  * execute that.
  *
