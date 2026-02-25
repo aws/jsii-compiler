@@ -118,6 +118,40 @@ export function logDiagnostic(diagnostic: ts.Diagnostic, projectRoot: string) {
   logFunc(formatDiagnostic(diagnostic, projectRoot).trim());
 }
 
+/**
+ * Format a compilation summary with status line and counts line.
+ */
+export function formatCompilationSummary(
+  diagnostics: readonly ts.Diagnostic[],
+  emitSkipped: boolean,
+  elapsedMs: number,
+): string {
+  let errors = 0;
+  let warnings = 0;
+  let silenced = 0;
+  for (const d of diagnostics) {
+    if (d.category === ts.DiagnosticCategory.Error) {
+      errors++;
+    } else if (d.category === ts.DiagnosticCategory.Warning) {
+      if (isSilenced(d)) {
+        silenced++;
+      }
+      warnings++;
+    }
+  }
+
+  const status = emitSkipped
+    ? '❌ Failed with errors'
+    : warnings > silenced
+    ? '✨ Successful with warnings'
+    : '✨ Successful';
+
+  const parts = [`Errors: ${errors}`, `Warnings: ${warnings}${silenced > 0 ? ` (${silenced} silenced)` : ''}`];
+  parts.push(`Time: ${(elapsedMs / 1000).toFixed(2)}s`);
+
+  return `\n${status}\n${parts.join(' | ')}`;
+}
+
 const PERSON_REGEX = /^\s*(.+?)(?:\s*<([^>]+)>)?(?:\s*\(([^)]+)\))?\s*$/;
 /**
  * Parses a string-formatted person entry from `package.json`.
