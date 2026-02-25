@@ -135,18 +135,15 @@ export function formatCompilationSummary(
     } else if (d.category === ts.DiagnosticCategory.Warning) {
       if (isSilenced(d)) {
         silenced++;
+      } else {
+        warnings++;
       }
-      warnings++;
     }
   }
 
-  const status = emitSkipped
-    ? '❌ Failed with errors'
-    : warnings > silenced
-    ? '✨ Successful with warnings'
-    : '✨ Successful';
+  const status = emitSkipped ? '❌ Failed with errors' : warnings > 0 ? '✨ Successful with warnings' : '✨ Successful';
 
-  const parts = [`Errors: ${errors}`, `Warnings: ${warnings}${silenced > 0 ? ` (${silenced} silenced)` : ''}`];
+  const parts = [`Errors: ${errors}`, `Warnings: ${warnings}${silenced > 0 ? ` (+${silenced} silenced)` : ''}`];
   parts.push(`Time: ${(elapsedMs / 1000).toFixed(2)}s`);
 
   return `\n${status}\n${parts.join(' | ')}`;

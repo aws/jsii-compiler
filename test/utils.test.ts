@@ -50,7 +50,7 @@ describe('formatCompilationSummary', () => {
       makeDiag(DiagnosticCategory.Warning),
     ];
     const result = formatCompilationSummary(diags, false, 1000);
-    expect(result).toContain('Warnings: 2 (1 silenced)');
+    expect(result).toContain('Warnings: 1 (+1 silenced)');
   });
 
   test('all warnings silenced shows successful without "with warnings"', () => {
@@ -59,7 +59,7 @@ describe('formatCompilationSummary', () => {
     const result = formatCompilationSummary(diags, false, 1000);
     expect(result).toContain('✨ Successful\n');
     expect(result).not.toContain('with warnings');
-    expect(result).toContain('Warnings: 1 (1 silenced)');
+    expect(result).toContain('Warnings: 0 (+1 silenced)');
   });
 
   test('ignores suggestion and message diagnostics', () => {
