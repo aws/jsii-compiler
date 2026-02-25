@@ -31,8 +31,11 @@ export class Directives {
   public readonly ignore?: ts.JSDocComment | ts.JSDocTag;
   /** Whether the node has the `@jsii struct` directive set. */
   public readonly struct?: ts.JSDocComment | ts.JSDocTag;
+  /** Suppression codes from `@jsii suppress <code>` directives. */
+  public readonly suppressions: readonly string[] = [];
 
   private constructor(node: ts.Node, onDiagnostic: (diag: JsiiDiagnostic) => void) {
+    const suppressions: string[] = [];
     for (const tag of ts.getJSDocTags(node)) {
       switch (tag.tagName.text) {
         case 'internal':
@@ -45,10 +48,18 @@ export class Directives {
             continue;
           }
           for (const { text, jsdocNode } of comments) {
-            switch (text) {
+            const [subcommand, ...rest] = text.split(/\s+/);
+            switch (subcommand) {
               case 'ignore':
                 this.ignore ??= jsdocNode;
                 break;
+              case 'suppress': {
+                const code = rest[0];
+                if (code) {
+                  suppressions.push(code);
+                }
+                break;
+              }
               default:
                 onDiagnostic(JsiiDiagnostic.JSII_2999_UNKNOWN_DIRECTIVE.create(jsdocNode, text));
                 break;
@@ -58,6 +69,7 @@ export class Directives {
         default: // Ignore
       }
     }
+    this.suppressions = suppressions;
   }
 }
 
