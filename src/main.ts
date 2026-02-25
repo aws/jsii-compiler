@@ -176,6 +176,7 @@ const ruleSets: {
             compressAssembly: argv['compress-assembly'],
           });
 
+          const startTime = Date.now();
           const emitResult = argv.watch ? await compiler.watch() : compiler.emit();
 
           const allDiagnostics = [...projectInfoDiagnostics, ...emitResult.diagnostics];
@@ -183,6 +184,9 @@ const ruleSets: {
           for (const diagnostic of allDiagnostics) {
             utils.logDiagnostic(diagnostic, projectRoot);
           }
+
+          console.log(utils.formatCompilationSummary(allDiagnostics, emitResult.emitSkipped, Date.now() - startTime));
+
           if (emitResult.emitSkipped) {
             process.exitCode = 1;
           }

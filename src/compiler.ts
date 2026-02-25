@@ -148,11 +148,16 @@ export class Compiler implements Emitter {
     //
     // eslint-disable-next-line @typescript-eslint/no-misused-promises
     host.afterProgramCreate = (builderProgram) => {
+      const startTime = Date.now();
       const emitResult = this.consumeProgram(builderProgram.getProgram(), host.getDefaultLibLocation!());
 
       for (const diag of emitResult.diagnostics.filter((d) => d.code === JSII_DIAGNOSTICS_CODE)) {
         utils.logDiagnostic(diag, this.projectRoot);
       }
+
+      console.log(
+        utils.formatCompilationSummary(emitResult.diagnostics, emitResult.emitSkipped, Date.now() - startTime),
+      );
 
       if (orig) {
         orig.call(host, builderProgram);
