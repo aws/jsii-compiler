@@ -919,22 +919,32 @@ export class Assembler implements Emitter {
       jsiiType.symbolId = this.getSymbolId(node);
     }
 
-    // Let's quickly verify the declaration does not collide with a submodule. Submodules get case-adjusted for each
-    // target language separately, so names cannot collide with case-variations.
-    for (const submodule of this._submodules.keys()) {
+    // Verify the declaration does not collide with a submodule at the same level in the hierarchy.
+    // Submodules get case-adjusted per target language, so names cannot collide with case-variations.
+    // We only check submodules and types with a shared parent namespace. Symbols at different nesting
+    // levels should not conflict with each other. E.g. "pkg.MyType" and "pkg.sub.my_type" are okay.
+    const typeFqnPrefix = jsiiType.fqn.substring(0, jsiiType.fqn.lastIndexOf('.'));
+    for (const [submodule, submoduleSpec] of this._submodules.entries()) {
+      // Only check submodules that share the same parent namespace as the type
+      const submoduleFqnPrefix = submoduleSpec.fqn.substring(0, submoduleSpec.fqn.lastIndexOf('.'));
+      if (typeFqnPrefix !== submoduleFqnPrefix) {
+        continue;
+      }
+
+      // We build common variations of the submodule name to simulate what they would be called in various target languages.
+      // This is not entirely accurate because submodules may actually be renamed via .jsiirc files.
+      // It is however a good enough approximation for the compiler.
       const candidates = Array.from(
         new Set([submodule.name, Case.camel(submodule.name), Case.pascal(submodule.name), Case.snake(submodule.name)]),
       );
-      const colliding = candidates.find((name) => `${this.projectInfo.name}.${name}` === jsiiType!.fqn);
-      if (colliding != null) {
-        const submoduleDeclName = _nameOrDeclarationNode(submodule);
+      if (candidates.some((name) => name === jsiiType!.name)) {
         this._diagnostics.push(
           JsiiDiagnostic.JSII_5011_SUBMODULE_NAME_CONFLICT.create(
             ts.getNameOfDeclaration(node) ?? node,
             submodule.name,
             jsiiType.name,
             candidates,
-          ).addRelatedInformationIf(submoduleDeclName, 'This is the conflicting submodule declaration'),
+          ).addRelatedInformationIf(_nameOrDeclarationNode(submodule), 'This is the conflicting submodule declaration'),
         );
       }
     }
