@@ -226,3 +226,11 @@ export class JsiiError extends Error {
     Object.setPrototypeOf(this, JsiiError.prototype);
   }
 }
+
+/**
+ * Returns the parent namespace of a fully qualified name.
+ * E.g. "aws-cdk-lib.aws_s3.Bucket" returns "aws-cdk-lib.aws_s3".
+ */
+export function parentFqn(fqn: string): string {
+  return fqn.substring(0, fqn.lastIndexOf('.'));
+}

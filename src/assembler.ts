@@ -26,7 +26,7 @@ import { RuntimeTypeInfoInjector } from './transforms/runtime-info';
 import { combinedTransformers } from './transforms/utils';
 import { typeReferenceEqual, typeReferenceToString } from './type-reference';
 import { isBehavioralInterfaceType, visitType, visitTypeReference } from './type-visitor';
-import { JsiiError } from './utils';
+import { JsiiError, parentFqn } from './utils';
 import { Validator } from './validator';
 import { SHORT_VERSION, VERSION } from './version';
 
@@ -923,11 +923,10 @@ export class Assembler implements Emitter {
     // Submodules get case-adjusted per target language, so names cannot collide with case-variations.
     // We only check submodules and types with a shared parent namespace. Symbols at different nesting
     // levels should not conflict with each other. E.g. "pkg.MyType" and "pkg.sub.my_type" are okay.
-    const typeFqnPrefix = jsiiType.fqn.substring(0, jsiiType.fqn.lastIndexOf('.'));
+    const typeFqnPrefix = parentFqn(jsiiType.fqn);
     for (const [submodule, submoduleSpec] of this._submodules.entries()) {
       // Only check submodules that share the same parent namespace as the type
-      const submoduleFqnPrefix = submoduleSpec.fqn.substring(0, submoduleSpec.fqn.lastIndexOf('.'));
-      if (typeFqnPrefix !== submoduleFqnPrefix) {
+      if (typeFqnPrefix !== parentFqn(submoduleSpec.fqn)) {
         continue;
       }
 
