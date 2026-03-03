@@ -555,4 +555,15 @@ describe('submodule namespace conflicts', () => {
       python: { module: 'file_module', distName: 'file-dist' },
     });
   });
+
+  test('type does not conflict with submodule at a different namespace level', () => {
+    // A type "testpkg.Foo" should not conflict with a submodule "testpkg.sub.foo",
+    // because they live at different levels in the hierarchy.
+    const assembly = sourceToAssemblyHelper({
+      'index.ts': 'export * as sub from "./sub"; export class Foo {}',
+      'sub.ts': 'export namespace foo { export class Bar {} }',
+    });
+    expect(assembly.types!['testpkg.Foo']).toBeDefined();
+    expect(assembly.types!['testpkg.sub.foo.Bar']).toBeDefined();
+  });
 });
