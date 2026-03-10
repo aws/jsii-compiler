@@ -65,7 +65,7 @@
     "npm-check-updates": "^16",
     "prettier": "^2.8.8",
     "projen": "^0.99.19",
-    "tar": "^7.5.10",
+    "tar": "^7.5.11",
     "ts-jest": "^29.4.6",
     "ts-node": "^10.9.2"
   },
