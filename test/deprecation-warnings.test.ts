@@ -1,4 +1,5 @@
 // eslint-disable-next-line import/no-extraneous-dependencies
+// Collission with non-deprecated enum member
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as vm from 'node:vm';
@@ -267,10 +268,7 @@ function testpkg_Baz(p) {
         return;
     visitedObjects.add(p);
     try {
-        const ns = require("./index.js");
-        if (Object.values(ns.State).filter(x => x === p).length > 1)
-            return;
-        if (p === ns.State.OFF)
+        if (p === 1)
             print("testpkg.State#OFF", "Use something else");
     }
     finally {

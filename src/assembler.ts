@@ -25,6 +25,7 @@ import { DeprecationWarningsInjector } from './transforms/deprecation-warnings';
 import { RuntimeTypeInfoInjector } from './transforms/runtime-info';
 import { combinedTransformers } from './transforms/utils';
 import { typeReferenceEqual, typeReferenceToString } from './type-reference';
+import { TypeTracker } from './type-tracker';
 import { isBehavioralInterfaceType, visitType, visitTypeReference } from './type-visitor';
 import { JsiiError, parentFqn } from './utils';
 import { Validator } from './validator';
@@ -68,6 +69,8 @@ export class Assembler implements Emitter {
    */
   private readonly _submodules = new Map<ts.Symbol, SubmoduleSpec>();
 
+  private readonly _typeTracker = new TypeTracker();
+
   /**
    * @param projectInfo information about the package being assembled
    * @param program     the TypeScript program to be assembled from
@@ -97,7 +100,7 @@ export class Assembler implements Emitter {
     }
 
     if (options.addDeprecationWarnings) {
-      this.warningsInjector = new DeprecationWarningsInjector(this._typeChecker);
+      this.warningsInjector = new DeprecationWarningsInjector(this._typeChecker, this._typeTracker);
     }
 
     this.compressAssembly = options.compressAssembly;
@@ -1564,6 +1567,12 @@ export class Assembler implements Emitter {
       );
     }
 
+    for (const memberDecl of decl.members) {
+      if (this._typeChecker.getConstantValue(memberDecl) === undefined) {
+        this._diagnostics.push(JsiiDiagnostic.JSII_1012_ONLY_CONST_ENUM_MEMBERS.create(memberDecl));
+      }
+    }
+
     const { docs } = this._visitDocumentation(symbol, ctx);
 
     const typeContext = ctx.replaceStability(docs?.stability);
@@ -1598,6 +1607,8 @@ export class Assembler implements Emitter {
       },
       decl,
     );
+
+    this._typeTracker.registerEnum(jsiiType.fqn, decl);
 
     return jsiiType;
   }

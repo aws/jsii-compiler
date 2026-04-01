@@ -6,13 +6,13 @@ import * as ts from 'typescript';
 
 import { symbolIdentifier } from '../common/symbol-id';
 import { ProjectInfo } from '../project-info';
+import { TypeTracker } from '../type-tracker';
 
 export const WARNINGSCODE_FILE_NAME = '.warnings.jsii.js';
 const WARNING_FUNCTION_NAME = 'print';
 const PARAMETER_NAME = 'p';
 const FOR_LOOP_ITEM_NAME = 'o';
 const NAMESPACE = 'jsiiDeprecationWarnings';
-const LOCAL_ENUM_NAMESPACE = 'ns';
 const VISITED_OBJECTS_SET_NAME = 'visitedObjects';
 const DEPRECATION_ERROR = 'DeprecationError';
 const GET_PROPERTY_DESCRIPTOR = 'getPropertyDescriptor';
@@ -22,7 +22,7 @@ export class DeprecationWarningsInjector {
     before: [],
   };
 
-  public constructor(private readonly typeChecker: ts.TypeChecker) {}
+  public constructor(private readonly typeChecker: ts.TypeChecker, private readonly typeTracker: TypeTracker) {}
 
   public process(assembly: Assembly, projectInfo: ProjectInfo) {
     const projectRoot = projectInfo.projectRoot;
@@ -52,25 +52,45 @@ export class DeprecationWarningsInjector {
       }
 
       if (spec.isEnumType(type) && type.locationInModule?.filename) {
-        tryStatements.push(createEnumRequireStatement(type.locationInModule?.filename));
-        tryStatements.push(createDuplicateEnumValuesCheck(type));
+        // Check for deprecated enum members
+        //
+        // We need to compare to the value of the deprecated enum. We can do that in one of 2 ways:
+        //
+        // - Compare against `require('./actual-file').EnumType.SOME_ENUM_MEMBER`
+        // - Look up the enum member value and compare against `'some-enum-member'`.
+        //
+        // The first one introduces a circular dependency between this file and `actual-file.js`, so we
+        // will go with the second.
+        //
+        // One complication: two enum members can have the same value (shouldn't, but can!) where
+        // one symbolic name is deprecated but the other isn't. In that case we don't treat it as deprecated.
+        const memDecls = this.typeTracker.getEnumMembers(type.fqn);
 
-        for (const member of Object.values(type.members ?? [])) {
-          if (spec.isDeprecated(member)) {
-            // The enum member is deprecated
-            const condition = ts.factory.createBinaryExpression(
-              ts.factory.createIdentifier(PARAMETER_NAME),
-              ts.SyntaxKind.EqualsEqualsEqualsToken,
-              ts.factory.createPropertyAccessExpression(
-                ts.factory.createPropertyAccessExpression(ts.factory.createIdentifier(LOCAL_ENUM_NAMESPACE), type.name),
-                member.name,
-              ),
-            );
-            tryStatements.push(
-              createWarningFunctionCall(`${type.fqn}#${member.name}`, member.docs?.deprecated, condition),
-            );
-            isEmpty = false;
+        const nonDeprecatedValues = new Set(
+          (type.members ?? [])
+            .filter((m) => !spec.isDeprecated(m))
+            .map((m) => this.typeChecker.getConstantValue(memDecls[m.name])!),
+        );
+        const deprecatedMembers = (type.members ?? []).filter(spec.isDeprecated);
+
+        for (const member of deprecatedMembers) {
+          const constantValue = this.typeChecker.getConstantValue(memDecls[member.name])!;
+          if (nonDeprecatedValues.has(constantValue)) {
+            // Collission with non-deprecated enum member
+            continue;
           }
+
+          const condition = ts.factory.createBinaryExpression(
+            ts.factory.createIdentifier(PARAMETER_NAME),
+            ts.SyntaxKind.EqualsEqualsEqualsToken,
+            typeof constantValue === 'string'
+              ? ts.factory.createStringLiteral(constantValue)
+              : ts.factory.createNumericLiteral(constantValue),
+          );
+          tryStatements.push(
+            createWarningFunctionCall(`${type.fqn}#${member.name}`, member.docs?.deprecated, condition),
+          );
+          isEmpty = false;
         }
       } else if (spec.isInterfaceType(type) && type.datatype) {
         const { statementsByProp, excludedProps } = processInterfaceType(
@@ -557,13 +577,6 @@ function insertStatements(block: ts.Block, newStatements: ts.Statement[]) {
   return ts.factory.createNodeArray(result);
 }
 
-function createEnumRequireStatement(typeLocation: string): ts.Statement {
-  const { ext } = path.parse(typeLocation);
-  const jsFileName = typeLocation.replace(ext, '.js');
-
-  return createRequireStatement(LOCAL_ENUM_NAMESPACE, `./${jsFileName}`);
-}
-
 function createRequireStatement(name: string, importPath: string): ts.Statement {
   return ts.factory.createVariableStatement(
     undefined,
@@ -679,56 +692,6 @@ function createTypeHandlerCall(
         ),
       );
   }
-}
-
-/**
- * There is a chance an enum contains duplicates values with distinct keys,
- * with one of those keys being deprecated. This is a potential pattern to "rename" an enum.
- * In this case, we can't concretely determine if the deprecated member was used or not,
- * so in those cases we skip the warnings altogether, rather than erroneously warning for valid usage.
- * This create a statement to check if the enum value is a duplicate:
- *
- * if (Object.values(Foo).filter(x => x === p).length > 1) { return; }
- *
- * Note that we can't just check the assembly for these duplicates, due to:
- * https://github.com/aws/jsii/issues/2782
- */
-function createDuplicateEnumValuesCheck(type: spec.TypeBase & spec.EnumType): ts.Statement {
-  return ts.factory.createIfStatement(
-    ts.factory.createBinaryExpression(
-      ts.factory.createPropertyAccessExpression(
-        ts.factory.createCallExpression(
-          ts.factory.createPropertyAccessExpression(
-            ts.factory.createCallExpression(
-              ts.factory.createPropertyAccessExpression(ts.factory.createIdentifier('Object'), 'values'),
-              undefined,
-              [ts.factory.createPropertyAccessExpression(ts.factory.createIdentifier(LOCAL_ENUM_NAMESPACE), type.name)],
-            ),
-            ts.factory.createIdentifier('filter'),
-          ),
-          undefined,
-          [
-            ts.factory.createArrowFunction(
-              undefined,
-              undefined,
-              [ts.factory.createParameterDeclaration(undefined, undefined, 'x')],
-              undefined,
-              ts.factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken),
-              ts.factory.createBinaryExpression(
-                ts.factory.createIdentifier('x'),
-                ts.factory.createToken(ts.SyntaxKind.EqualsEqualsEqualsToken),
-                ts.factory.createIdentifier(PARAMETER_NAME),
-              ),
-            ),
-          ],
-        ),
-        ts.factory.createIdentifier('length'),
-      ),
-      ts.factory.createToken(ts.SyntaxKind.GreaterThanToken),
-      ts.factory.createNumericLiteral('1'),
-    ),
-    ts.factory.createReturnStatement(),
-  );
 }
 
 // We try-then-rethrow exceptions to avoid runtimes displaying an uncanny wall of text if the place
