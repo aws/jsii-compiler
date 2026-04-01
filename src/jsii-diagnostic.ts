@@ -343,6 +343,12 @@ export class JsiiDiagnostic implements ts.Diagnostic {
     name: 'typescript-restriction/intersection-member-different',
   });
 
+  public static readonly JSII_1012_ONLY_CONST_ENUM_MEMBERS = Code.error({
+    code: 1012,
+    formatter: () => 'Only constant enum members are allowed',
+    name: 'typescript-restrictions/only-const-enum-members',
+  });
+
   public static readonly JSII_1999_UNSUPPORTED = Code.error({
     code: 1999,
     formatter: ({
