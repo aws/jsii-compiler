@@ -16,132 +16,53 @@ const NAMESPACE = 'jsiiDeprecationWarnings';
 const VISITED_OBJECTS_SET_NAME = 'visitedObjects';
 const DEPRECATION_ERROR = 'DeprecationError';
 const GET_PROPERTY_DESCRIPTOR = 'getPropertyDescriptor';
+const VALIDATORS_OBJ = 'VALIDATORS';
 
 export class DeprecationWarningsInjector {
   private transformers: ts.CustomTransformers = {
     before: [],
   };
 
+  private shouldRenderValidatorCache: Record<string, boolean> = {};
+  private validatorCacheSeenSet = new Set<string>();
+
   public constructor(private readonly typeChecker: ts.TypeChecker, private readonly typeTracker: TypeTracker) {}
 
   public process(assembly: Assembly, projectInfo: ProjectInfo) {
     const projectRoot = projectInfo.projectRoot;
-    const functionDeclarations: ts.FunctionDeclaration[] = [];
+    const statements: ts.Statement[] = [];
+    const validationFunctions: ts.ObjectLiteralElementLike[] = [];
 
     const types = assembly.types ?? {};
     for (const type of Object.values(types)) {
-      const statements: ts.Statement[] = [];
-      let isEmpty = true;
-
-      // This will add the parameter to the set of visited objects, to prevent infinite recursion
-      statements.push(
-        ts.factory.createExpressionStatement(
-          ts.factory.createCallExpression(
-            ts.factory.createPropertyAccessExpression(ts.factory.createIdentifier(VISITED_OBJECTS_SET_NAME), 'add'),
-            undefined,
-            [ts.factory.createIdentifier(PARAMETER_NAME)],
-          ),
-        ),
-      );
-
-      const tryStatements = [];
-      if (spec.isDeprecated(type) && spec.isEnumType(type)) {
-        // The type is deprecated
-        tryStatements.push(createWarningFunctionCall(type.fqn, type.docs?.deprecated));
-        isEmpty = false;
+      const statements = this.generateTypeValidation(type, assembly, projectInfo, types);
+      if (statements.length === 0) {
+        continue;
       }
-
-      if (spec.isEnumType(type) && type.locationInModule?.filename) {
-        // Check for deprecated enum members
-        //
-        // We need to compare to the value of the deprecated enum. We can do that in one of 2 ways:
-        //
-        // - Compare against `require('./actual-file').EnumType.SOME_ENUM_MEMBER`
-        // - Look up the enum member value and compare against `'some-enum-member'`.
-        //
-        // The first one introduces a circular dependency between this file and `actual-file.js`, so we
-        // will go with the second.
-        //
-        // One complication: two enum members can have the same value (shouldn't, but can!) where
-        // one symbolic name is deprecated but the other isn't. In that case we don't treat it as deprecated.
-        const memDecls = this.typeTracker.getEnumMembers(type.fqn);
-
-        const nonDeprecatedValues = new Set(
-          (type.members ?? [])
-            .filter((m) => !spec.isDeprecated(m))
-            .map((m) => this.typeChecker.getConstantValue(memDecls[m.name])!),
-        );
-        const deprecatedMembers = (type.members ?? []).filter(spec.isDeprecated);
-
-        for (const member of deprecatedMembers) {
-          const constantValue = this.typeChecker.getConstantValue(memDecls[member.name])!;
-          if (nonDeprecatedValues.has(constantValue)) {
-            // Collission with non-deprecated enum member
-            continue;
-          }
-
-          const condition = ts.factory.createBinaryExpression(
-            ts.factory.createIdentifier(PARAMETER_NAME),
-            ts.SyntaxKind.EqualsEqualsEqualsToken,
-            typeof constantValue === 'string'
-              ? ts.factory.createStringLiteral(constantValue)
-              : ts.factory.createNumericLiteral(constantValue),
-          );
-          tryStatements.push(
-            createWarningFunctionCall(`${type.fqn}#${member.name}`, member.docs?.deprecated, condition),
-          );
-          isEmpty = false;
-        }
-      } else if (spec.isInterfaceType(type) && type.datatype) {
-        const { statementsByProp, excludedProps } = processInterfaceType(
-          type,
-          types,
-          assembly,
-          projectInfo,
-          undefined,
-          undefined,
-        );
-
-        for (const [name, statement] of statementsByProp.entries()) {
-          if (!excludedProps.has(name)) {
-            tryStatements.push(statement);
-            isEmpty = false;
-          }
-        }
-      }
-
-      statements.push(
-        ts.factory.createTryStatement(
-          ts.factory.createBlock(tryStatements),
-          undefined,
-          ts.factory.createBlock([
-            ts.factory.createExpressionStatement(
-              ts.factory.createCallExpression(
-                ts.factory.createPropertyAccessExpression(
-                  ts.factory.createIdentifier(VISITED_OBJECTS_SET_NAME),
-                  'delete',
-                ),
-                undefined,
-                [ts.factory.createIdentifier(PARAMETER_NAME)],
-              ),
-            ),
-          ]),
-        ),
-      );
 
       const paramValue = ts.factory.createParameterDeclaration(undefined, undefined, PARAMETER_NAME);
       const functionName = fnName(type.fqn);
-      const functionDeclaration = ts.factory.createFunctionDeclaration(
+      const functionExpr = ts.factory.createFunctionExpression(
         undefined,
         undefined,
         ts.factory.createIdentifier(functionName),
         [],
         [paramValue],
         undefined,
-        createFunctionBlock(isEmpty ? [] : statements),
+        createFunctionBlock(statements),
       );
-      functionDeclarations.push(functionDeclaration);
+      validationFunctions.push(ts.factory.createPropertyAssignment(functionName, functionExpr));
     }
+
+    statements.push(
+      ts.factory.createVariableStatement(undefined,
+        ts.factory.createVariableDeclarationList([
+          ts.factory.createVariableDeclaration(VALIDATORS_OBJ, undefined, undefined,
+          ts.factory.createObjectLiteralExpression(validationFunctions)),
+        ], ts.NodeFlags.Const),
+      ),
+    );
+
     this.transformers = {
       before: [
         (context) => {
@@ -156,7 +77,8 @@ export class DeprecationWarningsInjector {
         },
       ],
     };
-    generateWarningsFile(projectRoot, functionDeclarations);
+
+    generateWarningsFile(projectRoot, statements);
   }
 
   public get customTransformers(): ts.CustomTransformers {
@@ -175,87 +97,288 @@ export class DeprecationWarningsInjector {
 
     return result;
   }
-}
 
-function processInterfaceType(
-  type: spec.InterfaceType,
-  types: { [p: string]: spec.Type },
-  assembly: Assembly,
-  projectInfo: ProjectInfo,
-  statementsByProp: Map<string, ts.Statement> = new Map<string, ts.Statement>(),
-  excludedProps: Set<string> = new Set<string>(),
-) {
-  for (const prop of Object.values(type.properties ?? {})) {
-    const fqn = `${type.fqn}#${prop.name}`;
-    if (spec.isDeprecated(prop) || spec.isDeprecated(type)) {
-      // If the property individually is deprecated, or the entire type is deprecated
-      const deprecatedDocs = prop.docs?.deprecated ?? type.docs?.deprecated;
-      const statement = createWarningFunctionCall(
-        fqn,
-        deprecatedDocs,
-        ts.factory.createBinaryExpression(
-          ts.factory.createStringLiteral(prop.name),
-          ts.SyntaxKind.InKeyword,
-          ts.factory.createIdentifier(PARAMETER_NAME),
-        ),
-        undefined,
-      );
-      statementsByProp.set(prop.name, statement);
-    } else {
-      /* If a prop is not deprecated, we don't want to generate a warning for it,
-         even if another property with the same name is deprecated in another
-         super-interface. */
-      excludedProps.add(prop.name);
+  /**
+   * Whether the validator for the given type should be rendered
+   *
+   * A validator should be rendered if:
+   *
+   * - It contains any deprecated members (base case).
+   * - It references any other types whose validators should be rendered.
+   * - It inherits from other types whose validators should be rendered.
+   * - It references types that reference this type (recursive types).
+   * - It references types from another assembly.
+   *
+   * For the last one we technically return `true`, indicating that a validator
+   * *should* be rendered, but when we get to rendering no statements are
+   * actually produced and the validator function is never rendered. This was
+   * pre-existing behavior that I didn't change because introducing calls into
+   * other assemblies out of the blue introduces risk.
+   */
+  private shouldRenderValidator(type: spec.Type, assembly: Assembly): boolean {
+    if (this.shouldRenderValidatorCache[type.fqn] !== undefined) {
+      return this.shouldRenderValidatorCache[type.fqn];
     }
 
-    if (spec.isNamedTypeReference(prop.type) && Object.keys(types).includes(prop.type.fqn)) {
-      const functionName = importedFunctionName(prop.type.fqn, assembly, projectInfo);
-      if (functionName) {
-        const statement = createTypeHandlerCall(functionName, `${PARAMETER_NAME}.${prop.name}`);
-        statementsByProp.set(`${prop.name}_`, statement);
+    if (type.fqn === '@scope/jsii-calc-base.TypeToContainVeryBaseProps') {
+      debugger;
+    }
+
+    if (this.validatorCacheSeenSet.has(type.fqn)) {
+      // To be safe we need to say this is true.
+      return true;
+    }
+    if (!type.fqn.startsWith(`${assembly.name}.`)) {
+      // Foreign type, always check
+      return true;
+    }
+    this.validatorCacheSeenSet.add(type.fqn);
+
+    this.shouldRenderValidatorCache[type.fqn] = calculate.call(this);
+    this.validatorCacheSeenSet.delete(type.fqn);
+
+    return this.shouldRenderValidatorCache[type.fqn];
+
+    function calculate(this: DeprecationWarningsInjector): boolean {
+      if (spec.isDeprecated(type)) {
+        return true;
       }
-    } else if (
-      spec.isCollectionTypeReference(prop.type) &&
-      spec.isNamedTypeReference(prop.type.collection.elementtype)
-    ) {
-      const functionName = importedFunctionName(prop.type.collection.elementtype.fqn, assembly, projectInfo);
-      if (functionName) {
-        const statement = createTypeHandlerCall(
-          functionName,
-          `${PARAMETER_NAME}.${prop.name}`,
-          prop.type.collection.kind,
-        );
-        statementsByProp.set(`${prop.name}_`, statement);
+      if (spec.isEnumType(type)) {
+        return (type.members ?? []).some(spec.isDeprecated);
       }
-    } else if (
-      spec.isUnionTypeReference(prop.type) &&
-      spec.isNamedTypeReference(prop.type.union.types[0]) &&
-      Object.keys(types).includes(prop.type.union.types[0].fqn)
-    ) {
-      const functionName = importedFunctionName(prop.type.union.types[0].fqn, assembly, projectInfo);
-      if (functionName) {
-        const statement = createTypeHandlerCall(functionName, `${PARAMETER_NAME}.${prop.name}`);
-        statementsByProp.set(`${prop.name}_`, statement);
+      if (spec.isInterfaceType(type) && type.datatype) {
+        for (const prop of type.properties ?? []) {
+          if (spec.isDeprecated(prop)) {
+            return true;
+          }
+
+          const typesToInspect = spec.isCollectionTypeReference(prop.type)
+            ? [prop.type.collection.elementtype]
+            : spec.isUnionTypeReference(prop.type)
+            ? prop.type.union.types
+            : [prop.type];
+
+          for (const typeToInspect of typesToInspect) {
+            if (!spec.isNamedTypeReference(typeToInspect)) {
+              continue;
+            }
+
+            // Is from a different assembly?
+            const typeObj = findType2(typeToInspect.fqn, assembly);
+            if (typeObj === 'other-assembly') {
+              return true;
+            }
+            if (this.shouldRenderValidator(typeObj, assembly)) {
+              return true;
+            }
+          }
+        }
+
+        for (const interfaceName of type.interfaces ?? []) {
+          const typeObj = findType2(interfaceName, assembly);
+          if (typeObj === 'other-assembly') {
+            return true;
+          }
+          if (this.shouldRenderValidator(typeObj, assembly)) {
+            return true;
+          }
+        }
       }
+
+      return false;
     }
   }
 
-  // We also generate calls to all the supertypes
-  for (const interfaceName of type.interfaces ?? []) {
-    const assemblies = projectInfo.dependencyClosure.concat(assembly);
-    const superType = findType(interfaceName, assemblies);
-    if (superType.type) {
-      processInterfaceType(
-        superType.type as spec.InterfaceType,
+  private generateTypeValidation(type: spec.Type, assembly: Assembly, projectInfo: ProjectInfo, types: Record<string, spec.Type>): ts.Statement[] {
+    if (!this.shouldRenderValidator(type, assembly)) {
+      return [];
+    }
+
+    const statements: ts.Statement[] = [];
+    let isEmpty = true;
+
+    // This will add the parameter to the set of visited objects, to prevent infinite recursion
+    statements.push(
+      ts.factory.createExpressionStatement(
+        ts.factory.createCallExpression(
+          ts.factory.createPropertyAccessExpression(ts.factory.createIdentifier(VISITED_OBJECTS_SET_NAME), 'add'),
+          undefined,
+          [ts.factory.createIdentifier(PARAMETER_NAME)],
+        ),
+      ),
+    );
+
+    const tryStatements = [];
+    if (spec.isDeprecated(type) && spec.isEnumType(type)) {
+      // The type is deprecated
+      tryStatements.push(createWarningFunctionCall(type.fqn, type.docs?.deprecated));
+      isEmpty = false;
+    }
+
+    if (spec.isEnumType(type) && type.locationInModule?.filename) {
+      // Check for deprecated enum members
+      //
+      // We need to compare to the value of the deprecated enum. We can do that in one of 2 ways:
+      //
+      // - Compare against `require('./actual-file').EnumType.SOME_ENUM_MEMBER`
+      // - Look up the enum member value and compare against `'some-enum-member'`.
+      //
+      // The first one introduces a circular dependency between this file and `actual-file.js`, so we
+      // will go with the second.
+      //
+      // One complication: two enum members can have the same value (shouldn't, but can!) where
+      // one symbolic name is deprecated but the other isn't. In that case we don't treat it as deprecated.
+      const memDecls = this.typeTracker.getEnumMembers(type.fqn);
+
+      const nonDeprecatedValues = new Set(
+        (type.members ?? [])
+          .filter((m) => !spec.isDeprecated(m))
+          .map((m) => this.typeChecker.getConstantValue(memDecls[m.name])!),
+      );
+      const deprecatedMembers = (type.members ?? []).filter(spec.isDeprecated);
+
+      for (const member of deprecatedMembers) {
+        const constantValue = this.typeChecker.getConstantValue(memDecls[member.name])!;
+        if (nonDeprecatedValues.has(constantValue)) {
+          // Collission with non-deprecated enum member
+          continue;
+        }
+
+        const condition = ts.factory.createBinaryExpression(
+          ts.factory.createIdentifier(PARAMETER_NAME),
+          ts.SyntaxKind.EqualsEqualsEqualsToken,
+          typeof constantValue === 'string'
+            ? ts.factory.createStringLiteral(constantValue)
+            : ts.factory.createNumericLiteral(constantValue),
+        );
+        tryStatements.push(
+          createWarningFunctionCall(`${type.fqn}#${member.name}`, member.docs?.deprecated, condition),
+        );
+        isEmpty = false;
+      }
+    } else if (spec.isInterfaceType(type) && type.datatype) {
+      const { statementsByProp, excludedProps } = this.processInterfaceType(
+        type,
         types,
         assembly,
         projectInfo,
-        statementsByProp,
-        excludedProps,
+        undefined,
+        undefined,
       );
+
+      for (const [name, statement] of statementsByProp.entries()) {
+        if (!excludedProps.has(name)) {
+          tryStatements.push(statement);
+          isEmpty = false;
+        }
+      }
     }
+
+    statements.push(
+      ts.factory.createTryStatement(
+        ts.factory.createBlock(tryStatements),
+        undefined,
+        ts.factory.createBlock([
+          ts.factory.createExpressionStatement(
+            ts.factory.createCallExpression(
+              ts.factory.createPropertyAccessExpression(
+                ts.factory.createIdentifier(VISITED_OBJECTS_SET_NAME),
+                'delete',
+              ),
+              undefined,
+              [ts.factory.createIdentifier(PARAMETER_NAME)],
+            ),
+          ),
+        ]),
+      ),
+    );
+
+    return isEmpty ? [] : statements;
   }
-  return { statementsByProp, excludedProps };
+
+  private processInterfaceType(
+    type: spec.InterfaceType,
+    types: { [p: string]: spec.Type },
+    assembly: Assembly,
+    projectInfo: ProjectInfo,
+    statementsByProp: Map<string, ts.Statement> = new Map<string, ts.Statement>(),
+    excludedProps: Set<string> = new Set<string>(),
+  ) {
+    for (const prop of Object.values(type.properties ?? {})) {
+      const fqn = `${type.fqn}#${prop.name}`;
+      if (spec.isDeprecated(prop) || spec.isDeprecated(type)) {
+        // If the property individually is deprecated, or the entire type is deprecated
+        const deprecatedDocs = prop.docs?.deprecated ?? type.docs?.deprecated;
+        const statement = createWarningFunctionCall(
+          fqn,
+          deprecatedDocs,
+          ts.factory.createBinaryExpression(
+            ts.factory.createStringLiteral(prop.name),
+            ts.SyntaxKind.InKeyword,
+            ts.factory.createIdentifier(PARAMETER_NAME),
+          ),
+          undefined,
+        );
+        statementsByProp.set(prop.name, statement);
+      } else {
+        /* If a prop is not deprecated, we don't want to generate a warning for it,
+          even if another property with the same name is deprecated in another
+          super-interface. */
+        excludedProps.add(prop.name);
+      }
+
+      if (spec.isNamedTypeReference(prop.type) && Object.keys(types).includes(prop.type.fqn)) {
+        if (this.shouldRenderValidator(types[prop.type.fqn], assembly)) {
+          const functionName = importedFunctionName(prop.type.fqn, assembly, projectInfo);
+          if (functionName) {
+            const statement = createTypeHandlerCall(functionName, `${PARAMETER_NAME}.${prop.name}`);
+            statementsByProp.set(`${prop.name}_`, statement);
+          }
+        }
+      } else if (
+        spec.isCollectionTypeReference(prop.type) &&
+        spec.isNamedTypeReference(prop.type.collection.elementtype)
+      ) {
+        const functionName = importedFunctionName(prop.type.collection.elementtype.fqn, assembly, projectInfo);
+        if (functionName) {
+          const statement = createTypeHandlerCall(
+            functionName,
+            `${PARAMETER_NAME}.${prop.name}`,
+            prop.type.collection.kind,
+          );
+          statementsByProp.set(`${prop.name}_`, statement);
+        }
+      } else if (
+        spec.isUnionTypeReference(prop.type) &&
+        spec.isNamedTypeReference(prop.type.union.types[0]) &&
+        Object.keys(types).includes(prop.type.union.types[0].fqn)
+      ) {
+        const functionName = importedFunctionName(prop.type.union.types[0].fqn, assembly, projectInfo);
+        if (functionName) {
+          const statement = createTypeHandlerCall(functionName, `${PARAMETER_NAME}.${prop.name}`);
+          statementsByProp.set(`${prop.name}_`, statement);
+        }
+      }
+    }
+
+    // We also generate calls to all the supertypes
+    for (const interfaceName of type.interfaces ?? []) {
+      const assemblies = projectInfo.dependencyClosure.concat(assembly);
+      const superType = findType(interfaceName, assemblies);
+      if (superType.type) {
+        this.processInterfaceType(
+          superType.type as spec.InterfaceType,
+          types,
+          assembly,
+          projectInfo,
+          statementsByProp,
+          excludedProps,
+        );
+      }
+    }
+    return { statementsByProp, excludedProps };
+  }
+
 }
 
 function fnName(fqn: string): string {
@@ -295,10 +418,7 @@ function createWarningFunctionCall(
   return condition ? ts.factory.createIfStatement(condition, mainStatement) : mainStatement;
 }
 
-function generateWarningsFile(projectRoot: string, functionDeclarations: ts.FunctionDeclaration[]) {
-  const names = [...functionDeclarations].map((d) => d.name?.text).filter(Boolean);
-  const exportedSymbols = [WARNING_FUNCTION_NAME, GET_PROPERTY_DESCRIPTOR, DEPRECATION_ERROR, ...names].join(',');
-
+function generateWarningsFile(projectRoot: string, validatorStatements: ts.Statement[]) {
   const functionText = `function ${WARNING_FUNCTION_NAME}(name, deprecationMessage) {
   const deprecated = process.env.JSII_DEPRECATED;
   const deprecationMode = ['warn', 'fail', 'quiet'].includes(deprecated) ? deprecated : 'warn';
@@ -339,7 +459,18 @@ class ${DEPRECATION_ERROR} extends Error {
   }
 }
 
-module.exports = {${exportedSymbols}}
+function nop() {
+}
+
+module.exports = new Proxy({}, {
+  get(target, prop, receiver) {
+    if (prop === '${WARNING_FUNCTION_NAME}') return ${WARNING_FUNCTION_NAME};
+    if (prop === '${GET_PROPERTY_DESCRIPTOR}') return ${GET_PROPERTY_DESCRIPTOR};
+    if (prop === '${DEPRECATION_ERROR}') return ${DEPRECATION_ERROR};
+
+    return ${VALIDATORS_OBJ}[prop] ?? nop;
+  },
+});
 `;
 
   const printer = ts.createPrinter({ newLine: ts.NewLineKind.LineFeed });
@@ -351,8 +482,8 @@ module.exports = {${exportedSymbols}}
     ts.ScriptKind.JS,
   );
 
-  const declarations = functionDeclarations.map((declaration) =>
-    printer.printNode(ts.EmitHint.Unspecified, declaration, resultFile),
+  const declarations = validatorStatements.map((st) =>
+    printer.printNode(ts.EmitHint.Unspecified, st, resultFile),
   );
 
   const content = declarations.concat(printer.printFile(resultFile)).join('\n');
@@ -540,6 +671,19 @@ class Transformer {
   }
 }
 
+function findType2(fqn: string, assembly: Assembly): spec.Type | 'other-assembly' {
+  // Is from a different assembly?
+  if (!fqn.startsWith(`${assembly.name}.`)) {
+    return 'other-assembly';
+  }
+
+  const type = (assembly.types ?? {})[fqn];
+  if (!type) {
+    throw new Error(`Could not find type in same assembly: ${fqn}`);
+  }
+  return type;
+}
+
 function createWarningStatementForElement(
   element: spec.Callable | spec.Property,
   classType: spec.ClassType,
@@ -686,9 +830,13 @@ function createTypeHandlerCall(
           ),
         ),
         ts.factory.createExpressionStatement(
-          ts.factory.createCallExpression(ts.factory.createIdentifier(functionName), undefined, [
-            ts.factory.createIdentifier(parameter),
-          ]),
+          ts.factory.createCallExpression(
+            ts.factory.createPropertyAccessExpression(ts.factory.createIdentifier('module.exports'), functionName),
+            undefined,
+            [
+              ts.factory.createIdentifier(parameter),
+            ],
+          ),
         ),
       );
   }

@@ -67,7 +67,7 @@ exports[`integration test: @scope/jsii-calc-base 1`] = `
     "@scope/jsii-calc-base.deep": {
       "locationInModule": {
         "filename": "lib/index.ts",
-        "line": 39,
+        "line": 43,
       },
       "symbolId": "lib/deep/index:",
     },
@@ -141,7 +141,7 @@ exports[`integration test: @scope/jsii-calc-base 1`] = `
       "kind": "interface",
       "locationInModule": {
         "filename": "lib/index.ts",
-        "line": 22,
+        "line": 26,
       },
       "name": "BaseProps",
       "properties": [
@@ -150,7 +150,7 @@ exports[`integration test: @scope/jsii-calc-base 1`] = `
           "immutable": true,
           "locationInModule": {
             "filename": "lib/index.ts",
-            "line": 23,
+            "line": 27,
           },
           "name": "bar",
           "type": {
@@ -169,14 +169,14 @@ exports[`integration test: @scope/jsii-calc-base 1`] = `
       "kind": "interface",
       "locationInModule": {
         "filename": "lib/index.ts",
-        "line": 26,
+        "line": 30,
       },
       "methods": [
         {
           "abstract": true,
           "locationInModule": {
             "filename": "lib/index.ts",
-            "line": 27,
+            "line": 31,
           },
           "name": "bar",
         },
@@ -194,13 +194,13 @@ exports[`integration test: @scope/jsii-calc-base 1`] = `
       "kind": "class",
       "locationInModule": {
         "filename": "lib/index.ts",
-        "line": 33,
+        "line": 37,
       },
       "methods": [
         {
           "locationInModule": {
             "filename": "lib/index.ts",
-            "line": 34,
+            "line": 38,
           },
           "name": "consume",
           "parameters": [
@@ -218,6 +218,32 @@ exports[`integration test: @scope/jsii-calc-base 1`] = `
       ],
       "name": "StaticConsumer",
       "symbolId": "lib/index:StaticConsumer",
+    },
+    "@scope/jsii-calc-base.TypeToContainVeryBaseProps": {
+      "assembly": "@scope/jsii-calc-base",
+      "datatype": true,
+      "fqn": "@scope/jsii-calc-base.TypeToContainVeryBaseProps",
+      "kind": "interface",
+      "locationInModule": {
+        "filename": "lib/index.ts",
+        "line": 22,
+      },
+      "name": "TypeToContainVeryBaseProps",
+      "properties": [
+        {
+          "abstract": true,
+          "immutable": true,
+          "locationInModule": {
+            "filename": "lib/index.ts",
+            "line": 23,
+          },
+          "name": "veryBaseProps",
+          "type": {
+            "fqn": "@scope/jsii-calc-base-of-base.VeryBaseProps",
+          },
+        },
+      ],
+      "symbolId": "lib/index:TypeToContainVeryBaseProps",
     },
     "@scope/jsii-calc-base.deep.BarrelImportClass": {
       "assembly": "@scope/jsii-calc-base",

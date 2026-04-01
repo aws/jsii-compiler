@@ -19,6 +19,10 @@ export abstract class Base {
   }
 }
 
+export interface TypeToContainVeryBaseProps {
+  readonly veryBaseProps: VeryBaseProps;
+}
+
 export interface BaseProps extends VeryBaseProps {
   readonly bar: string;
 }
