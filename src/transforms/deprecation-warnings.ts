@@ -55,11 +55,19 @@ export class DeprecationWarningsInjector {
 
     const fileStatements: ts.Statement[] = [];
     fileStatements.push(
-      ts.factory.createVariableStatement(undefined,
-        ts.factory.createVariableDeclarationList([
-          ts.factory.createVariableDeclaration(VALIDATORS_OBJ, undefined, undefined,
-          ts.factory.createObjectLiteralExpression(validationFunctions)),
-        ], ts.NodeFlags.Const),
+      ts.factory.createVariableStatement(
+        undefined,
+        ts.factory.createVariableDeclarationList(
+          [
+            ts.factory.createVariableDeclaration(
+              VALIDATORS_OBJ,
+              undefined,
+              undefined,
+              ts.factory.createObjectLiteralExpression(validationFunctions),
+            ),
+          ],
+          ts.NodeFlags.Const,
+        ),
       ),
     );
 
@@ -189,7 +197,12 @@ export class DeprecationWarningsInjector {
     }
   }
 
-  private generateTypeValidation(type: spec.Type, assembly: Assembly, projectInfo: ProjectInfo, types: Record<string, spec.Type>): ts.Statement[] {
+  private generateTypeValidation(
+    type: spec.Type,
+    assembly: Assembly,
+    projectInfo: ProjectInfo,
+    types: Record<string, spec.Type>,
+  ): ts.Statement[] {
     if (!this.shouldRenderValidator(type, assembly)) {
       return [];
     }
@@ -251,9 +264,7 @@ export class DeprecationWarningsInjector {
             ? ts.factory.createStringLiteral(constantValue)
             : ts.factory.createNumericLiteral(constantValue),
         );
-        tryStatements.push(
-          createWarningFunctionCall(`${type.fqn}#${member.name}`, member.docs?.deprecated, condition),
-        );
+        tryStatements.push(createWarningFunctionCall(`${type.fqn}#${member.name}`, member.docs?.deprecated, condition));
         isEmpty = false;
       }
     } else if (spec.isInterfaceType(type) && type.datatype) {
@@ -378,7 +389,6 @@ export class DeprecationWarningsInjector {
     }
     return { statementsByProp, excludedProps };
   }
-
 }
 
 function fnName(fqn: string): string {
@@ -482,9 +492,7 @@ module.exports = new Proxy({}, {
     ts.ScriptKind.JS,
   );
 
-  const declarations = validatorStatements.map((st) =>
-    printer.printNode(ts.EmitHint.Unspecified, st, resultFile),
-  );
+  const declarations = validatorStatements.map((st) => printer.printNode(ts.EmitHint.Unspecified, st, resultFile));
 
   const content = declarations.concat(printer.printFile(resultFile)).join('\n');
 
@@ -833,9 +841,7 @@ function createTypeHandlerCall(
           ts.factory.createCallExpression(
             ts.factory.createPropertyAccessExpression(ts.factory.createIdentifier('module.exports'), functionName),
             undefined,
-            [
-              ts.factory.createIdentifier(parameter),
-            ],
+            [ts.factory.createIdentifier(parameter)],
           ),
         ),
       );
