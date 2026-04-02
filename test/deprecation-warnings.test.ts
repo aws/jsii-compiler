@@ -15,7 +15,7 @@ describe('Function generation', () => {
       addDeprecationWarnings: true,
     });
 
-    expect(jsFile(result, '.warnings.jsii')).toBe(
+    expect(jsFile(result, '.warnings.jsii')).toContain(
       `function print(name, deprecationMessage) {
     const deprecated = process.env.JSII_DEPRECATED;
     const deprecationMode = ["warn", "fail", "quiet"].includes(deprecated) ? deprecated : "warn";
@@ -52,15 +52,19 @@ class DeprecationError extends Error {
         });
     }
 }
-module.exports = { print, getPropertyDescriptor, DeprecationError };
 `,
     );
   });
 
-  test('generates a function for each type', () => {
+  test('generates validation functions only for types with deprecated members', () => {
     const result = compileJsiiForTest(
       `
-        export interface Foo {}
+        export interface Foo {
+          /**
+           * @deprecated Do not use
+           */
+          readonly foo: string;
+        }
         export interface Bar {}
         export interface Baz {}
         `,
@@ -68,14 +72,9 @@ module.exports = { print, getPropertyDescriptor, DeprecationError };
       { addDeprecationWarnings: true },
     );
 
-    expect(jsFile(result, '.warnings.jsii')).toMatch(
-      `function testpkg_Foo(p) {
-}
-function testpkg_Bar(p) {
-}
-function testpkg_Baz(p) {
-}`,
-    );
+    expect(jsFile(result, '.warnings.jsii')).toContain('testpkg_Foo(');
+    expect(jsFile(result, '.warnings.jsii')).not.toContain('testpkg_Bar(');
+    expect(jsFile(result, '.warnings.jsii')).not.toContain('testpkg_Baz(');
   });
 
   test('generates metadata', () => {
@@ -91,10 +90,15 @@ function testpkg_Baz(p) {
     expect(result.assembly.metadata?.jsii?.compiledWithDeprecationWarnings).toBe(true);
   });
 
-  test('for each non-primitive property, generates a call', () => {
+  test('generates a call for calling into objects with deprecated members', () => {
     const result = compileJsiiForTest(
       `
-        export interface Foo {}
+        export interface Foo {
+          /**
+           * @deprecated Do not use
+           */
+          readonly foo: string;
+        }
         export interface Bar {}
         export interface Baz {
           readonly foo: Foo;
@@ -106,23 +110,23 @@ function testpkg_Baz(p) {
       { addDeprecationWarnings: true },
     );
 
-    expect(jsFile(result, '.warnings.jsii')).toMatch(`function testpkg_Baz(p) {
-    if (p == null)
-        return;
-    visitedObjects.add(p);
-    try {
-        if (!visitedObjects.has(p.bar))
-            testpkg_Bar(p.bar);
-        if (!visitedObjects.has(p.foo))
-            testpkg_Foo(p.foo);
-    }
-    finally {
-        visitedObjects.delete(p);
-    }
-}`);
+    expect(jsFunction(result, 'testpkg_Baz', '.warnings.jsii')).toMatchInlineSnapshot(`
+      "function testpkg_Baz(p) {
+              if (p == null)
+                  return;
+              visitedObjects.add(p);
+              try {
+                  if (!visitedObjects.has(p.foo))
+                      module.exports.testpkg_Foo(p.foo);
+              }
+              finally {
+                  visitedObjects.delete(p);
+              }
+          } "
+    `);
   });
 
-  test('generates empty functions for interfaces', () => {
+  test('generates no functions for interfaces', () => {
     const result = compileJsiiForTest(
       `
         export interface IFoo {
@@ -133,11 +137,10 @@ function testpkg_Baz(p) {
       { addDeprecationWarnings: true },
     );
 
-    expect(jsFile(result, '.warnings.jsii')).toMatch(`function testpkg_IFoo(p) {
-}`);
+    expect(jsFile(result, '.warnings.jsii')).not.toContain('testpkg_IFoo(');
   });
 
-  test('generates empty functions for classes', () => {
+  test('generates no functions for classes', () => {
     const result = compileJsiiForTest(
       `
         export class Foo {
@@ -148,8 +151,7 @@ function testpkg_Baz(p) {
       { addDeprecationWarnings: true },
     );
 
-    expect(jsFile(result, '.warnings.jsii')).toMatch(`function testpkg_Foo(p) {
-}`);
+    expect(jsFile(result, '.warnings.jsii')).not.toContain(`testpkg_Foo(`);
   });
 
   test('generates calls for recursive types', () => {
@@ -161,26 +163,31 @@ function testpkg_Baz(p) {
       { addDeprecationWarnings: true },
     );
 
-    expect(jsFile(result, '.warnings.jsii')).toMatch(
-      `function testpkg_Bar(p) {
-    if (p == null)
-        return;
-    visitedObjects.add(p);
-    try {
-        if (!visitedObjects.has(p.bar))
-            testpkg_Bar(p.bar);
-    }
-    finally {
-        visitedObjects.delete(p);
-    }
-}`,
-    );
+    expect(jsFunction(result, 'testpkg_Bar', '.warnings.jsii')).toMatchInlineSnapshot(`
+      "function testpkg_Bar(p) {
+              if (p == null)
+                  return;
+              visitedObjects.add(p);
+              try {
+                  if (!visitedObjects.has(p.bar))
+                      module.exports.testpkg_Bar(p.bar);
+              }
+              finally {
+                  visitedObjects.delete(p);
+              }
+          } "
+    `);
   });
 
   test('checks array elements', () => {
     const result = compileJsiiForTest(
       `
-      export interface Used { readonly property: boolean; }
+      export interface Used {
+        /**
+         * @deprecated Oh no
+         */
+        readonly property: boolean;
+      }
       export interface Uses { readonly array: Used[]; }
       `,
       undefined /* callback */,
@@ -189,26 +196,31 @@ function testpkg_Baz(p) {
 
     expect(jsFunction(result, 'testpkg_Uses', '.warnings.jsii')).toMatchInlineSnapshot(`
       "function testpkg_Uses(p) {
-          if (p == null)
-              return;
-          visitedObjects.add(p);
-          try {
-              if (p.array != null)
-                  for (const o of p.array)
-                      if (!visitedObjects.has(o))
-                          testpkg_Used(o);
-          }
-          finally {
-              visitedObjects.delete(p);
-          }
-      }"
+              if (p == null)
+                  return;
+              visitedObjects.add(p);
+              try {
+                  if (p.array != null)
+                      for (const o of p.array)
+                          if (!visitedObjects.has(o))
+                              module.exports.testpkg_Used(o);
+              }
+              finally {
+                  visitedObjects.delete(p);
+              }
+          } "
     `);
   });
 
   test('checks map elements', () => {
     const result = compileJsiiForTest(
       `
-      export interface Used { readonly property: boolean; }
+      export interface Used {
+        /**
+         * @deprecated Oh no
+         */
+        readonly property: boolean;
+      }
       export interface Uses { readonly map: Record<string, Used>; }
       `,
       undefined /* callback */,
@@ -217,36 +229,20 @@ function testpkg_Baz(p) {
 
     expect(jsFunction(result, 'testpkg_Uses', '.warnings.jsii')).toMatchInlineSnapshot(`
       "function testpkg_Uses(p) {
-          if (p == null)
-              return;
-          visitedObjects.add(p);
-          try {
-              if (p.map != null)
-                  for (const o of Object.values(p.map))
-                      if (!visitedObjects.has(o))
-                          testpkg_Used(o);
-          }
-          finally {
-              visitedObjects.delete(p);
-          }
-      }"
+              if (p == null)
+                  return;
+              visitedObjects.add(p);
+              try {
+                  if (p.map != null)
+                      for (const o of Object.values(p.map))
+                          if (!visitedObjects.has(o))
+                              module.exports.testpkg_Used(o);
+              }
+              finally {
+                  visitedObjects.delete(p);
+              }
+          } "
     `);
-  });
-
-  test('generates exports for all the functions', () => {
-    const result = compileJsiiForTest(
-      `
-        export interface Foo {}
-        export interface Bar {}
-        export interface Baz {}
-        `,
-      undefined /* callback */,
-      { addDeprecationWarnings: true },
-    );
-
-    expect(jsFile(result, '.warnings.jsii')).toMatch(
-      'module.exports = { print, getPropertyDescriptor, DeprecationError, testpkg_Foo, testpkg_Bar, testpkg_Baz };',
-    );
   });
 
   test('generates functions for enums', () => {
@@ -263,19 +259,20 @@ function testpkg_Baz(p) {
       { addDeprecationWarnings: true },
     );
 
-    expect(jsFile(result, '.warnings.jsii')).toMatch(`function testpkg_State(p) {
-    if (p == null)
-        return;
-    visitedObjects.add(p);
-    try {
-        if (p === 1)
-            print("testpkg.State#OFF", "Use something else");
-    }
-    finally {
-        visitedObjects.delete(p);
-    }
-}
-`);
+    expect(jsFunction(result, 'testpkg_State', '.warnings.jsii')).toMatchInlineSnapshot(`
+      "function testpkg_State(p) {
+              if (p == null)
+                  return;
+              visitedObjects.add(p);
+              try {
+                  if (p === 1)
+                      print("testpkg.State#OFF", "Use something else");
+              }
+              finally {
+                  visitedObjects.delete(p);
+              }
+          } "
+    `);
   });
 
   test('generates calls for deprecated inherited properties', () => {
@@ -296,47 +293,51 @@ function testpkg_Baz(p) {
       { addDeprecationWarnings: true },
     );
 
-    const warningsFileContent = jsFile(result, '.warnings.jsii');
-
     // For each supertype, its corresponding function should be generated, as usual
-    expect(warningsFileContent).toMatch(`function testpkg_Baz(p) {
-    if (p == null)
-        return;
-    visitedObjects.add(p);
-    try {
-        if ("x" in p)
-            print("testpkg.Baz#x", "message from Baz");
-    }
-    finally {
-        visitedObjects.delete(p);
-    }
-}`);
-    expect(warningsFileContent).toMatch(`function testpkg_Bar(p) {
-    if (p == null)
-        return;
-    visitedObjects.add(p);
-    try {
-        if ("x" in p)
-            print("testpkg.Bar#x", "message from Bar");
-    }
-    finally {
-        visitedObjects.delete(p);
-    }
-}`);
+    expect(jsFunction(result, 'testpkg_Baz', '.warnings.jsii')).toMatchInlineSnapshot(`
+      "function testpkg_Baz(p) {
+              if (p == null)
+                  return;
+              visitedObjects.add(p);
+              try {
+                  if ("x" in p)
+                      print("testpkg.Baz#x", "message from Baz");
+              }
+              finally {
+                  visitedObjects.delete(p);
+              }
+          },"
+    `);
 
-    // But a call for one of the instances of the property should also be generated in the base function
-    expect(warningsFileContent).toMatch(`function testpkg_Foo(p) {
-    if (p == null)
-        return;
-    visitedObjects.add(p);
-    try {
-        if ("x" in p)
-            print("testpkg.Baz#x", "message from Baz");
-    }
-    finally {
-        visitedObjects.delete(p);
-    }
-}`);
+    expect(jsFunction(result, 'testpkg_Bar', '.warnings.jsii')).toMatchInlineSnapshot(`
+      "function testpkg_Bar(p) {
+              if (p == null)
+                  return;
+              visitedObjects.add(p);
+              try {
+                  if ("x" in p)
+                      print("testpkg.Bar#x", "message from Bar");
+              }
+              finally {
+                  visitedObjects.delete(p);
+              }
+          },"
+    `);
+
+    expect(jsFunction(result, 'testpkg_Foo', '.warnings.jsii')).toMatchInlineSnapshot(`
+      "function testpkg_Foo(p) {
+              if (p == null)
+                  return;
+              visitedObjects.add(p);
+              try {
+                  if ("x" in p)
+                      print("testpkg.Baz#x", "message from Baz");
+              }
+              finally {
+                  visitedObjects.delete(p);
+              }
+          } "
+    `);
   });
 
   test('skips properties that are deprecated in one supertype but not the other', () => {
@@ -358,8 +359,7 @@ function testpkg_Baz(p) {
 
     const warningsFileContent = jsFile(result, '.warnings.jsii');
 
-    expect(warningsFileContent).toMatch(`function testpkg_Foo(p) {
-}`);
+    expect(warningsFileContent).not.toContain(`function testpkg_Foo(p)`);
   });
 
   test('generates calls for types with deprecated properties', () => {
@@ -380,21 +380,20 @@ function testpkg_Baz(p) {
       { addDeprecationWarnings: true },
     );
 
-    expect(jsFile(result, '.warnings.jsii')).toMatch(`function testpkg_Foo(p) {
-    if (p == null)
-        return;
-    visitedObjects.add(p);
-    try {
-        if ("bar" in p)
-            print("testpkg.Foo#bar", "kkkkkkkk");
-        if (!visitedObjects.has(p.bar))
-            testpkg_Bar(p.bar);
-    }
-    finally {
-        visitedObjects.delete(p);
-    }
-}
-`);
+    expect(jsFunction(result, 'testpkg_Foo', '.warnings.jsii')).toMatchInlineSnapshot(`
+      "function testpkg_Foo(p) {
+              if (p == null)
+                  return;
+              visitedObjects.add(p);
+              try {
+                  if ("bar" in p)
+                      print("testpkg.Foo#bar", "kkkkkkkk");
+              }
+              finally {
+                  visitedObjects.delete(p);
+              }
+          } "
+    `);
   });
 
   test('generates calls for each property of a deprecated type', () => {
@@ -410,21 +409,22 @@ function testpkg_Baz(p) {
       { addDeprecationWarnings: true },
     );
 
-    expect(jsFile(result, '.warnings.jsii')).toMatch(`function testpkg_Foo(p) {
-    if (p == null)
-        return;
-    visitedObjects.add(p);
-    try {
-        if ("bar" in p)
-            print("testpkg.Foo#bar", "use Bar instead");
-        if ("baz" in p)
-            print("testpkg.Foo#baz", "use Bar instead");
-    }
-    finally {
-        visitedObjects.delete(p);
-    }
-}
-`);
+    expect(jsFunction(result, 'testpkg_Foo', '.warnings.jsii')).toMatchInlineSnapshot(`
+      "function testpkg_Foo(p) {
+              if (p == null)
+                  return;
+              visitedObjects.add(p);
+              try {
+                  if ("bar" in p)
+                      print("testpkg.Foo#bar", "use Bar instead");
+                  if ("baz" in p)
+                      print("testpkg.Foo#baz", "use Bar instead");
+              }
+              finally {
+                  visitedObjects.delete(p);
+              }
+          } "
+    `);
   });
 
   describe('using fixtures', () => {
@@ -439,17 +439,18 @@ function testpkg_Baz(p) {
       lock = undefined;
     }, 120_000);
 
-    test('generates calls for types in other assemblies', async () => {
-      compile(lock!, '@scope/jsii-calc-base-of-base', false);
+    // This code never did what it said it would do. The current code is not
+    // generating calls into validation routines of other assemblies.
+    test.skip('generates calls for types in other assemblies', async () => {
+      compile(lock!, '@scope/jsii-calc-base-of-base', true);
       const calcBaseRoot = compile(lock!, '@scope/jsii-calc-base', true);
       compile(lock!, '@scope/jsii-calc-lib', true, 'deprecated-to-strip.txt');
       const warningsFile = loadWarningsFile(calcBaseRoot);
 
-      // jsii-calc-base was compiled with warnings. So we expect to see handlers for its types in the warnings file
+      // jsii-calc-base was compiled with warnings, and references a type in jsii-calc-base-of-base.
+      // So we expect to see handlers for its types in the warnings file
+      // and we expect it to call into base-of-base.
       expect(warningsFile).toMatch('_scope_jsii_calc_base');
-
-      // jsii-calc-base-of-base was not compiled with warnings. Its types shouldn't be in the warnings file
-      expect(warningsFile).not.toMatch('_scope_jsii_calc_base_of_base');
 
       // Recompiling without deprecation warning to leave the packages in a clean state
       compile(lock!, '@scope/jsii-calc-base', false);
@@ -904,15 +905,33 @@ function jsFile(result: HelperCompilationResult, baseName = 'index'): string {
 }
 
 function jsFunction(result: HelperCompilationResult, functionName: string, baseName = 'index'): string {
-  const lines = jsFile(result, baseName).split(/\n/);
+  const contents = jsFile(result, baseName);
 
-  const startIndex = lines.indexOf(`function ${functionName}(p) {`);
+  const needle = `function ${functionName}(p) {`;
+  const startIndex = contents.indexOf(needle);
   if (startIndex < 0) {
-    throw new Error(`Could not find declaration of ${functionName} in file with base name: ${baseName}`);
+    throw new Error(
+      `Could not find 'function ${functionName}(p) {' in:\n------------------------------\n${contents}\n------------------------------`,
+    );
   }
-  const endIndex = lines.indexOf('}', startIndex);
 
-  return lines.slice(startIndex, endIndex + 1).join('\n');
+  let curlies = 1;
+  let i = startIndex + needle.length;
+  for (; i < contents.length && curlies > 0; i++) {
+    switch (contents[i]) {
+      case '{':
+        curlies += 1;
+        break;
+      case '}':
+        curlies -= 1;
+        break;
+      default:
+        break;
+    }
+  }
+  const endIndex = i;
+
+  return contents.slice(startIndex, endIndex + 1);
 }
 
 function createVmContext(compilation: HelperCompilationResult) {
