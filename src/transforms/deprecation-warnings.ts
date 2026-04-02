@@ -30,13 +30,12 @@ export class DeprecationWarningsInjector {
 
   public process(assembly: Assembly, projectInfo: ProjectInfo) {
     const projectRoot = projectInfo.projectRoot;
-    const statements: ts.Statement[] = [];
     const validationFunctions: ts.ObjectLiteralElementLike[] = [];
 
     const types = assembly.types ?? {};
     for (const type of Object.values(types)) {
-      const statements = this.generateTypeValidation(type, assembly, projectInfo, types);
-      if (statements.length === 0) {
+      const fnStatements = this.generateTypeValidation(type, assembly, projectInfo, types);
+      if (fnStatements.length === 0) {
         continue;
       }
 
@@ -49,12 +48,13 @@ export class DeprecationWarningsInjector {
         [],
         [paramValue],
         undefined,
-        createFunctionBlock(statements),
+        createFunctionBlock(fnStatements),
       );
       validationFunctions.push(ts.factory.createPropertyAssignment(functionName, functionExpr));
     }
 
-    statements.push(
+    const fileStatements: ts.Statement[] = [];
+    fileStatements.push(
       ts.factory.createVariableStatement(undefined,
         ts.factory.createVariableDeclarationList([
           ts.factory.createVariableDeclaration(VALIDATORS_OBJ, undefined, undefined,
@@ -78,7 +78,7 @@ export class DeprecationWarningsInjector {
       ],
     };
 
-    generateWarningsFile(projectRoot, statements);
+    generateWarningsFile(projectRoot, fileStatements);
   }
 
   public get customTransformers(): ts.CustomTransformers {
