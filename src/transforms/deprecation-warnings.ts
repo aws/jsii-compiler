@@ -128,10 +128,6 @@ export class DeprecationWarningsInjector {
       return this.shouldRenderValidatorCache[type.fqn];
     }
 
-    if (type.fqn === '@scope/jsii-calc-base.TypeToContainVeryBaseProps') {
-      debugger;
-    }
-
     if (this.validatorCacheSeenSet.has(type.fqn)) {
       // To be safe we need to say this is true.
       return true;
@@ -757,7 +753,7 @@ function importedFunctionName(typeName: string, assembly: Assembly, projectInfo:
   if (type) {
     return moduleName !== assembly.name
       ? `require("${moduleName}/${WARNINGSCODE_FILE_NAME}").${fnName(type.fqn)}`
-      : fnName(type.fqn);
+      : `module.exports.${fnName(type.fqn)}`;
   }
   return undefined;
 }
@@ -839,7 +835,7 @@ function createTypeHandlerCall(
         ),
         ts.factory.createExpressionStatement(
           ts.factory.createCallExpression(
-            ts.factory.createPropertyAccessExpression(ts.factory.createIdentifier('module.exports'), functionName),
+            ts.factory.createIdentifier(functionName),
             undefined,
             [ts.factory.createIdentifier(parameter)],
           ),
