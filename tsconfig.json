@@ -27,6 +27,16 @@
     "strictPropertyInitialization": true,
     "stripInternal": true,
     "target": "ES2020",
+    "types": [
+      "clone",
+      "deep-equal",
+      "glob",
+      "jest",
+      "lockfile",
+      "node",
+      "semver",
+      "tar"
+    ],
     "noImplicitOverride": true,
     "skipLibCheck": true,
     "moduleResolution": "node16",
