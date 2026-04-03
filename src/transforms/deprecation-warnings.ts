@@ -834,11 +834,9 @@ function createTypeHandlerCall(
           ),
         ),
         ts.factory.createExpressionStatement(
-          ts.factory.createCallExpression(
-            ts.factory.createIdentifier(functionName),
-            undefined,
-            [ts.factory.createIdentifier(parameter)],
-          ),
+          ts.factory.createCallExpression(ts.factory.createIdentifier(functionName), undefined, [
+            ts.factory.createIdentifier(parameter),
+          ]),
         ),
       );
   }
