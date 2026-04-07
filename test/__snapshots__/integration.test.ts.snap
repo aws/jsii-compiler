@@ -239,7 +239,12 @@ exports[`integration test: @scope/jsii-calc-base 1`] = `
           },
           "name": "veryBaseProps",
           "type": {
-            "fqn": "@scope/jsii-calc-base-of-base.VeryBaseProps",
+            "collection": {
+              "elementtype": {
+                "fqn": "@scope/jsii-calc-base-of-base.VeryBaseProps",
+              },
+              "kind": "array",
+            },
           },
         },
       ],

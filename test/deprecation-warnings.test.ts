@@ -440,8 +440,8 @@ class DeprecationError extends Error {
     }, 120_000);
 
     // This code never did what it said it would do. The current code is not
-    // generating calls into validation routines of other assemblies.
-    test.skip('generates calls for types in other assemblies', async () => {
+    // generating calls into validation routines of other assemblies
+    test('generates calls for types in other assemblies', async () => {
       compile(lock!, '@scope/jsii-calc-base-of-base', true);
       const calcBaseRoot = compile(lock!, '@scope/jsii-calc-base', true);
       compile(lock!, '@scope/jsii-calc-lib', true, 'deprecated-to-strip.txt');
@@ -450,7 +450,22 @@ class DeprecationError extends Error {
       // jsii-calc-base was compiled with warnings, and references a type in jsii-calc-base-of-base.
       // So we expect to see handlers for its types in the warnings file
       // and we expect it to call into base-of-base.
-      expect(warningsFile).toMatch('_scope_jsii_calc_base');
+      expect(extractFunction(warningsFile, '_scope_jsii_calc_base_TypeToContainVeryBaseProps')).toMatchInlineSnapshot(`
+        "function _scope_jsii_calc_base_TypeToContainVeryBaseProps(p) {
+                if (p == null)
+                    return;
+                visitedObjects.add(p);
+                try {
+                    if (p.veryBaseProps != null)
+                        for (const o of p.veryBaseProps)
+                            if (!visitedObjects.has(o))
+                                require("@scope/jsii-calc-base-of-base/.warnings.jsii.js")._scope_jsii_calc_base_of_base_VeryBaseProps(o);
+                }
+                finally {
+                    visitedObjects.delete(p);
+                }
+            } "
+      `);
 
       // Recompiling without deprecation warning to leave the packages in a clean state
       compile(lock!, '@scope/jsii-calc-base', false);
@@ -906,7 +921,10 @@ function jsFile(result: HelperCompilationResult, baseName = 'index'): string {
 
 function jsFunction(result: HelperCompilationResult, functionName: string, baseName = 'index'): string {
   const contents = jsFile(result, baseName);
+  return extractFunction(contents, functionName);
+}
 
+function extractFunction(contents: string, functionName: string): string {
   const needle = `function ${functionName}(p) {`;
   const startIndex = contents.indexOf(needle);
   if (startIndex < 0) {
