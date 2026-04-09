@@ -6,7 +6,6 @@ import { github, typescript } from 'projen';
 import { JobPermission } from 'projen/lib/github/workflows-model';
 import * as tar from 'tar';
 import * as yargs from 'yargs';
-import { workflowSetup } from './common';
 
 export class BenchmarkTest {
   public constructor(
@@ -46,7 +45,7 @@ export class BenchmarkTest {
           },
         },
         steps: [
-          ...workflowSetup(project),
+          { name: 'Enable corepack', run: 'corepack enable' },
           {
             name: 'Download artifact',
             uses: 'actions/download-artifact@v4',
