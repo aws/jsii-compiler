@@ -1,5 +1,5 @@
 import { github, typescript } from 'projen';
-import { ACTIONS_CHECKOUT, ACTIONS_SETUP_NODE, YARN_INSTALL } from './common';
+import { workflowSetup } from './common';
 
 export const enum PublishTargetOutput {
   DIST_TAG = 'dist-tag',
@@ -57,9 +57,10 @@ export class ReleaseWorkflow {
       },
       runsOn: ['ubuntu-latest'],
       steps: [
-        ACTIONS_CHECKOUT(),
-        ACTIONS_SETUP_NODE(nodeVersion),
-        YARN_INSTALL(),
+        github.WorkflowSteps.checkout({
+          with: { ref: '${{ github.ref }}', repository: '${{ github.repository }}' },
+        }),
+        ...workflowSetup(this.project),
         {
           name: 'Prepare Release',
           run: 'yarn release ${{ github.ref_name }}',
@@ -216,7 +217,12 @@ export class ReleaseWorkflow {
       steps: [
         downloadArtifactStep,
         {
-          ...ACTIONS_SETUP_NODE(),
+          name: 'Enable corepack',
+          run: 'corepack enable',
+        },
+        {
+          name: 'Setup Node.js',
+          uses: 'actions/setup-node@v4',
           with: {
             'always-auth': true,
             'node-version': nodeVersion,
@@ -278,7 +284,7 @@ class ReleaseTask {
 
     task.spawn(project.packageTask);
 
-    task.exec('yarn version --no-git-tag-version --new-version 0.0.0', {
+    task.exec('yarn version 0.0.0', {
       name: 'reset-version',
     });
   }
@@ -344,7 +350,6 @@ interface AutoTagWorkflowProps {
 
 class AutoTagWorkflow {
   public constructor(project: typescript.TypeScriptProject, name: string, props: AutoTagWorkflowProps) {
-    const nodeVersion = project.minNodeVersion?.split('.', 1).at(0) ?? 'lts/*';
     const workflow = project.github!.addWorkflow(name);
     workflow.runName = props.runName;
     workflow.on({
@@ -369,9 +374,10 @@ class AutoTagWorkflow {
       },
       permissions: { contents: github.workflows.JobPermission.READ },
       steps: [
-        ACTIONS_CHECKOUT(props.branch),
-        ACTIONS_SETUP_NODE(nodeVersion),
-        YARN_INSTALL(),
+        github.WorkflowSteps.checkout({
+          with: { ref: props.branch, repository: '${{ github.repository }}' },
+        }),
+        ...workflowSetup(project),
         { name: 'Build', run: 'yarn build' },
         { id: 'git', name: 'Identify git SHA', run: 'echo sha=$(git rev-parse HEAD) >> $GITHUB_OUTPUT' },
       ],
@@ -382,9 +388,14 @@ class AutoTagWorkflow {
       runsOn: ['ubuntu-latest'],
       permissions: {},
       steps: [
-        ACTIONS_CHECKOUT('${{ needs.pre-flight.outputs.sha }}', { token: '${{ secrets.PROJEN_GITHUB_TOKEN }}' }),
-        ACTIONS_SETUP_NODE(nodeVersion),
-        YARN_INSTALL(),
+        github.WorkflowSteps.checkout({
+          with: {
+            ref: '${{ needs.pre-flight.outputs.sha }}',
+            repository: '${{ github.repository }}',
+            token: '${{ secrets.PROJEN_GITHUB_TOKEN }}',
+          },
+        }),
+        ...workflowSetup(project),
         {
           name: 'Set git identity',
           run: ['git config user.name "github-actions"', 'git config user.email "github-actions@github.com"'].join(

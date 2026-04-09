@@ -1,7 +1,7 @@
 import { NodeRelease } from '@jsii/check-node';
 import { github, typescript } from 'projen';
 import { BenchmarkTest } from './benchmark-test';
-import { ACTIONS_CHECKOUT, ACTIONS_SETUP_NODE, YARN_INSTALL } from './common';
+import { workflowSetup } from './common';
 
 export interface BuildWorkflowOptions {
   /**
@@ -40,7 +40,6 @@ export class BuildWorkflow {
       });
     }
 
-    const nodeVersion = project.minNodeVersion?.split('.', 1).at(0) ?? 'lts/*';
     const minNodeMajor = parseInt(project.minNodeVersion?.split('.', 1).at(0) ?? '18', 10);
 
     wf.addJobs({
@@ -59,8 +58,7 @@ export class BuildWorkflow {
         permissions: { contents: github.workflows.JobPermission.READ },
         runsOn: ['ubuntu-latest'],
         steps: [
-          ACTIONS_CHECKOUT(undefined, { lfs: true }),
-          ACTIONS_SETUP_NODE(),
+          github.WorkflowSteps.checkout({ with: { lfs: true } }),
           {
             name: 'Cache build outputs',
             if: "github.event_name == 'pull_request'",
@@ -72,7 +70,7 @@ export class BuildWorkflow {
               'restore-keys': 'build-outputs-',
             },
           },
-          YARN_INSTALL('--check-files'),
+          ...workflowSetup(project),
           {
             name: 'Compile',
             run: ['npx projen', 'npx projen pre-compile', 'npx projen compile', 'npx projen post-compile'].join(' && '),
@@ -141,15 +139,13 @@ export class BuildWorkflow {
         permissions: { contents: github.workflows.JobPermission.WRITE },
         if: "always() && (github.event_name == 'pull_request') && needs.build.outputs.self-mutation-needed && (github.event.pull_request.head.repo.full_name == github.repository)",
         steps: [
-          {
-            name: 'Checkout',
-            uses: 'actions/checkout@v3',
+          github.WorkflowSteps.checkout({
             with: {
               ref: '${{ github.event.pull_request.head.ref }}',
               repository: '${{ github.event.pull_request.head.repo.full_name }}',
               token: '${{ secrets.PROJEN_GITHUB_TOKEN }}',
             },
-          },
+          }),
           {
             name: 'Download patch',
             uses: 'actions/download-artifact@v4',
@@ -205,6 +201,10 @@ export class BuildWorkflow {
             with: { name: 'build-output', path: '${{ github.workspace }}' },
           },
           {
+            name: 'Enable corepack',
+            run: 'corepack enable',
+          },
+          {
             name: 'Setup Node.js',
             uses: 'actions/setup-node@v4',
             with: {
@@ -214,7 +214,7 @@ export class BuildWorkflow {
           },
           {
             name: 'Install dependencies',
-            run: 'yarn install --frozen-lockfile',
+            run: 'yarn install --immutable',
           },
           // Re-run post-compile to ensure /fixtures/ symlinks are correctly present...
           {
@@ -260,18 +260,7 @@ export class BuildWorkflow {
             uses: 'actions/download-artifact@v4',
             with: { name: 'build-output', path: '${{ github.workspace }}' },
           },
-          {
-            name: 'Setup Node.js',
-            uses: 'actions/setup-node@v4',
-            with: {
-              'node-version': nodeVersion,
-              'cache': 'yarn',
-            },
-          },
-          {
-            name: 'Install dependencies',
-            run: 'yarn install --frozen-lockfile',
-          },
+          ...workflowSetup(project),
           {
             name: 'Package',
             run: 'npx projen package',
@@ -310,7 +299,11 @@ export class BuildWorkflow {
           },
         },
         steps: [
-          ACTIONS_SETUP_NODE('${{ matrix.node-version }}', false),
+          {
+            name: 'Setup Node.js',
+            uses: 'actions/setup-node@v4',
+            with: { 'node-version': '${{ matrix.node-version }}' },
+          },
           {
             name: 'Download Artifact',
             uses: 'actions/download-artifact@v4',
@@ -361,7 +354,10 @@ export class BuildWorkflow {
         permissions: {},
         runsOn: ['ubuntu-latest'],
         steps: [
-          ACTIONS_SETUP_NODE(undefined, false),
+          {
+            name: 'Setup Node.js',
+            uses: 'actions/setup-node@v4',
+          },
           {
             name: 'Download Artifact',
             uses: 'actions/download-artifact@v4',

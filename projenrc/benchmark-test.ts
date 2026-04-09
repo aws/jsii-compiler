@@ -6,7 +6,7 @@ import { github, typescript } from 'projen';
 import { JobPermission } from 'projen/lib/github/workflows-model';
 import * as tar from 'tar';
 import * as yargs from 'yargs';
-import { ACTIONS_SETUP_NODE, YARN_INSTALL } from './common';
+import { workflowSetup } from './common';
 
 export class BenchmarkTest {
   public constructor(
@@ -46,13 +46,12 @@ export class BenchmarkTest {
           },
         },
         steps: [
-          ACTIONS_SETUP_NODE(undefined, false),
+          ...workflowSetup(project),
           {
             name: 'Download artifact',
             uses: 'actions/download-artifact@v4',
             with: { name: artifactName },
           },
-          YARN_INSTALL('--frozen-lockfile'),
           {
             id: 'run',
             name: 'Benchmark',

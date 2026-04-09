@@ -1,4 +1,5 @@
 import { javascript, JsonFile, JsonPatch, github, typescript, YamlFile } from 'projen';
+import { YarnNodeLinker } from 'projen/lib/javascript/yarnrc';
 import { BuildWorkflow } from './projenrc/build-workflow';
 import { JsiiCalcFixtures } from './projenrc/fixtures';
 import { ReleaseWorkflow } from './projenrc/release';
@@ -14,6 +15,13 @@ const workflowNodeVersion = 'lts/*';
 
 const project = new typescript.TypeScriptProject({
   projenrcTs: true,
+
+  packageManager: javascript.NodePackageManager.YARN_BERRY,
+  yarnBerryOptions: {
+    yarnRcOptions: {
+      nodeLinker: YarnNodeLinker.NODE_MODULES,
+    },
+  },
 
   name: 'jsii',
   license: 'Apache-2.0',
@@ -117,6 +125,7 @@ const project = new typescript.TypeScriptProject({
 );
 
 new UpgradeDependencies(project, {
+  cooldown: 3,
   workflowOptions: {
     branches: [
       'main',
