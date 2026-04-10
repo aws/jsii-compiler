@@ -47,10 +47,16 @@ export class BenchmarkTest {
         steps: [
           { name: 'Enable corepack', run: 'corepack enable' },
           {
+            name: 'Setup Node.js',
+            uses: 'actions/setup-node@v6',
+            with: { 'node-version': 'lts/*', 'package-manager-cache': false },
+          },
+          {
             name: 'Download artifact',
             uses: 'actions/download-artifact@v4',
             with: { name: artifactName },
           },
+          { name: 'Install dependencies', run: 'yarn install --immutable' },
           {
             id: 'run',
             name: 'Benchmark',
