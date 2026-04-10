@@ -1738,16 +1738,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/tar@npm:^6.1.13":
-  version: 6.1.13
-  resolution: "@types/tar@npm:6.1.13"
-  dependencies:
-    "@types/node": "npm:*"
-    minipass: "npm:^4.0.0"
-  checksum: 10c0/98cc72d444fa622049e86e457a64d859c6effd7c7518d36e7b40b4ab1e7aa9e2412cc868cbef396650485dae07d50d98f662e8a53bb45f4a70eb6c61f80a63c7
-  languageName: node
-  linkType: hard
-
 "@types/yargs-parser@npm:*":
   version: 21.0.3
   resolution: "@types/yargs-parser@npm:21.0.3"
@@ -5643,7 +5633,6 @@ __metadata:
     "@types/lockfile": "npm:^1.0.4"
     "@types/node": "npm:^20"
     "@types/semver": "npm:^7.7.1"
-    "@types/tar": "npm:^6.1.13"
     "@typescript-eslint/eslint-plugin": "npm:^8"
     "@typescript-eslint/parser": "npm:^8"
     all-contributors-cli: "npm:^6.26.1"
@@ -5672,7 +5661,6 @@ __metadata:
     semver-intersect: "npm:^1.5.0"
     sort-json: "npm:^2.0.1"
     spdx-license-list: "npm:^6.11.0"
-    tar: "npm:^7.5.13"
     ts-jest: "npm:^29.4.9"
     ts-node: "npm:^10.9.2"
     typescript: "npm:~5.9"
@@ -6369,13 +6357,6 @@ __metadata:
   dependencies:
     yallist: "npm:^4.0.0"
   checksum: 10c0/a114746943afa1dbbca8249e706d1d38b85ed1298b530f5808ce51f8e9e941962e2a5ad2e00eae7dd21d8a4aae6586a66d4216d1a259385e9d0358f0c1eba16c
-  languageName: node
-  linkType: hard
-
-"minipass@npm:^4.0.0":
-  version: 4.2.8
-  resolution: "minipass@npm:4.2.8"
-  checksum: 10c0/4ea76b030d97079f4429d6e8a8affd90baf1b6a1898977c8ccce4701c5a2ba2792e033abc6709373f25c2c4d4d95440d9d5e9464b46b7b76ca44d2ce26d939ce
   languageName: node
   linkType: hard
 
@@ -8404,7 +8385,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"tar@npm:^7.5.13, tar@npm:^7.5.4":
+"tar@npm:^7.5.4":
   version: 7.5.13
   resolution: "tar@npm:7.5.13"
   dependencies:
