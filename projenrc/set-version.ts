@@ -20,11 +20,7 @@ if (versionMajorMinor !== `${semver.major}.${semver.minor}`) {
   process.exit(2);
 }
 
-const { error, status, signal } = spawnSync(
-  'yarn',
-  ['version', '--no-git-tag-version', '--new-version', semver.version],
-  { stdio: 'inherit' },
-);
+const { error, status, signal } = spawnSync('yarn', ['version', semver.version], { stdio: 'inherit' });
 
 if (error != null) {
   throw error;

@@ -6,7 +6,6 @@ import { github, typescript } from 'projen';
 import { JobPermission } from 'projen/lib/github/workflows-model';
 import * as tar from 'tar';
 import * as yargs from 'yargs';
-import { ACTIONS_SETUP_NODE, YARN_INSTALL } from './common';
 
 export class BenchmarkTest {
   public constructor(
@@ -46,19 +45,24 @@ export class BenchmarkTest {
           },
         },
         steps: [
-          ACTIONS_SETUP_NODE(undefined, false),
+          { name: 'Enable corepack', run: 'corepack enable' },
+          {
+            name: 'Setup Node.js',
+            uses: 'actions/setup-node@v6',
+            with: { 'node-version': 'lts/*', 'package-manager-cache': false },
+          },
           {
             name: 'Download artifact',
             uses: 'actions/download-artifact@v4',
             with: { name: artifactName },
           },
-          YARN_INSTALL('--frozen-lockfile'),
+          { name: 'Install dependencies', run: 'yarn install --immutable' },
           {
             id: 'run',
             name: 'Benchmark',
             run: [
               'set -x',
-              'RESULT=$(yarn --silent projen test:benchmark --compiler=${{ matrix.compiler }})',
+              'RESULT=$(yarn projen test:benchmark --compiler=${{ matrix.compiler }})',
               'echo "${{ matrix.compiler }}-${{ matrix.index }}=${RESULT}" >> $GITHUB_OUTPUT',
             ].join('\n'),
           },

@@ -55,6 +55,14 @@ export interface UpgradeDependenciesOptions {
    * @default true
    */
   readonly signoff?: boolean;
+
+  /**
+   * Minimum age (in days) a package version must have been published before
+   * it is considered for upgrade. Passed as `--cooldown` to npm-check-updates.
+   *
+   * @default - no cooldown
+   */
+  readonly cooldown?: number;
 }
 
 /**
@@ -102,7 +110,7 @@ export class UpgradeDependencies extends Component {
     };
     this.postBuildSteps = [];
     this.containerOptions = options.workflowOptions?.container;
-    project.addDevDeps('npm-check-updates@^16');
+    project.addDevDeps('npm-check-updates@^20');
 
     this.postUpgradeTask =
       project.tasks.tryFind('post-upgrade') ??
@@ -110,10 +118,15 @@ export class UpgradeDependencies extends Component {
         description: 'Runs after upgrading dependencies',
       });
 
+    const taskEnv: Record<string, string> = { CI: 'false', YARN_ENABLE_IMMUTABLE_INSTALLS: 'false' };
+    if (options.cooldown) {
+      taskEnv.YARN_NPM_MINIMAL_AGE_GATE = `${options.cooldown * 24 * 60}`;
+    }
+
     this.upgradeTask = project.addTask(options.taskName ?? 'upgrade', {
       // this task should not run in CI mode because its designed to
       // update package.json and lock files.
-      env: { CI: '0' },
+      env: taskEnv,
       description: this.pullRequestTitle,
       steps: { toJSON: () => this.renderTaskSteps() } as any,
     });
@@ -176,15 +189,11 @@ export class UpgradeDependencies extends Component {
 
     const steps = new Array<TaskStep>();
 
-    // update npm-check-updates before everything else, in case there is a bug
-    // in it or one of its dependencies. This will make upgrade workflows
-    // slightly more stable and resilient to upstream changes.
-    steps.push({
-      exec: this.renderUpgradePackagesCommand(['npm-check-updates']),
-    });
-
     for (const dep of ['dev', 'optional', 'peer', 'prod', 'bundle']) {
       const ncuCommand = ['npm-check-updates', '--dep', dep, '--upgrade', '--target=minor'];
+      if (this.options.cooldown) {
+        ncuCommand.push(`--cooldown=${this.options.cooldown}`);
+      }
       // Don't add includes and excludes same time
       if (ncuIncludes) {
         ncuCommand.push(`--filter='${ncuIncludes.join(',')}'`);
@@ -196,6 +205,9 @@ export class UpgradeDependencies extends Component {
     }
     if (hasTypescript) {
       const ncuCommand = ['npm-check-updates', '--upgrade', '--target=patch', '--filter=typescript'];
+      if (this.options.cooldown) {
+        ncuCommand.push(`--cooldown=${this.options.cooldown}`);
+      }
       steps.push({ exec: ncuCommand.join(' ') });
     }
 
@@ -248,7 +260,7 @@ export class UpgradeDependencies extends Component {
     const steps: github.workflows.JobStep[] = [
       {
         name: 'Checkout',
-        uses: 'actions/checkout@v3',
+        uses: 'actions/checkout@v4',
         with: Object.keys(with_).length > 0 ? with_ : undefined,
       },
       ...this._project.renderWorkflowSetup({ mutable: false }),
@@ -259,6 +271,7 @@ export class UpgradeDependencies extends Component {
                 // Important: this ensures `yarn projen` runs `yarn install` and not `yarn install:ci` so it can update
                 // the yarn.lock file.
                 CI: 'false',
+                YARN_ENABLE_IMMUTABLE_INSTALLS: 'false',
               },
               name: 'Back-port projenrc changes from main',
               run: 'git fetch origin main && git checkout FETCH_HEAD -- README.md && yarn projen',
@@ -337,10 +350,12 @@ export class UpgradeDependencies extends Component {
     let lazy;
     switch (packageManager) {
       case NodePackageManager.YARN:
-      case NodePackageManager.YARN2:
       case NodePackageManager.YARN_CLASSIC:
-      case NodePackageManager.YARN_BERRY:
         lazy = upgradePackages('yarn upgrade');
+        break;
+      case NodePackageManager.YARN2:
+      case NodePackageManager.YARN_BERRY:
+        lazy = upgradePackages('yarn up');
         break;
       case NodePackageManager.NPM:
         lazy = upgradePackages('npm update');
