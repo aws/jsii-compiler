@@ -971,17 +971,24 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@jsii/check-node@npm:1.127.0":
-  version: 1.127.0
-  resolution: "@jsii/check-node@npm:1.127.0"
+"@jsii/check-node@npm:1.128.0":
+  version: 1.128.0
+  resolution: "@jsii/check-node@npm:1.128.0"
   dependencies:
     chalk: "npm:^4.1.2"
     semver: "npm:^7.7.4"
-  checksum: 10c0/68a1d8af161892b4b599f8343b9b29352ca0eada142f2be8353b56ecfe81459acdb44161122b2852f7ff93be869b2f3b4f11f19590edf9ca90b7ddebd51fec35
+  checksum: 10c0/bcacfd17137bcf8634f97924f07ea53080bbd79315cb3f1fb88e126398e9f9c6c662b215bc1d77f82c5306b84e326d059d6ea175eb60df97b7cc1f035105c930
   languageName: node
   linkType: hard
 
-"@jsii/spec@npm:1.127.0, @jsii/spec@npm:^1.105.0":
+"@jsii/spec@npm:1.128.0":
+  version: 1.128.0
+  resolution: "@jsii/spec@npm:1.128.0"
+  checksum: 10c0/60c92e199717db502adbc4fabc631d086cc9637c3ba2bf5aac9252ee7c8eb2c6718c5bd215e6d49123f20121fda7f2a3aaed9f38df311f03ed400cdc89fc1822
+  languageName: node
+  linkType: hard
+
+"@jsii/spec@npm:^1.105.0":
   version: 1.127.0
   resolution: "@jsii/spec@npm:1.127.0"
   checksum: 10c0/dc46c71d92765dacd7dc4c6956b10d4d39477da9b9eaa208d5f08c3b547d6f847f1edceb0496fc18abb8106fcaceff32172a61c8cb1a4b72093bc679483aacb4
@@ -5634,8 +5641,8 @@ __metadata:
   dependencies:
     "@actions/core": "npm:^1.11.1"
     "@actions/github": "npm:^5.1.1"
-    "@jsii/check-node": "npm:1.127.0"
-    "@jsii/spec": "npm:1.127.0"
+    "@jsii/check-node": "npm:1.128.0"
+    "@jsii/spec": "npm:1.128.0"
     "@types/clone": "npm:^2.1.4"
     "@types/deep-equal": "npm:^1.0.4"
     "@types/glob": "npm:^8.1.0"
@@ -5667,7 +5674,7 @@ __metadata:
     npm: "npm:^9.9.4"
     npm-check-updates: "npm:^20"
     prettier: "npm:^2.8.8"
-    projen: "npm:^0.99.42"
+    projen: "npm:^0.99.47"
     semver: "npm:^7.7.4"
     semver-intersect: "npm:^1.5.0"
     sort-json: "npm:^2.0.1"
@@ -7312,9 +7319,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"projen@npm:^0.99.42":
-  version: 0.99.42
-  resolution: "projen@npm:0.99.42"
+"projen@npm:^0.99.47":
+  version: 0.99.47
+  resolution: "projen@npm:0.99.47"
   dependencies:
     "@iarna/toml": "npm:^2.2.5"
     case: "npm:^1.6.3"
@@ -7335,7 +7342,7 @@ __metadata:
     constructs: ^10.0.0
   bin:
     projen: bin/projen
-  checksum: 10c0/23819c16cad5330725960f6a02403b34e9fc188be9f06a2f5feda9ca6eca0a8d9ed9b845d18e59878edfb5f39d139825f57f49f07c7f708c63b9460f86298288
+  checksum: 10c0/0a698824599a5944d9db69b4d48445085c65c22f27d6adee36112fee738b10a93ab2103d7f2dc0b3c0f818994d7229b06233836f552ac1f64a6226c3f1ca81a3
   languageName: node
   linkType: hard
 
