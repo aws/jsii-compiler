@@ -26,6 +26,8 @@ jobs:
         with:
           ref: ${{ github.ref }}
           repository: ${{ github.repository }}
+      - name: Fetch main for yarn version
+        run: git fetch --depth=1 origin main:main
       - name: Enable corepack
         run: corepack enable
       - name: Setup Node.js
