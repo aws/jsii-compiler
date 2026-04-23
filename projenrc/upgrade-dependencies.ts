@@ -355,7 +355,7 @@ export class UpgradeDependencies extends Component {
         break;
       case NodePackageManager.YARN2:
       case NodePackageManager.YARN_BERRY:
-        lazy = upgradePackages('yarn up');
+        lazy = upgradePackages('yarn up -R');
         break;
       case NodePackageManager.NPM:
         lazy = upgradePackages('npm update');

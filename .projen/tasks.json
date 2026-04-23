@@ -276,7 +276,7 @@
           "exec": "yarn install --no-immutable"
         },
         {
-          "exec": "yarn up"
+          "exec": "yarn up -R"
         },
         {
           "exec": "yarn projen"
