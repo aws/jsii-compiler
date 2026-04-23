@@ -60,6 +60,13 @@ export class ReleaseWorkflow {
         github.WorkflowSteps.checkout({
           with: { ref: '${{ github.ref }}', repository: '${{ github.repository }}' },
         }),
+        {
+          // `yarn version` needs a common ancestor with `main` to determine the
+          // release strategy. The default checkout is shallow and tag-only, so
+          // we fetch the tip of `main` to give yarn an ancestor to diff against.
+          name: 'Fetch main for yarn version',
+          run: 'git fetch --depth=1 origin main:main',
+        },
         ...workflowSetup(this.project),
         {
           name: 'Prepare Release',
