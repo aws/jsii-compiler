@@ -5679,7 +5679,7 @@ __metadata:
     semver-intersect: "npm:^1.5.0"
     sort-json: "npm:^2.0.1"
     spdx-license-list: "npm:^6.11.0"
-    tar: "npm:^7.5.13"
+    tar: "npm:^7.5.14"
     ts-jest: "npm:^29.4.9"
     ts-node: "npm:^10.9.2"
     typescript: "npm:~5.9"
@@ -8411,7 +8411,20 @@ __metadata:
   languageName: node
   linkType: hard
 
-"tar@npm:^7.5.13, tar@npm:^7.5.4":
+"tar@npm:^7.5.14":
+  version: 7.5.14
+  resolution: "tar@npm:7.5.14"
+  dependencies:
+    "@isaacs/fs-minipass": "npm:^4.0.0"
+    chownr: "npm:^3.0.0"
+    minipass: "npm:^7.1.2"
+    minizlib: "npm:^3.1.0"
+    yallist: "npm:^5.0.0"
+  checksum: 10c0/619573265fa45295ff0b378f1097ab43187ab7b66e9483d3ad8f467c287674fb182ec878ef50a08761b8ab487863cb429902cf65fe361d47e330a95bfc4ca9e8
+  languageName: node
+  linkType: hard
+
+"tar@npm:^7.5.4":
   version: 7.5.13
   resolution: "tar@npm:7.5.13"
   dependencies:
