@@ -5675,7 +5675,7 @@ __metadata:
     npm-check-updates: "npm:^20"
     prettier: "npm:^2.8.8"
     projen: "npm:^0.99.57"
-    semver: "npm:^7.7.4"
+    semver: "npm:^7.8.0"
     semver-intersect: "npm:^1.5.0"
     sort-json: "npm:^2.0.1"
     spdx-license-list: "npm:^6.11.0"
@@ -7847,6 +7847,15 @@ __metadata:
   bin:
     semver: bin/semver.js
   checksum: 10c0/5215ad0234e2845d4ea5bb9d836d42b03499546ddafb12075566899fc617f68794bb6f146076b6881d755de17d6c6cc73372555879ec7dce2c2feee947866ad2
+  languageName: node
+  linkType: hard
+
+"semver@npm:^7.8.0":
+  version: 7.8.0
+  resolution: "semver@npm:7.8.0"
+  bin:
+    semver: bin/semver.js
+  checksum: 10c0/8f096ca9b80ffd47b308d03f9ce8c873e27e2983f36023c559cdc92c51e8433fc23ebbfe57ec9623fc155636a6961ee989501099841ae4bb1babc8d2b3f048cd
   languageName: node
   linkType: hard
 
