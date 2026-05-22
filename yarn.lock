@@ -5674,7 +5674,7 @@ __metadata:
     npm: "npm:^9.9.4"
     npm-check-updates: "npm:^20"
     prettier: "npm:^2.8.8"
-    projen: "npm:^0.99.61"
+    projen: "npm:^0.99.62"
     semver: "npm:^7.8.0"
     semver-intersect: "npm:^1.5.0"
     sort-json: "npm:^2.0.1"
@@ -7319,9 +7319,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"projen@npm:^0.99.61":
-  version: 0.99.61
-  resolution: "projen@npm:0.99.61"
+"projen@npm:^0.99.62":
+  version: 0.99.62
+  resolution: "projen@npm:0.99.62"
   dependencies:
     "@iarna/toml": "npm:^2.2.5"
     case: "npm:^1.6.3"
@@ -7342,7 +7342,7 @@ __metadata:
     constructs: ^10.0.0
   bin:
     projen: bin/projen
-  checksum: 10c0/01fd17e631c16b7233eec6c360e6f3235bedba8c9856267ea2fd634bd64ba434af9ea706447da97c2c8afc7694f9a3b9a3692336f73fbd29e0c3d29fd3fac1df
+  checksum: 10c0/87a96e77242ab743d9369be2c537583ee940e2d95a0386c7e3358c2cd407d7363a199fa977f2b9197121eef14fe5f4bb4bd067e23e4145e1af77052ae3f84682
   languageName: node
   linkType: hard
 
