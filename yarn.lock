@@ -971,20 +971,20 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@jsii/check-node@npm:1.131.0":
-  version: 1.131.0
-  resolution: "@jsii/check-node@npm:1.131.0"
+"@jsii/check-node@npm:1.132.0":
+  version: 1.132.0
+  resolution: "@jsii/check-node@npm:1.132.0"
   dependencies:
     chalk: "npm:^4.1.2"
-    semver: "npm:^7.7.4"
-  checksum: 10c0/f708449e69a5da18cbff90585b6f95f972ec1cb6cfaf15e8f47448e02c5f15f8249d17311249936d9a148404abede235372014a76a4c20af6fc73c3e1d1d832f
+    semver: "npm:^7.8.0"
+  checksum: 10c0/cd02c62a4cdf7054e4811f908e108466f417e32c63332a7c8906d021f28e6890c2b0b21f05f397188479cb0d0f60e3558654cc0d91847f98ce7a9c094314d7e3
   languageName: node
   linkType: hard
 
-"@jsii/spec@npm:1.131.0":
-  version: 1.131.0
-  resolution: "@jsii/spec@npm:1.131.0"
-  checksum: 10c0/81e3faebf32076b0d86a8358052a693db9127442c9c11fbfe8b17bf8a80bbbedbf7fb97ef1c11626d521c6e2b6f9e7e59af7b677b3be4b574aa5f8b399cc441a
+"@jsii/spec@npm:1.132.0":
+  version: 1.132.0
+  resolution: "@jsii/spec@npm:1.132.0"
+  checksum: 10c0/c0f62aa25665130e75f73f11493b5452bfb6705319c99f95fdacccca410f403b6b5380d792d0f7e0de4a1c09d47d0642ca9527b0bf03f9bcda261b8c5f2788bf
   languageName: node
   linkType: hard
 
@@ -5641,8 +5641,8 @@ __metadata:
   dependencies:
     "@actions/core": "npm:^1.11.1"
     "@actions/github": "npm:^5.1.1"
-    "@jsii/check-node": "npm:1.131.0"
-    "@jsii/spec": "npm:1.131.0"
+    "@jsii/check-node": "npm:1.132.0"
+    "@jsii/spec": "npm:1.132.0"
     "@types/clone": "npm:^2.1.4"
     "@types/deep-equal": "npm:^1.0.4"
     "@types/glob": "npm:^8.1.0"
@@ -7841,7 +7841,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"semver@npm:^7.1.1, semver@npm:^7.3.5, semver@npm:^7.3.7, semver@npm:^7.5.3, semver@npm:^7.5.4, semver@npm:^7.6.0, semver@npm:^7.6.3, semver@npm:^7.7.1, semver@npm:^7.7.3, semver@npm:^7.7.4":
+"semver@npm:^7.1.1, semver@npm:^7.3.5, semver@npm:^7.3.7, semver@npm:^7.5.3, semver@npm:^7.5.4, semver@npm:^7.6.0, semver@npm:^7.6.3, semver@npm:^7.7.1, semver@npm:^7.7.3":
   version: 7.7.4
   resolution: "semver@npm:7.7.4"
   bin:
