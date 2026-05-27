@@ -260,7 +260,7 @@ export class UpgradeDependencies extends Component {
     const steps: github.workflows.JobStep[] = [
       {
         name: 'Checkout',
-        uses: 'actions/checkout@v4',
+        uses: 'actions/checkout@v6',
         with: Object.keys(with_).length > 0 ? with_ : undefined,
       },
       ...this._project.renderWorkflowSetup({ mutable: false }),
