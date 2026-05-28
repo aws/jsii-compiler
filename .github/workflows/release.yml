@@ -78,6 +78,7 @@ jobs:
           name: release-package
           path: ${{ github.workspace }}/dist
           overwrite: true
+          include-hidden-files: true
   release-to-github:
     name: Create GitHub Release
     needs: build

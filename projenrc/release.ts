@@ -120,9 +120,10 @@ export class ReleaseWorkflow {
           name: 'Upload artifact',
           uses: 'actions/upload-artifact@v7',
           with: {
-            name: releasePackageName,
-            path: '${{ github.workspace }}/dist',
-            overwrite: true,
+            'name': releasePackageName,
+            'path': '${{ github.workspace }}/dist',
+            'overwrite': true,
+            'include-hidden-files': true,
           },
         },
       ],

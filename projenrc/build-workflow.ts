@@ -91,9 +91,10 @@ export class BuildWorkflow {
             if: 'steps.self-mutation.outputs.needed',
             uses: 'actions/upload-artifact@v7',
             with: {
-              name: '.repo.patch',
-              path: '.repo.patch',
-              overwrite: true,
+              'name': '.repo.patch',
+              'path': '.repo.patch',
+              'overwrite': true,
+              'include-hidden-files': true,
             },
           },
           {
@@ -270,9 +271,10 @@ export class BuildWorkflow {
             name: 'Upload artifact',
             uses: 'actions/upload-artifact@v7',
             with: {
-              name: 'release-package',
-              path: '${{ github.workspace }}/dist',
-              overwrite: true,
+              'name': 'release-package',
+              'path': '${{ github.workspace }}/dist',
+              'overwrite': true,
+              'include-hidden-files': true,
             },
           },
         ],
