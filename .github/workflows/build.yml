@@ -73,6 +73,7 @@ jobs:
             !${{ github.workspace }}/node_modules
             !${{ github.workspace }}/fixtures/node_modules
           overwrite: true
+          include-hidden-files: true
       - name: Version Line
         id: version
         run: |-

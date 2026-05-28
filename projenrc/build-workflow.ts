@@ -111,15 +111,16 @@ export class BuildWorkflow {
             name: 'Upload artifact',
             uses: 'actions/upload-artifact@v7',
             with: {
-              name: 'build-output',
-              path: [
+              'name': 'build-output',
+              'path': [
                 '${{ github.workspace }}',
                 '${{ github.workspace }}/dist/private',
                 // Exclude node_modules to reduce artifact size (we won't use those anyway)...
                 '!${{ github.workspace }}/node_modules',
                 '!${{ github.workspace }}/fixtures/node_modules',
               ].join('\n'),
-              overwrite: true,
+              'overwrite': true,
+              'include-hidden-files': true,
             },
           },
           {
