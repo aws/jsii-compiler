@@ -46,7 +46,7 @@ jobs:
         run: yarn ts-node projenrc/publish-target.ts ${{ github.ref_name }}
       - name: Federate to AWS
         if: fromJSON(steps.publish-target.outputs.github-release)
-        uses: aws-actions/configure-aws-credentials@v1
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           aws-region: us-east-1
           role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
@@ -73,11 +73,12 @@ jobs:
           unset passphrase
           find ${GNUPGHOME} -type f -exec shred --remove {} \;
       - name: Upload artifact
-        uses: actions/upload-artifact@v4.3.6
+        uses: actions/upload-artifact@v7
         with:
           name: release-package
           path: ${{ github.workspace }}/dist
           overwrite: true
+          include-hidden-files: true
   release-to-github:
     name: Create GitHub Release
     needs: build
@@ -89,7 +90,7 @@ jobs:
     if: fromJSON(needs.build.outputs.github-release)
     steps:
       - name: Download artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: release-package
       - name: Verify if release exists
@@ -128,19 +129,18 @@ jobs:
       CI: "true"
     steps:
       - name: Download artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: release-package
       - name: Enable corepack
         run: corepack enable
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
-          always-auth: true
           node-version: lts/*
           registry-url: https://registry.npmjs.org/
       - name: Federate to AWS
-        uses: aws-actions/configure-aws-credentials@v1
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           aws-region: us-east-1
           role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
@@ -154,7 +154,7 @@ jobs:
           echo "NODE_AUTH_TOKEN=${token}" >> $GITHUB_ENV
           unset token
       - name: Publish
-        run: npm publish ${{ github.workspace }}/js/jsii-*.tgz --access=public --tag=${{ needs.build.outputs.dist-tag }}
+        run: npm publish ${{ github.workspace }}/js/jsii-*.tgz --access=public --provenance --tag=${{ needs.build.outputs.dist-tag }}
       - name: Tag "latest"
         if: fromJSON(needs.build.outputs.latest)
         run: npm dist-tag add jsii@${{ github.ref_name }} latest

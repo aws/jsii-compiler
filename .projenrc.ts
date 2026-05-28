@@ -242,7 +242,7 @@ project.preCompileTask.exec('ts-node build-tools/code-gen.ts', {
   name: 'code-gen',
 });
 project.gitignore.addPatterns('/src/version.ts', '/jsii-outdir/', '/test/negatives/.*');
-project.gitignore.exclude('.DS_Store');
+project.gitignore.exclude('.DS_Store', '.lock');
 
 // Exclude negatives from tsconfig and eslint...
 project.tsconfigDev.addExclude('test/negatives/**/*.ts');

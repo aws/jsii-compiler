@@ -53,7 +53,7 @@ export class BenchmarkTest {
           },
           {
             name: 'Download artifact',
-            uses: 'actions/download-artifact@v4',
+            uses: 'actions/download-artifact@v8',
             with: { name: artifactName },
           },
           { name: 'Install dependencies', run: 'yarn install --immutable' },
@@ -136,7 +136,7 @@ export class BenchmarkTest {
           {
             name: 'Authenticate Via OIDC Role',
             if: `github.event.repository.fork == false && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/maintenance/v'))`,
-            uses: 'aws-actions/configure-aws-credentials@v4',
+            uses: 'aws-actions/configure-aws-credentials@v6',
             with: {
               'aws-region': 'us-east-1',
               'role-duration-seconds': 900,

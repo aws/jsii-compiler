@@ -89,11 +89,12 @@ export class BuildWorkflow {
           {
             name: 'Upload patch',
             if: 'steps.self-mutation.outputs.needed',
-            uses: 'actions/upload-artifact@v4.3.6',
+            uses: 'actions/upload-artifact@v7',
             with: {
-              name: '.repo.patch',
-              path: '.repo.patch',
-              overwrite: true,
+              'name': '.repo.patch',
+              'path': '.repo.patch',
+              'overwrite': true,
+              'include-hidden-files': true,
             },
           },
           {
@@ -109,17 +110,18 @@ export class BuildWorkflow {
           // Upload artifacts...
           {
             name: 'Upload artifact',
-            uses: 'actions/upload-artifact@v4.3.6',
+            uses: 'actions/upload-artifact@v7',
             with: {
-              name: 'build-output',
-              path: [
+              'name': 'build-output',
+              'path': [
                 '${{ github.workspace }}',
                 '${{ github.workspace }}/dist/private',
                 // Exclude node_modules to reduce artifact size (we won't use those anyway)...
                 '!${{ github.workspace }}/node_modules',
                 '!${{ github.workspace }}/fixtures/node_modules',
               ].join('\n'),
-              overwrite: true,
+              'overwrite': true,
+              'include-hidden-files': true,
             },
           },
           {
@@ -148,7 +150,7 @@ export class BuildWorkflow {
           }),
           {
             name: 'Download patch',
-            uses: 'actions/download-artifact@v4',
+            uses: 'actions/download-artifact@v8',
             with: {
               name: '.repo.patch',
               path: '${{ runner.temp }}',
@@ -197,7 +199,7 @@ export class BuildWorkflow {
         steps: [
           {
             name: 'Download artifact',
-            uses: 'actions/download-artifact@v4',
+            uses: 'actions/download-artifact@v8',
             with: { name: 'build-output', path: '${{ github.workspace }}' },
           },
           {
@@ -206,7 +208,7 @@ export class BuildWorkflow {
           },
           {
             name: 'Setup Node.js',
-            uses: 'actions/setup-node@v4',
+            uses: 'actions/setup-node@v6',
             with: {
               'node-version': '${{ matrix.node-version }}',
               'cache': 'yarn',
@@ -257,7 +259,7 @@ export class BuildWorkflow {
         steps: [
           {
             name: 'Download artifact',
-            uses: 'actions/download-artifact@v4',
+            uses: 'actions/download-artifact@v8',
             with: { name: 'build-output', path: '${{ github.workspace }}' },
           },
           ...workflowSetup(project),
@@ -267,11 +269,12 @@ export class BuildWorkflow {
           },
           {
             name: 'Upload artifact',
-            uses: 'actions/upload-artifact@v4.3.6',
+            uses: 'actions/upload-artifact@v7',
             with: {
-              name: 'release-package',
-              path: '${{ github.workspace }}/dist',
-              overwrite: true,
+              'name': 'release-package',
+              'path': '${{ github.workspace }}/dist',
+              'overwrite': true,
+              'include-hidden-files': true,
             },
           },
         ],
@@ -301,12 +304,12 @@ export class BuildWorkflow {
         steps: [
           {
             name: 'Setup Node.js',
-            uses: 'actions/setup-node@v4',
+            uses: 'actions/setup-node@v6',
             with: { 'node-version': '${{ matrix.node-version }}' },
           },
           {
             name: 'Download Artifact',
-            uses: 'actions/download-artifact@v4',
+            uses: 'actions/download-artifact@v8',
             with: {
               name: 'release-package',
               path: '${{ runner.temp }}/release-package',
@@ -356,11 +359,11 @@ export class BuildWorkflow {
         steps: [
           {
             name: 'Setup Node.js',
-            uses: 'actions/setup-node@v4',
+            uses: 'actions/setup-node@v6',
           },
           {
             name: 'Download Artifact',
-            uses: 'actions/download-artifact@v4',
+            uses: 'actions/download-artifact@v8',
             with: {
               name: 'release-package',
               path: '${{ runner.temp }}/release-package',
