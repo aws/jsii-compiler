@@ -60,6 +60,7 @@ jspm_packages/
 /jsii-outdir/
 /test/negatives/.*
 .DS_Store
+.lock
 !/.github/workflows/build.yml
 !/.github/workflows/auto-merge.yml
 !/.github/workflows/release.yml
