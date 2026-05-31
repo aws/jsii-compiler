@@ -2990,7 +2990,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"constructs@npm:^10.0.0":
+"constructs@npm:^10.0.0, constructs@npm:^10.5.0":
   version: 10.6.0
   resolution: "constructs@npm:10.6.0"
   checksum: 10c0/67fbd1719698509b527d2d7c1f8a6ac26d91eaf15edc69fedebc71100abf4d8ebc306184883fbb677299d6fd9c2dcbbea80db0e4201564f88f9ff88f15d6668f
@@ -5674,7 +5674,7 @@ __metadata:
     npm: "npm:^9.9.4"
     npm-check-updates: "npm:^20"
     prettier: "npm:^2.8.8"
-    projen: "npm:^0.99.66"
+    projen: "npm:^0.99.68"
     semver: "npm:^7.8.1"
     semver-intersect: "npm:^1.5.0"
     sort-json: "npm:^2.0.1"
@@ -7319,15 +7319,15 @@ __metadata:
   languageName: node
   linkType: hard
 
-"projen@npm:^0.99.66":
-  version: 0.99.66
-  resolution: "projen@npm:0.99.66"
+"projen@npm:^0.99.68":
+  version: 0.99.68
+  resolution: "projen@npm:0.99.68"
   dependencies:
     "@iarna/toml": "npm:^2.2.5"
     case: "npm:^1.6.3"
     chalk: "npm:^4.1.2"
     comment-json: "npm:4.2.2"
-    constructs: "npm:^10.0.0"
+    constructs: "npm:^10.5.0"
     conventional-changelog-config-spec: "npm:^2.1.0"
     fast-glob: "npm:^3.3.3"
     fast-json-patch: "npm:^3.1.1"
@@ -7339,10 +7339,10 @@ __metadata:
     yaml: "npm:^2.2.2"
     yargs: "npm:^17.7.2"
   peerDependencies:
-    constructs: ^10.0.0
+    constructs: ^10.5.0
   bin:
     projen: bin/projen
-  checksum: 10c0/2dead3ff928b254dbdfe1e76af684195da971d2b1a6e204fefcad475d75680be0758ab2cf7db3f2aa35023538b62905116e1ef29f0f4e227e68501ea9730fe3f
+  checksum: 10c0/be09e6566ae6f4222e4eb9d4d4c7597f3daf85bc06335a96439fd8d7bad79dd1005fae8b267bb29592c7cf3fa54d113b23f160d0f707060778fd42a529333239
   languageName: node
   linkType: hard
 
