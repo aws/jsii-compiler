@@ -48,14 +48,13 @@ const project = new typescript.TypeScriptProject({
   tsconfig: {
     compilerOptions: {
       // @see https://github.com/microsoft/TypeScript/wiki/Node-Target-Mapping
-      lib: ['es2020', 'es2021.WeakRef'],
-      target: 'ES2020',
+      lib: ['es2023'],
+      target: 'ES2023',
 
-      esModuleInterop: false,
       noImplicitOverride: true,
       skipLibCheck: true,
-      moduleResolution: javascript.TypeScriptModuleResolution.NODE16,
-      module: 'node16',
+      moduleResolution: javascript.TypeScriptModuleResolution.NODE_NEXT,
+      module: 'node20',
       isolatedModules: true,
 
       sourceMap: true,
@@ -65,8 +64,8 @@ const project = new typescript.TypeScriptProject({
   },
   tsconfigDev: {
     compilerOptions: {
-      moduleResolution: javascript.TypeScriptModuleResolution.NODE16,
-      module: 'node16',
+      moduleResolution: 'nodenext' as javascript.TypeScriptModuleResolution,
+      module: 'node20',
     },
   },
 
@@ -229,7 +228,6 @@ project.addDevDeps(
   '@types/deep-equal',
   '@types/lockfile',
   '@types/semver',
-  'all-contributors-cli',
   'clone',
   'eslint-plugin-unicorn',
   'fast-check',
@@ -251,18 +249,14 @@ project.eslint?.addIgnorePattern('test/negatives/**/*.ts');
 // Customize ESLint rules
 project.tsconfigDev.addInclude('build-tools/**/*.ts');
 project.eslint!.rules!['no-bitwise'] = ['off']; // The TypeScript compiler API leverages some bit-flags.
-(project.eslint!.rules!.quotes = ['error', 'single', { avoidEscape: true, allowTemplateLiterals: true }]),
-  // Add Unicorn rules (https://github.com/sindresorhus/eslint-plugin-unicorn#rules)
-  project.eslint?.addPlugins('unicorn');
+project.eslint!.rules!.quotes = ['error', 'single', { avoidEscape: true, allowTemplateLiterals: true }];
+
+// Add Unicorn rules (https://github.com/sindresorhus/eslint-plugin-unicorn#rules)
+project.eslint?.addPlugins('unicorn');
 project.eslint?.addRules({
   'unicorn/prefer-node-protocol': ['error'],
   'unicorn/no-array-for-each': ['error'],
   'unicorn/no-unnecessary-await': ['error'],
-});
-
-// contributors:update
-project.addTask('contributors:update', {
-  exec: 'all-contributors check | grep "Missing contributors" -A 1 | tail -n1 | sed -e "s/,//g" | xargs -n1 | grep -v "\\[bot\\]" | grep -v "aws-cdk-automation" | xargs -n1 -I{} all-contributors add {} code',
 });
 
 // Register jsii-calc stuff in the work stream

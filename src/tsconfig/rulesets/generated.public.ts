@@ -13,7 +13,9 @@ const generated = new RuleSet({
 // import all options that are configurable via jsii settings
 generated.import(jsiiConfiguredOptions);
 
-// ... and all generated options
+// ... and all generated options. Deprecated options need no explicit handling here: this is a
+// closed whitelist, so any deprecated option is either pinned to its generated value below or
+// rejected as an unexpected field.
 for (const [field, value] of Object.entries(convertForJson(BASE_COMPILER_OPTIONS))) {
   if (typeof value === 'string') {
     generated.shouldPass(field, Match.strEq(value, true));

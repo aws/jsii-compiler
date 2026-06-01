@@ -113,15 +113,12 @@ const ruleSets: {
             group: OPTION_GROUP.TS,
             alias: 'c',
             type: 'string',
-            desc: '[EXPERIMENTAL] Use this typescript configuration file to compile the jsii project.',
+            desc: 'Use this typescript configuration file to compile the jsii project.',
           })
           .conflicts('tsconfig', ['generate-tsconfig', 'project-references'])
           .option('validate-tsconfig', {
             group: OPTION_GROUP.TS,
-            ...choiceWithDesc(
-              ruleSets,
-              '[EXPERIMENTAL] Validate the provided typescript configuration file against a set of rules.',
-            ),
+            ...choiceWithDesc(ruleSets, 'Validate the provided typescript configuration file against a set of rules.'),
             defaultDescription: TypeScriptConfigValidationRuleSet.STRICT,
           })
           .option('compress-assembly', {

@@ -29,7 +29,7 @@
       "import": "./lib/index.js",
       "require": "./lib/index.js"
     },
-    "./lib/deep": "./lib/deep.js",
+    "./lib/deep": "./lib/deep/index.js",
     "./.warnings.jsii.js": "./.warnings.jsii.js"
   },
   "dependencies": {

@@ -3,8 +3,8 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as spec from '@jsii/spec';
 import { describeTypeReference, writeAssembly, SPEC_FILE_NAME, PackageJson } from '@jsii/spec';
-import * as chalk from 'chalk';
-import * as deepEqual from 'fast-deep-equal/es6';
+import chalk from 'chalk';
+import deepEqual from 'fast-deep-equal/es6';
 import * as log4js from 'log4js';
 import * as ts from 'typescript';
 

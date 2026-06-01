@@ -52,10 +52,6 @@
       "type": "build"
     },
     {
-      "name": "all-contributors-cli",
-      "type": "build"
-    },
-    {
       "name": "clone",
       "type": "build"
     },
@@ -182,7 +178,7 @@
     },
     {
       "name": "typescript",
-      "version": "~5.9",
+      "version": "~6.0",
       "type": "runtime"
     },
     {

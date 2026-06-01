@@ -1,5 +1,5 @@
 import * as spec from '@jsii/spec';
-import * as deepEqual from 'fast-deep-equal';
+import deepEqual from 'fast-deep-equal';
 import { TypeResolver } from './type-reference';
 
 /**

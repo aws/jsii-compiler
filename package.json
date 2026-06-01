@@ -9,7 +9,6 @@
     "build": "projen build",
     "clobber": "projen clobber",
     "compile": "projen compile",
-    "contributors:update": "projen contributors:update",
     "default": "projen default",
     "eject": "projen eject",
     "eslint": "projen eslint",
@@ -45,7 +44,6 @@
     "@types/tar": "^6.1.13",
     "@typescript-eslint/eslint-plugin": "^8",
     "@typescript-eslint/parser": "^8",
-    "all-contributors-cli": "^6.26.1",
     "clone": "^2.1.2",
     "constructs": "^10.0.0",
     "eslint": "^9",
@@ -78,7 +76,7 @@
     "semver-intersect": "^1.5.0",
     "sort-json": "^2.0.1",
     "spdx-license-list": "^6.11.0",
-    "typescript": "~5.9",
+    "typescript": "~6.0",
     "yargs": "^17.7.2"
   },
   "engines": {

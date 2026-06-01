@@ -1,6 +1,6 @@
-import * as assert from 'node:assert';
+import assert from 'node:assert';
 import * as spec from '@jsii/spec';
-import * as deepEqual from 'fast-deep-equal';
+import deepEqual from 'fast-deep-equal';
 import * as ts from 'typescript';
 import * as Case from './case';
 import { Emitter } from './emitter';
