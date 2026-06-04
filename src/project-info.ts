@@ -56,6 +56,11 @@ export type AssemblyTargets = spec.PackageJson['jsii']['targets'] & {
     moduleName: string;
     packageName: string;
   };
+  ruby?: {
+    gem?: string;
+    module?: string;
+    acronyms?: string[];
+  };
   [otherLanguage: string]: unknown;
 };
 
@@ -316,6 +321,7 @@ export function validateTargets(targets: AssemblyTargets | undefined): AssemblyT
     python: ['module', 'distName', 'classifiers'],
     dotnet: ['namespace', 'packageId', 'iconUrl', 'versionSuffix'],
     go: ['moduleName', 'packageName', 'versionSuffix'],
+    ruby: ['gem', 'module', 'acronyms'],
   };
 
   for (const [language, config] of Object.entries(targets)) {
@@ -379,6 +385,17 @@ export function validateTargets(targets: AssemblyTargets | undefined): AssemblyT
   ) {
     if (!targets.python.module.split('.').every(isIdentifier)) {
       throw new JsiiError(`jsii.targets.python.module contains non-identifier characters: ${targets.python.module}`);
+    }
+  }
+
+  if (
+    targets.ruby &&
+    typeof targets.ruby === 'object' &&
+    'module' in targets.ruby &&
+    typeof targets.ruby.module === 'string'
+  ) {
+    if (!targets.ruby.module.split('::').every(isIdentifier)) {
+      throw new JsiiError(`jsii.targets.ruby.module contains non-identifier characters: ${targets.ruby.module}`);
     }
   }
 
