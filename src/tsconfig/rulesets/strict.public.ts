@@ -22,15 +22,15 @@ strict.import(incompatibleOptions);
 strict.import(strictFamilyOptions);
 
 // Best practice rules
-strict.shouldPass('target', Match.eq('es2022')); // node18
-strict.shouldPass('lib', Match.arrEq(['es2022'])); // node18
-strict.shouldPass('module', Match.oneOf('node16', 'commonjs'));
-strict.shouldPass('moduleResolution', Match.optional(Match.oneOf('node', 'node16')));
-strict.shouldPass('esModuleInterop', Match.TRUE);
+strict.shouldPass('target', Match.oneOf('es2022', 'es2023', 'esnext')); // node18+
+strict.shouldPass('lib', Match.anyOf(Match.arrEq(['es2022']), Match.arrEq(['es2023']), Match.arrEq(['esnext']))); // node18+
+strict.shouldPass('module', Match.oneOf('node16', 'node18', 'node20', 'nodenext', 'commonjs'));
+strict.shouldPass('moduleResolution', Match.optional(Match.oneOf('node16', 'nodenext', 'bundler')));
 strict.shouldPass('skipLibCheck', Match.TRUE);
 strict.shouldPass('stripInternal', Match.optional(Match.FALSE));
 strict.shouldPass('noEmitOnError', Match.TRUE);
 strict.shouldPass('declaration', Match.TRUE);
+strict.shouldPass('noUncheckedSideEffectImports', Match.optional(Match.TRUE));
 
 // Deprecated ts options that should not be used with jsii
 strict.import(deprecatedOptions);

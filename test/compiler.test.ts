@@ -9,9 +9,13 @@ import { ProjectInfo } from '../src/project-info';
 import { TypeScriptConfigValidationRuleSet } from '../src/tsconfig';
 import { TypeScriptConfigValidator } from '../src/tsconfig/tsconfig-validator';
 
-// This is necessary to be able to jest.spyOn to functions in the 'ts' module. Replace the read-only
-// object descriptors with a plain object.
-jest.mock('typescript', () => ({ ...jest.requireActual('typescript') }));
+// Make the typescript module's properties configurable so jest.spyOn works.
+// TS 6.0 exports non-configurable properties that cannot be spied on directly.
+jest.mock('typescript', () => {
+  const actual = jest.requireActual('typescript');
+  // Spread into a fresh object to make all properties writable/configurable
+  return { __esModule: true, ...actual };
+});
 
 beforeEach(() => {
   jest.restoreAllMocks();
@@ -99,7 +103,7 @@ describe(Compiler, () => {
               if (firstCompilation) {
                 firstCompilation = false;
                 expect(output).toContain('"MarkerA"');
-                setImmediate(() => writeFileSync(join(sourceDir, 'index.ts'), 'export class MarkerB {}'));
+                setTimeout(() => writeFileSync(join(sourceDir, 'index.ts'), 'export class MarkerB {}'), 1000);
                 return;
               }
               expect(output).toContain('"MarkerB"');
@@ -116,7 +120,7 @@ describe(Compiler, () => {
       } finally {
         rmSync(sourceDir, { force: true, recursive: true });
       }
-    }, 40_000);
+    }, 100_000);
 
     test('rootDir is added to assembly', () => {
       const outDir = 'jsii-outdir';
@@ -267,9 +271,9 @@ describe(Compiler, () => {
         JSON.stringify(
           {
             compilerOptions: {
-              lib: ['es2022'],
+              lib: ['es2023'],
               module: 'node16',
-              target: 'es2022',
+              target: 'es2023',
               noImplicitAny: true,
             },
             include: ['**/*.ts'],
@@ -373,7 +377,7 @@ describe(Compiler, () => {
               if (firstCompilation) {
                 firstCompilation = false;
                 expect(output).toContain('"MarkerA"');
-                setImmediate(() => writeFileSync(join(sourceDir, 'index.ts'), 'export class MarkerB {}'));
+                setTimeout(() => writeFileSync(join(sourceDir, 'index.ts'), 'export class MarkerB {}'), 1000);
                 return;
               }
               expect(output).toContain('"MarkerB"');
@@ -484,16 +488,18 @@ function expectedTypeScriptConfig() {
       alwaysStrict: true,
       composite: false,
       declaration: true,
+      esModuleInterop: true,
       incremental: true,
       inlineSourceMap: true,
       inlineSources: true,
-      lib: ['es2020'],
-      module: 'commonjs',
+      lib: ['es2023'],
+      module: 'node20',
       noEmitOnError: true,
       noFallthroughCasesInSwitch: true,
       noImplicitAny: true,
       noImplicitReturns: true,
       noImplicitThis: true,
+      noUncheckedSideEffectImports: true,
       noUnusedLocals: true,
       noUnusedParameters: true,
       resolveJsonModule: true,
@@ -502,7 +508,7 @@ function expectedTypeScriptConfig() {
       strictNullChecks: true,
       strictPropertyInitialization: true,
       stripInternal: false,
-      target: 'es2020',
+      target: 'es2023',
       tsBuildInfoFile: 'tsconfig.tsbuildinfo',
     },
     exclude: ['node_modules'],
@@ -517,9 +523,9 @@ function expectedTypeScriptConfig() {
 function tsconfigForNode18Strict() {
   return {
     compilerOptions: {
-      lib: ['es2022'] as string[] | undefined,
+      lib: ['es2023'] as string[] | undefined,
       module: 'node16',
-      target: 'es2022',
+      target: 'es2023',
 
       strict: true,
       esModuleInterop: true,

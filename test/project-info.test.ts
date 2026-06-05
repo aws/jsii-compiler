@@ -3,7 +3,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import * as spec from '@jsii/spec';
 import { writeAssembly } from '@jsii/spec';
-import * as clone from 'clone';
+import clone from 'clone';
 import * as ts from 'typescript';
 
 import { loadProjectInfo, PackageJson } from '../src/project-info';

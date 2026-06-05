@@ -1,4 +1,4 @@
-import * as Case from 'case';
+import Case from 'case';
 
 const withCache =
   (func: (text: string) => string): ((text: string) => string) =>

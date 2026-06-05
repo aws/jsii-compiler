@@ -218,6 +218,14 @@ export class Match {
   }
 
   /**
+   * Value must match at least one of the provided matchers.
+   * All matchers are evaluated (no short-circuit) so their hints are collected.
+   */
+  public static anyOf(...matchers: Matcher[]): Matcher {
+    return (value, options) => matchers.map((m) => m(value, options)).some(Boolean);
+  }
+
+  /**
    * Value must be one of the allowed options
    */
   public static oneOf(...allowed: Array<string | number>): Matcher {

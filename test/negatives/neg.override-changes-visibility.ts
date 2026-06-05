@@ -11,7 +11,7 @@ export class BaseClass {
 
 export class ChildClass extends BaseClass {
   // This property cannot be public as it overrides the one on BaseClass which is protected
-  public readonly property?: string;
+  public declare readonly property?: string;
 
   // This method cannot be public as it overrides the one on BaseClass which is protected
   public method() {

@@ -4,14 +4,16 @@ import * as Case from '../case';
 export const BASE_COMPILER_OPTIONS: ts.CompilerOptions = {
   alwaysStrict: true,
   declaration: true,
+  esModuleInterop: true,
   incremental: true,
-  lib: ['lib.es2020.d.ts'],
-  module: ts.ModuleKind.CommonJS,
+  lib: ['lib.es2023.d.ts'],
+  module: ts.ModuleKind.Node20,
   noEmitOnError: true,
   noFallthroughCasesInSwitch: true,
   noImplicitAny: true,
   noImplicitReturns: true,
   noImplicitThis: true,
+  noUncheckedSideEffectImports: true,
   noUnusedLocals: true,
   noUnusedParameters: true,
   resolveJsonModule: true,
@@ -20,7 +22,7 @@ export const BASE_COMPILER_OPTIONS: ts.CompilerOptions = {
   strictNullChecks: true,
   strictPropertyInitialization: true,
   stripInternal: false,
-  target: ts.ScriptTarget.ES2020,
+  target: ts.ScriptTarget.ES2023,
 };
 
 /**

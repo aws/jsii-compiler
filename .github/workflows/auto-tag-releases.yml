@@ -59,4 +59,4 @@ jobs:
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
       - name: Tag Release
-        run: yarn tag-release --idempotent --no-sign --push --release-line=5.9
+        run: yarn tag-release --idempotent --no-sign --push --release-line=6.0
