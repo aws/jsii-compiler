@@ -2,15 +2,22 @@ import '@jsii/check-node/run';
 
 import * as path from 'node:path';
 import * as util from 'node:util';
+import chalk from 'chalk';
 import * as log4js from 'log4js';
 import { version as tsVersion } from 'typescript/package.json';
 import * as yargs from 'yargs';
 
 import { Compiler } from './compiler';
-import { configureCategories } from './jsii-diagnostic';
+import { configureCategories, JsiiDiagnostic } from './jsii-diagnostic';
 import { loadProjectInfo } from './project-info';
 import { emitSupportPolicyInformation } from './support';
 import { TypeScriptConfigValidationRuleSet } from './tsconfig';
+import {
+  describeRuleSet,
+  getCompilerOptionsRuleSet,
+  validateTypeScriptConfigFile,
+} from './tsconfig/tsconfig-validator';
+import { RuleDescription, RuleType } from './tsconfig/validator';
 import * as utils from './utils';
 import { VERSION } from './version';
 import { parseWarningCodes, silencedWarnings } from './warnings';
@@ -205,6 +212,80 @@ const ruleSets: {
         }
       },
     )
+    .command(
+      'validate-tsconfig [TSCONFIG]',
+      'Validate a TypeScript configuration file against a jsii rule set, without compiling',
+      (cmd) =>
+        cmd
+          .positional('TSCONFIG', {
+            type: 'string',
+            desc: 'The TypeScript configuration file to validate',
+            default: 'tsconfig.json',
+            normalize: true,
+          })
+          .option('rule-set', {
+            group: OPTION_GROUP.TS,
+            alias: 'R',
+            ...choiceWithDesc(ruleSets, 'The rule set to validate the configuration file against.'),
+            default: TypeScriptConfigValidationRuleSet.STRICT,
+          }),
+      (argv) => {
+        try {
+          const verbosity = typeof argv.verbose === 'number' ? argv.verbose : 0;
+          _configureLog4js(verbosity);
+
+          const configPath = path.resolve(process.cwd(), argv.TSCONFIG);
+          const projectRoot = path.dirname(configPath);
+          const configName = path.relative(projectRoot, configPath);
+          const ruleSet = argv['rule-set'] as TypeScriptConfigValidationRuleSet;
+
+          // Validation is disabled for the "off" rule set; mirror the compiler behavior.
+          if (ruleSet === TypeScriptConfigValidationRuleSet.NONE) {
+            utils.logDiagnostic(
+              JsiiDiagnostic.JSII_4009_DISABLED_TSCONFIG_VALIDATION.create(undefined, configName),
+              projectRoot,
+            );
+            return;
+          }
+
+          const violations = validateTypeScriptConfigFile(configPath, ruleSet);
+          if (violations.length > 0) {
+            utils.logDiagnostic(
+              JsiiDiagnostic.JSII_4000_FAILED_TSCONFIG_VALIDATION.create(undefined, configName, ruleSet, violations),
+              projectRoot,
+            );
+            process.exitCode = 1;
+          } else {
+            console.log(`✨ "${configName}" is valid against rule set "${ruleSet}"`);
+          }
+        } catch (e: unknown) {
+          if (e instanceof utils.JsiiError) {
+            const LOG = log4js.getLogger(utils.CLI_LOGGER);
+            LOG.error(e.message);
+            process.exitCode = -1;
+          } else {
+            throw e;
+          }
+        }
+      },
+    )
+    .command(
+      'rules [RULE_SET]',
+      'Print the tsconfig validation rules for a rule set (or for all rule sets)',
+      (cmd) =>
+        cmd.positional('RULE_SET', {
+          ...choiceWithDesc(ruleSets, 'The rule set to print. If omitted, all rule sets are printed.'),
+        }),
+      (argv) => {
+        const selected = argv.RULE_SET as TypeScriptConfigValidationRuleSet | undefined;
+        const sets =
+          selected != null
+            ? [selected]
+            : (Object.values(TypeScriptConfigValidationRuleSet) as TypeScriptConfigValidationRuleSet[]);
+
+        console.log(sets.map(formatRuleSet).join(`\n\n${chalk.dim('─'.repeat(72))}\n\n`));
+      },
+    )
     .help()
     .version(`${VERSION}, typescript ${tsVersion}`)
     .parse();
@@ -270,4 +351,82 @@ function _configureLog4js(verbosity: number) {
         return 'ALL';
     }
   }
+}
+
+/**
+ * Render a single rule set (its `compilerOptions` rules) as a human-readable block.
+ */
+function formatRuleSet(ruleSet: TypeScriptConfigValidationRuleSet): string {
+  const lines: string[] = [`${chalk.bold('Rule set:')} ${chalk.bold.cyan(ruleSet)}`];
+
+  const description = ruleSets[ruleSet];
+  if (description) {
+    lines.push(chalk.dim(description));
+  }
+
+  const rules = describeRuleSet(ruleSet);
+  if (rules.length === 0) {
+    lines.push('');
+    lines.push(chalk.dim('  No rules. Configuration validation is disabled for this rule set.'));
+    return lines.join('\n');
+  }
+
+  const unknownRejected = getCompilerOptionsRuleSet(ruleSet).options.unexpectedFields === RuleType.FAIL;
+  lines.push('');
+  lines.push(chalk.dim(`Applies to: compilerOptions (unknown options: ${unknownRejected ? 'rejected' : 'allowed'})`));
+  lines.push('');
+
+  // Group rules by field, preserving the order in which each field first appears.
+  const byField = new Map<string, RuleDescription[]>();
+  for (const rule of rules) {
+    const list = byField.get(rule.field) ?? [];
+    list.push(rule);
+    byField.set(rule.field, list);
+  }
+
+  const width = Math.max(...[...byField.keys()].map((field) => field.length));
+  for (const [field, fieldRules] of byField) {
+    const phrases = fieldRules.map(formatConstraint);
+    // A required field is surfaced as an explicit "must be present" constraint.
+    if (fieldRules.some((rule) => rule.required)) {
+      phrases.unshift('must be present');
+    }
+    // Dedupe identical phrases (some fields are constrained by several rules that overlap).
+    const constraints = [...new Set(phrases)].join('; ');
+    lines.push(`  ${chalk.bold(field.padEnd(width))}  ${constraints}`);
+  }
+
+  return lines.join('\n');
+}
+
+/**
+ * Render a single rule's constraint as a human-readable phrase.
+ */
+function formatConstraint(rule: RuleDescription): string {
+  const { type, values } = rule;
+
+  // No hints means the matcher accepts anything (e.g. Match.ANY).
+  if (values === undefined) {
+    return type === RuleType.PASS ? 'any value allowed' : 'must not be set to the matched value';
+  }
+
+  // Only null/undefined hints means the option must be absent (e.g. Match.MISSING).
+  if (values.length > 0 && values.every((value) => value == null)) {
+    return 'not allowed';
+  }
+
+  const formatted = values.map(formatRuleValue);
+  if (type === RuleType.FAIL) {
+    return formatted.length > 1 ? `must not be one of: ${formatted.join(', ')}` : `must not be ${formatted[0]}`;
+  }
+  return formatted.length > 1 ? `must be one of: ${formatted.join(', ')}` : `must be ${formatted[0]}`;
+}
+
+/**
+ * Render a single hinted value as a highlighted code literal. Strings are shown
+ * verbatim (as a user writes them in tsconfig.json), everything else is JSON-encoded.
+ */
+function formatRuleValue(value: any): string {
+  const literal = typeof value === 'string' ? value : JSON.stringify(value);
+  return chalk.cyan(literal);
 }
