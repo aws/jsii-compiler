@@ -2,15 +2,18 @@ import '@jsii/check-node/run';
 
 import * as path from 'node:path';
 import * as util from 'node:util';
+import chalk from 'chalk';
 import * as log4js from 'log4js';
 import { version as tsVersion } from 'typescript/package.json';
 import * as yargs from 'yargs';
 
 import { Compiler } from './compiler';
-import { configureCategories } from './jsii-diagnostic';
+import { configureCategories, JsiiDiagnostic } from './jsii-diagnostic';
 import { loadProjectInfo } from './project-info';
 import { emitSupportPolicyInformation } from './support';
 import { TypeScriptConfigValidationRuleSet } from './tsconfig';
+import { formatRuleSet, RULE_SET_DESCRIPTIONS } from './tsconfig/rule-set-format';
+import { validateTypeScriptConfigFile } from './tsconfig/tsconfig-validator';
 import * as utils from './utils';
 import { VERSION } from './version';
 import { parseWarningCodes, silencedWarnings } from './warnings';
@@ -32,19 +35,6 @@ enum OPTION_GROUP {
   JSII = 'jsii compiler options:',
   TS = 'TypeScript config options:',
 }
-
-const ruleSets: {
-  [choice in TypeScriptConfigValidationRuleSet]: string;
-} = {
-  [TypeScriptConfigValidationRuleSet.STRICT]:
-    'Validates the provided config against a strict rule set designed for maximum backwards-compatibility.',
-  [TypeScriptConfigValidationRuleSet.GENERATED]:
-    'Enforces a config as created by --generate-tsconfig. Use this to stay compatible with the generated config, but have full ownership over the file.',
-  [TypeScriptConfigValidationRuleSet.MINIMAL]:
-    'Only enforce options that are known to be incompatible with jsii. This rule set is likely to be incomplete and new rules will be added without notice as incompatibilities emerge.',
-  [TypeScriptConfigValidationRuleSet.NONE]:
-    'Disables all config validation, including options that are known to be incompatible with jsii. Intended for experimentation only. Use at your own risk.',
-};
 
 (async () => {
   await emitSupportPolicyInformation();
@@ -118,7 +108,10 @@ const ruleSets: {
           .conflicts('tsconfig', ['generate-tsconfig', 'project-references'])
           .option('validate-tsconfig', {
             group: OPTION_GROUP.TS,
-            ...choiceWithDesc(ruleSets, 'Validate the provided typescript configuration file against a set of rules.'),
+            ...choiceWithDesc(
+              RULE_SET_DESCRIPTIONS,
+              'Validate the provided typescript configuration file against a set of rules.',
+            ),
             defaultDescription: TypeScriptConfigValidationRuleSet.STRICT,
           })
           .option('compress-assembly', {
@@ -203,6 +196,80 @@ const ruleSets: {
             throw e;
           }
         }
+      },
+    )
+    .command(
+      'validate-tsconfig [TSCONFIG]',
+      'Validate a TypeScript configuration file against a jsii rule set, without compiling',
+      (cmd) =>
+        cmd
+          .positional('TSCONFIG', {
+            type: 'string',
+            desc: 'The TypeScript configuration file to validate',
+            default: 'tsconfig.json',
+            normalize: true,
+          })
+          .option('rule-set', {
+            group: OPTION_GROUP.TS,
+            alias: 'R',
+            ...choiceWithDesc(RULE_SET_DESCRIPTIONS, 'The rule set to validate the configuration file against.'),
+            default: TypeScriptConfigValidationRuleSet.STRICT,
+          }),
+      (argv) => {
+        try {
+          const verbosity = typeof argv.verbose === 'number' ? argv.verbose : 0;
+          _configureLog4js(verbosity);
+
+          const configPath = path.resolve(process.cwd(), argv.TSCONFIG);
+          const projectRoot = path.dirname(configPath);
+          const configName = path.relative(projectRoot, configPath);
+          const ruleSet = argv['rule-set'] as TypeScriptConfigValidationRuleSet;
+
+          // Validation is disabled for the "off" rule set; mirror the compiler behavior.
+          if (ruleSet === TypeScriptConfigValidationRuleSet.NONE) {
+            utils.logDiagnostic(
+              JsiiDiagnostic.JSII_4009_DISABLED_TSCONFIG_VALIDATION.create(undefined, configName),
+              projectRoot,
+            );
+            return;
+          }
+
+          const violations = validateTypeScriptConfigFile(configPath, ruleSet);
+          if (violations.length > 0) {
+            utils.logDiagnostic(
+              JsiiDiagnostic.JSII_4000_FAILED_TSCONFIG_VALIDATION.create(undefined, configName, ruleSet, violations),
+              projectRoot,
+            );
+            process.exitCode = 1;
+          } else {
+            console.log(`✨ "${configName}" is valid against rule set "${ruleSet}"`);
+          }
+        } catch (e: unknown) {
+          if (e instanceof utils.JsiiError) {
+            const LOG = log4js.getLogger(utils.CLI_LOGGER);
+            LOG.error(e.message);
+            process.exitCode = -1;
+          } else {
+            throw e;
+          }
+        }
+      },
+    )
+    .command(
+      'rules [RULE_SET]',
+      'Print the tsconfig validation rules for a rule set (or for all rule sets)',
+      (cmd) =>
+        cmd.positional('RULE_SET', {
+          ...choiceWithDesc(RULE_SET_DESCRIPTIONS, 'The rule set to print. If omitted, all rule sets are printed.'),
+        }),
+      (argv) => {
+        const selected = argv.RULE_SET as TypeScriptConfigValidationRuleSet | undefined;
+        const sets =
+          selected != null
+            ? [selected]
+            : (Object.values(TypeScriptConfigValidationRuleSet) as TypeScriptConfigValidationRuleSet[]);
+
+        console.log(`${sets.map(formatRuleSet).join(`\n\n${chalk.dim('─'.repeat(72))}\n\n`)}\n`);
       },
     )
     .help()

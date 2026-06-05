@@ -111,6 +111,48 @@ Here's a collection of blog posts (in chronological order) related to `jsii`:
 > :information_source: If you wrote blog posts about `jsii` and would like to have them referenced here, do not hesitate
 > to file a pull request to add the links here!
 
+## :triangular_ruler: Inspecting & Validating tsconfig
+
+When you provide your own `tsconfig.json` (via `--tsconfig`), `jsii` validates its `compilerOptions` against a
+[rule set](#arrow_up-upgrading-to-jsii-60) (`strict` by default). Two commands let you inspect those rule sets and
+validate a configuration file directly, without running a full compilation.
+
+### `jsii rules`
+
+Prints the validation rules for a rule set, so you can see exactly what each setting enforces:
+
+```sh
+# Print the rules for the strict rule set
+jsii rules strict
+
+# Print the rules for all rule sets (strict, generated, minimal, off)
+jsii rules
+```
+
+The output lists, per `compilerOptions` field, whether it must be present and what values are allowed (or disallowed),
+and whether unknown options are rejected for that rule set.
+
+### `jsii validate-tsconfig`
+
+Validates an existing TypeScript configuration file against a rule set and reports any violations. It exits with a
+non-zero status when validation fails, which makes it suitable for use in CI or pre-commit checks:
+
+```sh
+# Validate ./tsconfig.json against the strict rule set (the default)
+jsii validate-tsconfig
+
+# Validate a specific file
+jsii validate-tsconfig tsconfig.dev.json
+
+# Validate against a different rule set (--rule-set, alias -R)
+jsii validate-tsconfig tsconfig.json --rule-set generated
+jsii validate-tsconfig tsconfig.json -R minimal
+```
+
+The available rule sets are `strict`, `generated`, `minimal`, and `off`. They behave exactly as the `--validate-tsconfig`
+option does during compilation; see [Upgrading to jsii 6.0](#arrow_up-upgrading-to-jsii-60) for guidance on the rules
+each set enforces.
+
 ## :mute: Silencing Warnings
 
 The `--silence-warnings` option allows you to suppress specific warnings from the compiler output. Silenced warnings
