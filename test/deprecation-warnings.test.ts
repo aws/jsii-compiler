@@ -542,12 +542,12 @@ describe('Call injections', () => {
 
     expect(jsFile(result)).toMatchInlineSnapshot(`
       ""use strict";
-      var _a;
       Object.defineProperty(exports, "__esModule", { value: true });
       exports.Foo = void 0;
       const jsiiDeprecationWarnings = require("./.warnings.jsii.js");
       const JSII_RTTI_SYMBOL_1 = Symbol.for("jsii.rtti");
       class Foo {
+          static [JSII_RTTI_SYMBOL_1] = { fqn: "testpkg.Foo", version: "0.0.1" };
           /** @deprecated Use something else */
           bar() { try {
               jsiiDeprecationWarnings.print("testpkg.Foo#bar", "Use something else");
@@ -560,9 +560,7 @@ describe('Call injections', () => {
           } }
       }
       exports.Foo = Foo;
-      _a = JSII_RTTI_SYMBOL_1;
-      Foo[_a] = { fqn: "testpkg.Foo", version: "0.0.1" };
-      //# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiaW5kZXguanMiLCJzb3VyY2VSb290IjoiIiwic291cmNlcyI6WyJpbmRleC50cyJdLCJuYW1lcyI6W10sIm1hcHBpbmdzIjoiOzs7Ozs7QUFDSSxNQUFhLEdBQUc7SUFDZCxxQ0FBcUM7SUFDOUIsR0FBRzs7Ozs7Ozs7T0FBSTs7QUFGaEIsa0JBR0MiLCJzb3VyY2VzQ29udGVudCI6WyJcbiAgICBleHBvcnQgY2xhc3MgRm9vIHtcbiAgICAgIC8qKiBAZGVwcmVjYXRlZCBVc2Ugc29tZXRoaW5nIGVsc2UgKi9cbiAgICAgIHB1YmxpYyBiYXIoKXt9XG4gICAgfVxuICAiXX0="
+      //# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiaW5kZXguanMiLCJzb3VyY2VSb290IjoiIiwic291cmNlcyI6WyJpbmRleC50cyJdLCJuYW1lcyI6W10sIm1hcHBpbmdzIjoiOzs7OztBQUNJLE1BQWEsR0FBRzs7SUFDZCxxQ0FBcUM7SUFDOUIsR0FBRzs7Ozs7Ozs7T0FBSTs7QUFGaEIsa0JBR0MiLCJzb3VyY2VzQ29udGVudCI6WyJcbiAgICBleHBvcnQgY2xhc3MgRm9vIHtcbiAgICAgIC8qKiBAZGVwcmVjYXRlZCBVc2Ugc29tZXRoaW5nIGVsc2UgKi9cbiAgICAgIHB1YmxpYyBiYXIoKXt9XG4gICAgfVxuICAiXX0="
     `);
   });
 
@@ -579,12 +577,12 @@ describe('Call injections', () => {
 
     expect(jsFile(result)).toMatchInlineSnapshot(`
       ""use strict";
-      var _a;
       Object.defineProperty(exports, "__esModule", { value: true });
       exports.Foo = void 0;
       const jsiiDeprecationWarnings = require("./.warnings.jsii.js");
       const JSII_RTTI_SYMBOL_1 = Symbol.for("jsii.rtti");
       class Foo {
+          static [JSII_RTTI_SYMBOL_1] = { fqn: "testpkg.Foo", version: "0.0.1" };
           bar(a, b) { try {
               jsiiDeprecationWarnings.testpkg_A(a);
           }
@@ -596,9 +594,7 @@ describe('Call injections', () => {
           } return a.x + b; }
       }
       exports.Foo = Foo;
-      _a = JSII_RTTI_SYMBOL_1;
-      Foo[_a] = { fqn: "testpkg.Foo", version: "0.0.1" };
-      //# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiaW5kZXguanMiLCJzb3VyY2VSb290IjoiIiwic291cmNlcyI6WyJpbmRleC50cyJdLCJuYW1lcyI6W10sIm1hcHBpbmdzIjoiOzs7Ozs7QUFFUyxNQUFhLEdBQUc7SUFDUixHQUFHLENBQUMsQ0FBSSxFQUFFLENBQVM7Ozs7Ozs7O01BQUUsT0FBTyxDQUFDLENBQUMsQ0FBQyxHQUFHLENBQUMsQ0FBQyxFQUFDOztBQUQ3QyxrQkFFQyIsInNvdXJjZXNDb250ZW50IjpbIlxuICAgICAgICBleHBvcnQgaW50ZXJmYWNlIEEge3JlYWRvbmx5IHg6IG51bWJlcjt9XG4gICAgICAgICBleHBvcnQgY2xhc3MgRm9vIHtcbiAgICAgICAgICBwdWJsaWMgYmFyKGE6IEEsIGI6IG51bWJlcil7cmV0dXJuIGEueCArIGI7fVxuICAgICAgICAgfSJdfQ=="
+      //# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiaW5kZXguanMiLCJzb3VyY2VSb290IjoiIiwic291cmNlcyI6WyJpbmRleC50cyJdLCJuYW1lcyI6W10sIm1hcHBpbmdzIjoiOzs7OztBQUVTLE1BQWEsR0FBRzs7SUFDUixHQUFHLENBQUMsQ0FBSSxFQUFFLENBQVM7Ozs7Ozs7O01BQUUsT0FBTyxDQUFDLENBQUMsQ0FBQyxHQUFHLENBQUMsQ0FBQyxFQUFDOztBQUQ3QyxrQkFFQyIsInNvdXJjZXNDb250ZW50IjpbIlxuICAgICAgICBleHBvcnQgaW50ZXJmYWNlIEEge3JlYWRvbmx5IHg6IG51bWJlcjt9XG4gICAgICAgICBleHBvcnQgY2xhc3MgRm9vIHtcbiAgICAgICAgICBwdWJsaWMgYmFyKGE6IEEsIGI6IG51bWJlcil7cmV0dXJuIGEueCArIGI7fVxuICAgICAgICAgfSJdfQ=="
     `);
   }, 60000);
 
@@ -617,15 +613,13 @@ describe('Call injections', () => {
 
     expect(jsFile(result)).toMatchInlineSnapshot(`
       ""use strict";
-      var _a;
       Object.defineProperty(exports, "__esModule", { value: true });
       exports.Foo = void 0;
       const jsiiDeprecationWarnings = require("./.warnings.jsii.js");
       const JSII_RTTI_SYMBOL_1 = Symbol.for("jsii.rtti");
       class Foo {
-          constructor() {
-              this._x = 0;
-          }
+          static [JSII_RTTI_SYMBOL_1] = { fqn: "testpkg.Foo", version: "0.0.1" };
+          _x = 0;
           /** @deprecated Use something else */
           get x() { try {
               jsiiDeprecationWarnings.print("testpkg.Foo#x", "Use something else");
@@ -638,9 +632,7 @@ describe('Call injections', () => {
           } return this._x; }
       }
       exports.Foo = Foo;
-      _a = JSII_RTTI_SYMBOL_1;
-      Foo[_a] = { fqn: "testpkg.Foo", version: "0.0.1" };
-      //# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiaW5kZXguanMiLCJzb3VyY2VSb290IjoiIiwic291cmNlcyI6WyJpbmRleC50cyJdLCJuYW1lcyI6W10sIm1hcHBpbmdzIjoiOzs7Ozs7QUFDSSxNQUFhLEdBQUc7SUFBaEI7UUFDVSxPQUFFLEdBQUcsQ0FBQyxDQUFDO0tBR2hCO0lBRkMscUNBQXFDO0lBQ3JDLElBQVcsQ0FBQzs7Ozs7Ozs7TUFBRyxPQUFPLElBQUksQ0FBQyxFQUFFLENBQUEsRUFBQzs7QUFIaEMsa0JBSUMiLCJzb3VyY2VzQ29udGVudCI6WyJcbiAgICBleHBvcnQgY2xhc3MgRm9vIHtcbiAgICAgIHByaXZhdGUgX3ggPSAwO1xuICAgICAgLyoqIEBkZXByZWNhdGVkIFVzZSBzb21ldGhpbmcgZWxzZSAqL1xuICAgICAgcHVibGljIGdldCB4KCl7cmV0dXJuIHRoaXMuX3h9XG4gICAgfVxuICAiXX0="
+      //# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiaW5kZXguanMiLCJzb3VyY2VSb290IjoiIiwic291cmNlcyI6WyJpbmRleC50cyJdLCJuYW1lcyI6W10sIm1hcHBpbmdzIjoiOzs7OztBQUNJLE1BQWEsR0FBRzs7SUFDTixFQUFFLEdBQUcsQ0FBQyxDQUFDO0lBQ2YscUNBQXFDO0lBQ3JDLElBQVcsQ0FBQzs7Ozs7Ozs7TUFBRyxPQUFPLElBQUksQ0FBQyxFQUFFLENBQUEsRUFBQzs7QUFIaEMsa0JBSUMiLCJzb3VyY2VzQ29udGVudCI6WyJcbiAgICBleHBvcnQgY2xhc3MgRm9vIHtcbiAgICAgIHByaXZhdGUgX3ggPSAwO1xuICAgICAgLyoqIEBkZXByZWNhdGVkIFVzZSBzb21ldGhpbmcgZWxzZSAqL1xuICAgICAgcHVibGljIGdldCB4KCl7cmV0dXJuIHRoaXMuX3h9XG4gICAgfVxuICAiXX0="
     `);
   });
 
@@ -661,15 +653,13 @@ describe('Call injections', () => {
 
     expect(jsFile(result)).toMatchInlineSnapshot(`
       ""use strict";
-      var _a;
       Object.defineProperty(exports, "__esModule", { value: true });
       exports.Foo = void 0;
       const jsiiDeprecationWarnings = require("./.warnings.jsii.js");
       const JSII_RTTI_SYMBOL_1 = Symbol.for("jsii.rtti");
       class Foo {
-          constructor() {
-              this._x = 0;
-          }
+          static [JSII_RTTI_SYMBOL_1] = { fqn: "testpkg.Foo", version: "0.0.1" };
+          _x = 0;
           get x() { try {
               jsiiDeprecationWarnings.print("testpkg.Foo#x", "Use something else");
           }
@@ -691,9 +681,7 @@ describe('Call injections', () => {
           } this._x = _x; }
       }
       exports.Foo = Foo;
-      _a = JSII_RTTI_SYMBOL_1;
-      Foo[_a] = { fqn: "testpkg.Foo", version: "0.0.1" };
-      //# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiaW5kZXguanMiLCJzb3VyY2VSb290IjoiIiwic291cmNlcyI6WyJpbmRleC50cyJdLCJuYW1lcyI6W10sIm1hcHBpbmdzIjoiOzs7Ozs7QUFDSSxNQUFhLEdBQUc7SUFBaEI7UUFDVSxPQUFFLEdBQUcsQ0FBQyxDQUFDO0tBS2hCO0lBSkMsSUFBVyxDQUFDOzs7Ozs7OztNQUFHLE9BQU8sSUFBSSxDQUFDLEVBQUUsQ0FBQSxFQUFDO0lBRTlCLHFDQUFxQztJQUNyQyxJQUFXLENBQUMsQ0FBQyxFQUFVOzs7Ozs7OztNQUFHLElBQUksQ0FBQyxFQUFFLEdBQUcsRUFBRSxDQUFDLEVBQUM7O0FBTDFDLGtCQU1DIiwic291cmNlc0NvbnRlbnQiOlsiXG4gICAgZXhwb3J0IGNsYXNzIEZvbyB7XG4gICAgICBwcml2YXRlIF94ID0gMDtcbiAgICAgIHB1YmxpYyBnZXQgeCgpe3JldHVybiB0aGlzLl94fVxuXG4gICAgICAvKiogQGRlcHJlY2F0ZWQgVXNlIHNvbWV0aGluZyBlbHNlICovXG4gICAgICBwdWJsaWMgc2V0IHgoX3g6IG51bWJlcikge3RoaXMuX3ggPSBfeDt9XG4gICAgfVxuICAiXX0="
+      //# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiaW5kZXguanMiLCJzb3VyY2VSb290IjoiIiwic291cmNlcyI6WyJpbmRleC50cyJdLCJuYW1lcyI6W10sIm1hcHBpbmdzIjoiOzs7OztBQUNJLE1BQWEsR0FBRzs7SUFDTixFQUFFLEdBQUcsQ0FBQyxDQUFDO0lBQ2YsSUFBVyxDQUFDOzs7Ozs7OztNQUFHLE9BQU8sSUFBSSxDQUFDLEVBQUUsQ0FBQSxFQUFDO0lBRTlCLHFDQUFxQztJQUNyQyxJQUFXLENBQUMsQ0FBQyxFQUFVOzs7Ozs7OztNQUFHLElBQUksQ0FBQyxFQUFFLEdBQUcsRUFBRSxDQUFDLEVBQUM7O0FBTDFDLGtCQU1DIiwic291cmNlc0NvbnRlbnQiOlsiXG4gICAgZXhwb3J0IGNsYXNzIEZvbyB7XG4gICAgICBwcml2YXRlIF94ID0gMDtcbiAgICAgIHB1YmxpYyBnZXQgeCgpe3JldHVybiB0aGlzLl94fVxuXG4gICAgICAvKiogQGRlcHJlY2F0ZWQgVXNlIHNvbWV0aGluZyBlbHNlICovXG4gICAgICBwdWJsaWMgc2V0IHgoX3g6IG51bWJlcikge3RoaXMuX3ggPSBfeDt9XG4gICAgfVxuICAiXX0="
     `);
   });
 
@@ -711,13 +699,13 @@ describe('Call injections', () => {
 
     expect(jsFile(result)).toMatchInlineSnapshot(`
       ""use strict";
-      var _a;
       Object.defineProperty(exports, "__esModule", { value: true });
       exports.Foo = void 0;
       const jsiiDeprecationWarnings = require("./.warnings.jsii.js");
       const JSII_RTTI_SYMBOL_1 = Symbol.for("jsii.rtti");
       /** @deprecated Use something else */
       class Foo {
+          static [JSII_RTTI_SYMBOL_1] = { fqn: "testpkg.Foo", version: "0.0.1" };
           constructor() { try {
               jsiiDeprecationWarnings.print("testpkg.Foo", "Use something else");
           }
@@ -729,9 +717,7 @@ describe('Call injections', () => {
           } }
       }
       exports.Foo = Foo;
-      _a = JSII_RTTI_SYMBOL_1;
-      Foo[_a] = { fqn: "testpkg.Foo", version: "0.0.1" };
-      //# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiaW5kZXguanMiLCJzb3VyY2VSb290IjoiIiwic291cmNlcyI6WyJpbmRleC50cyJdLCJuYW1lcyI6W10sIm1hcHBpbmdzIjoiOzs7Ozs7QUFDSSxxQ0FBcUM7QUFDckMsTUFBYSxHQUFHO0lBQ2Q7Ozs7OzJDQURXLEdBQUc7OztPQUNDOztBQURqQixrQkFFQyIsInNvdXJjZXNDb250ZW50IjpbIlxuICAgIC8qKiBAZGVwcmVjYXRlZCBVc2Ugc29tZXRoaW5nIGVsc2UgKi9cbiAgICBleHBvcnQgY2xhc3MgRm9vIHtcbiAgICAgIGNvbnN0cnVjdG9yKCl7fVxuICAgIH1cbiAgIl19"
+      //# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiaW5kZXguanMiLCJzb3VyY2VSb290IjoiIiwic291cmNlcyI6WyJpbmRleC50cyJdLCJuYW1lcyI6W10sIm1hcHBpbmdzIjoiOzs7OztBQUNJLHFDQUFxQztBQUNyQyxNQUFhLEdBQUc7O0lBQ2Q7Ozs7OzJDQURXLEdBQUc7OztPQUNDOztBQURqQixrQkFFQyIsInNvdXJjZXNDb250ZW50IjpbIlxuICAgIC8qKiBAZGVwcmVjYXRlZCBVc2Ugc29tZXRoaW5nIGVsc2UgKi9cbiAgICBleHBvcnQgY2xhc3MgRm9vIHtcbiAgICAgIGNvbnN0cnVjdG9yKCl7fVxuICAgIH1cbiAgIl19"
     `);
   });
 });
@@ -770,8 +756,8 @@ describe('thrown exceptions have the expected stack trace', () => {
         DeprecationError: testpkg.DeprecatedConstructor is deprecated.
          for testing
          This API will be removed in the next major release.
-            at test (index.js:23:5)
-            at index.js:25:1"
+            at test (index.js:21:5)
+            at index.js:23:1"
       `);
     }
   });
@@ -812,8 +798,8 @@ describe('thrown exceptions have the expected stack trace', () => {
         DeprecationError: testpkg.DeprecatedConstructor#property is deprecated.
          for testing
          This API will be removed in the next major release.
-            at test (index.js:27:20)
-            at index.js:29:1"
+            at test (index.js:25:20)
+            at index.js:27:1"
       `);
     }
   });
@@ -853,15 +839,15 @@ describe('thrown exceptions have the expected stack trace', () => {
       expect(null).toBeInstanceOf(Error);
     } catch (error: any) {
       expect(error.stack.replace(process.cwd(), '<process.cwd>')).toMatchInlineSnapshot(`
-        "index.js:32
+        "index.js:30
                     throw error;
                     ^
 
         DeprecationError: testpkg.DeprecatedConstructor#property is deprecated.
          for testing
          This API will be removed in the next major release.
-            at test (index.js:42:22)
-            at index.js:44:1"
+            at test (index.js:38:22)
+            at index.js:40:1"
       `);
     }
   });
@@ -902,8 +888,8 @@ describe('thrown exceptions have the expected stack trace', () => {
         DeprecationError: testpkg.DeprecatedConstructor#deprecated is deprecated.
          for testing
          This API will be removed in the next major release.
-            at test (index.js:26:13)
-            at index.js:28:1"
+            at test (index.js:24:13)
+            at index.js:26:1"
       `);
     }
   });

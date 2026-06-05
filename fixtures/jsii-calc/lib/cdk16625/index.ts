@@ -1,4 +1,4 @@
-import * as assert from 'assert';
+import * as assert from 'node:assert';
 
 import { IRandomNumberGenerator } from '../calculator';
 import { UnimportedSubmoduleType } from './donotimport';
@@ -21,6 +21,6 @@ export abstract class Cdk16625 {
   public test(): void {
     const value = 1337;
     const rng = new UnimportedSubmoduleType(value);
-    assert(this.unwrap(rng) === value);
+    assert.ok(this.unwrap(rng) === value);
   }
 }

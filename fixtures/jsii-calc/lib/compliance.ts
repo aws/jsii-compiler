@@ -1802,7 +1802,7 @@ export class ImplementsInterfaceWithInternalSubclass extends ImplementsInterface
   /**
    * @internal
    */
-  public override _propertiesToo?: string;
+  public declare _propertiesToo?: string;
 }
 
 //

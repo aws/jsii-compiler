@@ -59,8 +59,8 @@ describe('ruleset: strict', () => {
 
         // minimal stuff to pass test
         strict: true,
-        target: 'es2022' as any,
-        lib: ['es2022'],
+        target: 'es2023' as any,
+        lib: ['es2023'],
         module: 'node16' as any,
         esModuleInterop: true,
         skipLibCheck: true,

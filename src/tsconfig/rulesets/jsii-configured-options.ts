@@ -12,7 +12,6 @@ jsiiConfiguredOptions.shouldPass('inlineSourceMap', Match.ANY);
 jsiiConfiguredOptions.shouldPass('inlineSources', Match.ANY);
 jsiiConfiguredOptions.shouldPass('sourceMap', Match.ANY);
 jsiiConfiguredOptions.shouldPass('types', Match.ANY);
-jsiiConfiguredOptions.shouldPass('baseUrl', Match.ANY);
 jsiiConfiguredOptions.shouldPass('paths', Match.ANY);
 jsiiConfiguredOptions.shouldPass('composite', Match.ANY); // configured via projectReferences
 jsiiConfiguredOptions.shouldPass('tsBuildInfoFile', Match.ANY);

@@ -869,7 +869,7 @@ neg.omit.4.ts:8:13 - error JSII1003: Only string-indexed map types are supported
 exports[`override-changes-visibility 1`] = `
 neg.override-changes-visibility.ts:14:3 - error JSII5002: "jsii.ChildClass#property" changes visibility to public when overriding jsii.BaseClass. Change it to protected [language-compatibility/override-changes-visibility]
 
-14   public readonly property?: string;
+14   public declare readonly property?: string;
      ~~~~~~
 
   neg.override-changes-visibility.ts:5:3

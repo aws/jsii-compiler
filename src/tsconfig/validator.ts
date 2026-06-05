@@ -47,6 +47,41 @@ interface Rule {
   matcher: Matcher;
 }
 
+/**
+ * A human-readable description of a single rule.
+ * Intended for displaying a rule set to a user, e.g. via the CLI.
+ */
+export interface RuleDescription {
+  /**
+   * The field (compilerOption) the rule applies to.
+   */
+  readonly field: string;
+
+  /**
+   * Whether the value must match (`PASS`) or must not match (`FAIL`) the constraint.
+   */
+  readonly type: RuleType;
+
+  /**
+   * Whether the field is required to be present for the rule to pass.
+   */
+  readonly required: boolean;
+
+  /**
+   * The values the matcher offered as hints.
+   * For `PASS` rules these are allowed values, for `FAIL` rules these are disallowed values.
+   * `undefined` when the matcher did not offer any hints (e.g. any value is accepted).
+   */
+  readonly values?: any[];
+}
+
+/**
+ * A sentinel value used to probe matchers for hints.
+ * It is intentionally not `null`/`undefined` so that `Match.optional` delegates
+ * to its inner matcher (which is where the hints are recorded).
+ */
+const DESCRIBE_PROBE = Symbol('jsii.tsconfig.describe.probe');
+
 export class RuleSet {
   private _rules: Array<Rule> = [];
   public get rules(): Array<Rule> {
@@ -170,6 +205,42 @@ export class RuleSet {
 
     return fieldHints;
   }
+
+  /**
+   * Produces a human-readable description of every rule in the set.
+   *
+   * This is derived directly from the rules (it does not duplicate them), so it
+   * stays in sync as rules are added or changed. It is primarily intended for
+   * surfacing a rule set to a user, e.g. via the CLI.
+   *
+   * @returns A description for every rule, in the order the rules were added.
+   */
+  public describe(): RuleDescription[] {
+    return this._rules.map((rule) => {
+      // Probe the matcher for the values it considers relevant (hints).
+      const values: any[] = [];
+      let hinted = false;
+      rule.matcher(DESCRIBE_PROBE, {
+        hints: (allowed) => {
+          hinted = true;
+          if (allowed) {
+            values.push(...allowed);
+          }
+        },
+      });
+
+      // A field is required if the rule is not satisfied when the value is absent.
+      const passesWhenAbsent = rule.matcher(undefined);
+      const required = rule.type === RuleType.PASS ? !passesWhenAbsent : passesWhenAbsent;
+
+      return {
+        field: rule.field,
+        type: rule.type,
+        required,
+        values: hinted ? values : undefined,
+      };
+    });
+  }
 }
 
 /**
@@ -215,6 +286,14 @@ export class Match {
       }
       return matcher(value, options);
     };
+  }
+
+  /**
+   * Value must match at least one of the provided matchers.
+   * All matchers are evaluated (no short-circuit) so their hints are collected.
+   */
+  public static anyOf(...matchers: Matcher[]): Matcher {
+    return (value, options) => matchers.map((m) => m(value, options)).some(Boolean);
   }
 
   /**

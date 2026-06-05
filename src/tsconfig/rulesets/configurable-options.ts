@@ -21,5 +21,11 @@ configurableOptions.shouldPass('noFallthroughCasesInSwitch', Match.ANY);
 configurableOptions.shouldPass('verbatimModuleSyntax', Match.ANY);
 configurableOptions.shouldPass('isolatedModules', Match.ANY);
 configurableOptions.shouldPass('isolatedDeclarations', Match.ANY);
+configurableOptions.shouldPass('useDefineForClassFields', Match.ANY);
+// Authoring options the user may opt into; some jsii language features won't be
+// usable under them, but that is the user's choice (TS reports any violations).
+configurableOptions.shouldPass('erasableSyntaxOnly', Match.ANY);
+configurableOptions.shouldPass('allowImportingTsExtensions', Match.ANY);
+configurableOptions.shouldPass('rewriteRelativeImportExtensions', Match.ANY);
 
 export default configurableOptions;

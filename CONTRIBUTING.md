@@ -6,6 +6,21 @@ documentation, we greatly value feedback and contributions from our community.
 Please read through this document before submitting any issues or pull requests to ensure we have all the necessary
 information to effectively respond to your bug report or contribution.
 
+The jsii toolchain is spread out on multiple repositories.
+Check you are working on the correct repo for a given task.
+
+- [aws/jsii-compiler](https://github.com/aws/jsii-compiler) is where the `jsii` compiler is maintained (except releases
+  in the `1.x` line)
+- [aws/jsii-rosetta](https://github.com/aws/jsii-rosetta) is where the `jsii-rosetta` sample code transliteration tool
+  is maintained (except releases in the `1.x` line)
+- [aws/jsii](https://github.com/aws/jsii) is where the rest of the toolchain is maintained, including:
+  - `@jsii/spec`, the package that defines the _`.jsii` assembly_ specification
+  - `jsii-config`, an interactive tool to help configure your jsii package
+  - `jsii-pacmak`, the bindings generator for jsii packages
+  - `jsii-reflect`, a higher-level way to process _`.jsii` assemblies_
+  - The jsii runtime libraries for the supported jsii target languages
+  - `1.x` release lines of `jsii` and `jsii-rosetta`
+
 ## Reporting Bugs/Feature Requests
 
 We welcome you to use the GitHub issue tracker to report bugs or suggest features.

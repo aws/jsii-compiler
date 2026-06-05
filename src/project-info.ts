@@ -24,7 +24,6 @@ export type TSCompilerOptions = Partial<
     | 'outDir'
     | 'rootDir'
     // TypeScript path mapping
-    | 'baseUrl'
     | 'paths'
     // Style preferences
     | 'forceConsistentCasingInFileNames'
@@ -290,14 +289,13 @@ export function loadProjectInfo(projectRoot: string): ProjectInfoResult {
     tsc: {
       outDir: pkg.jsii?.tsc?.outDir,
       rootDir: pkg.jsii?.tsc?.rootDir,
-      baseUrl: pkg.jsii?.tsc?.baseUrl,
       paths: pkg.jsii?.tsc?.paths,
       forceConsistentCasingInFileNames: pkg.jsii?.tsc?.forceConsistentCasingInFileNames,
       noImplicitOverride: pkg.jsii?.tsc?.noImplicitOverride,
       noPropertyAccessFromIndexSignature: pkg.jsii?.tsc?.noPropertyAccessFromIndexSignature,
       noUncheckedIndexedAccess: pkg.jsii?.tsc?.noUncheckedIndexedAccess,
       ..._sourceMapPreferences(pkg.jsii?.tsc),
-      types: pkg.jsii?.tsc?.types,
+      types: pkg.jsii?.tsc?.types ?? ['*'],
     },
     bin: pkg.bin,
     exports: pkg.exports,

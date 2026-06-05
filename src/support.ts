@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { get } from 'node:https';
 import { join } from 'node:path';
-import * as chalk from 'chalk';
+import chalk from 'chalk';
 
 import { RELEASE_LINE } from './version';
 

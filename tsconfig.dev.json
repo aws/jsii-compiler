@@ -3,15 +3,14 @@
   "compilerOptions": {
     "alwaysStrict": true,
     "declaration": true,
-    "esModuleInterop": false,
+    "esModuleInterop": true,
     "experimentalDecorators": true,
     "inlineSourceMap": false,
     "inlineSources": true,
     "lib": [
-      "es2020",
-      "es2021.WeakRef"
+      "es2023"
     ],
-    "module": "node16",
+    "module": "node20",
     "noEmitOnError": false,
     "noFallthroughCasesInSwitch": true,
     "noImplicitAny": true,
@@ -24,7 +23,7 @@
     "strictNullChecks": true,
     "strictPropertyInitialization": true,
     "stripInternal": true,
-    "target": "ES2020",
+    "target": "ES2023",
     "types": [
       "clone",
       "deep-equal",
@@ -37,7 +36,7 @@
     ],
     "noImplicitOverride": true,
     "skipLibCheck": true,
-    "moduleResolution": "node16",
+    "moduleResolution": "nodenext",
     "isolatedModules": true,
     "sourceMap": true
   },
