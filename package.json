@@ -63,13 +63,13 @@
     "npm-check-updates": "^20",
     "prettier": "^2.8.8",
     "projen": "^0.99.70",
-    "tar": "^7.5.15",
+    "tar": "^7.5.16",
     "ts-jest": "^29.4.11",
     "ts-node": "^10.9.2"
   },
   "dependencies": {
-    "@jsii/check-node": "1.132.0",
-    "@jsii/spec": "1.132.0",
+    "@jsii/check-node": "1.133.0",
+    "@jsii/spec": "1.133.0",
     "case": "^1.6.3",
     "chalk": "^4",
     "fast-deep-equal": "^3.1.3",
