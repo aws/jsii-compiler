@@ -38,12 +38,15 @@ jobs:
       - name: Install dependencies
         run: yarn install --immutable
       - name: Prepare Release
-        run: yarn release ${{ github.ref_name }}
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: yarn release "$RELEASE_TAG"
       - name: Determine Target
         id: publish-target
         env:
+          RELEASE_TAG: ${{ github.ref_name }}
           GITHUB_TOKEN: ${{ github.token }}
-        run: yarn ts-node projenrc/publish-target.ts ${{ github.ref_name }}
+        run: yarn ts-node projenrc/publish-target.ts "$RELEASE_TAG"
       - name: Federate to AWS
         if: fromJSON(steps.publish-target.outputs.github-release)
         uses: aws-actions/configure-aws-credentials@v6
@@ -97,8 +100,9 @@ jobs:
         id: release-exists
         env:
           GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
         run: |-
-          if gh release view ${{ github.ref_name }} --repo=${{ github.repository }} &>/dev/null
+          if gh release view "$RELEASE_TAG" --repo=${{ github.repository }} &>/dev/null
           then
           echo "result=true" >> $GITHUB_OUTPUT
           else
@@ -108,16 +112,19 @@ jobs:
         if: "!fromJSON(steps.release-exists.outputs.result) && fromJSON(needs.build.outputs.prerelease)"
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create ${{ github.ref_name }} --repo=${{ github.repository }} --generate-notes --title=${{ github.ref_name }} --verify-tag --prerelease --latest=${{ needs.build.outputs.latest }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: gh release create "$RELEASE_TAG" --repo=${{ github.repository }} --generate-notes --title="$RELEASE_TAG" --verify-tag --prerelease --latest=${{ needs.build.outputs.latest }}
       - name: Create Release
         if: "!fromJSON(steps.release-exists.outputs.result) && !fromJSON(needs.build.outputs.prerelease)"
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create ${{ github.ref_name }} --repo=${{ github.repository }} --generate-notes --title=${{ github.ref_name }} --verify-tag --latest=${{ needs.build.outputs.latest }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: gh release create "$RELEASE_TAG" --repo=${{ github.repository }} --generate-notes --title="$RELEASE_TAG" --verify-tag --latest=${{ needs.build.outputs.latest }}
       - name: Attach assets
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release upload ${{ github.ref_name }} --repo=${{ github.repository }} --clobber ${{ github.workspace }}/**/*
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: gh release upload "$RELEASE_TAG" --repo=${{ github.repository }} --clobber ${{ github.workspace }}/**/*
   release-npm-package:
     name: Release to registry.npmjs.org
     needs: build
@@ -157,4 +164,6 @@ jobs:
         run: npm publish ${{ github.workspace }}/js/jsii-*.tgz --access=public --provenance --tag=${{ needs.build.outputs.dist-tag }}
       - name: Tag "latest"
         if: fromJSON(needs.build.outputs.latest)
-        run: npm dist-tag add jsii@${{ github.ref_name }} latest
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: npm dist-tag add "jsii@$RELEASE_TAG" latest
