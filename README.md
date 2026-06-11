@@ -215,4 +215,4 @@ See [LICENSE](./LICENSE) and [NOTICE](./NOTICE) for more information.
 
 ## :gear: Contributing
 
-See [CONTRIBUTING](./CONTRIBUTING.md).
+See [CONTRIBUTING](./CONTRIBUTING.md) for contribution guidelines
