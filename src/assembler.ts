@@ -2381,6 +2381,23 @@ export class Assembler implements Emitter {
         types.push(resolvedType);
       }
 
+      if (field === 'union') {
+        const arrayTypes = types.filter(
+          (ref) => spec.isCollectionTypeReference(ref) && ref.collection.kind === spec.CollectionKind.Array,
+        );
+
+        if (arrayTypes.length > 1) {
+          this._diagnostics.push(
+            JsiiDiagnostic.JSII_1003_UNSUPPORTED_TYPE.create(
+              declaration,
+              `Union types cannot contain multiple array types (${arrayTypes
+                .map(typeReferenceToString)
+                .join(', ')}). Use an array whose element type is a union instead.`,
+            ),
+          );
+        }
+      }
+
       const returnedType: spec.UnionTypeReference | spec.IntersectionTypeReference = {
         [field]: { types },
       } as any;
