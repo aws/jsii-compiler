@@ -1,5 +1,6 @@
 import '@jsii/check-node/run';
 
+import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as util from 'node:util';
 import chalk from 'chalk';
@@ -206,24 +207,31 @@ enum OPTION_GROUP {
           .positional('TSCONFIG', {
             type: 'string',
             desc: 'The TypeScript configuration file to validate',
-            default: 'tsconfig.json',
+            defaultDescription: 'jsii.tsconfig from package.json, or tsconfig.json',
             normalize: true,
           })
           .option('rule-set', {
             group: OPTION_GROUP.TS,
             alias: 'R',
             ...choiceWithDesc(RULE_SET_DESCRIPTIONS, 'The rule set to validate the configuration file against.'),
-            default: TypeScriptConfigValidationRuleSet.STRICT,
+            defaultDescription: TypeScriptConfigValidationRuleSet.STRICT,
           }),
       (argv) => {
         try {
           const verbosity = typeof argv.verbose === 'number' ? argv.verbose : 0;
           _configureLog4js(verbosity);
 
-          const configPath = path.resolve(process.cwd(), argv.TSCONFIG);
+          // Read package.json config only when needed (tsconfig or rule-set not explicitly provided)
+          const jsiiConfig =
+            argv.TSCONFIG == null || argv['rule-set'] == null ? _readJsiiConfig(process.cwd()) : undefined;
+
+          const tsconfigFile = argv.TSCONFIG ?? jsiiConfig?.tsconfig ?? 'tsconfig.json';
+          const configPath = path.resolve(process.cwd(), tsconfigFile);
           const projectRoot = path.dirname(configPath);
           const configName = path.relative(projectRoot, configPath);
-          const ruleSet = argv['rule-set'] as TypeScriptConfigValidationRuleSet;
+          const ruleSet = (argv['rule-set'] ??
+            jsiiConfig?.validateTsconfig ??
+            TypeScriptConfigValidationRuleSet.STRICT) as TypeScriptConfigValidationRuleSet;
 
           // Validation is disabled for the "off" rule set; mirror the compiler behavior.
           if (ruleSet === TypeScriptConfigValidationRuleSet.NONE) {
@@ -336,5 +344,14 @@ function _configureLog4js(verbosity: number) {
       default:
         return 'ALL';
     }
+  }
+}
+
+function _readJsiiConfig(dir: string): { tsconfig?: string; validateTsconfig?: string } | undefined {
+  try {
+    const pkg = JSON.parse(fs.readFileSync(path.join(dir, 'package.json'), 'utf-8'));
+    return pkg.jsii;
+  } catch {
+    return undefined;
   }
 }
