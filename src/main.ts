@@ -2,7 +2,7 @@ import '@jsii/check-node/run';
 
 import * as path from 'node:path';
 import * as util from 'node:util';
-import chalk from 'chalk';
+import * as chalk from 'chalk';
 import * as log4js from 'log4js';
 import { version as tsVersion } from 'typescript/package.json';
 import * as yargs from 'yargs';
@@ -109,13 +109,8 @@ enum OPTION_GROUP {
           .option('validate-tsconfig', {
             group: OPTION_GROUP.TS,
             ...choiceWithDesc(
-<<<<<<< HEAD
-              ruleSets,
-              '[EXPERIMENTAL] Validate the provided typescript configuration file against a set of rules.',
-=======
               RULE_SET_DESCRIPTIONS,
-              'Validate the provided typescript configuration file against a set of rules.',
->>>>>>> 5688d31 (feat: add commands to validate a tsconfig and inspect tsconfig rule sets (#2661))
+              '[EXPERIMENTAL] Validate the provided typescript configuration file against a set of rules.',
             ),
             defaultDescription: TypeScriptConfigValidationRuleSet.STRICT,
           })

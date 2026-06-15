@@ -79,7 +79,7 @@ describe('describeRuleSet()', () => {
 
     expect(target).toBeDefined();
     expect(target?.required).toBe(true);
-    expect(target?.values).toEqual(expect.arrayContaining(['es2022', 'es2023', 'esnext']));
+    expect(target?.values).toEqual(expect.arrayContaining(['es2022']));
   });
 
   test('"off" rule set has no compilerOptions rules', () => {
@@ -117,8 +117,8 @@ describe('validateTypeScriptConfigFile()', () => {
     const configPath = writeConfig({
       compilerOptions: {
         strict: true,
-        target: 'es2023',
-        lib: ['es2023'],
+        target: 'es2022',
+        lib: ['es2022'],
         module: 'node16',
         esModuleInterop: true,
         skipLibCheck: true,

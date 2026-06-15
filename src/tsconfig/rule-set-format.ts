@@ -1,4 +1,4 @@
-import chalk from 'chalk';
+import * as chalk from 'chalk';
 import { TypeScriptConfigValidationRuleSet } from '.';
 import { describeRuleSet, getCompilerOptionsRuleSet } from './tsconfig-validator';
 import { RuleDescription, RuleType } from './validator';

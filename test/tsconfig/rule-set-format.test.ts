@@ -1,4 +1,4 @@
-import chalk from 'chalk';
+import * as chalk from 'chalk';
 import { TypeScriptConfigValidationRuleSet } from '../../src/tsconfig';
 import {
   formatConstraint,
@@ -74,7 +74,7 @@ describe('formatRuleSet()', () => {
   test('strict rejects unknown options and surfaces required + allowed values', () => {
     const out = formatRuleSet(TypeScriptConfigValidationRuleSet.STRICT);
     expect(out).toContain('other options: rejected');
-    expect(out).toMatch(/target\s+required; must be one of: es2022, es2023, esnext; must not be es5/);
+    expect(out).toMatch(/target\s+required; must be es2022/);
   });
 
   test('dedupes identical overlapping constraints', () => {
