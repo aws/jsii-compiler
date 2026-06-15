@@ -1,5 +1,6 @@
 import '@jsii/check-node/run';
 
+import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as util from 'node:util';
 import * as log4js from 'log4js';
@@ -208,6 +209,90 @@ const ruleSets: {
         }
       },
     )
+<<<<<<< HEAD
+=======
+    .command(
+      'validate-tsconfig [TSCONFIG]',
+      'Validate a TypeScript configuration file against a jsii rule set, without compiling',
+      (cmd) =>
+        cmd
+          .positional('TSCONFIG', {
+            type: 'string',
+            desc: 'The TypeScript configuration file to validate',
+            defaultDescription: 'jsii.tsconfig from package.json, or tsconfig.json',
+            normalize: true,
+          })
+          .option('rule-set', {
+            group: OPTION_GROUP.TS,
+            alias: 'R',
+            ...choiceWithDesc(RULE_SET_DESCRIPTIONS, 'The rule set to validate the configuration file against.'),
+            defaultDescription: TypeScriptConfigValidationRuleSet.STRICT,
+          }),
+      (argv) => {
+        try {
+          const verbosity = typeof argv.verbose === 'number' ? argv.verbose : 0;
+          _configureLog4js(verbosity);
+
+          // Read package.json config only when needed (tsconfig or rule-set not explicitly provided)
+          const jsiiConfig =
+            argv.TSCONFIG == null || argv['rule-set'] == null ? _readJsiiConfig(process.cwd()) : undefined;
+
+          const tsconfigFile = argv.TSCONFIG ?? jsiiConfig?.tsconfig ?? 'tsconfig.json';
+          const configPath = path.resolve(process.cwd(), tsconfigFile);
+          const projectRoot = path.dirname(configPath);
+          const configName = path.relative(projectRoot, configPath);
+          const ruleSet = (argv['rule-set'] ??
+            jsiiConfig?.validateTsconfig ??
+            TypeScriptConfigValidationRuleSet.STRICT) as TypeScriptConfigValidationRuleSet;
+
+          // Validation is disabled for the "off" rule set; mirror the compiler behavior.
+          if (ruleSet === TypeScriptConfigValidationRuleSet.NONE) {
+            utils.logDiagnostic(
+              JsiiDiagnostic.JSII_4009_DISABLED_TSCONFIG_VALIDATION.create(undefined, configName),
+              projectRoot,
+            );
+            return;
+          }
+
+          const violations = validateTypeScriptConfigFile(configPath, ruleSet);
+          if (violations.length > 0) {
+            utils.logDiagnostic(
+              JsiiDiagnostic.JSII_4000_FAILED_TSCONFIG_VALIDATION.create(undefined, configName, ruleSet, violations),
+              projectRoot,
+            );
+            process.exitCode = 1;
+          } else {
+            console.log(`✨ "${configName}" is valid against rule set "${ruleSet}"`);
+          }
+        } catch (e: unknown) {
+          if (e instanceof utils.JsiiError) {
+            const LOG = log4js.getLogger(utils.CLI_LOGGER);
+            LOG.error(e.message);
+            process.exitCode = -1;
+          } else {
+            throw e;
+          }
+        }
+      },
+    )
+    .command(
+      'rules [RULE_SET]',
+      'Print the tsconfig validation rules for a rule set (or for all rule sets)',
+      (cmd) =>
+        cmd.positional('RULE_SET', {
+          ...choiceWithDesc(RULE_SET_DESCRIPTIONS, 'The rule set to print. If omitted, all rule sets are printed.'),
+        }),
+      (argv) => {
+        const selected = argv.RULE_SET as TypeScriptConfigValidationRuleSet | undefined;
+        const sets =
+          selected != null
+            ? [selected]
+            : (Object.values(TypeScriptConfigValidationRuleSet) as TypeScriptConfigValidationRuleSet[]);
+
+        console.log(`${sets.map(formatRuleSet).join(`\n\n${chalk.dim('─'.repeat(72))}\n\n`)}\n`);
+      },
+    )
+>>>>>>> c8c1e75 (feat(cli): read validate-tsconfig defaults from package.json (#2682))
     .help()
     .version(`${VERSION}, typescript ${tsVersion}`)
     .parse();
@@ -272,5 +357,14 @@ function _configureLog4js(verbosity: number) {
       default:
         return 'ALL';
     }
+  }
+}
+
+function _readJsiiConfig(dir: string): { tsconfig?: string; validateTsconfig?: string } | undefined {
+  try {
+    const pkg = JSON.parse(fs.readFileSync(path.join(dir, 'package.json'), 'utf-8'));
+    return pkg.jsii;
+  } catch {
+    return undefined;
   }
 }
