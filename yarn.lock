@@ -964,20 +964,20 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@jsii/check-node@npm:1.134.0":
-  version: 1.134.0
-  resolution: "@jsii/check-node@npm:1.134.0"
+"@jsii/check-node@npm:1.135.0":
+  version: 1.135.0
+  resolution: "@jsii/check-node@npm:1.135.0"
   dependencies:
     chalk: "npm:^4.1.2"
-    semver: "npm:^7.8.1"
-  checksum: 10c0/3341389e2fc3c7c7bb4be4a57f6ed3011b136bb106f9410d5cab42aae0faad1de92336bc9566fd120087665363c3ef175809e6e8c11da651ee269e3870b002d7
+    semver: "npm:^7.8.2"
+  checksum: 10c0/13507f78c9537d8ecf2101e74321a40d41aaab78397f1b5d58688e13c54f6c2d0d8bbce580a6203bbcd458ccacefd88a051ed21f4ffd97c93e8ced53c806acd8
   languageName: node
   linkType: hard
 
-"@jsii/spec@npm:1.134.0":
-  version: 1.134.0
-  resolution: "@jsii/spec@npm:1.134.0"
-  checksum: 10c0/925f6d956d34ce15929ac3d42e5ae229179abb1939898afc14b33218956e76f848f218dc17c55fde7f25c666da085af7a525f2edf82466440a2b7ea9ddb9ec91
+"@jsii/spec@npm:1.135.0":
+  version: 1.135.0
+  resolution: "@jsii/spec@npm:1.135.0"
+  checksum: 10c0/154d59e728e1731475da68079f19ea3c17219a7746541416c4d0b34cf96c52d0aad156cc0438cc15e10bc88eeedf9ea86bc7723c8c642b2d70e7d13e216c2d9e
   languageName: node
   linkType: hard
 
@@ -5505,8 +5505,8 @@ __metadata:
   dependencies:
     "@actions/core": "npm:^1.11.1"
     "@actions/github": "npm:^5.1.1"
-    "@jsii/check-node": "npm:1.134.0"
-    "@jsii/spec": "npm:1.134.0"
+    "@jsii/check-node": "npm:1.135.0"
+    "@jsii/spec": "npm:1.135.0"
     "@types/clone": "npm:^2.1.4"
     "@types/deep-equal": "npm:^1.0.4"
     "@types/glob": "npm:^8.1.0"
@@ -5537,7 +5537,7 @@ __metadata:
     npm: "npm:^9.9.4"
     npm-check-updates: "npm:^20"
     prettier: "npm:^2.8.8"
-    projen: "npm:^0.99.71"
+    projen: "npm:^0.99.73"
     semver: "npm:^7.8.4"
     semver-intersect: "npm:^1.5.0"
     sort-json: "npm:^2.0.1"
@@ -7134,9 +7134,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"projen@npm:^0.99.71":
-  version: 0.99.71
-  resolution: "projen@npm:0.99.71"
+"projen@npm:^0.99.73":
+  version: 0.99.73
+  resolution: "projen@npm:0.99.73"
   dependencies:
     "@iarna/toml": "npm:^2.2.5"
     case: "npm:^1.6.3"
@@ -7148,7 +7148,7 @@ __metadata:
     fast-json-patch: "npm:^3.1.1"
     ini: "npm:^2.0.0"
     parse-conflict-json: "npm:^4.0.0"
-    semver: "npm:^7.8.2"
+    semver: "npm:^7.8.3"
     shx: "npm:^0.4.0"
     xmlbuilder2: "npm:^4.0.3"
     yaml: "npm:^2.2.2"
@@ -7157,7 +7157,7 @@ __metadata:
     constructs: ^10.5.0
   bin:
     projen: bin/projen
-  checksum: 10c0/593453ab979c075ea1ed2c7ef2a77e484c2b08bb852ad08223dd1a324876a5cdb47c018665c776ec682937707211e860f490270b9d6f38695653ad12ba84d175
+  checksum: 10c0/1186920dd1f2b4a57e392ca78825dd73358377262420478f8aa24b416cb509e5d4bef3782c94dc56eb12e09670d830851202a86709aece1c8b4468c05e0386b3
   languageName: node
   linkType: hard
 
@@ -7641,15 +7641,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"semver@npm:^7.8.1":
-  version: 7.8.1
-  resolution: "semver@npm:7.8.1"
-  bin:
-    semver: bin/semver.js
-  checksum: 10c0/92d6871d6347e1f99d0ba396a70f2545ccf2a032cda3d378fa0699edf7506b5c6d266aed55c8b88e72bd91a30d2351e4f39db479375374430fcdc4b58f4e3c1a
-  languageName: node
-  linkType: hard
-
 "semver@npm:^7.8.2":
   version: 7.8.2
   resolution: "semver@npm:7.8.2"
@@ -7659,7 +7650,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"semver@npm:^7.8.4":
+"semver@npm:^7.8.3, semver@npm:^7.8.4":
   version: 7.8.4
   resolution: "semver@npm:7.8.4"
   bin:
