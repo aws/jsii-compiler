@@ -50,8 +50,8 @@ describe('validate-tsconfig CLI defaults', () => {
       JSON.stringify({
         compilerOptions: {
           strict: true,
-          target: 'es2023',
-          lib: ['es2023'],
+          target: 'es2022',
+          lib: ['es2022'],
           module: 'node16',
           esModuleInterop: true,
           skipLibCheck: true,
@@ -72,8 +72,8 @@ describe('validate-tsconfig CLI defaults', () => {
       JSON.stringify({
         compilerOptions: {
           strict: true,
-          target: 'es2023',
-          lib: ['es2023'],
+          target: 'es2022',
+          lib: ['es2022'],
           module: 'node16',
           esModuleInterop: true,
           skipLibCheck: true,
