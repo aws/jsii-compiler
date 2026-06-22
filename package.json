@@ -60,14 +60,14 @@
     "npm": "^9.9.4",
     "npm-check-updates": "^20",
     "prettier": "^2.8.8",
-    "projen": "^0.99.76",
+    "projen": "^0.99.80",
     "tar": "^7.5.16",
     "ts-jest": "^29.4.11",
     "ts-node": "^10.9.2"
   },
   "dependencies": {
-    "@jsii/check-node": "1.135.0",
-    "@jsii/spec": "1.135.0",
+    "@jsii/check-node": "1.136.0",
+    "@jsii/spec": "1.136.0",
     "case": "^1.6.3",
     "chalk": "^4",
     "fast-deep-equal": "^3.1.3",
