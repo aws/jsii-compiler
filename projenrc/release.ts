@@ -40,6 +40,22 @@ export class ReleaseWorkflow {
       },
     };
 
+    // `yarn version` resolves the release strategy via a merge-base between
+    // HEAD and `origin/main`. For tags on maintenance branches that fork point
+    // is far back, so we need the full commit graph (`fetch-depth: 0`) - but
+    // not historical file contents, hence `filter: blob:none`.
+    const checkoutStep = github.WorkflowSteps.checkout({
+      with: {
+        ref: '${{ github.ref }}',
+        repository: '${{ github.repository }}',
+        fetchDepth: 0,
+      },
+    });
+    const releaseCheckoutStep: github.workflows.JobStep = {
+      ...checkoutStep,
+      with: { ...checkoutStep.with, filter: 'blob:none' },
+    };
+
     release.addJob('build', {
       name: 'Build release package',
       env: {
@@ -57,16 +73,7 @@ export class ReleaseWorkflow {
       },
       runsOn: ['ubuntu-latest'],
       steps: [
-        github.WorkflowSteps.checkout({
-          with: { ref: '${{ github.ref }}', repository: '${{ github.repository }}' },
-        }),
-        {
-          // `yarn version` needs a common ancestor with `main` to determine the
-          // release strategy. The default checkout is shallow and tag-only, so
-          // we fetch the tip of `main` to give yarn an ancestor to diff against.
-          name: 'Fetch main for yarn version',
-          run: 'git fetch --depth=1 origin main:main',
-        },
+        releaseCheckoutStep,
         ...workflowSetup(this.project),
         {
           name: 'Prepare Release',
