@@ -5623,7 +5623,7 @@ __metadata:
     npm: "npm:^9.9.4"
     npm-check-updates: "npm:^20"
     prettier: "npm:^2.8.8"
-    projen: "npm:^0.100.0"
+    projen: "npm:^0.100.2"
     semver: "npm:^7.8.5"
     semver-intersect: "npm:^1.5.0"
     sort-json: "npm:^2.0.1"
@@ -7238,9 +7238,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"projen@npm:^0.100.0":
-  version: 0.100.0
-  resolution: "projen@npm:0.100.0"
+"projen@npm:^0.100.2":
+  version: 0.100.2
+  resolution: "projen@npm:0.100.2"
   dependencies:
     "@iarna/toml": "npm:^2.2.5"
     case: "npm:^1.6.3"
@@ -7256,12 +7256,12 @@ __metadata:
     semver: "npm:^7.8.4"
     xmlbuilder2: "npm:^4.0.3"
     yaml: "npm:^2.2.2"
-    yargs: "npm:^17.7.2"
+    yargs: "npm:^17.7.3"
   peerDependencies:
     constructs: ^10.5.0
   bin:
     projen: bin/projen
-  checksum: 10c0/e9407e72be3761bd637fca8ee7a01f5ceed69f9e853ea2646dda0a413b5d6631db3e866e743d9108657480fecc9cdd3a440fe896940484a6a8b7b7c15e640acd
+  checksum: 10c0/c27caa4d9183963233c7c990a5dcb00397519f58ae18a495d3b61a40403f9c807f4632bacc3e78649d43dbdc7d5678044757f9028a87958a41e1791466fcb6e7
   languageName: node
   linkType: hard
 
@@ -9244,7 +9244,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"yargs@npm:^17.3.1, yargs@npm:^17.7.2":
+"yargs@npm:^17.3.1":
   version: 17.7.2
   resolution: "yargs@npm:17.7.2"
   dependencies:
