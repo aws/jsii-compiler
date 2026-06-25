@@ -24,10 +24,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
         with:
+          fetch-depth: 0
           ref: ${{ github.ref }}
           repository: ${{ github.repository }}
-      - name: Fetch main for yarn version
-        run: git fetch --depth=1 origin main:main
+          filter: blob:none
       - name: Enable corepack
         run: corepack enable
       - name: Setup Node.js
