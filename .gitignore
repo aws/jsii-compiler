@@ -52,9 +52,6 @@ jspm_packages/
 !/.eslintrc.json
 !/.github/workflows/upgrade-main.yml
 !/.github/workflows/upgrade-maintenance-v5.9.yml
-/build-tools/tsconfig.json
-/projenrc/tsconfig.json
-/test/tsconfig.json
 !/.vscode/settings.json
 !/.vscode/extensions.json
 /src/version.ts
