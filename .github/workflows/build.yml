@@ -141,8 +141,6 @@ jobs:
       fail-fast: false
       matrix:
         node-version:
-          - 18.x
-          - 20.x
           - 22.x
   matrix-clear:
     name: Unit Tests
@@ -231,8 +229,6 @@ jobs:
       fail-fast: false
       matrix:
         node-version:
-          - 18.x
-          - 20.x
           - 22.x
         package-manager:
           - npm
