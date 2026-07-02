@@ -168,10 +168,13 @@ export class BuildWorkflow {
           },
           {
             name: 'Push changes',
+            env: {
+              HEAD_REF: '${{ github.event.pull_request.head.ref }}',
+            },
             run: [
               'git add .',
               'git commit -s -m "chore: self-mutation"',
-              'git push origin HEAD:${{ github.event.pull_request.head.ref }}',
+              'git push origin "HEAD:$HEAD_REF"',
             ].join('\n'),
           },
         ],
