@@ -171,11 +171,9 @@ export class BuildWorkflow {
             env: {
               HEAD_REF: '${{ github.event.pull_request.head.ref }}',
             },
-            run: [
-              'git add .',
-              'git commit -s -m "chore: self-mutation"',
-              'git push origin "HEAD:$HEAD_REF"',
-            ].join('\n'),
+            run: ['git add .', 'git commit -s -m "chore: self-mutation"', 'git push origin "HEAD:$HEAD_REF"'].join(
+              '\n',
+            ),
           },
         ],
       },
