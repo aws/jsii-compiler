@@ -1034,20 +1034,20 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@jsii/check-node@npm:1.136.0":
-  version: 1.136.0
-  resolution: "@jsii/check-node@npm:1.136.0"
+"@jsii/check-node@npm:1.138.0":
+  version: 1.138.0
+  resolution: "@jsii/check-node@npm:1.138.0"
   dependencies:
     chalk: "npm:^4.1.2"
-    semver: "npm:^7.8.4"
-  checksum: 10c0/c506ea22d7ffe86db94fe4a7ea7092a70d968a1adc339d9daf65cfc350bcd124ee1bd280d17ceca1a6541fa00b3fa8505051735afdff08dd7614303cd034906d
+    semver: "npm:^7.8.5"
+  checksum: 10c0/1cf815123a54704d819e4d512853664b01b67d4c3e4c70930d3a65fd60cda97c933da7df02db37ff35655a997c639785cee93976eb468315308658d9056d9896
   languageName: node
   linkType: hard
 
-"@jsii/spec@npm:1.136.0":
-  version: 1.136.0
-  resolution: "@jsii/spec@npm:1.136.0"
-  checksum: 10c0/d1fcdb5fa138d8ad24452d00994687cdb7235a29c7bd1243f63366011a4e8cf419c718c702c9c8ef6479d3be13a8c06c8ba20054ed2eada051602cec0d2ef7fd
+"@jsii/spec@npm:1.138.0":
+  version: 1.138.0
+  resolution: "@jsii/spec@npm:1.138.0"
+  checksum: 10c0/f02c89c6597aa237a35f184667aeaf4916af136fd854f148918569a43b91ac8378ffb20396ed0961079ec492037ab607177100d593c14965860173b7c0a7b37f
   languageName: node
   linkType: hard
 
@@ -5524,8 +5524,8 @@ __metadata:
   dependencies:
     "@actions/core": "npm:^1.11.1"
     "@actions/github": "npm:^5.1.1"
-    "@jsii/check-node": "npm:1.136.0"
-    "@jsii/spec": "npm:1.136.0"
+    "@jsii/check-node": "npm:1.138.0"
+    "@jsii/spec": "npm:1.138.0"
     "@types/clone": "npm:^2.1.4"
     "@types/deep-equal": "npm:^1.0.4"
     "@types/glob": "npm:^8.1.0"
@@ -5556,12 +5556,12 @@ __metadata:
     npm: "npm:^9.9.4"
     npm-check-updates: "npm:^20"
     prettier: "npm:^2.8.8"
-    projen: "npm:^0.100.2"
+    projen: "npm:^0.101.4"
     semver: "npm:^7.8.5"
     semver-intersect: "npm:^1.5.0"
     sort-json: "npm:^2.0.1"
     spdx-license-list: "npm:^6.11.0"
-    tar: "npm:^7.5.16"
+    tar: "npm:^7.5.19"
     ts-jest: "npm:^29.4.11"
     ts-node: "npm:^10.9.2"
     typescript: "npm:~6.0"
@@ -7123,9 +7123,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"projen@npm:^0.100.2":
-  version: 0.100.2
-  resolution: "projen@npm:0.100.2"
+"projen@npm:^0.101.4":
+  version: 0.101.4
+  resolution: "projen@npm:0.101.4"
   dependencies:
     "@iarna/toml": "npm:^2.2.5"
     case: "npm:^1.6.3"
@@ -7138,7 +7138,7 @@ __metadata:
     fast-json-patch: "npm:^3.1.1"
     ini: "npm:^2.0.0"
     parse-conflict-json: "npm:^4.0.0"
-    semver: "npm:^7.8.4"
+    semver: "npm:^7.8.5"
     xmlbuilder2: "npm:^4.0.3"
     yaml: "npm:^2.2.2"
     yargs: "npm:^17.7.3"
@@ -7146,7 +7146,7 @@ __metadata:
     constructs: ^10.5.0
   bin:
     projen: bin/projen
-  checksum: 10c0/c27caa4d9183963233c7c990a5dcb00397519f58ae18a495d3b61a40403f9c807f4632bacc3e78649d43dbdc7d5678044757f9028a87958a41e1791466fcb6e7
+  checksum: 10c0/2156bba79e5573f80a75c4a7080fb6b9d0cef4783dd3bfdfc7ff18678184ab32ec49fe13e3e18f9f5d8bc2a8c795b1b81f521e18368ae85664f3d5b7388dd4d4
   languageName: node
   linkType: hard
 
@@ -7608,15 +7608,6 @@ __metadata:
   bin:
     semver: bin/semver.js
   checksum: 10c0/8f096ca9b80ffd47b308d03f9ce8c873e27e2983f36023c559cdc92c51e8433fc23ebbfe57ec9623fc155636a6961ee989501099841ae4bb1babc8d2b3f048cd
-  languageName: node
-  linkType: hard
-
-"semver@npm:^7.8.4":
-  version: 7.8.4
-  resolution: "semver@npm:7.8.4"
-  bin:
-    semver: bin/semver.js
-  checksum: 10c0/81b7c296fd7927b80f67fa516b75fa1017caac8167795320de28e76ccbc6f7f01763c30ecd10d6a0d8fd089708ab0548a5aebb94b0870e99c2a2b4600a46389b
   languageName: node
   linkType: hard
 
@@ -8141,16 +8132,16 @@ __metadata:
   languageName: node
   linkType: hard
 
-"tar@npm:^7.5.16":
-  version: 7.5.16
-  resolution: "tar@npm:7.5.16"
+"tar@npm:^7.5.19":
+  version: 7.5.19
+  resolution: "tar@npm:7.5.19"
   dependencies:
     "@isaacs/fs-minipass": "npm:^4.0.0"
     chownr: "npm:^3.0.0"
     minipass: "npm:^7.1.2"
     minizlib: "npm:^3.1.0"
     yallist: "npm:^5.0.0"
-  checksum: 10c0/4f37f3c4bd2ca2755fd736a5df1d573c1a868ec1b1e893346aeafa95ac510f9e2fd1469420bd866cc7904799e5bd4ac62b5d4f03fe27747d6e1e373b44505c5c
+  checksum: 10c0/7022e8cb04a8ceccc0689f2c731743fa2aab2e3c3f559f7dbc37b65ef7d5913049b427284eded2ec0765c5db5ff72dd7939fe2ae15785ff422cef2116c95d798
   languageName: node
   linkType: hard
 
