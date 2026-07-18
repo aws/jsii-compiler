@@ -16,6 +16,7 @@
     "sourceType": "module",
     "projectService": {
       "allowDefaultProject": [
+        "build-tools/code-gen.ts",
         ".projenrc.ts"
       ],
       "defaultProject": "./tsconfig.json"

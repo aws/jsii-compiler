@@ -232,6 +232,10 @@ project.eslint?.addIgnorePattern('test/negatives/**/*.ts');
 
 // Customize ESLint rules
 project.tsconfigDev.addInclude('build-tools/**/*.ts');
+// build-tools/*.ts are loose files not owned by a tsconfig project; allow the
+// typescript-eslint project service to lint them via the default project
+// (projen 0.101 switched eslint to `parserOptions.projectService`).
+project.eslint?.allowDefaultProjectFiles('build-tools/code-gen.ts');
 project.eslint!.rules!['no-bitwise'] = ['off']; // The TypeScript compiler API leverages some bit-flags.
 project.eslint!.rules!.quotes = ['error', 'single', { avoidEscape: true, allowTemplateLiterals: true }];
 
