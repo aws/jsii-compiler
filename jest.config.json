@@ -43,7 +43,7 @@
       "ts-jest",
       {
         "compiler": "typescript",
-        "tsconfig": "tsconfig.dev.json",
+        "tsconfig": "tsconfig.json",
         "diagnostics": {
           "ignoreCodes": [
             "TS151001"
