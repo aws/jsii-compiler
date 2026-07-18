@@ -171,7 +171,7 @@ if (project.jest?.config) {
     'ts-jest',
     {
       compiler: 'typescript',
-      tsconfig: 'tsconfig.dev.json',
+      tsconfig: 'test/tsconfig.json',
       diagnostics: { ignoreCodes: ['TS151001'] },
     },
   ];
