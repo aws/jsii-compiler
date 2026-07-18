@@ -172,11 +172,18 @@ if (project.jest?.config) {
     'ts-jest',
     {
       compiler: 'typescript',
-      tsconfig: 'tsconfig.dev.json',
+      tsconfig: 'tsconfig.json',
       diagnostics: { ignoreCodes: ['TS151001'] },
     },
   ];
 }
+
+// projen 0.101 switched ESLint to the TypeScript project service with
+// defaultProject=tsconfig.json (which only includes src/**). build-tools/*.ts is not
+// part of any tsconfig project, so register it as a loose file allowed to use the
+// default project when linting; otherwise the project service reports a parsing error
+// for build-tools/*.ts.
+project.eslint?.allowDefaultProjectFiles('build-tools/*.ts');
 
 // Add fixtures & other exemptions to npmignore
 project.npmignore?.addPatterns(
