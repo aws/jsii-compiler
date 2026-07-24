@@ -2989,9 +2989,9 @@ __metadata:
   linkType: hard
 
 "constructs@npm:^10.0.0":
-  version: 10.7.0
-  resolution: "constructs@npm:10.7.0"
-  checksum: 10c0/b1c5148dbe0404e30bd3e2a8aa2c40a14459f932749f68fe600a828549eae3445e5cf9ccddc37b47733b2486d06111cc5534384b62eaf7bfbaac479f41e05425
+  version: 10.7.1
+  resolution: "constructs@npm:10.7.1"
+  checksum: 10c0/ca472f5079f6bbe193738cc6456a7f8cb1ca97ee3125637df0b4c48210a60e6870cfa9754d0eac7803cb6b8240441834b4f21c9b45c6f78f147aae12861b569f
   languageName: node
   linkType: hard
 
@@ -5563,7 +5563,7 @@ __metadata:
     npm: "npm:^9.9.4"
     npm-check-updates: "npm:^20"
     prettier: "npm:^2.8.8"
-    projen: "npm:^0.101.16"
+    projen: "npm:^0.101.17"
     semver: "npm:^7.8.5"
     semver-intersect: "npm:^1.5.0"
     sort-json: "npm:^2.0.1"
@@ -7130,9 +7130,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"projen@npm:^0.101.16":
-  version: 0.101.16
-  resolution: "projen@npm:0.101.16"
+"projen@npm:^0.101.17":
+  version: 0.101.17
+  resolution: "projen@npm:0.101.17"
   dependencies:
     "@iarna/toml": "npm:^2.2.5"
     case: "npm:^1.6.3"
@@ -7153,7 +7153,7 @@ __metadata:
     constructs: ^10.5.0
   bin:
     projen: bin/projen
-  checksum: 10c0/8ee153f731eb1b441e0179dd6136b75cbec060e93735d8aec974cda836eb1483478ee04b92b2ee2209e29096cd080fbe62f1e95aab631ef67bb4e1c603cad126
+  checksum: 10c0/ed75996c523d3ac5650b50cd4494d4914e3ffd235d65cd8d37574fbc9ce00da5e3099fa53182c4c0cab2c5639665123e067ad472faf25da73f875d96f2686c66
   languageName: node
   linkType: hard
 
