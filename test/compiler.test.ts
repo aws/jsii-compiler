@@ -1,6 +1,6 @@
 import { mkdirSync, existsSync, mkdtempSync, rmSync, writeFileSync, readFileSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
+import { dirname, isAbsolute, join } from 'node:path';
 import { loadAssemblyFromPath, SPEC_FILE_NAME, SPEC_FILE_NAME_COMPRESSED } from '@jsii/spec';
 import * as ts from 'typescript';
 import { compile, Lock } from './fixtures';
@@ -172,6 +172,47 @@ describe(Compiler, () => {
             tscRootDir: rootDir,
           }),
         );
+      } finally {
+        rmSync(sourceDir, { force: true, recursive: true });
+      }
+    });
+
+    test('absolute rootDir is emitted as a relative tscRootDir in the assembly', () => {
+      const outDir = 'jsii-outdir';
+      const rootDir = 'jsii-rootdir';
+      const sourceDir = mkdtempSync(join(tmpdir(), 'jsii-tmpdir'));
+      mkdirSync(join(sourceDir, rootDir), { recursive: true });
+
+      try {
+        writeFileSync(join(sourceDir, rootDir, 'index.ts'), 'export class MarkerA {}');
+        writeFileSync(join(sourceDir, rootDir, 'README.md'), '# Test Package');
+
+        const compiler = new Compiler({
+          projectInfo: {
+            ..._makeProjectInfo(sourceDir, join(outDir, 'index.d.ts')),
+            tsc: {
+              outDir,
+              // Pass an ABSOLUTE rootDir, as happens in real out-of-source
+              // builds. The assembly must still record it relative to the
+              // package root, otherwise the absolute (machine-specific) path
+              // leaks into `metadata.tscRootDir` and breaks the assembly
+              // fingerprint/reproducibility check for downstream consumers.
+              rootDir: join(sourceDir, rootDir),
+            },
+          },
+          failOnWarnings: true,
+          projectReferences: false,
+        });
+
+        compiler.emit();
+
+        const assembly = loadAssemblyFromPath(sourceDir);
+        expect(assembly.metadata).toEqual(
+          expect.objectContaining({
+            tscRootDir: rootDir,
+          }),
+        );
+        expect(isAbsolute(assembly.metadata!.tscRootDir as string)).toBe(false);
       } finally {
         rmSync(sourceDir, { force: true, recursive: true });
       }
