@@ -117,7 +117,14 @@ export class Assembler implements Emitter {
 
       // rootDir may be set explicitly or not. If not, inferRootDir replicates
       // tsc's behavior of using the longest prefix of all built source files.
-      this.tscRootDir = program.getCompilerOptions().rootDir ?? inferRootDir(program);
+      // rootDir might also be absolute (just like outDir), so we normalize it
+      // to be relative to the package root. Otherwise the absolute path leaks
+      // into the assembly's `metadata.tscRootDir`, which breaks the
+      // reproducibility/fingerprint check for downstream consumers.
+      this.tscRootDir = normalizeConfigPath(
+        projectInfo.projectRoot,
+        program.getCompilerOptions().rootDir ?? inferRootDir(program),
+      );
       if (this.tscRootDir != null) {
         mainFile = path.join(this.tscRootDir, mainFile);
       }
