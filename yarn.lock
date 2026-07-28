@@ -5563,11 +5563,11 @@ __metadata:
     npm: "npm:^9.9.4"
     npm-check-updates: "npm:^20"
     prettier: "npm:^2.8.8"
-    projen: "npm:^0.101.17"
+    projen: "npm:^0.101.20"
     semver: "npm:^7.8.5"
     semver-intersect: "npm:^1.5.0"
     sort-json: "npm:^2.0.1"
-    spdx-license-list: "npm:^6.11.0"
+    spdx-license-list: "npm:^6.12.0"
     tar: "npm:^7.5.22"
     ts-jest: "npm:^29.4.12"
     ts-node: "npm:^10.9.2"
@@ -7130,9 +7130,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"projen@npm:^0.101.17":
-  version: 0.101.17
-  resolution: "projen@npm:0.101.17"
+"projen@npm:^0.101.20":
+  version: 0.101.20
+  resolution: "projen@npm:0.101.20"
   dependencies:
     "@iarna/toml": "npm:^2.2.5"
     case: "npm:^1.6.3"
@@ -7153,7 +7153,7 @@ __metadata:
     constructs: ^10.5.0
   bin:
     projen: bin/projen
-  checksum: 10c0/ed75996c523d3ac5650b50cd4494d4914e3ffd235d65cd8d37574fbc9ce00da5e3099fa53182c4c0cab2c5639665123e067ad472faf25da73f875d96f2686c66
+  checksum: 10c0/b54fb6931e2c8e60b247385b3b0615a5e57c0ae81119af3da9a8385c3199ef3f830e183dac5782ca6f79a44911e07507de934863994b5eeafd9c860c7d00972c
   languageName: node
   linkType: hard
 
@@ -7872,7 +7872,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"spdx-license-list@npm:^6.11.0, spdx-license-list@npm:^6.9.0":
+"spdx-license-list@npm:^6.12.0":
+  version: 6.12.0
+  resolution: "spdx-license-list@npm:6.12.0"
+  checksum: 10c0/e65657a6e4324ab00722dd9bf624a06d498014dee1a1ebdc89bbdd7c9816eee5a401839ef0f8b257f5a8bcb6976cad36937f434fd15ed11cee5f06ead8508926
+  languageName: node
+  linkType: hard
+
+"spdx-license-list@npm:^6.9.0":
   version: 6.11.0
   resolution: "spdx-license-list@npm:6.11.0"
   checksum: 10c0/2fcf0d162088aa5a827f8ccab9c6f8694c2f8da1eef39d999fb5502ededc985971281c80b8b01dbe6ecae10216f7697a11dc6084bdf993f14b094658674df066
