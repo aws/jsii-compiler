@@ -20,10 +20,12 @@ jobs:
       CI: "true"
     steps:
       - name: Checkout
+        id: checkout
         uses: actions/checkout@v6
         with:
           lfs: true
       - name: Cache build outputs
+        id: cache_build_outputs
         if: github.event_name == 'pull_request'
         uses: actions/cache@v3
         with:
@@ -33,17 +35,22 @@ jobs:
             lib/**/*
           restore-keys: build-outputs-
       - name: Enable corepack
+        id: enable_corepack
         run: corepack enable
       - name: Setup Node.js
+        id: setup_node_js
         uses: actions/setup-node@v6
         with:
           node-version: lts/*
           package-manager-cache: false
       - name: Install dependencies
+        id: install_dependencies
         run: yarn install --immutable
       - name: Compile
+        id: compile
         run: npx projen && npx projen pre-compile && npx projen compile && npx projen post-compile
       - name: Test
+        id: test
         run: npx projen test
       - name: Find mutations
         id: self-mutation
@@ -51,6 +58,7 @@ jobs:
           git add .
           git diff --cached --patch --exit-code > .repo.patch || echo "needed=true" >> $GITHUB_OUTPUT
       - name: Upload patch
+        id: upload_patch
         if: steps.self-mutation.outputs.needed
         uses: actions/upload-artifact@v7
         with:
@@ -59,12 +67,14 @@ jobs:
           overwrite: true
           include-hidden-files: true
       - name: Fail if self-mutation is needed
+        id: fail_if_self-mutation_is_needed
         if: steps.self-mutation.outputs.needed
         run: |-
           echo "::error::Files were changed during build (see build log). If this was triggered from a fork, you will need to update your branch."
           cat .repo.patch
           exit 1
       - name: Upload artifact
+        id: upload_artifact
         uses: actions/upload-artifact@v7
         with:
           name: build-output
@@ -90,23 +100,28 @@ jobs:
     if: always() && (github.event_name == 'pull_request') && needs.build.outputs.self-mutation-needed && (github.event.pull_request.head.repo.full_name == github.repository)
     steps:
       - name: Checkout
+        id: checkout
         uses: actions/checkout@v6
         with:
           token: ${{ secrets.PROJEN_GITHUB_TOKEN }}
           ref: ${{ github.event.pull_request.head.ref }}
           repository: ${{ github.event.pull_request.head.repo.full_name }}
       - name: Download patch
+        id: download_patch
         uses: actions/download-artifact@v8
         with:
           name: .repo.patch
           path: ${{ runner.temp }}
       - name: Apply patch
+        id: apply_patch
         run: '[ -s ${{ runner.temp }}/.repo.patch ] && git apply ${{ runner.temp }}/.repo.patch || echo "Empty patch. Skipping."'
       - name: Set git identity
+        id: set_git_identity
         run: |-
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
       - name: Push changes
+        id: push_changes
         env:
           HEAD_REF: ${{ github.event.pull_request.head.ref }}
         run: |-
@@ -123,24 +138,31 @@ jobs:
     if: success()
     steps:
       - name: Download artifact
+        id: download_artifact
         uses: actions/download-artifact@v8
         with:
           name: build-output
           path: ${{ github.workspace }}
       - name: Enable corepack
+        id: enable_corepack
         run: corepack enable
       - name: Setup Node.js
+        id: setup_node_js
         uses: actions/setup-node@v6
         with:
           node-version: ${{ matrix.node-version }}
           cache: yarn
       - name: Install dependencies
+        id: install_dependencies
         run: yarn install --immutable
       - name: Re-run post-compile
+        id: re-run_post-compile
         run: npx projen post-compile
       - name: Test
+        id: test
         run: npx projen test
       - name: Assert clean working directory
+        id: assert_clean_working_directory
         run: git diff --cached --exit-code
     strategy:
       fail-fast: false
@@ -159,8 +181,10 @@ jobs:
     if: always()
     steps:
       - name: Build result
+        id: build_result
         run: echo ${{needs.matrix-test.result}}
       - name: Set status based on matrix build
+        id: set_status_based_on_matrix_build
         if: ${{ needs.matrix-test.result != 'success' }}
         run: exit 1
   package:
@@ -172,22 +196,28 @@ jobs:
       CI: "true"
     steps:
       - name: Download artifact
+        id: download_artifact
         uses: actions/download-artifact@v8
         with:
           name: build-output
           path: ${{ github.workspace }}
       - name: Enable corepack
+        id: enable_corepack
         run: corepack enable
       - name: Setup Node.js
+        id: setup_node_js
         uses: actions/setup-node@v6
         with:
           node-version: lts/*
           package-manager-cache: false
       - name: Install dependencies
+        id: install_dependencies
         run: yarn install --immutable
       - name: Package
+        id: package
         run: npx projen package
       - name: Upload artifact
+        id: upload_artifact
         uses: actions/upload-artifact@v7
         with:
           name: release-package
@@ -203,37 +233,44 @@ jobs:
       CI: "true"
     steps:
       - name: Setup Node.js
+        id: setup_node_js
         uses: actions/setup-node@v6
         with:
           node-version: ${{ matrix.node-version }}
       - name: Download Artifact
+        id: download_artifact
         uses: actions/download-artifact@v8
         with:
           name: release-package
           path: ${{ runner.temp }}/release-package
       - name: Install from tarball (npm)
+        id: install_from_tarball_npm
         if: runner.os != 'Windows' && matrix.package-manager == 'npm'
         run: |-
           npm init -y
           npm install ${{ runner.temp }}/release-package/js/jsii-*.tgz
       - name: Install from tarball (yarn)
+        id: install_from_tarball_yarn
         if: runner.os != 'Windows' && matrix.package-manager == 'yarn'
         run: |-
           yarn init -y
           yarn add ${{ runner.temp }}/release-package/js/jsii-*.tgz
       - name: Install from tarball (Windows, npm)
+        id: install_from_tarball_windows_npm
         if: runner.os == 'Windows' && matrix.package-manager == 'npm'
         run: |-
           npm init -y
           $TARBALL = Get-ChildItem -Path "${{ runner.temp }}/release-package/js/jsii-*.tgz"
           npm install $TARBALL
       - name: Install from tarball (Windows, yarn)
+        id: install_from_tarball_windows_yarn
         if: runner.os == 'Windows' && matrix.package-manager == 'yarn'
         run: |-
           yarn init -y
           $TARBALL = Get-ChildItem -Path "${{ runner.temp }}/release-package/js/jsii-*.tgz"
           yarn add $TARBALL
       - name: Simple command
+        id: simple_command
         run: ./node_modules/.bin/jsii --version
     strategy:
       fail-fast: false
@@ -258,19 +295,23 @@ jobs:
       CI: "true"
     steps:
       - name: Setup Node.js
+        id: setup_node_js
         uses: actions/setup-node@v6
       - name: Download Artifact
+        id: download_artifact
         uses: actions/download-artifact@v8
         with:
           name: release-package
           path: ${{ runner.temp }}/release-package
       - name: Install from tarball
+        id: install_from_tarball
         run: |-
           npm init -y
           npm install jsii-pacmak@1.x ${{ runner.temp }}/release-package/private/*.tgz
           npm ls --depth=0
           ./node_modules/.bin/jsii-pacmak --version
       - name: Run jsii-pacmak
+        id: run_jsii-pacmak
         run: ./node_modules/.bin/jsii-pacmak --verbose --recurse ./node_modules/jsii-calc
   integ-clear:
     name: Integration Tests
@@ -283,6 +324,7 @@ jobs:
       CI: "true"
     steps:
       - name: Done
+        id: done
         run: echo OK
   benchmark:
     name: Benchmark (${{ matrix.compiler }}, run ${{ matrix.index }})
@@ -335,17 +377,21 @@ jobs:
       CI: "true"
     steps:
       - name: Enable corepack
+        id: enable_corepack
         run: corepack enable
       - name: Setup Node.js
+        id: setup_node_js
         uses: actions/setup-node@v6
         with:
           node-version: lts/*
           package-manager-cache: false
       - name: Download artifact
+        id: download_artifact
         uses: actions/download-artifact@v8
         with:
           name: build-output
       - name: Install dependencies
+        id: install_dependencies
         run: yarn install --immutable
       - name: Benchmark
         id: run
@@ -446,6 +492,7 @@ jobs:
           fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, summary.join("\n"), "utf-8");
           EOF
       - name: Authenticate Via OIDC Role
+        id: authenticate_via_oidc_role
         if: github.event.repository.fork == false && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/maintenance/v'))
         uses: aws-actions/configure-aws-credentials@v6
         with:
@@ -455,6 +502,7 @@ jobs:
           role-session-name: github-diff-action@cdk-ops
           output-credentials: true
       - name: Publish Metrics
+        id: publish_metrics
         if: github.event.repository.fork == false && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/maintenance/v'))
         run: |-
           aws cloudwatch put-metric-data --namespace JsiiPerformance --metric-data '[
