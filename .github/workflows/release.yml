@@ -22,6 +22,7 @@ jobs:
       CI: "true"
     steps:
       - name: Checkout
+        id: checkout
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
@@ -29,15 +30,19 @@ jobs:
           repository: ${{ github.repository }}
           filter: blob:none
       - name: Enable corepack
+        id: enable_corepack
         run: corepack enable
       - name: Setup Node.js
+        id: setup_node_js
         uses: actions/setup-node@v6
         with:
           node-version: lts/*
           package-manager-cache: false
       - name: Install dependencies
+        id: install_dependencies
         run: yarn install --immutable
       - name: Prepare Release
+        id: prepare_release
         run: yarn release ${{ github.ref_name }}
       - name: Determine Target
         id: publish-target
@@ -45,6 +50,7 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
         run: yarn ts-node projenrc/publish-target.ts ${{ github.ref_name }}
       - name: Federate to AWS
+        id: federate_to_aws
         if: fromJSON(steps.publish-target.outputs.github-release)
         uses: aws-actions/configure-aws-credentials@v6
         with:
@@ -52,6 +58,7 @@ jobs:
           role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
           role-session-name: GHA-aws-jsii-compiler@${{ github.ref_name }}
       - name: Sign Tarball
+        id: sign_tarball
         if: fromJSON(steps.publish-target.outputs.github-release)
         run: |-
           set -eo pipefail
@@ -73,6 +80,7 @@ jobs:
           unset passphrase
           find ${GNUPGHOME} -type f -exec shred --remove {} \;
       - name: Upload artifact
+        id: upload_artifact
         uses: actions/upload-artifact@v7
         with:
           name: release-package
@@ -90,6 +98,7 @@ jobs:
     if: fromJSON(needs.build.outputs.github-release)
     steps:
       - name: Download artifact
+        id: download_artifact
         uses: actions/download-artifact@v8
         with:
           name: release-package
@@ -105,16 +114,19 @@ jobs:
           echo "result=false" >> $GITHUB_OUTPUT
           fi
       - name: Create PreRelease
+        id: create_prerelease
         if: "!fromJSON(steps.release-exists.outputs.result) && fromJSON(needs.build.outputs.prerelease)"
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh release create ${{ github.ref_name }} --repo=${{ github.repository }} --generate-notes --title=${{ github.ref_name }} --verify-tag --prerelease --latest=${{ needs.build.outputs.latest }}
       - name: Create Release
+        id: create_release
         if: "!fromJSON(steps.release-exists.outputs.result) && !fromJSON(needs.build.outputs.prerelease)"
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh release create ${{ github.ref_name }} --repo=${{ github.repository }} --generate-notes --title=${{ github.ref_name }} --verify-tag --latest=${{ needs.build.outputs.latest }}
       - name: Attach assets
+        id: attach_assets
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh release upload ${{ github.ref_name }} --repo=${{ github.repository }} --clobber ${{ github.workspace }}/**/*
@@ -129,23 +141,28 @@ jobs:
       CI: "true"
     steps:
       - name: Download artifact
+        id: download_artifact
         uses: actions/download-artifact@v8
         with:
           name: release-package
       - name: Enable corepack
+        id: enable_corepack
         run: corepack enable
       - name: Setup Node.js
+        id: setup_node_js
         uses: actions/setup-node@v6
         with:
           node-version: lts/*
           registry-url: https://registry.npmjs.org/
       - name: Federate to AWS
+        id: federate_to_aws
         uses: aws-actions/configure-aws-credentials@v6
         with:
           aws-region: us-east-1
           role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
           role-session-name: GHA-aws-jsii-compiler@${{ github.ref_name }}
       - name: Set NODE_AUTH_TOKEN
+        id: set_node_auth_token
         run: |-
           secret=$(aws secretsmanager get-secret-value --secret-id=${{ secrets.NPM_TOKEN_ARN }} --query=SecretString --output=text)
           token=$(node -p "(${secret}).token")
@@ -154,7 +171,9 @@ jobs:
           echo "NODE_AUTH_TOKEN=${token}" >> $GITHUB_ENV
           unset token
       - name: Publish
+        id: publish
         run: npm publish ${{ github.workspace }}/js/jsii-*.tgz --access=public --provenance --tag=${{ needs.build.outputs.dist-tag }}
       - name: Tag "latest"
+        id: tag_latest
         if: fromJSON(needs.build.outputs.latest)
         run: npm dist-tag add jsii@${{ github.ref_name }} latest

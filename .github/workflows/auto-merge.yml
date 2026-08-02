@@ -19,7 +19,8 @@ jobs:
       CI: "true"
     if: "!github.event.pull_request.draft"
     steps:
-      - uses: peter-evans/enable-pull-request-automerge@v2
+      - id: auto_60dba1ab
+        uses: peter-evans/enable-pull-request-automerge@v2
         with:
           token: ${{ secrets.PROJEN_GITHUB_TOKEN }}
           pull-request-number: ${{ github.event.number }}
