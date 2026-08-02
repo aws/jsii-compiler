@@ -16,20 +16,25 @@ jobs:
       sha: ${{ steps.git.outputs.sha }}
     steps:
       - name: Checkout
+        id: checkout
         uses: actions/checkout@v6
         with:
           ref: maintenance/v5.9
           repository: ${{ github.repository }}
       - name: Enable corepack
+        id: enable_corepack
         run: corepack enable
       - name: Setup Node.js
+        id: setup_node_js
         uses: actions/setup-node@v6
         with:
           node-version: lts/*
           package-manager-cache: false
       - name: Install dependencies
+        id: install_dependencies
         run: yarn install --immutable
       - name: Build
+        id: build
         run: yarn build
       - name: Identify git SHA
         id: git
@@ -41,23 +46,29 @@ jobs:
     permissions: {}
     steps:
       - name: Checkout
+        id: checkout
         uses: actions/checkout@v6
         with:
           token: ${{ secrets.PROJEN_GITHUB_TOKEN }}
           ref: ${{ needs.pre-flight.outputs.sha }}
           repository: ${{ github.repository }}
       - name: Enable corepack
+        id: enable_corepack
         run: corepack enable
       - name: Setup Node.js
+        id: setup_node_js
         uses: actions/setup-node@v6
         with:
           node-version: lts/*
           package-manager-cache: false
       - name: Install dependencies
+        id: install_dependencies
         run: yarn install --immutable
       - name: Set git identity
+        id: set_git_identity
         run: |-
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
       - name: Tag Release
+        id: tag_release
         run: yarn tag-release --idempotent --no-sign --push --release-line=5.9
