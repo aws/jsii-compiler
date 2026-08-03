@@ -1,4 +1,9 @@
-import { compileJsiiForTest, normalizePath } from '../lib';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import type { Assembly } from '@jsii/spec';
+import * as ts from 'typescript';
+import { compileJsiiForTest, normalizePath, symbolIdentifier } from '../lib';
 
 test('Symbol map is generated', () => {
   const result = compileJsiiForTest(
@@ -141,5 +146,55 @@ describe(normalizePath, () => {
     expect(normalizePath('out/lib/filename.ts', 'root/extra', 'out')).toEqual('root/extra/lib/filename.ts');
     expect(normalizePath('out/lib/filename.ts', '.', 'out/lib')).toEqual('filename.ts');
     expect(normalizePath('lib/filename.ts', 'root/extra', '.')).toEqual('root/extra/lib/filename.ts');
+  });
+});
+
+describe('symbolId resolution for consumed packages (https://github.com/aws/jsii-compiler/issues/2740)', () => {
+  // Simulates resolving a symbolId against an installed (compiled) package:
+  // only the `.d.ts` files and `package.json` are available, and the symbol
+  // id must be re-rooted from the outDir (`lib/`) into the rootDir (`src/`)
+  // to match the `symbolId` values recorded in the assembly.
+  let packageDir: string;
+
+  beforeEach(() => {
+    packageDir = mkdtempSync(join(tmpdir(), 'jsii-symbolid-'));
+    mkdirSync(join(packageDir, 'lib'), { recursive: true });
+    writeFileSync(join(packageDir, 'lib', 'index.d.ts'), 'export declare class Foo {}\n');
+  });
+
+  afterEach(() => {
+    rmSync(packageDir, { force: true, recursive: true });
+  });
+
+  function computeSymbolId(packageJson: object, assembly: Assembly): string | undefined {
+    writeFileSync(join(packageDir, 'package.json'), JSON.stringify(packageJson, null, 2));
+
+    const entry = join(packageDir, 'lib', 'index.d.ts');
+    const program = ts.createProgram([entry], {});
+    const typeChecker = program.getTypeChecker();
+    const sourceFile = program.getSourceFile(entry)!;
+    const moduleSymbol = typeChecker.getSymbolAtLocation(sourceFile)!;
+    const fooSymbol = typeChecker.getExportsOfModule(moduleSymbol).find((s) => s.name === 'Foo')!;
+
+    return symbolIdentifier(typeChecker, fooSymbol, { assembly });
+  }
+
+  test('outDir is read from jsii.tsc in package.json when present', () => {
+    const symbolId = computeSymbolId({ name: 'testpkg', jsii: { tsc: { rootDir: 'src', outDir: 'lib' } } }, {
+      metadata: {},
+    } as unknown as Assembly);
+
+    expect(symbolId).toEqual('src/index:Foo');
+  });
+
+  test('falls back to assembly metadata when package.json has no jsii.tsc (jsii.tsconfig packages)', () => {
+    // A package built with a user-provided tsconfig (`jsii.tsconfig`) has no
+    // `jsii.tsc` in its package.json, and its tsconfig.json is typically not
+    // published. The outDir/rootDir must be recoverable from the assembly.
+    const symbolId = computeSymbolId({ name: 'testpkg', jsii: {} }, {
+      metadata: { tscRootDir: 'src', tscOutDir: 'lib' },
+    } as unknown as Assembly);
+
+    expect(symbolId).toEqual('src/index:Foo');
   });
 });
