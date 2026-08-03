@@ -46,6 +46,7 @@ export class Assembler implements Emitter {
 
   private readonly mainFile: string;
   private readonly tscRootDir?: string;
+  private readonly tscOutDir?: string;
   private readonly compressAssembly?: boolean;
   private readonly usedFeatures = new Set<spec.JsiiFeature>();
 
@@ -111,9 +112,9 @@ export class Assembler implements Emitter {
     // If out-of-source build was configured (tsc's outDir and rootDir), the
     // main file's path needs to be re-rooted from the outDir into the rootDir.
     // outDir might be also be absolute, so we need to normalize it.
-    const tscOutDir = normalizeConfigPath(projectInfo.projectRoot, program.getCompilerOptions().outDir);
-    if (tscOutDir != null) {
-      mainFile = path.relative(tscOutDir, mainFile);
+    this.tscOutDir = normalizeConfigPath(projectInfo.projectRoot, program.getCompilerOptions().outDir);
+    if (this.tscOutDir != null) {
+      mainFile = path.relative(this.tscOutDir, mainFile);
 
       // rootDir may be set explicitly or not. If not, inferRootDir replicates
       // tsc's behavior of using the longest prefix of all built source files.
@@ -231,9 +232,13 @@ export class Assembler implements Emitter {
       metadata: {
         ...this.projectInfo.metadata,
 
-        // Downstream consumers need this to map a symbolId in the outDir to a
-        // symbolId in the rootDir.
+        // Downstream consumers need these to map a symbolId in the outDir to a
+        // symbolId in the rootDir. They cannot always be recovered from the
+        // consumed package's `package.json` (e.g. when the package was built
+        // with a user-provided `tsconfig.json` via `jsii.tsconfig`), so they
+        // must be recorded in the assembly itself.
         tscRootDir: this.tscRootDir,
+        tscOutDir: this.tscOutDir,
       },
       docs,
       readme,
