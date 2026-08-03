@@ -137,7 +137,7 @@ describe(Compiler, () => {
       }
     }, 40_000);
 
-    test('rootDir is added to assembly', () => {
+    test('rootDir and outDir are added to assembly', () => {
       const outDir = 'jsii-outdir';
       const rootDir = 'jsii-rootdir';
       const sourceDir = mkdtempSync(join(tmpdir(), 'jsii-tmpdir'));
@@ -166,6 +166,7 @@ describe(Compiler, () => {
         expect(assembly.metadata).toEqual(
           expect.objectContaining({
             tscRootDir: rootDir,
+            tscOutDir: outDir,
           }),
         );
       } finally {

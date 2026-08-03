@@ -121,7 +121,7 @@ class Helper {
     // Modify the namespace if we send in the assembly.
     if (asm) {
       const tscRootDir = packageInfo.tscRootDir ?? asm.metadata?.tscRootDir;
-      const tscOutDir = packageInfo.tscOutDir;
+      const tscOutDir = packageInfo.tscOutDir ?? asm.metadata?.tscOutDir;
       sourcePath = normalizePath(sourcePath, tscRootDir, tscOutDir);
     }
 
