@@ -300,6 +300,40 @@ describe('loadProjectInfo', () => {
     }
   });
 
+  describe('external language target configuration', () => {
+    test('an unknown target language passes through with its configuration intact', () => {
+      return _withTestProject(
+        (projectRoot) =>
+          expect(loadProjectInfo(projectRoot).projectInfo.targets?.fakelang).toEqual({
+            packageName: 'my-package',
+            namespace: 'My.Namespace',
+          }),
+        (info) => {
+          (info.jsii.targets as any).fakelang = { packageName: 'my-package', namespace: 'My.Namespace' };
+        },
+      );
+    });
+
+    test('an unknown target language must still be an object', () => {
+      return _withTestProject(
+        (root) => expect(() => loadProjectInfo(root)).toThrow(/jsii\.targets\.fakelang must be an object/),
+        (info) => {
+          (info.jsii.targets as any).fakelang = 'not-an-object';
+        },
+      );
+    });
+
+    test('unknown-language pass-through does not weaken built-in validation', () => {
+      return _withTestProject(
+        (root) => expect(() => loadProjectInfo(root)).toThrow(/Unknown key in jsii\.targets\.python/),
+        (info) => {
+          (info.jsii.targets as any).fakelang = { packageName: 'my-package' };
+          (info.jsii.targets as any).python = { module: 'x', packageName: 'nope' };
+        },
+      );
+    });
+  });
+
   describe('user-provided tsconfig', () => {
     test('can set a user-provided config', () => {
       return _withTestProject(

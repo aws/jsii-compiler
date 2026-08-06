@@ -320,7 +320,15 @@ export function validateTargets(targets: AssemblyTargets | undefined): AssemblyT
 
   for (const [language, config] of Object.entries(targets)) {
     if (!(language in VALID_TARGET_KEYS)) {
-      throw new JsiiError(`Unknown target language: ${language}`);
+      // Not a built-in target. This may be configuration for an external
+      // language plugin (which owns its own schema and validates it at
+      // generation time), or a typo — surface a warning either way, and pass
+      // the configuration through to the assembly untouched.
+      LOG.warn(`Unknown target language: ${language} — passing through for external tooling`);
+      if (typeof config !== 'object' || config === null) {
+        throw new JsiiError(`jsii.targets.${language} must be an object`);
+      }
+      continue;
     }
 
     if (typeof config !== 'object' || config === null) {
