@@ -325,15 +325,11 @@ export function validateTargets(targets: AssemblyTargets | undefined): AssemblyT
       // generation time), or a typo — surface a warning either way, and pass
       // the configuration through to the assembly untouched.
       LOG.warn(`Unknown target language: ${language} — passing through for external tooling`);
-      if (typeof config !== 'object' || config === null) {
-        throw new JsiiError(`jsii.targets.${language} must be an object`);
-      }
+      assertTargetConfigIsObject(language, config);
       continue;
     }
 
-    if (typeof config !== 'object' || config === null) {
-      throw new JsiiError(`jsii.targets.${language} must be an object`);
-    }
+    assertTargetConfigIsObject(language, config);
 
     const validKeys = VALID_TARGET_KEYS[language];
     for (const key of Object.keys(config)) {
@@ -399,6 +395,12 @@ export function validateTargets(targets: AssemblyTargets | undefined): AssemblyT
    */
   function isIdentifier(x: string) {
     return /^[\w_][\w\d_]*$/u.test(x);
+  }
+
+  function assertTargetConfigIsObject(language: string, config: unknown): asserts config is object {
+    if (typeof config !== 'object' || config === null) {
+      throw new JsiiError(`jsii.targets.${language} must be an object`);
+    }
   }
 }
 
