@@ -113,6 +113,47 @@ export class Compiler implements Emitter {
   }
 
   /**
+   * Experimental: compile using the TypeScript 7 (tsgo) backend instead of the
+   * classic in-process compiler. Enabled via `JSII_COMPILER_BACKEND=ts7`.
+   *
+   * TypeScript compilation errors fail the build like the default path does.
+   * jsii's own JSII_xxxx diagnostics are NOT produced on this path (see
+   * `src/ts7/README.md`). The default `emit()` above is entirely unaffected.
+   */
+  public async emitTs7(): Promise<ts.EmitResult> {
+    // Ensure a tsconfig exists on disk for tsgo to open (same as the default path).
+    if (!this.userProvidedTypeScriptConfig) {
+      this.writeTypeScriptConfig();
+    }
+
+    // Lazy require: the ts7 backend pulls in the optional native-preview
+    // toolchain, which must not be a hard dependency of the default path.
+    // A dynamic `import()` cannot be used here: with `module: node20` it is
+    // preserved as a native dynamic import in the CommonJS output, which
+    // jest's CJS test environment cannot execute without
+    // `--experimental-vm-modules`.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { ts7Emit } = require('./ts7') as typeof import('./ts7');
+    const result = await ts7Emit({
+      projectRoot: this.projectRoot,
+      projectInfo: this.options.projectInfo,
+      stripDeprecated: this.options.stripDeprecated,
+      stripDeprecatedAllowListFile: this.options.stripDeprecatedAllowListFile,
+      compressAssembly: this.options.compressAssembly,
+    });
+
+    if (!result.emitSkipped) {
+      LOG.info(`ts7 backend: assembled ${result.typeCount} types, emitted ${result.emittedFiles.length} files`);
+    }
+
+    return {
+      emitSkipped: result.emitSkipped,
+      diagnostics: [...result.diagnostics],
+      emittedFiles: result.emittedFiles,
+    };
+  }
+
+  /**
    * Watches for file-system changes and dynamically recompiles the project as needed. In non-blocking mode, this
    * returns the TypeScript watch handle for the application to use.
    *
