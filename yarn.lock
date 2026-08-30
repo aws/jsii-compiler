@@ -5630,7 +5630,7 @@ __metadata:
     npm: "npm:^9.9.4"
     npm-check-updates: "npm:^20"
     prettier: "npm:^2.8.8"
-    projen: "npm:^0.103.3"
+    projen: "npm:^0.103.5"
     semver: "npm:^7.8.5"
     semver-intersect: "npm:^1.5.0"
     sort-json: "npm:^2.0.1"
@@ -7245,9 +7245,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"projen@npm:^0.103.3":
-  version: 0.103.3
-  resolution: "projen@npm:0.103.3"
+"projen@npm:^0.103.5":
+  version: 0.103.5
+  resolution: "projen@npm:0.103.5"
   dependencies:
     "@iarna/toml": "npm:^2.2.5"
     case: "npm:^1.6.3"
@@ -7260,6 +7260,7 @@ __metadata:
     fast-json-patch: "npm:^3.1.1"
     ini: "npm:^2.0.0"
     parse-conflict-json: "npm:^4.0.0"
+    properties-file: "npm:^5.0.6"
     semver: "npm:^7.8.5"
     xmlbuilder2: "npm:^4.0.3"
     yaml: "npm:^2.2.2"
@@ -7268,7 +7269,7 @@ __metadata:
     constructs: ^10.5.0
   bin:
     projen: bin/projen
-  checksum: 10c0/d0ef397d71dc8292d1e9d389c3116ff409b5a56c3cec84c70fe8ef7891bb9c18fc3a681ba1b01cab1d71821cb98c861f14b4603fe2478171c2fa0530eff7952d
+  checksum: 10c0/38d188f45392d9ef1c242a6698790940c7e07691bd5702562fd72c8f1800df5c3b42b4d975cb1e599026d95cbefe567f054fbbf5cf420d666654a6b5e1701ea8
   languageName: node
   linkType: hard
 
@@ -7319,6 +7320,13 @@ __metadata:
   dependencies:
     read: "npm:^3.0.1"
   checksum: 10c0/d53c4ecb8b606b7e4bdeab14ac22c5f81a57463d29de1b8fe43bbc661106d9e4a79d07044bd3f69bde82c7ebacba7307db90a9699bc20482ce637bdea5fb8e4b
+  languageName: node
+  linkType: hard
+
+"properties-file@npm:^5.0.6":
+  version: 5.0.6
+  resolution: "properties-file@npm:5.0.6"
+  checksum: 10c0/70e19a410d35bfda07b0e7a81f9bd6a635ac246d80782ada110687f73190ef61c1c05dae59e0a09463a71bf17fe45895c4051fb2736f13f2f14c32aa2386317c
   languageName: node
   linkType: hard
 
