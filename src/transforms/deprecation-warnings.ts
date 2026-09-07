@@ -426,9 +426,14 @@ function createWarningFunctionCall(
 
 function generateWarningsFile(projectRoot: string, validatorStatements: ts.Statement[]) {
   const functionText = `function ${WARNING_FUNCTION_NAME}(name, deprecationMessage) {
+  if (ALREADY_WARNED.has(name)) {
+    return;
+  }
+  ALREADY_WARNED.add(name);
+
   const deprecated = process.env.JSII_DEPRECATED;
   const deprecationMode = ['warn', 'fail', 'quiet'].includes(deprecated) ? deprecated : 'warn';
-  const message = \`\${name} is deprecated.\\n  \${deprecationMessage.trim()}\\n  This API will be removed in the next major release.\`;
+  const message = \`\${name} is deprecated, and will be removed in the next major release.\\n  \${deprecationMessage.trim()}\`;
   switch (deprecationMode) {
     case "fail":
       throw new ${DEPRECATION_ERROR}(message);
@@ -437,6 +442,8 @@ function generateWarningsFile(projectRoot: string, validatorStatements: ts.State
       break;
   }
 }
+
+const ALREADY_WARNED = new Set();
 
 function ${GET_PROPERTY_DESCRIPTOR}(obj, prop) {
   const descriptor = Object.getOwnPropertyDescriptor(obj, prop);
