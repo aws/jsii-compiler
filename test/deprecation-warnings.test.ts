@@ -789,7 +789,6 @@ describe('thrown exceptions have the expected stack trace', () => {
       { addDeprecationWarnings: true },
     );
 
-
     const mockWarn = jest.fn();
 
     runJsiiCode(compilation, 'warn', {
@@ -974,7 +973,11 @@ function extractFunction(contents: string, functionName: string): string {
   return contents.slice(startIndex, endIndex + 1);
 }
 
-function createVmContext(compilation: HelperCompilationResult, deprecationBehavior: 'fail' | 'warn' = 'fail', additionalContext: Record<string, unknown> = {}) {
+function createVmContext(
+  compilation: HelperCompilationResult,
+  deprecationBehavior: 'fail' | 'warn' = 'fail',
+  additionalContext: Record<string, unknown> = {},
+) {
   const context = vm.createContext({
     exports: {},
     process: {
@@ -1022,7 +1025,11 @@ function loadWarningsFile(projectRoot: string) {
   return fs.readFileSync(path.join(projectRoot, '.warnings.jsii.js')).toString();
 }
 
-function runJsiiCode(compilation: HelperCompilationResult, deprecationBehavior: 'fail' | 'warn' = 'fail', additionalContext: Record<string, unknown> = {}) {
+function runJsiiCode(
+  compilation: HelperCompilationResult,
+  deprecationBehavior: 'fail' | 'warn' = 'fail',
+  additionalContext: Record<string, unknown> = {},
+) {
   const source = jsFile(compilation);
   const context = createVmContext(compilation, deprecationBehavior, additionalContext);
   vm.runInContext(source, context, { filename: 'index.js' });
