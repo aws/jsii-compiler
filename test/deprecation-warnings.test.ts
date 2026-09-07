@@ -9,6 +9,10 @@ import { compileJsiiForTest, HelperCompilationResult } from '../lib';
 
 const DEPRECATED = '/** @deprecated Use something else */';
 
+beforeEach(() => {
+  jest.restoreAllMocks();
+});
+
 describe('Function generation', () => {
   test('generates the print function', () => {
     const result = compileJsiiForTest('', undefined /* callback */, {
@@ -17,9 +21,13 @@ describe('Function generation', () => {
 
     expect(jsFile(result, '.warnings.jsii')).toContain(
       `function print(name, deprecationMessage) {
+    if (ALREADY_WARNED.has(name)) {
+        return;
+    }
+    ALREADY_WARNED.add(name);
     const deprecated = process.env.JSII_DEPRECATED;
     const deprecationMode = ["warn", "fail", "quiet"].includes(deprecated) ? deprecated : "warn";
-    const message = \`\${name} is deprecated.\\n  \${deprecationMessage.trim()}\\n  This API will be removed in the next major release.\`;
+    const message = \`\${name} is deprecated, and will be removed in the next major release.\\n  \${deprecationMessage.trim()}\`;
     switch (deprecationMode) {
         case "fail":
             throw new DeprecationError(message);
@@ -28,6 +36,7 @@ describe('Function generation', () => {
             break;
     }
 }
+const ALREADY_WARNED = new Set();
 function getPropertyDescriptor(obj, prop) {
     const descriptor = Object.getOwnPropertyDescriptor(obj, prop);
     if (descriptor) {
@@ -767,13 +776,42 @@ describe('thrown exceptions have the expected stack trace', () => {
                 throw error;
                 ^
 
-        DeprecationError: testpkg.DeprecatedConstructor is deprecated.
+        DeprecationError: testpkg.DeprecatedConstructor is deprecated, and will be removed in the next major release.
          for testing
-         This API will be removed in the next major release.
             at test (index.js:23:5)
             at index.js:25:1"
       `);
     }
+  });
+
+  test('multiple calls for the same element only get reported once', () => {
+    const compilation = compileJsiiForTest(
+      `
+      /** @deprecated for testing */
+      export class DeprecatedConstructor {
+        public constructor() {}
+      }
+
+      function test() {
+        new DeprecatedConstructor();
+      }
+
+      test();
+      test();
+    `,
+      undefined,
+      { addDeprecationWarnings: true },
+    );
+
+    const mockWarn = jest.fn();
+
+    runJsiiCode(compilation, 'warn', {
+      console: {
+        warn: mockWarn,
+      },
+    });
+
+    expect(mockWarn).toHaveBeenCalledTimes(1);
   });
 
   test('getter', () => {
@@ -809,9 +847,8 @@ describe('thrown exceptions have the expected stack trace', () => {
                     throw error;
                     ^
 
-        DeprecationError: testpkg.DeprecatedConstructor#property is deprecated.
+        DeprecationError: testpkg.DeprecatedConstructor#property is deprecated, and will be removed in the next major release.
          for testing
-         This API will be removed in the next major release.
             at test (index.js:27:20)
             at index.js:29:1"
       `);
@@ -857,9 +894,8 @@ describe('thrown exceptions have the expected stack trace', () => {
                     throw error;
                     ^
 
-        DeprecationError: testpkg.DeprecatedConstructor#property is deprecated.
+        DeprecationError: testpkg.DeprecatedConstructor#property is deprecated, and will be removed in the next major release.
          for testing
-         This API will be removed in the next major release.
             at test (index.js:42:22)
             at index.js:44:1"
       `);
@@ -899,9 +935,8 @@ describe('thrown exceptions have the expected stack trace', () => {
                     throw error;
                     ^
 
-        DeprecationError: testpkg.DeprecatedConstructor#deprecated is deprecated.
+        DeprecationError: testpkg.DeprecatedConstructor#deprecated is deprecated, and will be removed in the next major release.
          for testing
-         This API will be removed in the next major release.
             at test (index.js:26:13)
             at index.js:28:1"
       `);
@@ -952,12 +987,16 @@ function extractFunction(contents: string, functionName: string): string {
   return contents.slice(startIndex, endIndex + 1);
 }
 
-function createVmContext(compilation: HelperCompilationResult) {
+function createVmContext(
+  compilation: HelperCompilationResult,
+  deprecationBehavior: 'fail' | 'warn' = 'fail',
+  additionalContext: Record<string, unknown> = {},
+) {
   const context = vm.createContext({
     exports: {},
     process: {
       env: {
-        JSII_DEPRECATED: 'fail',
+        JSII_DEPRECATED: deprecationBehavior,
       },
     },
     // Bringing in a "fake" require(id) function that'll resolve relative paths
@@ -985,6 +1024,7 @@ function createVmContext(compilation: HelperCompilationResult) {
         { filename: id, lineOffset: -2, columnOffset: -4 },
       );
     },
+    ...additionalContext,
   });
 
   // Limit error stack traces to 2 frames... We don't need more for the sake of this test. This is
@@ -997,4 +1037,14 @@ function createVmContext(compilation: HelperCompilationResult) {
 
 function loadWarningsFile(projectRoot: string) {
   return fs.readFileSync(path.join(projectRoot, '.warnings.jsii.js')).toString();
+}
+
+function runJsiiCode(
+  compilation: HelperCompilationResult,
+  deprecationBehavior: 'fail' | 'warn' = 'fail',
+  additionalContext: Record<string, unknown> = {},
+) {
+  const source = jsFile(compilation);
+  const context = createVmContext(compilation, deprecationBehavior, additionalContext);
+  vm.runInContext(source, context, { filename: 'index.js' });
 }
