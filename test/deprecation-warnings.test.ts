@@ -778,14 +778,8 @@ describe('thrown exceptions have the expected stack trace', () => {
 
         DeprecationError: testpkg.DeprecatedConstructor is deprecated, and will be removed in the next major release.
          for testing
-<<<<<<< HEAD
-         This API will be removed in the next major release.
             at test (index.js:23:5)
             at index.js:25:1"
-=======
-            at test (index.js:21:5)
-            at index.js:23:1"
->>>>>>> b550d53 (fix: deprecation warnings can get very repetitive (#2795))
       `);
     }
   });
@@ -855,14 +849,8 @@ describe('thrown exceptions have the expected stack trace', () => {
 
         DeprecationError: testpkg.DeprecatedConstructor#property is deprecated, and will be removed in the next major release.
          for testing
-<<<<<<< HEAD
-         This API will be removed in the next major release.
             at test (index.js:27:20)
             at index.js:29:1"
-=======
-            at test (index.js:25:20)
-            at index.js:27:1"
->>>>>>> b550d53 (fix: deprecation warnings can get very repetitive (#2795))
       `);
     }
   });
@@ -908,14 +896,8 @@ describe('thrown exceptions have the expected stack trace', () => {
 
         DeprecationError: testpkg.DeprecatedConstructor#property is deprecated, and will be removed in the next major release.
          for testing
-<<<<<<< HEAD
-         This API will be removed in the next major release.
             at test (index.js:42:22)
             at index.js:44:1"
-=======
-            at test (index.js:38:22)
-            at index.js:40:1"
->>>>>>> b550d53 (fix: deprecation warnings can get very repetitive (#2795))
       `);
     }
   });
@@ -955,14 +937,8 @@ describe('thrown exceptions have the expected stack trace', () => {
 
         DeprecationError: testpkg.DeprecatedConstructor#deprecated is deprecated, and will be removed in the next major release.
          for testing
-<<<<<<< HEAD
-         This API will be removed in the next major release.
             at test (index.js:26:13)
             at index.js:28:1"
-=======
-            at test (index.js:24:13)
-            at index.js:26:1"
->>>>>>> b550d53 (fix: deprecation warnings can get very repetitive (#2795))
       `);
     }
   });
