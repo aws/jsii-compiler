@@ -136,6 +136,10 @@
       "type": "build"
     },
     {
+      "name": "tsx",
+      "type": "build"
+    },
+    {
       "name": "@jsii/check-node",
       "type": "runtime"
     },
