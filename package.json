@@ -63,7 +63,8 @@
     "projen": "^0.103.23",
     "tar": "^7.5.22",
     "ts-jest": "^29.4.12",
-    "ts-node": "^10.9.2"
+    "ts-node": "^10.9.2",
+    "tsx": "^4.23.13"
   },
   "dependencies": {
     "@jsii/check-node": "1.140.0",

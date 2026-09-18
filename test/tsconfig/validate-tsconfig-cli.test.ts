@@ -17,13 +17,7 @@ describe('validate-tsconfig CLI defaults', () => {
   });
 
   function run(...args: string[]) {
-    // Use ts-node (a declared devDependency, resolved from the repo root) rather
-    // than `npx tsx`: tsx is not a declared dependency, so `npx tsx` resolves
-    // nondeterministically (it may attempt a network download), which makes this
-    // test flaky when run as part of the full suite.
-    const tsNode = require.resolve('ts-node/dist/bin.js');
-    const project = join(__dirname, '..', '..', 'tsconfig.json');
-    return spawnSync(process.execPath, [tsNode, '--project', project, MAIN, 'validate-tsconfig', ...args], {
+    return spawnSync('npx', ['tsx', MAIN, 'validate-tsconfig', ...args], {
       cwd: workdir,
       encoding: 'utf-8',
     });

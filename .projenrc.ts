@@ -217,6 +217,7 @@ project.addDevDeps(
   'fast-check',
   'jsii-1.x@npm:jsii@1',
   'lockfile',
+  'tsx',
   'glob',
 );
 
