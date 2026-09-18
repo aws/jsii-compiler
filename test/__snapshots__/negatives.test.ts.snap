@@ -1,4 +1,4 @@
-// Jest Snapshot v1, https://goo.gl/fbAQLP
+// Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
 
 exports[`behavior-requires-iprefix 1`] = `
 neg.behavior-requires-iprefix.ts:1:18 - error JSII8007: Interface contains behavior. Rename "Something" to "ISomething" [code-style/behavioral-interface-name]

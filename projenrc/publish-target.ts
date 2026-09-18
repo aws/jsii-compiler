@@ -1,9 +1,11 @@
-import * as core from '@actions/core';
-import * as gh from '@actions/github';
 import { parse } from 'semver';
 import { PublishTargetOutput } from './release';
 
 (async function () {
+  // Import ESM modules from CJS
+  const core = await import('@actions/core');
+  const gh = await import('@actions/github');
+
   if (process.argv.length !== 3) {
     console.error('Usage: yarn release <semver-version-string>');
     process.exit(2);
