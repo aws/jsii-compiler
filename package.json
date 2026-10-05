@@ -67,8 +67,8 @@
     "tsx": "^4.23.15"
   },
   "dependencies": {
-    "@jsii/check-node": "1.140.0",
-    "@jsii/spec": "1.140.0",
+    "@jsii/check-node": "1.141.0",
+    "@jsii/spec": "1.141.0",
     "case": "^1.6.3",
     "chalk": "^4",
     "fast-deep-equal": "^3.1.3",
