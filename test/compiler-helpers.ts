@@ -14,3 +14,7 @@ export function compileJsiiForErrors<O extends Omit<TestCompilationOptions, 'cap
 export function errors(xs: readonly Diagnostic[]) {
   return xs.filter((x) => x.category === DiagnosticCategory.Error).map((x) => `${x.messageText}`);
 }
+
+export function warnings(xs: readonly Diagnostic[]) {
+  return xs.filter((x) => x.category === DiagnosticCategory.Warning).map((x) => `${x.messageText}`);
+}

@@ -304,27 +304,39 @@ export function loadProjectInfo(projectRoot: string): ProjectInfoResult {
 }
 
 /**
+ * The configuration keys accepted for each built-in target language
+ */
+const VALID_TARGET_KEYS: Record<string, string[]> = {
+  java: ['package', 'maven', 'versionSuffix'],
+  python: ['module', 'distName', 'classifiers'],
+  dotnet: ['namespace', 'packageId', 'iconUrl', 'versionSuffix'],
+  go: ['moduleName', 'packageName', 'versionSuffix'],
+};
+
+/**
+ * The languages in a `.jsii.targets` field that are not built-in targets
+ *
+ * These may be configuration for an external language plugin, or a typo. The
+ * caller reports them as JSII_4011, where the package can configure its severity.
+ */
+export function unknownTargetLanguages(targets: AssemblyTargets | undefined): string[] {
+  return Object.keys(targets ?? {}).filter((language) => language !== 'js' && !(language in VALID_TARGET_KEYS));
+}
+
+/**
  * Validate the values of the `.jsii.targets` field
+ *
+ * Unknown target languages are passed through to the assembly untouched: an
+ * external language plugin owns their schema and validates it at generation
+ * time. Use `unknownTargetLanguages` to report them.
  */
 export function validateTargets(targets: AssemblyTargets | undefined): AssemblyTargets | undefined {
   if (!targets) {
     return undefined;
   }
 
-  const VALID_TARGET_KEYS: Record<string, string[]> = {
-    java: ['package', 'maven', 'versionSuffix'],
-    python: ['module', 'distName', 'classifiers'],
-    dotnet: ['namespace', 'packageId', 'iconUrl', 'versionSuffix'],
-    go: ['moduleName', 'packageName', 'versionSuffix'],
-  };
-
   for (const [language, config] of Object.entries(targets)) {
     if (!(language in VALID_TARGET_KEYS)) {
-      // Not a built-in target. This may be configuration for an external
-      // language plugin (which owns its own schema and validates it at
-      // generation time), or a typo — surface a warning either way, and pass
-      // the configuration through to the assembly untouched.
-      LOG.warn(`Unknown target language: ${language} — passing through for external tooling`);
       assertTargetConfigIsObject(language, config);
       continue;
     }
