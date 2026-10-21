@@ -52,6 +52,7 @@ install one-liner above when nothing suitable is found:
 | `JSII_TS7_TYPESCRIPT` | Explicit directory of a `typescript` >= 7.1 package (overrides resolution). |
 | `JSII_TS7_TIMING=1` | Log RPC request counts / bytes / server time after the run. |
 | `JSII_TS7_NO_BATCH=1` | Disable request batching for documentation reads (measurement only). |
+| `JSII_TS7_SKIP_TYPECHECK=1` | Skip the TypeScript diagnostics pass (measurement only; type errors are not detected). |
 
 ## Architecture decision
 

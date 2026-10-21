@@ -89,7 +89,9 @@ export async function ts7Emit(options: Ts7EmitOptions): Promise<Ts7EmitResult> {
     // Surface TypeScript compilation errors BEFORE assembling, with the same
     // reject-on-error behaviour as the default backend: a program that does not
     // compile must not produce an assembly.
-    const tsDiagnostics = collectTsDiagnostics(project.program);
+    // JSII_TS7_SKIP_TYPECHECK=1 is a measurement-only switch (isolates the cost
+    // of the diagnostics pass); it must never be used for real builds.
+    const tsDiagnostics = process.env.JSII_TS7_SKIP_TYPECHECK ? [] : collectTsDiagnostics(project.program);
     if (tsDiagnostics.some((d) => d.category === ts.DiagnosticCategory.Error)) {
       return { typeCount: 0, emittedFiles: [], emitSkipped: true, diagnostics: tsDiagnostics };
     }
