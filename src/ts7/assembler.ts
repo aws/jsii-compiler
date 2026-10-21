@@ -4,7 +4,7 @@
  *
  * WHAT THIS IS
  *   A TypeScript-7-native reimplementation of the jsii Assembler that reads the
- *   out-of-process TS7 API (`@typescript/native-preview`) directly and produces
+ *   out-of-process TypeScript 7 API (`typescript/sync`) directly and produces
  *   a `spec.Assembly` (`.jsii`). It is a structured port of a validated
  *   feasibility prototype that reproduced real `.jsii` output on aws-cdk-lib
  *   (~21k types); the current backend reaches 100% type/member parity there.
@@ -38,7 +38,7 @@ import * as spec from '@jsii/spec';
 
 import type { ProjectInfo } from '../project-info';
 import { SHORT_VERSION, VERSION } from '../version';
-import { NativePreview } from './native-preview';
+import { Ts7Api } from './ts7-api';
 import { Ts7Project } from './ts7-host';
 
 export interface Ts7AssemblerOptions {
@@ -74,7 +74,7 @@ interface RegisteredType {
  * `.jsii` parity, over the TS7 API.
  */
 export class Ts7Assembler {
-  private readonly np: NativePreview;
+  private readonly ts7: Ts7Api;
   private readonly checker: any;
   private readonly program: any;
   private readonly project: Ts7Project;
@@ -115,8 +115,8 @@ export class Ts7Assembler {
   // subclasses — so member re-listing must not treat it as an erased base.
   private readonly strippedTypeSymIds = new Set<unknown>();
 
-  public constructor(np: NativePreview, project: Ts7Project, private readonly options: Ts7AssemblerOptions) {
-    this.np = np;
+  public constructor(ts7: Ts7Api, project: Ts7Project, private readonly options: Ts7AssemblerOptions) {
+    this.ts7 = ts7;
     this.project = project;
     this.program = project.program;
     this.checker = project.checker;
@@ -168,7 +168,7 @@ export class Ts7Assembler {
   // -------------------------------------------------------------------------
 
   private _resolveAlias(sym: any): any {
-    const { SymbolFlags } = this.np;
+    const { SymbolFlags } = this.ts7;
     let s = sym;
     while ((s.flags & SymbolFlags.Alias) !== 0) {
       s = this.checker.getAliasedSymbol(s);
@@ -234,15 +234,23 @@ export class Ts7Assembler {
   }
 
   /**
-   * Batch-prefetch JSDoc tags + doc comments for many symbols in one RPC
-   * (getSymbolDocumentations, when the toolchain provides it), filling the same caches that
-   * _jsDocTags/_docComment consult. Per-element results are exactly what the
-   * individual calls would return, so behaviour is unchanged — only the number
-   * of round-trips drops (~302k doc RPCs -> ~1 per type on aws-cdk-lib).
-   * No-ops gracefully when the toolchain lacks the batched endpoint.
+   * Batch-prefetch JSDoc tags + doc comments for many symbols in one round-trip
+   * using the API's request batching (`api.batch(all(...gen))`), filling the
+   * same caches that _jsDocTags/_docComment consult. Per-element results are
+   * exactly what the individual calls would return, so behaviour is unchanged —
+   * only the number of round-trips drops (~300k doc RPCs -> ~1 per type on
+   * aws-cdk-lib). No-ops gracefully when batching is unavailable (or disabled
+   * with JSII_TS7_NO_BATCH=1 for measurement), leaving the per-symbol path.
    */
   private _prefetchDocs(syms: any[]): void {
-    if (typeof this.checker.getSymbolDocumentations !== 'function') {
+    const api = this.project.api;
+    if (
+      process.env.JSII_TS7_NO_BATCH ||
+      typeof api?.batch !== 'function' ||
+      typeof this.ts7.all !== 'function' ||
+      typeof this.checker.getJsDocTagsOfSymbol?.gen !== 'function' ||
+      typeof this.checker.getDocumentationCommentOfSymbol?.gen !== 'function'
+    ) {
       return;
     }
     const wanted: any[] = [];
@@ -265,12 +273,15 @@ export class Ts7Assembler {
     const CHUNK = 1000;
     for (let i = 0; i < wanted.length; i += CHUNK) {
       const chunk = wanted.slice(i, i + CHUNK);
-      const docs = this.checker.getSymbolDocumentations(chunk);
+      const [tags, comments] = api.batch(
+        this.ts7.all(...chunk.map((sym) => this.checker.getJsDocTagsOfSymbol.gen(sym))),
+        this.ts7.all(...chunk.map((sym) => this.checker.getDocumentationCommentOfSymbol.gen(sym))),
+      );
       for (let j = 0; j < chunk.length; j++) {
         const key = keys[i + j];
-        const d = docs[j] ?? { tags: [], comment: '' };
-        this._jsDocTagsCache.set(key, d.tags ?? []);
-        this._docCommentCache.set(key, (d.comment ?? '') === '' ? null : d.comment);
+        const comment = comments[j] ?? '';
+        this._jsDocTagsCache.set(key, tags[j] ?? []);
+        this._docCommentCache.set(key, comment === '' ? null : comment);
       }
     }
   }
@@ -372,7 +383,7 @@ export class Ts7Assembler {
   // -------------------------------------------------------------------------
 
   private _registerModuleExports(moduleExports: any[]): void {
-    const { SyntaxKind, SymbolFlags } = this.np;
+    const { SyntaxKind, SymbolFlags } = this.ts7;
     const candidates = new Map<
       unknown,
       Array<{ name: string; prefix: string; moduleDir: string; sym: any; aliasDeclH?: any }>
@@ -486,7 +497,7 @@ export class Ts7Assembler {
   }
 
   private _registerType(sym: any, name: string, fqn: string): void {
-    const { SyntaxKind } = this.np;
+    const { SyntaxKind } = this.ts7;
     const isFirst = !this.typeFqnBySymbolId.has(sym.id);
     if (!isFirst) {
       // Already registered under its canonical fqn. A *different* fqn means a
@@ -564,7 +575,7 @@ export class Ts7Assembler {
   // -------------------------------------------------------------------------
 
   private _visitNode(name: string, sym: any, decl: any, fqn: string): void {
-    const { SyntaxKind } = this.np;
+    const { SyntaxKind } = this.ts7;
     const jsiiType: any = {
       assembly: this.assemblyName,
       fqn,
@@ -594,7 +605,7 @@ export class Ts7Assembler {
   }
 
   private _visitEnum(sym: any, decl: any, fqn: string, jsiiType: any): void {
-    const { SyntaxKind } = this.np;
+    const { SyntaxKind } = this.ts7;
     jsiiType.kind = 'enum';
     const members: any[] = [];
     // strada derives enum members from the enum TYPE's union constituents
@@ -751,7 +762,7 @@ export class Ts7Assembler {
   }
 
   private _visitClass(sym: any, decl: any, jsiiType: any): void {
-    const { SyntaxKind } = this.np;
+    const { SyntaxKind } = this.ts7;
     jsiiType.kind = 'class';
     const mods = decl.modifiers ?? [];
     if (mods.some((x: any) => x.kind === SyntaxKind.AbstractKeyword)) {
@@ -853,7 +864,7 @@ export class Ts7Assembler {
    * for a subclass that does not declare its own constructor.
    */
   private _inheritedConstructor(decl: any): any | undefined {
-    const { SyntaxKind } = this.np;
+    const { SyntaxKind } = this.ts7;
     let current = decl;
     const guard = new Set<any>();
     while (current) {
@@ -893,7 +904,7 @@ export class Ts7Assembler {
   // -------------------------------------------------------------------------
 
   private _visitMembers(sym: any, decl: any, jsiiType: any, isInterface: boolean, erasedBases: any[] = []): void {
-    const { SyntaxKind, SymbolFlags } = this.np;
+    const { SyntaxKind, SymbolFlags } = this.ts7;
     const type = this.checker.getTypeAtLocation(decl);
     const props: any[] = [];
     const methods: any[] = [];
@@ -1034,7 +1045,7 @@ export class Ts7Assembler {
   }
 
   private _visitMethod(msym: any, decl: any, isStatic: boolean): any {
-    const { SyntaxKind } = this.np;
+    const { SyntaxKind } = this.ts7;
     const sig = this.checker.getSignatureFromDeclaration(decl);
     const m: any = { locationInModule: this._locationOf(decl), name: msym.name };
     if (isStatic) {
@@ -1081,7 +1092,7 @@ export class Ts7Assembler {
   }
 
   private _visitProperty(psym: any, decl: any, isStatic: boolean): any {
-    const { SyntaxKind } = this.np;
+    const { SyntaxKind } = this.ts7;
     const t = this.checker.getTypeOfSymbolAtLocation(psym, decl);
     const opt: { optional?: boolean } = {};
     const p: any = {
@@ -1150,7 +1161,7 @@ export class Ts7Assembler {
     const inline = this._inlineJsDocText(decl);
     const tagText = this._paramDocComment(prm, decl);
     let comments = inline != null && tagText != null ? `${inline}\n${tagText}` : inline ?? tagText;
-    if (comments === undefined && decl?.parent?.kind === this.np.SyntaxKind.Constructor) {
+    if (comments === undefined && decl?.parent?.kind === this.ts7.SyntaxKind.Constructor) {
       comments = this._inheritedCtorParamDoc(prm, decl);
     }
     if (comments) {
@@ -1396,7 +1407,7 @@ export class Ts7Assembler {
    * own docs recurse into the owner's super types.
    */
   private _symbolDocTextFromSource(psym: any, seen: Set<string>): string | undefined {
-    const { SyntaxKind } = this.np;
+    const { SyntaxKind } = this.ts7;
     const d0 = psym.declarations?.[0];
     const key = `${d0?.path}:${d0?.index}`;
     if (!d0 || seen.has(key)) {
@@ -1423,7 +1434,7 @@ export class Ts7Assembler {
   // -------------------------------------------------------------------------
 
   private _unionNodeOf(typeNode: any): any {
-    const { SyntaxKind } = this.np;
+    const { SyntaxKind } = this.ts7;
     if (!typeNode) {
       return undefined;
     }
@@ -1468,7 +1479,7 @@ export class Ts7Assembler {
   }
 
   private _typeReference(type: any, optionalOut?: { optional?: boolean }, typeNode?: any): any {
-    const { TypeFlags } = this.np;
+    const { TypeFlags } = this.ts7;
     if (!type) {
       return { primitive: 'any' };
     }
@@ -1546,7 +1557,7 @@ export class Ts7Assembler {
   }
 
   private _unionTypeReference(type: any, optionalOut?: { optional?: boolean }, typeNode?: any): any {
-    const { TypeFlags } = this.np;
+    const { TypeFlags } = this.ts7;
     const all = type.getTypes();
     const parts = all.filter((t: any) => !(t.flags & (TypeFlags.Undefined | TypeFlags.Null)));
     if (optionalOut && parts.length !== all.length) {

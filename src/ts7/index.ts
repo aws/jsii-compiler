@@ -94,7 +94,7 @@ export async function ts7Emit(options: Ts7EmitOptions): Promise<Ts7EmitResult> {
       return { typeCount: 0, emittedFiles: [], emitSkipped: true, diagnostics: tsDiagnostics };
     }
 
-    const assembler = new Ts7Assembler(host.np, project, {
+    const assembler = new Ts7Assembler(host.ts7, project, {
       packageJson: pkg,
       projectInfo,
       projectRoot,
@@ -164,53 +164,55 @@ export async function ts7Emit(options: Ts7EmitOptions): Promise<Ts7EmitResult> {
 }
 
 /**
- * Collect syntactic + semantic diagnostics from the TS7 program and map them to
- * `ts.Diagnostic` so the standard jsii reporting pipeline can print them. The
- * TS7 API returns plain data objects (not `ts.Diagnostic`), so the mapping is
- * defensive about field names and flattens any location into the message text.
+ * Collect the program's pre-emit diagnostics (options, global, syntactic and
+ * semantic) from the TS7 program and map them to `ts.Diagnostic` so the standard
+ * jsii reporting pipeline prints them exactly like the default backend does.
  */
 function collectTsDiagnostics(program: any): ts.Diagnostic[] {
+  const call = (name: string): any[] => (typeof program[name] === 'function' ? program[name]() ?? [] : []);
   const raw: any[] = [
-    ...(typeof program.getSyntacticDiagnostics === 'function' ? program.getSyntacticDiagnostics() : []),
-    ...(typeof program.getSemanticDiagnostics === 'function' ? program.getSemanticDiagnostics() : []),
+    ...call('getProgramDiagnostics'),
+    ...call('getGlobalDiagnostics'),
+    ...call('getSyntacticDiagnostics'),
+    ...call('getSemanticDiagnostics'),
   ];
-  return raw.map((d) => {
-    const file = d.file?.fileName ?? d.fileName ?? d.file;
-    const where = typeof file === 'string' ? `${file}: ` : '';
-    const message = flattenTs7Message(d.message ?? d.messageText ?? String(d));
-    const category =
-      d.category === 'error' || d.category === ts.DiagnosticCategory.Error
-        ? ts.DiagnosticCategory.Error
-        : d.category === 'warning' || d.category === ts.DiagnosticCategory.Warning
-        ? ts.DiagnosticCategory.Warning
-        : ts.DiagnosticCategory.Message;
-    return {
-      category,
-      code: typeof d.code === 'number' ? d.code : 0,
-      file: undefined,
-      start: undefined,
-      length: undefined,
-      messageText: `${where}${message}`,
-    } satisfies ts.Diagnostic;
-  });
+  const sourceFiles = new Map<string, ts.SourceFile | undefined>();
+  const readSource = (fileName: string): ts.SourceFile | undefined => {
+    if (!sourceFiles.has(fileName)) {
+      let sf: ts.SourceFile | undefined;
+      try {
+        sf = ts.createSourceFile(fileName, fs.readFileSync(fileName, 'utf8'), ts.ScriptTarget.Latest, false);
+      } catch {
+        sf = undefined;
+      }
+      sourceFiles.set(fileName, sf);
+    }
+    return sourceFiles.get(fileName);
+  };
+  return raw.map((d) => toTsDiagnostic(d, readSource));
 }
 
-/** Flatten a TS7 message (string or a `{ message, next }`-style chain) to text. */
-function flattenTs7Message(msg: any): string {
-  if (typeof msg === 'string') {
-    return msg;
-  }
-  const parts: string[] = [];
-  let current = msg;
-  while (current != null && typeof current === 'object') {
-    if (typeof current.message === 'string') {
-      parts.push(current.message);
-    } else if (typeof current.messageText === 'string') {
-      parts.push(current.messageText);
-    }
-    current = Array.isArray(current.next) ? current.next[0] : current.next;
-  }
-  return parts.join(' ') || JSON.stringify(msg);
+/**
+ * Map one TS7 API diagnostic (`{ fileName, pos, end, code, category, text }`)
+ * to a `ts.Diagnostic`. The file is attached as a real `ts.SourceFile` (parsed
+ * with the classic compiler from the on-disk text) so `formatDiagnostic`
+ * renders the same `file(line,col): error TSxxxx:` layout, with source
+ * context, as the default backend. Exported for unit tests.
+ */
+export function toTsDiagnostic(d: any, readSource: (fileName: string) => ts.SourceFile | undefined): ts.Diagnostic {
+  const category = Object.values(ts.DiagnosticCategory).includes(d.category)
+    ? (d.category as ts.DiagnosticCategory)
+    : ts.DiagnosticCategory.Error;
+  const file = typeof d.fileName === 'string' ? readSource(d.fileName) : undefined;
+  const hasRange = file != null && typeof d.pos === 'number' && typeof d.end === 'number' && d.end >= d.pos;
+  return {
+    category,
+    code: typeof d.code === 'number' ? d.code : 0,
+    file,
+    start: hasRange ? d.pos : undefined,
+    length: hasRange ? d.end - d.pos : undefined,
+    messageText: typeof d.text === 'string' ? d.text : d.messageText ?? d.message ?? String(d),
+  };
 }
 
 /** A `ts.Diagnostic`-shaped error with no source location. */

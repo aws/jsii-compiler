@@ -70,6 +70,3 @@ jspm_packages/
 !/.backportrc.json
 !/.github/workflows/backport.yml
 !/.projenrc.ts
-
-# jsii TS7 experimental backend toolchain (see scripts/ts7-setup.sh)
-.ts7/

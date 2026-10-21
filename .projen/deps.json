@@ -140,6 +140,11 @@
       "type": "build"
     },
     {
+      "name": "typescript7",
+      "version": "npm:typescript@7.1.0-beta",
+      "type": "build"
+    },
+    {
       "name": "@jsii/check-node",
       "type": "runtime"
     },

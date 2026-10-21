@@ -3,7 +3,7 @@
  *
  * This module is intentionally dependency-free: `main.ts` imports it to decide
  * which code path to take WITHOUT loading the rest of the ts7 backend (and its
- * optional native-preview toolchain loader) into the default strada path.
+ * TypeScript 7 API loader) into the default path.
  */
 
 /** The environment variable that selects the experimental backend. */

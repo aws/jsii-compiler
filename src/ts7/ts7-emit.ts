@@ -2,8 +2,8 @@
  * ---------------------------------------------------------------------------
  * Experimental TypeScript 7 (tsgo) backend for jsii.
  *
- * Emit pipeline: produce the JS / d.ts artifacts via the patched TS7
- * `program.getEmitOutput`, then run the jsii runtime-type-information (rtti)
+ * Emit pipeline: produce the JS / d.ts artifacts via the TypeScript 7
+ * `program.emit()`, then run the jsii runtime-type-information (rtti)
  * post-emit pass that injects the `Symbol.for("jsii.rtti")` marker onto each
  * exported class. This mirrors what strada does with a `CustomTransformer`
  * (src/transforms/runtime-info.ts), but as a post-emit text pass over the
@@ -41,18 +41,16 @@ export interface Ts7EmitPipelineResult {
 const RTTI_SYMBOL = 'jsii.rtti';
 
 /**
- * Emit JS/d.ts for the whole project in a SINGLE `getEmitOutput({ writeToDisk })`
- * call. The server writes every output file directly to disk and returns only
- * file names, so the ~345MB emit payload never crosses the RPC channel; jsii then
- * reads back only the class-bearing `.js` files to append the jsii rtti marker.
+ * Emit JS/d.ts for the whole project in a SINGLE `program.emit()` call. The
+ * server writes every output file directly to disk and returns only file names,
+ * so the ~345MB emit payload (aws-cdk-lib) never crosses the RPC channel; jsii
+ * then reads back only the class-bearing `.js` files to append the jsii rtti
+ * marker.
  *
- * NOTE (perf/stability): emitting per-source-file (calling `getEmitOutput(sf)`
- * once per file) issues one RPC round-trip per file and, at aws-cdk-lib scale
- * (~thousands of files), destabilizes the out-of-process tsgo session (observed
- * EPIPE / process exit). The API supports a whole-project emit when called with
- * no target file (Go side emits in parallel and collects under a mutex), which
- * collapses this to one RPC. This is also a useful design data point for the
- * upstream API.
+ * NOTE (perf/stability): emitting per source file would issue one round-trip
+ * per file and, at aws-cdk-lib scale (~thousands of files), was observed to
+ * destabilize the out-of-process session (EPIPE / process exit). The
+ * whole-project emit collapses this to one request.
  */
 export function runTs7EmitPipeline(project: Ts7Project, options: Ts7EmitPipelineOptions): Ts7EmitPipelineResult {
   const { program } = project;
@@ -92,26 +90,18 @@ export function runTs7EmitPipeline(project: Ts7Project, options: Ts7EmitPipeline
   const emittedFiles: string[] = [];
 
   // Whole-project emit (see the function docblock for why this is one RPC).
-  // Two API generations are supported:
-  //   - upstream typescript-go `program.emit()` (writes to the host filesystem,
-  //     returns { emitSkipped, diagnostics, emittedFiles });
-  //   - the earlier fork-only `program.getEmitOutput({ writeToDisk: true })`
-  //     (same disk-write semantics, returns { outputFiles: [{ name }] }).
-  let outputNames: string[] | undefined;
-  if (typeof program.emit === 'function') {
-    const result = program.emit();
-    outputNames = result?.emittedFiles;
-    if (outputNames === undefined && !result?.emitSkipped) {
-      // emittedFiles may be omitted by the server; fall back to the class-bearing
-      // JS files we can derive locally (sufficient for rtti injection).
-      outputNames = [...classesByJsRel.keys()];
-    }
-  } else {
-    const emitOutput = (program.getEmitOutput as (opts?: any) => any)({ writeToDisk: true });
-    outputNames = emitOutput?.outputFiles?.map((f: any) => f.name);
+  // `program.emit()` writes to the host filesystem and returns
+  // { emitSkipped, diagnostics, emittedFiles } with absolute file names.
+  const result = program.emit();
+  if (result?.emitSkipped) {
+    const reasons = (result.diagnostics ?? []).map((d: any) => d.text ?? d.messageText ?? String(d)).slice(0, 5);
+    throw new Error(`TypeScript emit was skipped${reasons.length ? `: ${reasons.join('; ')}` : ''}`);
   }
-  if (!outputNames) {
-    return { emittedFiles };
+  let outputNames: string[] | undefined = result?.emittedFiles;
+  if (outputNames === undefined) {
+    // emittedFiles may be omitted by the server; fall back to the class-bearing
+    // JS files we can derive locally (sufficient for rtti injection).
+    outputNames = [...classesByJsRel.keys()];
   }
 
   for (const name of outputNames) {

@@ -3,9 +3,9 @@
  * Experimental TypeScript 7 (tsgo) backend for jsii.
  *
  * `Ts7Host` is the thin adapter that owns everything that differs between the
- * classic in-process "Strada" compiler and the out-of-process TS7 API:
+ * classic in-process compiler and the out-of-process TypeScript 7 API:
  *   - API session / snapshot lifecycle (open project -> program + checker)
- *   - the post-emit pipeline for `getEmitOutput` (implemented in ts7-emit.ts)
+ *   - the post-emit pipeline for `program.emit()` (implemented in ts7-emit.ts)
  *
  * Per the architecture decision recorded in README.md (this directory), this
  * host does NOT try to make the TS7 program/checker look like `ts.Program` /
@@ -18,13 +18,15 @@
  */
 import * as path from 'node:path';
 
-import { loadNativePreview, NativePreview } from './native-preview';
+import { loadTs7Api, Ts7Api } from './ts7-api';
 
 export interface Ts7Project {
   /** The raw TS7 `Program` handle. */
   readonly program: any;
   /** The raw TS7 `TypeChecker` handle. */
   readonly checker: any;
+  /** The owning `API` session (exposes `batch()` for multi-request round-trips). */
+  readonly api: any;
 }
 
 /**
@@ -36,20 +38,20 @@ export class Ts7Host {
    * bound to the resulting program + checker.
    */
   public static async open(projectRoot: string, tsconfigFileName = 'tsconfig.json'): Promise<Ts7Host> {
-    const np = await loadNativePreview();
+    const ts7 = await loadTs7Api(projectRoot);
     const tsconfigPath = path.join(projectRoot, tsconfigFileName);
 
     // collectTiming lets us report RPC request counts / bytes for perf work
     // (opt-in via JSII_TS7_TIMING; negligible overhead but off by default).
     const collectTiming = !!process.env.JSII_TS7_TIMING;
-    const api = new np.API({ cwd: projectRoot, tsserverPath: np.tsgoPath, collectTiming });
-    const snapshot = api.updateSnapshot({ openProjects: [tsconfigPath] });
+    const api = new ts7.API({ cwd: projectRoot, collectTiming });
+    const snapshot = api.createSnapshot({ openProjects: [tsconfigPath] });
 
-    return new Ts7Host(np, api, snapshot, tsconfigPath);
+    return new Ts7Host(ts7, api, snapshot, tsconfigPath);
   }
 
   private constructor(
-    public readonly np: NativePreview,
+    public readonly ts7: Ts7Api,
     private readonly api: any,
     private readonly snapshot: any,
     public readonly tsconfigPath: string,
@@ -66,16 +68,16 @@ export class Ts7Host {
 
   /** The program + checker for the opened project. */
   public getProject(): Ts7Project {
-    const project = this.snapshot.getProject(this.tsconfigPath);
+    const project = this.snapshot.getConfiguredProject(this.tsconfigPath);
     if (!project) {
       throw new Error(`TS7 project not found for ${this.tsconfigPath}`);
     }
-    return { program: project.program, checker: project.checker };
+    return { program: project.program, checker: project.checker, api: this.api };
   }
 
-  /** Dispose the snapshot and close the API session / tsgo process. */
+  /** Dispose the snapshot and close the API session / native process. */
   public close(): void {
-    // Tolerate a channel that is already gone (e.g. the tsgo process exited):
+    // Tolerate a channel that is already gone (e.g. the server process exited):
     // dispose/close can throw EPIPE, which must not mask the real result.
     try {
       this.snapshot.dispose();

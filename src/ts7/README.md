@@ -7,8 +7,8 @@
 ## What this is
 
 An **experimental**, opt-in jsii backend that generates the `.jsii` assembly using
-the out-of-process TypeScript 7 API (`@typescript/native-preview` / `tsgo`) instead
-of the classic in-process compiler (`typescript`).
+the out-of-process TypeScript 7 programmatic API (`typescript/sync`, shipped in
+the `typescript` package since 7.1) instead of the classic in-process compiler API.
 
 Enable it with:
 
@@ -21,20 +21,37 @@ The default backend is **completely unaffected** — the ts7 path is a separate
 
 ## Toolchain
 
-The backend runs against a `tsgo` + `@typescript/native-preview` client built from
-[microsoft/typescript-go](https://github.com/microsoft/typescript-go), pinned to
-the final commit of that staging repo (closed in August 2026 when the TypeScript 7
-native port moved back into [microsoft/TypeScript](https://github.com/microsoft/TypeScript)).
-All required APIs — including `checker.getFullyQualifiedName` (merged upstream in
-PR 4700) and the whole-project `program.emit()` — are in that pin. A fork ref
-carrying a not-yet-upstreamed **batched symbol-documentation API** can be used
-instead as a faster option; without it the backend transparently falls back to
-per-symbol documentation requests (same output, more round-trips).
+The backend needs a `typescript` package **>= 7.1** (currently `7.1.0-beta`): that
+release ships the programmatic API as the `typescript/sync` entry point, with the
+native compiler binary in a platform-specific dependency. No Go toolchain or
+source build is involved. Every API the backend uses is part of that surface
+(`checker.getFullyQualifiedName`, `program.emit()`, the diagnostics getters, and
+request batching via `api.batch(all(...))`, which replaces the earlier fork-only
+batched documentation endpoint).
 
-Provision it with [`scripts/ts7-setup.sh`](../../scripts/ts7-setup.sh), which builds
-the toolchain (or pulls a prebuilt tarball from an S3 cache) into `.ts7/`
-(gitignored). Override locations with `JSII_TS7_DIR` / `JSII_TS7_NATIVE_PREVIEW` /
-`TSGO_PATH`.
+Because this compiler itself depends on the current TypeScript release line, the
+7.x package is installed under an alias (this repository declares it as a
+devDependency): 
+
+```sh
+npm i -D typescript7@npm:typescript@beta
+```
+
+The loader (`ts7-api.ts`) resolves the package in this order and fails with the
+install one-liner above when nothing suitable is found:
+
+1. `JSII_TS7_TYPESCRIPT` — directory of a `typescript` >= 7.1 package install
+2. the `typescript7` alias, from the compiled project and then from jsii's own install
+3. the project's regular `typescript` package, when it is >= 7.1
+
+### Environment variables
+
+| Variable | Purpose |
+|---|---|
+| `JSII_COMPILER_BACKEND=ts7` | Select the experimental backend (off by default). |
+| `JSII_TS7_TYPESCRIPT` | Explicit directory of a `typescript` >= 7.1 package (overrides resolution). |
+| `JSII_TS7_TIMING=1` | Log RPC request counts / bytes / server time after the run. |
+| `JSII_TS7_NO_BATCH=1` | Disable request batching for documentation reads (measurement only). |
 
 ## Architecture decision
 
@@ -82,6 +99,9 @@ experimental flag. Proper type abstraction is deferred until the API stabilizes.
 - Watch mode (explicitly rejected with an error).
 - `.warnings.jsii.js` generation (`--add-deprecation-warnings`) and the
   deprecated-remover emit surgery.
+- The TypeScript 7 documentation APIs still differ from the classic ones in a few
+  JSDoc edge cases (e.g. `Symbol.getJsDocTags` returns no tags for parameter
+  symbols); the assembler reads `@param` text from source for those paths.
 
 ## Verification gate
 

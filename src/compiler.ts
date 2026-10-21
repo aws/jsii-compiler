@@ -126,8 +126,8 @@ export class Compiler implements Emitter {
       this.writeTypeScriptConfig();
     }
 
-    // Lazy require: the ts7 backend pulls in the optional native-preview
-    // toolchain, which must not be a hard dependency of the default path.
+    // Lazy require: the ts7 backend loads the (aliased) TypeScript 7 package,
+    // which must not be a hard dependency of the default path.
     // A dynamic `import()` cannot be used here: with `module: node20` it is
     // preserved as a native dynamic import in the CommonJS output, which
     // jest's CJS test environment cannot execute without
