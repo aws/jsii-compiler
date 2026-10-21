@@ -234,18 +234,22 @@ export class Ts7Assembler {
   }
 
   /**
-   * Batch-prefetch JSDoc tags + doc comments for many symbols in one round-trip
-   * using the API's request batching (`api.batch(all(...gen))`), filling the
-   * same caches that _jsDocTags/_docComment consult. Per-element results are
-   * exactly what the individual calls would return, so behaviour is unchanged —
-   * only the number of round-trips drops (~300k doc RPCs -> ~1 per type on
-   * aws-cdk-lib). No-ops gracefully when batching is unavailable (or disabled
-   * with JSII_TS7_NO_BATCH=1 for measurement), leaving the per-symbol path.
+   * Opt-in (JSII_TS7_BATCH=1): batch-prefetch JSDoc tags + doc comments for
+   * many symbols in one round-trip using the API's request batching
+   * (`api.batch(all(...gen))`), filling the same caches that
+   * _jsDocTags/_docComment consult. Per-element results are exactly what the
+   * individual calls would return, so output is unchanged either way.
+   *
+   * Off by default: on typescript 7.1.0-beta the batched path cuts the request
+   * count by ~30% but is measurably SLOWER on aws-cdk-lib (66.8s vs 54.9s wall
+   * clock), i.e. per-request cost is dominated by payload encoding/decoding,
+   * not by round-trips. Kept as a switch so it can be re-evaluated as the API
+   * evolves. No-ops gracefully when batching is unavailable.
    */
   private _prefetchDocs(syms: any[]): void {
     const api = this.project.api;
     if (
-      process.env.JSII_TS7_NO_BATCH ||
+      !process.env.JSII_TS7_BATCH ||
       typeof api?.batch !== 'function' ||
       typeof this.ts7.all !== 'function' ||
       typeof this.checker.getJsDocTagsOfSymbol?.gen !== 'function' ||

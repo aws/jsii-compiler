@@ -26,8 +26,7 @@ release ships the programmatic API as the `typescript/sync` entry point, with th
 native compiler binary in a platform-specific dependency. No Go toolchain or
 source build is involved. Every API the backend uses is part of that surface
 (`checker.getFullyQualifiedName`, `program.emit()`, the diagnostics getters, and
-request batching via `api.batch(all(...))`, which replaces the earlier fork-only
-batched documentation endpoint).
+optionally request batching via `api.batch(all(...))`).
 
 Because this compiler itself depends on the current TypeScript release line, the
 7.x package is installed under an alias (this repository declares it as a
@@ -51,7 +50,7 @@ install one-liner above when nothing suitable is found:
 | `JSII_COMPILER_BACKEND=ts7` | Select the experimental backend (off by default). |
 | `JSII_TS7_TYPESCRIPT` | Explicit directory of a `typescript` >= 7.1 package (overrides resolution). |
 | `JSII_TS7_TIMING=1` | Log RPC request counts / bytes / server time after the run. |
-| `JSII_TS7_NO_BATCH=1` | Disable request batching for documentation reads (measurement only). |
+| `JSII_TS7_BATCH=1` | Opt in to `api.batch(all(...))` for documentation reads. Off by default: on 7.1.0-beta it cuts requests by ~30% but is slower on aws-cdk-lib (66.8s vs 54.9s), as per-request cost is dominated by payload encoding/decoding rather than round-trips. Re-evaluate as the API evolves. |
 | `JSII_TS7_SKIP_TYPECHECK=1` | Skip the TypeScript diagnostics pass (measurement only; type errors are not detected). |
 
 ## Architecture decision
@@ -108,5 +107,7 @@ experimental flag. Proper type abstraction is deferred until the API stabilizes.
 
 Build `constructs` → `cloud-assembly-schema` → `aws-cdk-lib` with both backends
 and diff the `.jsii` type space (see `scripts/ts7-compare-jsii.mjs`; target: 0
-differences — achieved: 100% type/member parity, ~3.7x faster check+assemble on
-aws-cdk-lib).
+differences). Current result on `typescript@7.1.0-beta`: 100% type/member parity
+(aws-cdk-lib: 22682 types / 110232 members, 0 differences) and check+assemble
+on aws-cdk-lib in ~55s vs ~125s for the classic backend (about 2.3x; c7i.4xlarge,
+3-run median, full diagnostics pass included).
