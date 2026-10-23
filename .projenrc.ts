@@ -219,6 +219,10 @@ project.addDevDeps(
   'lockfile',
   'tsx',
   'glob',
+  // TypeScript 7.1+ programmatic API (`typescript/sync`) for the experimental
+  // JSII_COMPILER_BACKEND=ts7 backend. Aliased because the compiler itself
+  // depends on the current TypeScript release line.
+  'typescript7@npm:typescript@7.1.0-beta',
 );
 
 project.preCompileTask.exec('ts-node build-tools/code-gen.ts', {
