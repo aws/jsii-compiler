@@ -1230,20 +1230,20 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@jsii/check-node@npm:1.141.0":
-  version: 1.141.0
-  resolution: "@jsii/check-node@npm:1.141.0"
+"@jsii/check-node@npm:1.142.0":
+  version: 1.142.0
+  resolution: "@jsii/check-node@npm:1.142.0"
   dependencies:
     chalk: "npm:^4.1.2"
     semver: "npm:^7.8.5"
-  checksum: 10c0/51a7d7d29d16838e635fba7780a384f9d7784b496d76c1eb7af8947c5abe9bf1bfa87507315d8ffd8f83115c30d0e4f410b9ced183a7530e5bd40beabee2f5f0
+  checksum: 10c0/f35992d439ab1b6abf483b56b52326ea299815fea72f9aa945d13d237db270747c2449a47d0c9dc2538f65bff9d7482b09adc22e9f60e90275dd79258da92a4a
   languageName: node
   linkType: hard
 
-"@jsii/spec@npm:1.141.0":
-  version: 1.141.0
-  resolution: "@jsii/spec@npm:1.141.0"
-  checksum: 10c0/d31aad2da9f381d9aed0c2fe0fe7b0e43fe2c792839e062b49d3d561ffb769d09ab74abd946be2988c72de008d2316fa090d105f10a0075fe1d4bb07703a9b65
+"@jsii/spec@npm:1.142.0":
+  version: 1.142.0
+  resolution: "@jsii/spec@npm:1.142.0"
+  checksum: 10c0/11207a5e273c521e574bd164da9d2ba25d724541996bae1b6ca954936fc28797f45266ba395477f9e08fb69a55bbc0072ad983ca2d993af0dfa7e45f61239545
   languageName: node
   linkType: hard
 
@@ -5712,8 +5712,8 @@ __metadata:
   dependencies:
     "@actions/core": "npm:^3"
     "@actions/github": "npm:^9"
-    "@jsii/check-node": "npm:1.141.0"
-    "@jsii/spec": "npm:1.141.0"
+    "@jsii/check-node": "npm:1.142.0"
+    "@jsii/spec": "npm:1.142.0"
     "@types/clone": "npm:^2.1.4"
     "@types/deep-equal": "npm:^1.0.4"
     "@types/glob": "npm:^8.1.0"
@@ -5744,7 +5744,7 @@ __metadata:
     npm: "npm:^12"
     npm-check-updates: "npm:^20"
     prettier: "npm:^2.8.8"
-    projen: "npm:^0.104.9"
+    projen: "npm:^0.104.10"
     semver: "npm:^7.8.5"
     semver-intersect: "npm:^1.5.0"
     sort-json: "npm:^2.0.1"
@@ -7115,9 +7115,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"projen@npm:^0.104.9":
-  version: 0.104.9
-  resolution: "projen@npm:0.104.9"
+"projen@npm:^0.104.10":
+  version: 0.104.10
+  resolution: "projen@npm:0.104.10"
   dependencies:
     "@iarna/toml": "npm:^2.2.5"
     case: "npm:^1.6.3"
@@ -7139,7 +7139,7 @@ __metadata:
     constructs: ^10.5.0
   bin:
     projen: bin/projen
-  checksum: 10c0/cc43d87a90d31718e7520e6d1c24f7f99806b9e70c07c19d3d291c0d9c80e14a9d5067d9f562e7a985b8ab652767a3a048372f70bd31a65907e0ff924f49f552
+  checksum: 10c0/aca7ee416f48126c4954d272224a5f24db204a1ec6ddc06687daa77a755ecb80bc9ead78ced567240d5d00e54c68fd4afc869df2cba2e3e2a9d95499c3396d77
   languageName: node
   linkType: hard
 
