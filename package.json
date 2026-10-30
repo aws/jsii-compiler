@@ -64,7 +64,8 @@
     "tar": "^7.5.22",
     "ts-jest": "^29.4.15",
     "ts-node": "^10.9.2",
-    "tsx": "^4.23.15"
+    "tsx": "^4.23.15",
+    "typescript7": "npm:typescript@7.1.0-beta"
   },
   "dependencies": {
     "@jsii/check-node": "1.142.0",

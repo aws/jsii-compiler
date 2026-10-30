@@ -12,6 +12,7 @@ import { Compiler } from './compiler';
 import { configureCategories, JsiiDiagnostic } from './jsii-diagnostic';
 import { loadProjectInfo } from './project-info';
 import { emitSupportPolicyInformation } from './support';
+import { isTs7BackendEnabled } from './ts7/env';
 import { TypeScriptConfigValidationRuleSet } from './tsconfig';
 import { formatRuleSet, RULE_SET_DESCRIPTIONS } from './tsconfig/rule-set-format';
 import { validateTypeScriptConfigFile } from './tsconfig/tsconfig-validator';
@@ -167,8 +168,16 @@ enum OPTION_GROUP {
             compressAssembly: argv['compress-assembly'],
           });
 
+          if (argv.watch && isTs7BackendEnabled()) {
+            throw new utils.JsiiError('--watch is not supported with JSII_COMPILER_BACKEND=ts7', true);
+          }
+
           const startTime = Date.now();
-          const emitResult = argv.watch ? await compiler.watch() : compiler.emit();
+          const emitResult = argv.watch
+            ? await compiler.watch()
+            : isTs7BackendEnabled()
+            ? await compiler.emitTs7()
+            : compiler.emit();
 
           const allDiagnostics = [...projectInfoDiagnostics, ...emitResult.diagnostics];
 
