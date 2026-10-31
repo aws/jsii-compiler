@@ -168,7 +168,6 @@ jobs:
       fail-fast: false
       matrix:
         node-version:
-          - 20.x
           - 22.x
           - 24.x
   matrix-clear:
@@ -276,7 +275,6 @@ jobs:
       fail-fast: false
       matrix:
         node-version:
-          - 20.x
           - 22.x
           - 24.x
         package-manager:
