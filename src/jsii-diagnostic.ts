@@ -510,6 +510,13 @@ export class JsiiDiagnostic implements ts.Diagnostic {
     name: 'jsii-config/submodule-conflict',
   });
 
+  public static readonly JSII_4011_UNKNOWN_TARGET_LANGUAGE = Code.warning({
+    code: 4011,
+    formatter: (language: string, source: string) =>
+      `Unknown target language "${language}" in ${source}. It is passed through to the assembly for external tooling; if it is a typo, the target will not be configured.`,
+    name: 'jsii-config/unknown-target-language',
+  });
+
   //////////////////////////////////////////////////////////////////////////////
   // 5000 => 5999 -- LANGUAGE COMPATIBILITY ERRORS
 

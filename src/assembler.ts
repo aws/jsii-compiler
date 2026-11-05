@@ -17,7 +17,7 @@ import { normalizeConfigPath } from './helpers';
 import { JsiiDiagnostic } from './jsii-diagnostic';
 import * as literate from './literate';
 import * as bindings from './node-bindings';
-import { AssemblyTargets, ProjectInfo, validateTargets } from './project-info';
+import { AssemblyTargets, ProjectInfo, unknownTargetLanguages, validateTargets } from './project-info';
 import { isReservedName } from './reserved-words';
 import { Sets } from './sets';
 import { DeprecatedRemover } from './transforms/deprecated-remover';
@@ -160,6 +160,11 @@ export class Assembler implements Emitter {
       this._diagnostics.push(JsiiDiagnostic.JSII_0003_MISSING_README.createDetached());
     }
     const docs = _loadDocs.call(this);
+    for (const language of unknownTargetLanguages(this.projectInfo.targets)) {
+      this._diagnostics.push(
+        JsiiDiagnostic.JSII_4011_UNKNOWN_TARGET_LANGUAGE.createDetached(language, '"package.json"'),
+      );
+    }
 
     const sourceFile = this.program.getSourceFile(this.mainFile);
 
@@ -677,6 +682,17 @@ export class Assembler implements Emitter {
 
       const { fqn, fqnResolutionPrefix } = qualifiedNameOf.call(this, symbol);
       const targets = loadSubmoduleTargetConfig(sourceFile.fileName);
+      if (packageRoot === this.projectInfo.projectRoot) {
+        for (const language of unknownTargetLanguages(targets as AssemblyTargets)) {
+          this._diagnostics.push(
+            JsiiDiagnostic.JSII_4011_UNKNOWN_TARGET_LANGUAGE.create(
+              declaration,
+              language,
+              `the jsii configuration of submodule "${fqn}"`,
+            ),
+          );
+        }
+      }
       // There is no need to process the README file for submodules that are
       // external (i.e: from a dependency), as these will not be emitted in the
       // assembly. That'd be wasted effort, and could fail if the README file

@@ -3,7 +3,7 @@ import { writeAssembly, loadAssemblyFromPath } from '@jsii/spec';
 import * as ts from 'typescript';
 
 import { sourceToAssemblyHelper, TestWorkspace, compileJsiiForTest } from '../lib';
-import { compileJsiiForErrors } from './compiler-helpers';
+import { compileJsiiForErrors, errors as errorsOf, warnings as warningsOf } from './compiler-helpers';
 
 test('submodules loaded from directories can have a README', () => {
   const assembly = sourceToAssemblyHelper({
@@ -432,17 +432,39 @@ describe('invalid .jsiirc.json target configuration', () => {
     expect(errors).toContainEqual(expect.stringMatching(/jsii\.targets\.python must be an object/));
   });
 
-  test('unknown target language is rejected', () => {
+  test('unknown target language is passed through with a warning', () => {
+    const result = compileJsiiForTest(
+      {
+        'index.ts': 'export * as submodule from "./subfile"',
+        'subfile.ts': 'export class Foo { }',
+        '.subfile.jsiirc.json': JSON.stringify({
+          targets: {
+            rust: { package: 'my-crate' },
+          },
+        }),
+      },
+      { captureDiagnostics: true },
+    );
+    expect(errorsOf(result.diagnostics)).toEqual([]);
+    expect(warningsOf(result.diagnostics)).toContainEqual(
+      expect.stringMatching(
+        /Unknown target language "rust" in the jsii configuration of submodule "testpkg\.submodule"/,
+      ),
+    );
+    expect(result.assembly?.submodules?.['testpkg.submodule']?.targets).toEqual({ rust: { package: 'my-crate' } });
+  });
+
+  test('unknown target language must still be an object', () => {
     const errors = compileJsiiForErrors({
       'index.ts': 'export * as submodule from "./subfile"',
       'subfile.ts': 'export class Foo { }',
       '.subfile.jsiirc.json': JSON.stringify({
         targets: {
-          rust: { package: 'my-crate' },
+          rust: 'not-an-object',
         },
       }),
     });
-    expect(errors).toContainEqual(expect.stringMatching(/Unknown target language: rust/));
+    expect(errors).toContainEqual(expect.stringMatching(/jsii\.targets\.rust must be an object/));
   });
 
   test('unknown key in target config is rejected', () => {
