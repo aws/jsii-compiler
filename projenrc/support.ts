@@ -18,7 +18,22 @@ export const SUPPORT_POLICY: ReleasesDocument = {
   },
 };
 
+/**
+ * Release lines integrated on a `preview/vX.Y` branch ahead of becoming
+ * current. They only get `dev` pre-releases, never full releases.
+ */
+export const PREVIEW_RELEASES: readonly string[] = ['7.1'];
+
 export class SupportPolicy {
+  /**
+   * The branches for preview release lines.
+   */
+  public get previewBranches(): {
+    [version: string]: string;
+  } {
+    return Object.fromEntries(PREVIEW_RELEASES.map((version) => [version, `preview/v${version}`]));
+  }
+
   public get branches(): {
     [version: string]: string;
   } {

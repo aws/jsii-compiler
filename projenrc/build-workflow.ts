@@ -35,7 +35,7 @@ export class BuildWorkflow {
     if (opts.defaultBranch !== null) {
       wf.on({
         push: {
-          branches: [opts.defaultBranch ?? 'main', 'maintenance/*'],
+          branches: [opts.defaultBranch ?? 'main', 'maintenance/*', 'preview/*'],
         },
       });
     }

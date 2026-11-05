@@ -3,7 +3,7 @@ import { YarnNodeLinker } from 'projen/lib/javascript/yarnrc';
 import { BuildWorkflow } from './projenrc/build-workflow';
 import { JsiiCalcFixtures } from './projenrc/fixtures';
 import { ReleaseWorkflow } from './projenrc/release';
-import { SUPPORT_POLICY, SupportPolicy } from './projenrc/support';
+import { PREVIEW_RELEASES, SUPPORT_POLICY, SupportPolicy } from './projenrc/support';
 import { UpdateIntegPackage } from './projenrc/update-integ-package';
 import { UpgradeDependencies } from './projenrc/upgrade-dependencies';
 
@@ -134,6 +134,7 @@ new UpgradeDependencies(project, {
         }
         return [`maintenance/v${version}`];
       }),
+      ...PREVIEW_RELEASES.map((version) => `preview/v${version}`),
     ],
     labels: ['auto-approve'],
   },
@@ -142,6 +143,11 @@ new UpgradeDependencies(project, {
 project.tsconfig?.file?.patch(
   JsonPatch.add('/compilerOptions/composite', true),
   JsonPatch.add('/compilerOptions/declarationMap', true),
+);
+project.tryFindObjectFile('projenrc/tsconfig.json')?.patch(
+  // projenrc/support.ts needs these files
+  JsonPatch.add('/include/-', '../src/support.ts'),
+  JsonPatch.add('/include/-', '../src/version.ts'),
 );
 
 // Don't show .gitignore'd files in the VSCode explorer
@@ -291,6 +297,20 @@ for (const [version, branch] of Object.entries(supported.activeBranches(false)))
       branch,
       nameSuffix: tag,
     });
+}
+
+// Preview release lines only get dev pre-releases, never full releases.
+for (const [version, branch] of Object.entries(supported.previewBranches)) {
+  hour = (hour + 5) % 24;
+  const tag = `v${version}`;
+  releases.autoTag({
+    releaseLine: version,
+    preReleaseId: 'dev',
+    runName: `Auto-Tag Prerelease (${tag} preview)`,
+    schedule: `0 ${hour} * * 0,2-6`, // Tuesday though sundays
+    branch,
+    nameSuffix: tag,
+  });
 }
 
 // Allow PR backports to all maintained versions

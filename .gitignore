@@ -53,6 +53,7 @@ jspm_packages/
 !/projenrc/tsconfig.json
 !/.github/workflows/upgrade-main.yml
 !/.github/workflows/upgrade-maintenance-v5.9.yml
+!/.github/workflows/upgrade-preview-v7.1.yml
 !/.vscode/settings.json
 !/.vscode/extensions.json
 /src/version.ts
@@ -67,6 +68,7 @@ jspm_packages/
 !/.github/workflows/auto-tag-releases.yml
 !/.github/workflows/auto-tag-dev-v5.9.yml
 !/.github/workflows/auto-tag-releases-v5.9.yml
+!/.github/workflows/auto-tag-dev-v7.1.yml
 !/.backportrc.json
 !/.github/workflows/backport.yml
 !/.projenrc.ts
