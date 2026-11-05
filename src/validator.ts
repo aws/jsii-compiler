@@ -295,27 +295,35 @@ function _defaultValidations(): ValidationFunction[] {
       return true;
     }
 
-    function _validateMethodImplementation(method: spec.Method, type: spec.ClassType | spec.InterfaceType): boolean {
+    function _validateMethodImplementation(
+      method: spec.Method,
+      type: spec.ClassType | spec.InterfaceType,
+      directInterfaces?: Set<string>,
+    ): boolean {
       if (!type.interfaces) {
         // Abstract classes may not directly implement all members, need to check their supertypes...
         if (spec.isClassType(type) && type.base && type.abstract) {
-          return _validateMethodImplementation(method, _dereference(type.base) as spec.ClassType);
+          return _validateMethodImplementation(method, _dereference(type.base) as spec.ClassType, directInterfaces);
         }
         return false;
       }
+      // On the first call, capture the directly implemented interfaces
+      const direct = directInterfaces ?? new Set(type.interfaces);
       for (const iface of type.interfaces) {
         const ifaceType = _dereference(iface) as spec.InterfaceType;
         const implemented = (ifaceType.methods ?? []).find((m) => m.name === method.name);
         if (implemented) {
           _assertSignaturesMatch(implemented, method, `${type.fqn}#${method.name}`, `implementing ${ifaceType.fqn}`, {
-            allowReturnTypeCovariance: false,
+            // Covariance is only disallowed for methods declared on directly implemented interfaces.
+            // Inherited interface methods are already satisfied by the class hierarchy.
+            allowReturnTypeCovariance: !direct.has(iface),
           });
           // We won't replace a previous overrides declaration from a method override, as those have
           // higher precedence than an initial implementation.
           method.overrides = method.overrides ?? iface;
           return true;
         }
-        if (_validateMethodImplementation(method, ifaceType)) {
+        if (_validateMethodImplementation(method, ifaceType, direct)) {
           return true;
         }
       }
@@ -325,14 +333,17 @@ function _defaultValidations(): ValidationFunction[] {
     function _validatePropertyImplementation(
       property: spec.Property,
       type: spec.ClassType | spec.InterfaceType,
+      directInterfaces?: Set<string>,
     ): boolean {
       if (!type.interfaces) {
         // Abstract classes may not directly implement all members, need to check their supertypes...
         if (spec.isClassType(type) && type.base && type.abstract) {
-          return _validatePropertyImplementation(property, _dereference(type.base) as spec.ClassType);
+          return _validatePropertyImplementation(property, _dereference(type.base) as spec.ClassType, directInterfaces);
         }
         return false;
       }
+      // On the first call, capture the directly implemented interfaces
+      const direct = directInterfaces ?? new Set(type.interfaces);
       for (const iface of type.interfaces) {
         const ifaceType = _dereference(iface) as spec.InterfaceType;
         const implemented = (ifaceType.properties ?? []).find((p) => p.name === property.name);
@@ -342,14 +353,16 @@ function _defaultValidations(): ValidationFunction[] {
             property,
             `${type.fqn}#${property.name}`,
             `implementing ${ifaceType.fqn}`,
-            { allowCovariance: false },
+            // Covariance is only disallowed for properties declared on directly implemented interfaces.
+            // Inherited interface properties are already satisfied by the class hierarchy.
+            { allowCovariance: !direct.has(iface) },
           );
           // We won't replace a previous overrides declaration from a property override, as those
           // have higher precedence than an initial implementation.
           property.overrides = property.overrides ?? ifaceType.fqn;
           return true;
         }
-        if (_validatePropertyImplementation(property, ifaceType)) {
+        if (_validatePropertyImplementation(property, ifaceType, direct)) {
           return true;
         }
       }
