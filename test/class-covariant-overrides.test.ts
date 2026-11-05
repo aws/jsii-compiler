@@ -75,7 +75,7 @@ describe('Covariant overrides in classes are allowed', () => {
   });
 
   describe('Method return types can be narrowed (covariant)', () => {
-    test('method return type override', () => {
+    test('subclass inheritance', () => {
       const result = compileJsiiForTest(`
         export class Superclass {}
         export class Subclass extends Superclass {}
@@ -102,6 +102,80 @@ describe('Covariant overrides in classes are allowed', () => {
             name: 'createSomething',
             overrides: 'testpkg.Base',
             returns: { type: { fqn: 'testpkg.Subclass' } },
+          }),
+        ]),
+      );
+    });
+
+    test('interface implementation through superclass', () => {
+      const result = compileJsiiForTest(`
+        // construct.ts
+        export interface IConstruct {
+           with(): IConstruct;
+        }
+        export class Construct implements IConstruct {
+          public with(): IConstruct {
+            return this;
+          }
+        }
+
+        // resource.ts
+        export class Resource extends Construct {
+          public with() {
+            return this;
+          }
+        }
+      `);
+
+      expect(result.assembly.usedFeatures).toContain('class-covariant-overrides');
+
+      const derivedType = result.assembly.types!['testpkg.Resource'] as spec.ClassType;
+      expect(derivedType.methods).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            name: 'with',
+            overrides: 'testpkg.Construct',
+            returns: { type: { fqn: 'testpkg.Resource' } },
+          }),
+        ]),
+      );
+    });
+
+    test('with interface inheritance', () => {
+      const result = compileJsiiForTest(`
+        // construct.ts
+        export interface IConstruct {
+           with(): IConstruct;
+        }
+        export class Construct implements IConstruct {
+          public with(): IConstruct {
+            return this;
+          }
+        }
+
+        // resource.ts
+        export interface IResource extends IConstruct {
+        }
+        export class Resource extends Construct implements IResource {
+          public with() {
+            return this;
+          }
+        }
+
+        // service.ts
+        export class CfnService extends Resource {     
+        }
+      `);
+
+      expect(result.assembly.usedFeatures).toContain('class-covariant-overrides');
+
+      const derivedType = result.assembly.types!['testpkg.Resource'] as spec.ClassType;
+      expect(derivedType.methods).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            name: 'with',
+            overrides: 'testpkg.Construct',
+            returns: { type: { fqn: 'testpkg.Resource' } },
           }),
         ]),
       );
