@@ -198,9 +198,11 @@ function sortUnionLikeClassic(refs: readonly spec.TypeReference[], rankOfFqn: (f
       return rankOfFqn(ref.fqn);
     }
     if (spec.isCollectionTypeReference(ref)) {
-      // Collection types are instantiated when first referenced, i.e. after the
-      // named types of the union; their relative order is kept.
-      return Number.MAX_SAFE_INTEGER / 2;
+      // Collections of primitives are instantiated early (the standard library
+      // uses them); other collections when first referenced, i.e. after the named
+      // types of the union. Their relative order is kept.
+      const element = rank(ref.collection.elementtype);
+      return element < 100 ? element + 0.5 : Number.MAX_SAFE_INTEGER / 2;
     }
     if (spec.isUnionTypeReference(ref)) {
       return Math.min(...ref.union.types.map(rank));
@@ -396,13 +398,27 @@ export class Ts7Assembler {
     }
     const decl = sym.declarations?.[0]?.resolve(this.project);
     const block = decl ? this._leadingJsDocBlock(decl) : undefined;
-    if (!block || !/\{@link(code|plain)?\b/.test(block)) {
+    if (!block) {
+      return comment;
+    }
+    // Only the comment part (before the first tag) belongs to the documentation comment.
+    const commentLines: string[] = [];
+    for (const line of this._jsDocLines(block)) {
+      if (/^@/.test(line)) {
+        break;
+      }
+      commentLines.push(line);
+    }
+    const rawComment = commentLines.join('\n');
+    if (!/\{@link(code|plain)?\b/.test(rawComment)) {
       return comment;
     }
     const linkRe = /\{@(link|linkcode|linkplain)([^}\n]*)\}/g;
     let result = comment;
     let cursor = 0;
-    for (const m of block.matchAll(linkRe)) {
+    let rawRendered = rawComment;
+    let allFound = true;
+    for (const m of rawComment.matchAll(linkRe)) {
       const kind = m[1];
       const after = m[2].replace(/^\s+/, '');
       const nm = /^[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*(?:#[A-Za-z_$][\w$]*)*/.exec(after);
@@ -427,20 +443,24 @@ export class Ts7Assembler {
         }
         modern = `${name0.replace(/#/g, '.')}${text}`;
       }
+      rawRendered = rawRendered.replace(m[0], classic);
       // Re-insert the braces where the TypeScript 7 rendering of this link is.
       const at = result.indexOf(modern, cursor);
       if (at < 0) {
+        allFound = false;
         continue;
       }
       result = result.slice(0, at) + classic + result.slice(at + modern.length);
       cursor = at + classic.length;
     }
-    return result;
+    // A link the TypeScript 7 rendering could not be located for (e.g. `{@link url | text}`
+    // is rendered as "text (url)"): fall back to the raw comment with the links rendered.
+    return allFound ? result : rawRendered.trim();
   }
 
   /** Whether a `{@link A.b.c}` name resolves at `location` (classic `getSymbolAtLocation` on the link name). */
   private _resolvesLinkName(name: string, location: any): boolean {
-    const { SymbolFlags } = this.ts7;
+    const { SymbolFlags, SyntaxKind } = this.ts7;
     const parts = name.split('.');
     try {
       let sym: any = this.checker.resolveName(
@@ -448,6 +468,24 @@ export class Ts7Assembler {
         SymbolFlags.Type | SymbolFlags.Namespace | SymbolFlags.Value,
         location,
       );
+      if (!sym) {
+        // Classic fallback for a bare name: a member of the enclosing class/interface.
+        let container = location;
+        while (
+          container &&
+          container.kind !== SyntaxKind.ClassDeclaration &&
+          container.kind !== SyntaxKind.InterfaceDeclaration
+        ) {
+          container = container.parent;
+        }
+        if (container) {
+          const containerType = this.checker.getTypeAtLocation(container);
+          const containerSym = containerType?.getSymbol?.();
+          sym =
+            (containerType && this.checker.getPropertyOfType(containerType, parts[0])) ??
+            (containerSym && this.checker.getPropertyOfType(this.checker.getTypeOfSymbol(containerSym), parts[0]));
+        }
+      }
       for (const part of parts.slice(1)) {
         if (!sym) {
           return false;
@@ -773,6 +811,7 @@ export class Ts7Assembler {
       this.typeFqnBySymbolId.set(sym.id, fqn);
     }
     this.exported.push({ name, sym, decl, fqn });
+    this._registerDeclarationRank(fqn, sym);
     if (!isFirst) {
       return;
     }
@@ -1012,25 +1051,29 @@ export class Ts7Assembler {
    * order, position in file); types of dependencies before them, by name.
    */
   private _declarationRank(fqn: string): number {
-    if (this.declarationRanks == null) {
-      this.declarationRanks = new Map();
-      const files: string[] = this.project.program.getSourceFileNames();
-      const fileIndex = new Map(files.map((f, i) => [f, i]));
-      for (const { sym, fqn: ownFqn } of this.exported) {
-        const d0 = sym.declarations?.[0];
-        const file = d0?.path != null ? fileIndex.get(d0.path) ?? files.length : files.length;
-        this.declarationRanks.set(ownFqn, 1_000_000 + file * 1_000_000 + (d0?.index ?? 0));
-      }
-      for (const foreign of [...this.externalTypeByFqn.keys()].sort()) {
-        if (!this.declarationRanks.has(foreign)) {
-          this.declarationRanks.set(foreign, 1000 + this.declarationRanks.size);
-        }
-      }
+    const own = this.declarationRanks.get(fqn);
+    if (own != null) {
+      return own;
     }
-    return this.declarationRanks.get(fqn) ?? Number.MAX_SAFE_INTEGER;
+    if (this.externalTypeByFqn.has(fqn)) {
+      const foreign = [...this.externalTypeByFqn.keys()].sort();
+      return 1000 + foreign.indexOf(fqn);
+    }
+    return Number.MAX_SAFE_INTEGER;
   }
 
-  private declarationRanks?: Map<string, number>;
+  private _registerDeclarationRank(fqn: string, sym: any): void {
+    if (this.programFileIndex == null) {
+      const files: string[] = this.project.program.getSourceFileNames();
+      this.programFileIndex = new Map(files.map((f, i) => [f, i]));
+    }
+    const d0 = sym.declarations?.[0];
+    const file = (d0?.path != null ? this.programFileIndex.get(d0.path) : undefined) ?? this.programFileIndex.size;
+    this.declarationRanks.set(fqn, 1_000_000 + file * 1_000_000 + (d0?.index ?? 0));
+  }
+
+  private readonly declarationRanks = new Map<string, number>();
+  private programFileIndex?: Map<string, number>;
 
   /**
    * The symbolId of a symbol, computed by the same `symbolIdentifier` the
@@ -1669,8 +1712,20 @@ export class Ts7Assembler {
     if (q != null || opt.optional) {
       p.optional = true;
     }
-    const d = this._visitMemberDocumentation(psym, decl);
-    if (d) {
+    const d = this._visitMemberDocumentation(psym, decl) ?? {};
+    if (d.summary == null && d.remarks == null && decl.kind === SyntaxKind.Parameter) {
+      // Classic: a parameter property without JSDoc of its own takes the
+      // constructor's `@param <name>` text as its documentation comment.
+      const paramText = this._paramDocComment(psym, decl);
+      if (paramText) {
+        const { summary, remarks } = this._splitSummary(paramText.trim());
+        if (remarks) {
+          d.remarks = remarks;
+        }
+        d.summary = summary;
+      }
+    }
+    if (Object.keys(d).length) {
       p.docs = d;
     }
     return this._withDefaultDocs(p);
@@ -2214,7 +2269,7 @@ export class Ts7Assembler {
       }
       let tagText = typeof tag.text === 'string' ? tag.text : (tag.text ?? []).map((p: any) => p.text).join('');
       tagText = tagText.replace(/\{@link\s+([^}]*?)\s*\}/g, '{@link $1 }');
-      if (tag.name === 'see' && /^[^\s$A-Za-z_]/.test(tagText)) {
+      if (tag.name === 'see' && /^[^\s$A-Za-z_{]/.test(tagText)) {
         // The classic parser read a name reference first when `@see` starts with an
         // identifier; otherwise the text came back as [text(''), space, text], i.e.
         // with a leading space.
