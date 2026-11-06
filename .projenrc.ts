@@ -1,5 +1,4 @@
 import { javascript, JsonPatch, github, typescript, YamlFile } from 'projen';
-import { YarnNodeLinker } from 'projen/lib/javascript/yarnrc';
 import { BuildWorkflow } from './projenrc/build-workflow';
 import { JsiiCalcFixtures } from './projenrc/fixtures';
 import { ReleaseWorkflow } from './projenrc/release';
@@ -14,23 +13,25 @@ import { UpgradeDependencies } from './projenrc/upgrade-dependencies';
 const workflowNodeVersion = 'lts/*';
 
 const project = new typescript.TypeScriptProject({
+  name: 'jsii',
+  license: 'Apache-2.0',
+  authorName: 'Amazon Web Services',
+  authorUrl: 'https://aws.amazon.com',
+  homepage: 'https://aws.github.io/jsii',
+  repository: 'https://github.com/aws/jsii-compiler.git',
+
   projenrcTs: true,
+  runner: typescript.TypeScriptRunner.tsx({ typeCheck: true }),
 
   packageManager: javascript.NodePackageManager.YARN_BERRY,
   yarnBerryOptions: {
+    // Yarn patches `typescript` on install to support Plug'n'Play. Before 4.17.1, that patch fails on TypeScript 7,
+    // which no longer ships the JavaScript compiler files the patch edits.
+    version: '4.18.1',
     yarnRcOptions: {
-      nodeLinker: YarnNodeLinker.NODE_MODULES,
+      nodeLinker: javascript.YarnNodeLinker.NODE_MODULES,
     },
   },
-
-  name: 'jsii',
-  license: 'Apache-2.0',
-
-  authorName: 'Amazon Web Services',
-  authorUrl: 'https://aws.amazon.com',
-
-  homepage: 'https://aws.github.io/jsii',
-  repository: 'https://github.com/aws/jsii-compiler.git',
 
   pullRequestTemplateContents: [
     '',
@@ -44,7 +45,7 @@ const project = new typescript.TypeScriptProject({
 
   autoDetectBin: true,
 
-  minNodeVersion: '20.16.0', // Node.js 20 LTS
+  minNodeVersion: '22.12.0', // Node.js 22 LTS
   tsconfig: {
     compilerOptions: {
       // @see https://github.com/microsoft/TypeScript/wiki/Node-Target-Mapping
@@ -207,7 +208,7 @@ project.addDeps(
   'semver-intersect',
   'sort-json',
   'spdx-license-list',
-  `typescript@~${SUPPORT_POLICY.current}`,
+  `typescript@7.1.0-beta`,
   'yargs',
 );
 
@@ -227,7 +228,7 @@ project.addDevDeps(
   'glob',
 );
 
-project.preCompileTask.exec('ts-node build-tools/code-gen.ts', {
+project.preCompileTask.exec('tsx build-tools/code-gen.ts', {
   name: 'code-gen',
 });
 project.gitignore.addPatterns('/src/version.ts', '/jsii-outdir/', '/test/negatives/.*');
