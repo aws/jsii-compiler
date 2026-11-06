@@ -127,28 +127,88 @@ function loadSubmoduleReadMe(submoduleMain: string, projectRoot: string): spec.R
   };
 }
 
+/** Port of the classic services' `findLinkNameEnd` (where a `{@link}` name ends inside its text). */
+function findLinkNameEnd(text: string): number {
+  let pos = text.indexOf('://');
+  if (pos === 0) {
+    while (pos < text.length && text.charCodeAt(pos) !== 124) {
+      pos++;
+    }
+    return pos;
+  }
+  if (text.indexOf('()') === 0) {
+    return 2;
+  }
+  if (text.charAt(0) === '<') {
+    let brackets = 0;
+    let i = 0;
+    while (i < text.length) {
+      if (text[i] === '<') {
+        brackets++;
+      }
+      if (text[i] === '>') {
+        brackets--;
+      }
+      i++;
+      if (!brackets) {
+        return i;
+      }
+    }
+  }
+  return 0;
+}
+
+/** Port of the classic services' `skipSeparatorFromLinkText`. */
+function skipSeparatorFromLinkText(text: string): string {
+  let pos = 0;
+  if (text.charCodeAt(pos++) === 124) {
+    while (pos < text.length && text.charCodeAt(pos) === 32) {
+      pos++;
+    }
+    return text.slice(pos);
+  }
+  return text;
+}
+
 /**
  * Orders the constituents of a union the way the classic compiler emitted them.
  *
- * The classic assembler kept the checker's own order, in which types are sorted
- * by creation id: the intrinsic primitives (string, number, boolean, in that
- * order) always come first, followed by the other types in the order they were
- * first created. The TypeScript 7 checker interleaves them differently, so the
- * primitives are moved to the front here; the relative order of the remaining
- * constituents is preserved.
+ * The classic assembler kept the checker's own order, in which the constituents
+ * are sorted by type id, i.e. by the order the types were created in. That order
+ * is not observable through the TypeScript 7 API, so it is approximated: the
+ * intrinsic primitives first (any, string, number, boolean), then named types in
+ * declaration order (program file order, then position in the file; types of
+ * dependencies before own types), then collections in their declared order, and
+ * nested unions ranked by their first constituent.
  */
-function sortUnionLikeClassic(refs: readonly spec.TypeReference[]): spec.TypeReference[] {
-  const intrinsicRank = (ref: spec.TypeReference): number => {
-    if (!spec.isPrimitiveTypeReference(ref)) {
-      return Number.MAX_SAFE_INTEGER;
+function sortUnionLikeClassic(refs: readonly spec.TypeReference[], rankOfFqn: (fqn: string) => number): spec.TypeReference[] {
+  const rank = (ref: spec.TypeReference): number => {
+    if (spec.isPrimitiveTypeReference(ref)) {
+      const order = [
+        spec.PrimitiveType.Any,
+        spec.PrimitiveType.String,
+        spec.PrimitiveType.Number,
+        spec.PrimitiveType.Boolean,
+        spec.PrimitiveType.Date,
+        spec.PrimitiveType.Json,
+      ].indexOf(ref.primitive);
+      return order < 0 ? 10 : order;
     }
-    const rank = [spec.PrimitiveType.String, spec.PrimitiveType.Number, spec.PrimitiveType.Boolean].indexOf(
-      ref.primitive,
-    );
-    return rank < 0 ? Number.MAX_SAFE_INTEGER : rank;
+    if (spec.isNamedTypeReference(ref)) {
+      return rankOfFqn(ref.fqn);
+    }
+    if (spec.isCollectionTypeReference(ref)) {
+      // Collection types are instantiated when first referenced, i.e. after the
+      // named types of the union; their relative order is kept.
+      return Number.MAX_SAFE_INTEGER / 2;
+    }
+    if (spec.isUnionTypeReference(ref)) {
+      return Math.min(...ref.union.types.map(rank));
+    }
+    return Number.MAX_SAFE_INTEGER;
   };
   return refs
-    .map((ref, index) => ({ ref, index, rank: intrinsicRank(ref) }))
+    .map((ref, index) => ({ ref, index, rank: rank(ref) }))
     .sort((l, r) => l.rank - r.rank || l.index - r.index)
     .map(({ ref }) => ref);
 }
@@ -318,6 +378,98 @@ export class Ts7Assembler {
       this._docCacheHits++;
     }
     return tags;
+  }
+
+  /**
+   * The documentation comment of a symbol with `{@link ...}` references rendered
+   * the way the classic language service did (`buildLinkParts`): a link whose
+   * name resolves keeps its text verbatim, `{@link Name text}`; a link that does
+   * not resolve (or uses a `#member` name, which the classic checker never
+   * resolved) is rendered as `{@link Name` + ' ' + `text}`, which is where the
+   * trailing space in `{@link Foo }` comes from. The TypeScript 7 checker renders
+   * links as plain text, so the raw JSDoc block is consulted when it has links.
+   */
+  private _docCommentWithClassicLinks(sym: any): any {
+    const comment = this._docComment(sym);
+    if (typeof comment !== 'string' || comment === '') {
+      return comment;
+    }
+    const decl = sym.declarations?.[0]?.resolve(this.project);
+    const block = decl ? this._leadingJsDocBlock(decl) : undefined;
+    if (!block || !/\{@link(code|plain)?\b/.test(block)) {
+      return comment;
+    }
+    const linkRe = /\{@(link|linkcode|linkplain)([^}\n]*)\}/g;
+    let result = comment;
+    let cursor = 0;
+    for (const m of block.matchAll(linkRe)) {
+      const kind = m[1];
+      const after = m[2].replace(/^\s+/, '');
+      const nm = /^[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*(?:#[A-Za-z_$][\w$]*)*/.exec(after);
+      let classic: string;
+      let modern: string;
+      if (!nm) {
+        classic = `{@${kind} ${after}}`;
+        modern = after;
+      } else {
+        const name0 = nm[0];
+        const text = after.slice(name0.length);
+        const suffix = findLinkNameEnd(text);
+        const name = name0 + text.slice(0, suffix);
+        const rest = skipSeparatorFromLinkText(text.slice(suffix));
+        const resolved = !name0.includes('#') && this._resolvesLinkName(name0, decl);
+        if (resolved) {
+          classic = `{@${kind} ${name}${rest}}`;
+        } else {
+          const separator =
+            suffix === 0 || (text.charCodeAt(suffix) === 124 && !name.endsWith(' ')) ? ' ' : '';
+          classic = `{@${kind} ${name}${separator}${rest}}`;
+        }
+        modern = `${name0.replace(/#/g, '.')}${text}`;
+      }
+      // Re-insert the braces where the TypeScript 7 rendering of this link is.
+      const at = result.indexOf(modern, cursor);
+      if (at < 0) {
+        continue;
+      }
+      result = result.slice(0, at) + classic + result.slice(at + modern.length);
+      cursor = at + classic.length;
+    }
+    return result;
+  }
+
+  /** Whether a `{@link A.b.c}` name resolves at `location` (classic `getSymbolAtLocation` on the link name). */
+  private _resolvesLinkName(name: string, location: any): boolean {
+    const { SymbolFlags } = this.ts7;
+    const parts = name.split('.');
+    try {
+      let sym: any = this.checker.resolveName(
+        parts[0],
+        SymbolFlags.Type | SymbolFlags.Namespace | SymbolFlags.Value,
+        location,
+      );
+      for (const part of parts.slice(1)) {
+        if (!sym) {
+          return false;
+        }
+        if ((sym.flags & SymbolFlags.Alias) !== 0) {
+          sym = this.checker.getAliasedSymbol(sym);
+        }
+        const exported = sym.getExports?.()?.get?.(part);
+        if (exported) {
+          sym = exported;
+          continue;
+        }
+        const staticType = this.checker.getTypeOfSymbol(sym);
+        const declaredType = this.checker.getDeclaredTypeOfSymbol(sym);
+        sym =
+          (staticType && this.checker.getPropertyOfType(staticType, part)) ??
+          (declaredType && this.checker.getPropertyOfType(declaredType, part));
+      }
+      return sym != null && (sym.declarations?.length ?? 0) > 0;
+    } catch {
+      return false;
+    }
   }
 
   /** Memoized `symbol.getDocumentationComment(checker)` (keyed by declaration coordinate). */
@@ -856,6 +1008,31 @@ export class Ts7Assembler {
   }
 
   /**
+   * Declaration rank of a type FQN for union ordering: own types by (program file
+   * order, position in file); types of dependencies before them, by name.
+   */
+  private _declarationRank(fqn: string): number {
+    if (this.declarationRanks == null) {
+      this.declarationRanks = new Map();
+      const files: string[] = this.project.program.getSourceFileNames();
+      const fileIndex = new Map(files.map((f, i) => [f, i]));
+      for (const { sym, fqn: ownFqn } of this.exported) {
+        const d0 = sym.declarations?.[0];
+        const file = d0?.path != null ? fileIndex.get(d0.path) ?? files.length : files.length;
+        this.declarationRanks.set(ownFqn, 1_000_000 + file * 1_000_000 + (d0?.index ?? 0));
+      }
+      for (const foreign of [...this.externalTypeByFqn.keys()].sort()) {
+        if (!this.declarationRanks.has(foreign)) {
+          this.declarationRanks.set(foreign, 1000 + this.declarationRanks.size);
+        }
+      }
+    }
+    return this.declarationRanks.get(fqn) ?? Number.MAX_SAFE_INTEGER;
+  }
+
+  private declarationRanks?: Map<string, number>;
+
+  /**
    * The symbolId of a symbol, computed by the same `symbolIdentifier` the
    * classic compiler (and jsii-rosetta) use: the path is made relative to the
    * package the declaration lives in, with the package's `jsii.outdir` and, when
@@ -956,7 +1133,8 @@ export class Ts7Assembler {
     const type = this.checker.getTypeAtLocation(decl);
     const { interfaces, erasedBases } = this._processBaseInterfaces(type.getBaseTypes());
     if (interfaces.length) {
-      jsiiType.interfaces = interfaces;
+      const rewrittenByStrip = erasedBases.some((b) => this.strippedTypeSymIds.has((b.getSymbol?.() ?? b.symbol)?.id));
+      jsiiType.interfaces = rewrittenByStrip ? [...interfaces].sort() : interfaces;
     }
     this._visitMembers(sym, decl, jsiiType, true, erasedBases);
 
@@ -1078,6 +1256,10 @@ export class Ts7Assembler {
     // erased (non-exported) base classes, in erasure order. Erased interfaces in
     // an `implements` clause contribute their own super interfaces in place.
     const erasedDecls: any[] = [];
+    // The classic deprecated-remover rebuilt (and sorted) the interface list when a
+    // stripped interface was replaced by its super interfaces, or a stripped base
+    // class contributed its interfaces.
+    let interfacesRewrittenByStrip = false;
     const collectHeritage = (classDecl: any): void => {
       const deferredBases: any[] = [];
       for (const h of classDecl.heritageClauses ?? []) {
@@ -1094,6 +1276,12 @@ export class Ts7Assembler {
             } else {
               const d0 = s.declarations?.[0]?.resolve(this.project);
               if (d0 && (d0.kind === SyntaxKind.ClassDeclaration || d0.kind === SyntaxKind.InterfaceDeclaration)) {
+                if (
+                  this.strippedTypeSymIds.has(s.id) &&
+                  (d0.heritageClauses ?? []).some((hc: any) => hc.token === SyntaxKind.ImplementsKeyword)
+                ) {
+                  interfacesRewrittenByStrip = true;
+                }
                 erasedClassBases.push({ getSymbol: () => s, symbol: s });
                 erasedDecls.push(d0);
                 deferredBases.push(d0);
@@ -1104,6 +1292,9 @@ export class Ts7Assembler {
           } else {
             const d0 = s.declarations?.[0]?.resolve(this.project);
             if (d0 && d0.kind === SyntaxKind.InterfaceDeclaration) {
+              if (this.strippedTypeSymIds.has(s.id)) {
+                interfacesRewrittenByStrip = true;
+              }
               erasedClassBases.push({ getSymbol: () => s, symbol: s });
               collectHeritage(d0);
             }
@@ -1119,7 +1310,7 @@ export class Ts7Assembler {
       jsiiType.base = base.value;
     }
     if (interfaces.size) {
-      jsiiType.interfaces = [...interfaces];
+      jsiiType.interfaces = interfacesRewrittenByStrip ? [...interfaces].sort() : [...interfaces];
     }
 
     // initializer (constructor)
@@ -1189,6 +1380,10 @@ export class Ts7Assembler {
     const type = this.checker.getTypeAtLocation(decl);
     const props: any[] = [];
     const methods: any[] = [];
+    // The classic deprecated-remover left an empty list behind when it stripped
+    // every member of a kind (`typeInfo.properties ? properties : undefined`).
+    let strippedProps = false;
+    let strippedMethods = false;
 
     // Symbol ids of the erased (private/internal/unexported) bases whose members
     // jsii folds into this type: members from those bases must be re-listed here.
@@ -1231,9 +1426,6 @@ export class Ts7Assembler {
       if (this._isInternal(p)) {
         continue;
       }
-      if (this._shouldStrip(p, `${jsiiType.fqn}#${p.name}`)) {
-        continue;
-      }
       const pDecl = p.declarations?.[0]?.resolve(this.project);
       if (!pDecl) {
         continue;
@@ -1267,6 +1459,16 @@ export class Ts7Assembler {
           continue;
         }
       }
+      // Stripping applies to the members the classic assembler listed on this type
+      // (own and erased-base members), hence after the ownership check above.
+      if (this._shouldStrip(p, `${jsiiType.fqn}#${p.name}`)) {
+        if ((p.flags & SymbolFlags.Method) !== 0) {
+          strippedMethods = true;
+        } else {
+          strippedProps = true;
+        }
+        continue;
+      }
       if ((p.flags & SymbolFlags.Method) !== 0) {
         const m = this._visitMethod(p, pDecl, false);
         if (isInterface) {
@@ -1288,6 +1490,11 @@ export class Ts7Assembler {
           continue;
         }
         if (this._shouldStrip(sp, `${jsiiType.fqn}#${sp.name}`)) {
+          if ((sp.flags & SymbolFlags.Method) !== 0) {
+            strippedMethods = true;
+          } else {
+            strippedProps = true;
+          }
           continue;
         }
         const spDecl = sp.declarations?.[0]?.resolve(this.project);
@@ -1317,10 +1524,10 @@ export class Ts7Assembler {
       }
     }
 
-    if (props.length) {
+    if (props.length || strippedProps) {
       jsiiType.properties = props.sort(compareMembers);
     }
-    if (methods.length) {
+    if (methods.length || strippedMethods) {
       jsiiType.methods = methods.sort(compareMembers);
     }
   }
@@ -1358,7 +1565,7 @@ export class Ts7Assembler {
             continue;
           }
           const docs = this._visitDocumentation(prop);
-          if (docs != null) {
+          if (docs?.summary != null || docs?.remarks != null) {
             return docs;
           }
           const propDecl = prop.declarations?.[0]?.resolve(this.project);
@@ -1934,7 +2141,7 @@ export class Ts7Assembler {
         return refs[0];
       }
       if (refs.length > 1) {
-        return { union: { types: sortUnionLikeClassic(refs) } };
+        return { union: { types: sortUnionLikeClassic(refs, (fqn) => this._declarationRank(fqn)) } };
       }
     }
     const refs: any[] = [];
@@ -1950,7 +2157,7 @@ export class Ts7Assembler {
     if (refs.length === 1) {
       return refs[0];
     }
-    return { union: { types: sortUnionLikeClassic(refs) } };
+    return { union: { types: sortUnionLikeClassic(refs, (fqn) => this._declarationRank(fqn)) } };
   }
 
   /**
@@ -1985,7 +2192,7 @@ export class Ts7Assembler {
   // -------------------------------------------------------------------------
 
   private _visitDocumentation(sym: any): any | undefined {
-    const summaryRaw = this._docComment(sym);
+    const summaryRaw = this._docCommentWithClassicLinks(sym);
     const docs: any = {};
     if (summaryRaw) {
       const text = typeof summaryRaw === 'string' ? summaryRaw.trim() : String(summaryRaw).trim();
@@ -2007,6 +2214,15 @@ export class Ts7Assembler {
       }
       let tagText = typeof tag.text === 'string' ? tag.text : (tag.text ?? []).map((p: any) => p.text).join('');
       tagText = tagText.replace(/\{@link\s+([^}]*?)\s*\}/g, '{@link $1 }');
+      if (tag.name === 'see' && /^[^\s$A-Za-z_]/.test(tagText)) {
+        // The classic parser read a name reference first when `@see` starts with an
+        // identifier; otherwise the text came back as [text(''), space, text], i.e.
+        // with a leading space.
+        tagText = ` ${tagText}`;
+      } else if (tag.name === 'enum') {
+        // The classic parser consumed the type expression of `@enum {T}`.
+        tagText = tagText.replace(/^\{[^}]*\}\s*/, '');
+      }
       tagValues.set(tag.name, tagText);
     }
     const eatTag = (...names: string[]): string | undefined => {
