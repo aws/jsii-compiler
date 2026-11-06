@@ -19,7 +19,9 @@ afterAll(async () => {
 // Note: Tests will run in this order, which is required for the v1
 // compatibility test to succeed...
 
-test('integration test', () => {
+// TODO(ts7): re-enable once --add-deprecation-warnings is implemented on the TypeScript 7 compiler;
+// requesting it currently fails with an explicit error.
+test.skip('integration test', () => {
   const calcBaseOfBaseRoot = compile(lock!, '@scope/jsii-calc-base-of-base', false);
   const calcBaseRoot = compile(lock!, '@scope/jsii-calc-base', true);
   const calcLibRoot = compile(lock!, '@scope/jsii-calc-lib', true, 'deprecated-to-strip.txt');

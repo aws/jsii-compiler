@@ -36,11 +36,13 @@ import * as path from 'node:path';
 import * as zlib from 'node:zlib';
 import * as spec from '@jsii/spec';
 
-import { normalizePath } from '../common/symbol-id';
+import { symbolIdentifier } from '../common/symbol-id';
 import { normalizeConfigPath } from '../helpers';
 import { JsiiDiagnostic } from '../jsii-diagnostic';
 import * as literate from '../literate';
 import { validateTargets, type ProjectInfo } from '../project-info';
+import { isAllowedCovariantSubtype } from '../type-analysis';
+import { createTypeResolver } from '../type-reference';
 import { SHORT_VERSION, VERSION } from '../version';
 import { Ts7Api } from './ts7-api';
 import { Ts7Project } from './ts7-host';
@@ -119,10 +121,30 @@ function loadSubmoduleReadMe(submoduleMain: string, projectRoot: string): spec.R
   };
 }
 
-/** Splits a symbolId (`<relative path>:<Qualified.Name>`) at its last colon. */
-function splitSymbolId(symbolId: string): [string, string] {
-  const i = symbolId.lastIndexOf(':');
-  return i < 0 ? [symbolId, ''] : [symbolId.slice(0, i), symbolId.slice(i + 1)];
+/**
+ * Orders the constituents of a union the way the classic compiler emitted them.
+ *
+ * The classic assembler kept the checker's own order, in which types are sorted
+ * by creation id: the intrinsic primitives (string, number, boolean, in that
+ * order) always come first, followed by the other types in the order they were
+ * first created. The TypeScript 7 checker interleaves them differently, so the
+ * primitives are moved to the front here; the relative order of the remaining
+ * constituents is preserved.
+ */
+function sortUnionLikeClassic(refs: readonly spec.TypeReference[]): spec.TypeReference[] {
+  const intrinsicRank = (ref: spec.TypeReference): number => {
+    if (!spec.isPrimitiveTypeReference(ref)) {
+      return Number.MAX_SAFE_INTEGER;
+    }
+    const rank = [spec.PrimitiveType.String, spec.PrimitiveType.Number, spec.PrimitiveType.Boolean].indexOf(
+      ref.primitive,
+    );
+    return rank < 0 ? Number.MAX_SAFE_INTEGER : rank;
+  };
+  return refs
+    .map((ref, index) => ({ ref, index, rank: intrinsicRank(ref) }))
+    .sort((l, r) => l.rank - r.rank || l.index - r.index)
+    .map(({ ref }) => ref);
 }
 
 /**
@@ -170,6 +192,9 @@ export class Ts7Assembler {
 
   private readonly _diagnostics = new Array<JsiiDiagnostic>();
 
+  /** The jsii features the assembly makes use of (classic `usedFeatures`). */
+  private readonly usedFeatures = new Set<spec.JsiiFeature>();
+
   // external dependency assemblies (peerDependencies): name -> Set(type names)
   private readonly externalDeps = new Map<string, Set<string>>();
   // full type records of external dependency assemblies, keyed by fqn (for
@@ -178,8 +203,8 @@ export class Ts7Assembler {
   // dependency name -> (symbolId within that dependency -> fqn), the primary way
   // foreign symbols are mapped back to the types of the assembly declaring them
   private readonly externalFqnBySymbolId = new Map<string, Map<string, string>>();
-  // dependency name -> tsc rootDir/outDir recorded in its assembly metadata
-  private readonly externalLayout = new Map<string, { rootDir?: string; outDir?: string }>();
+  // dependency name -> its loaded assembly (metadata drives the symbolId path mapping)
+  private readonly externalAssemblies = new Map<string, spec.Assembly>();
   private readonly stripDeprecated: boolean;
   private stripAllowList?: Set<string>;
   // Type symbols dropped by --strip-deprecated. Unlike genuinely unexported
@@ -351,10 +376,7 @@ export class Ts7Assembler {
           }
         }
         this.externalFqnBySymbolId.set(dep, bySymbolId);
-        this.externalLayout.set(dep, {
-          rootDir: depJsii.metadata?.tscRootDir,
-          outDir: depJsii.metadata?.tscOutDir,
-        });
+        this.externalAssemblies.set(dep, depJsii);
       } catch {
         /* not a jsii dependency */
       }
@@ -414,12 +436,9 @@ export class Ts7Assembler {
     // the dependency's assembly (the classic compiler's symbolIdentifier lookup).
     // The declaration lives in the dependency's compiled output, so its path is
     // mapped from tscOutDir back to tscRootDir first.
-    const symbolId = this._symbolIdOf(sym);
+    const symbolId = this._symbolIdOf(sym, this.externalAssemblies.get(dep));
     if (symbolId != null) {
-      const [relPath, qualifiedName] = splitSymbolId(symbolId);
-      const layout = this.externalLayout.get(dep);
-      const normalized = `${normalizePath(relPath, layout?.rootDir, layout?.outDir)}:${qualifiedName}`;
-      const fqn = this.externalFqnBySymbolId.get(dep)?.get(normalized) ?? this.externalFqnBySymbolId.get(dep)?.get(symbolId);
+      const fqn = this.externalFqnBySymbolId.get(dep)?.get(symbolId);
       if (fqn != null) {
         return fqn;
       }
@@ -662,28 +681,139 @@ export class Ts7Assembler {
     }
   }
 
-  private _symbolIdOf(sym: any): string | undefined {
-    // NOTE: unlike the classic backend's symbolIdentifier, this does not remap
-    // the path through tscRootDir/tscOutDir. All verified packages use layouts
-    // where the source path IS the symbolId path (in-place or src==rootDir);
-    // out-of-source layouts that need the remap are a known limitation.
-    const tsFqn = this.checker.getFullyQualifiedName(sym); // e.g. "/abs/path/src/construct".Construct
-    const m = /^"([^"]+)"(?:\.(.*))?$/.exec(tsFqn);
-    if (!m) {
-      return undefined;
+  /**
+   * Records the inheritance relationships of members and the jsii features the
+   * assembly uses, then returns the sorted feature list (or `undefined` when
+   * there is none; classic `_assemblyFeatures`).
+   *
+   * This is the data-producing half of the classic validator's
+   * `_inheritanceDoesNotChangeContracts` pass: every member of a class that
+   * redeclares a member of a base class gets `overrides` set to that base, and
+   * members (own or inherited) that implement an interface member get
+   * `overrides` set to that interface, with class overrides taking precedence.
+   * `class-covariant-overrides` is recorded when an override changes the type
+   * of a non-static member in an allowed covariant way (immutable properties and
+   * method return types only). The diagnostics half of that pass (contract
+   * violations) is not performed here.
+   */
+  private _finalizeInheritance(): spec.JsiiFeature[] | undefined {
+    const assembly = { name: this.assemblyName, types: this.types } as unknown as spec.Assembly;
+    const dereference = createTypeResolver(assembly, [
+      ...this.options.projectInfo.dependencyClosure,
+      ...this.externalAssemblies.values(),
+    ]);
+    const same = (a: unknown, b: unknown) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
+
+    const overrideFromBase = <T extends spec.Method | spec.Property>(
+      member: T,
+      type: spec.ClassType,
+      pick: (t: spec.ClassType) => readonly T[] | undefined,
+      isCovariant: (actual: T, expected: T) => boolean,
+    ): boolean => {
+      const baseType = type.base != null ? (dereference(type.base) as spec.ClassType | undefined) : undefined;
+      if (baseType == null) {
+        return false;
+      }
+      const overridden = pick(baseType)?.find((m) => m.name === member.name);
+      if (overridden == null) {
+        return overrideFromBase(member, baseType, pick, isCovariant);
+      }
+      if (isCovariant(member, overridden)) {
+        this.usedFeatures.add('class-covariant-overrides');
+      }
+      (member as any).overrides = baseType.fqn;
+      return true;
+    };
+
+    const implementationOf = <T extends spec.Method | spec.Property>(
+      member: T,
+      type: spec.ClassType | spec.InterfaceType,
+      pick: (t: spec.ClassType | spec.InterfaceType) => readonly T[] | undefined,
+    ): boolean => {
+      if (!type.interfaces?.length) {
+        // Abstract classes may not directly implement all members, need to check their supertypes...
+        if (spec.isClassType(type) && type.base && type.abstract) {
+          const base = dereference(type.base) as spec.ClassType | undefined;
+          return base != null && implementationOf(member, base, pick);
+        }
+        return false;
+      }
+      for (const iface of type.interfaces) {
+        const ifaceType = dereference(iface) as spec.InterfaceType | undefined;
+        if (ifaceType == null) {
+          continue;
+        }
+        if (pick(ifaceType)?.some((m) => m.name === member.name)) {
+          // A class override has higher precedence than an initial implementation.
+          (member as any).overrides = (member as any).overrides ?? ifaceType.fqn;
+          return true;
+        }
+        if (implementationOf(member, ifaceType, pick)) {
+          return true;
+        }
+      }
+      return false;
+    };
+
+    // Own members plus the members inherited from base classes (copied, so the
+    // inherited entries are not mutated), like the classic `_allImplementations`.
+    const allImplementations = <T extends spec.Method | spec.Property>(
+      type: spec.ClassType | spec.InterfaceType,
+      pick: (t: spec.ClassType | spec.InterfaceType) => readonly T[] | undefined,
+    ): T[] => {
+      const result: T[] = [...(pick(type) ?? [])];
+      const known = new Set(result.map((m) => m.name));
+      if (spec.isClassType(type) && type.base) {
+        const base = dereference(type.base) as spec.ClassType | undefined;
+        for (const member of base ? allImplementations(base, pick) : []) {
+          if (!known.has(member.name)) {
+            result.push({ ...member });
+            known.add(member.name);
+          }
+        }
+      }
+      return result;
+    };
+
+    const methodCovariant = (actual: spec.Method, expected: spec.Method) =>
+      !same(actual.returns, expected.returns) &&
+      !actual.static &&
+      isAllowedCovariantSubtype(actual.returns?.type, expected.returns?.type, dereference);
+    const propertyCovariant = (actual: spec.Property, expected: spec.Property) =>
+      !same(actual.type, expected.type) &&
+      !actual.static &&
+      !!actual.immutable &&
+      isAllowedCovariantSubtype(actual.type, expected.type, dereference);
+
+    for (const type of Object.values(this.types) as spec.Type[]) {
+      if (spec.isClassType(type)) {
+        for (const method of type.methods ?? []) {
+          overrideFromBase(method, type, (t) => t.methods, methodCovariant);
+        }
+        for (const property of type.properties ?? []) {
+          overrideFromBase(property, type, (t) => t.properties, propertyCovariant);
+        }
+      }
+      if (spec.isClassOrInterfaceType(type) && (type.interfaces?.length ?? 0) > 0) {
+        for (const method of allImplementations<spec.Method>(type, (t) => t.methods)) {
+          implementationOf(method, type, (t) => t.methods);
+        }
+        for (const property of allImplementations<spec.Property>(type, (t) => t.properties)) {
+          implementationOf(property, type, (t) => t.properties);
+        }
+      }
     }
-    let rel: string;
-    const nm = m[1].lastIndexOf('node_modules/');
-    if (nm >= 0) {
-      const after = m[1].slice(nm + 'node_modules/'.length);
-      rel = after
-        .split('/')
-        .slice(after.startsWith('@') ? 2 : 1)
-        .join('/');
-    } else {
-      rel = path.relative(this.root, m[1]);
-    }
-    return `${rel}:${m[2] ?? ''}`;
+    return this.usedFeatures.size > 0 ? Array.from(this.usedFeatures).sort() : undefined;
+  }
+
+  /**
+   * The symbolId of a symbol, computed by the same `symbolIdentifier` the
+   * classic compiler (and jsii-rosetta) use: the path is made relative to the
+   * package the declaration lives in, with the package's `jsii.outdir` and, when
+   * an assembly is given, its tscOutDir -> tscRootDir mapping applied.
+   */
+  private _symbolIdOf(sym: any, assembly?: spec.Assembly): string | undefined {
+    return symbolIdentifier(this.checker, sym, { assembly });
   }
 
   // -------------------------------------------------------------------------
@@ -1713,7 +1843,7 @@ export class Ts7Assembler {
         return refs[0];
       }
       if (refs.length > 1) {
-        return { union: { types: refs } };
+        return { union: { types: sortUnionLikeClassic(refs) } };
       }
     }
     const refs: any[] = [];
@@ -1729,7 +1859,7 @@ export class Ts7Assembler {
     if (refs.length === 1) {
       return refs[0];
     }
-    return { union: { types: refs } };
+    return { union: { types: sortUnionLikeClassic(refs) } };
   }
 
   /**
@@ -1755,6 +1885,7 @@ export class Ts7Assembler {
     if (refs.length === 1) {
       return refs[0];
     }
+    this.usedFeatures.add('intersection-types');
     return { intersection: { types: refs } };
   }
 
@@ -1868,9 +1999,7 @@ export class Ts7Assembler {
   private _buildAssembly(): spec.Assembly {
     const info = this.options.projectInfo;
     // Same header the classic Assembler produces (its emit() tail), sourced from
-    // the same ProjectInfo. jsiiVersion carries an explicit marker so consumers
-    // can tell an assembly was produced by the experimental backend.
-    const jsiiVersion = `${info.jsiiVersionFormat === 'short' ? SHORT_VERSION : VERSION} (ts7 experimental)`;
+    const jsiiVersion = info.jsiiVersionFormat === 'short' ? SHORT_VERSION : VERSION;
 
     const docs =
       info.stability || info.deprecated
@@ -1896,6 +2025,7 @@ export class Ts7Assembler {
       bundled: info.bundleDependencies,
       types: this.types,
       ...(Object.keys(this.submodules).length ? { submodules: this.submodules } : {}),
+      usedFeatures: this._finalizeInheritance(),
       targets: info.targets as spec.Assembly['targets'],
       metadata: {
         ...info.metadata,
