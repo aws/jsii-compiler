@@ -20,6 +20,7 @@ import * as spec from '@jsii/spec';
 import { writeAssembly } from '@jsii/spec';
 import * as log4js from 'log4js';
 import { Diagnostic, DiagnosticCategory } from '../diagnostic';
+import { JsiiDiagnostic } from '../jsii-diagnostic';
 
 import * as literate from '../literate';
 import type { ProjectInfo } from '../project-info';
@@ -105,7 +106,28 @@ export function ts7Emit(options: Ts7EmitOptions): Ts7EmitResult {
       readme: loadReadme(projectRoot),
     });
 
-    const assembly = assembler.assemble();
+    let assembly: spec.Assembly;
+    try {
+      assembly = assembler.assemble();
+    } catch (e: any) {
+      // Same contract as the classic compiler: a failure while assembling is
+      // reported as a JSII9997 error diagnostic rather than crashing the build.
+      return {
+        typeCount: 0,
+        emittedFiles: [],
+        emitSkipped: true,
+        diagnostics: [...tsDiagnostics, ...assembler.diagnostics, JsiiDiagnostic.JSII_9997_UNKNOWN_ERROR.createDetached(e)],
+      };
+    }
+    const jsiiDiagnostics = assembler.diagnostics;
+    if (jsiiDiagnostics.some((d) => d.category === DiagnosticCategory.Error)) {
+      return {
+        typeCount: 0,
+        emittedFiles: [],
+        emitSkipped: true,
+        diagnostics: [...tsDiagnostics, ...jsiiDiagnostics],
+      };
+    }
 
     if (process.env.JSII_TS7_TIMING) {
       LOG.info(`ts7 doc-cache hits (RPCs avoided): ${assembler.docCacheHits}`);
@@ -143,7 +165,7 @@ export function ts7Emit(options: Ts7EmitOptions): Ts7EmitResult {
       typeCount: Object.keys(assembly.types ?? {}).length,
       emittedFiles,
       emitSkipped: false,
-      diagnostics: tsDiagnostics, // non-error diagnostics (warnings/suggestions) pass through
+      diagnostics: [...tsDiagnostics, ...jsiiDiagnostics], // non-error diagnostics (warnings/suggestions) pass through
     };
   } finally {
     if (process.env.JSII_TS7_TIMING) {

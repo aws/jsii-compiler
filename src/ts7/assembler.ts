@@ -36,8 +36,11 @@ import * as path from 'node:path';
 import * as zlib from 'node:zlib';
 import * as spec from '@jsii/spec';
 
+import { normalizePath } from '../common/symbol-id';
 import { normalizeConfigPath } from '../helpers';
-import type { ProjectInfo } from '../project-info';
+import { JsiiDiagnostic } from '../jsii-diagnostic';
+import * as literate from '../literate';
+import { validateTargets, type ProjectInfo } from '../project-info';
 import { SHORT_VERSION, VERSION } from '../version';
 import { Ts7Api } from './ts7-api';
 import { Ts7Project } from './ts7-host';
@@ -75,6 +78,54 @@ interface RegisteredType {
  * `.jsii` parity, over the TS7 API.
  */
 /**
+ * Load the `.jsiirc.json` targets of a submodule: `<dir>/.jsiirc.json` for a
+ * directory module (`index.ts`), `.<name>.jsiirc.json` next to a file module.
+ * Invalid target configuration throws a JsiiError, like the classic compiler.
+ */
+function loadSubmoduleTargetConfig(submoduleMain: string): spec.Submodule['targets'] {
+  const dirname = path.dirname(submoduleMain);
+  const basenameWithoutExtension = path.basename(submoduleMain).replace(/(\.d)?\.ts$/, '');
+  const jsiirc =
+    basenameWithoutExtension === 'index'
+      ? path.resolve(dirname, '.jsiirc.json')
+      : path.resolve(dirname, `.${basenameWithoutExtension}.jsiirc.json`);
+  if (!fs.existsSync(jsiirc)) {
+    return undefined;
+  }
+  const data = JSON.parse(fs.readFileSync(jsiirc, 'utf-8'));
+  return validateTargets(data.targets) as spec.Submodule['targets'];
+}
+
+/**
+ * Load the README for a submodule: `README.md` in the directory of a directory
+ * module, `<name>.README.md` next to a file module. Literate examples are
+ * rendered relative to the project root, like the package README.
+ */
+function loadSubmoduleReadMe(submoduleMain: string, projectRoot: string): spec.ReadMe | undefined {
+  const fileBase = path.basename(submoduleMain).replace(/(\.d)?\.ts$/, '');
+  const readMeName = fileBase === 'index' ? 'README.md' : `${fileBase}.README.md`;
+  const readmePath = path.join(path.dirname(submoduleMain), readMeName);
+  if (!fs.existsSync(readmePath)) {
+    return undefined;
+  }
+  return {
+    markdown: literate
+      .includeAndRenderExamples(
+        literate.loadFromFile(readmePath),
+        literate.fileSystemLoader(path.dirname(readmePath)),
+        projectRoot,
+      )
+      .join('\n'),
+  };
+}
+
+/** Splits a symbolId (`<relative path>:<Qualified.Name>`) at its last colon. */
+function splitSymbolId(symbolId: string): [string, string] {
+  const i = symbolId.lastIndexOf(':');
+  return i < 0 ? [symbolId, ''] : [symbolId.slice(0, i), symbolId.slice(i + 1)];
+}
+
+/**
  * Member ordering of the classic assembler (`_sortMembers`): static members
  * first, then immutable, then required, then lexicographical by name.
  */
@@ -96,7 +147,7 @@ export class Ts7Assembler {
   private currentStability?: spec.Stability;
 
   private readonly types: Record<string, spec.Type> = {};
-  private readonly submodules: Record<string, unknown> = {};
+  private readonly submodules: Record<string, spec.Submodule> = {};
   private readonly typeFqnBySymbolId = new Map<unknown, string>();
   private readonly exported: RegisteredType[] = [];
 
@@ -112,11 +163,23 @@ export class Ts7Assembler {
     return this._docCacheHits;
   }
 
+  /** The jsii diagnostics (warnings and errors) collected while assembling. */
+  public get diagnostics(): readonly JsiiDiagnostic[] {
+    return this._diagnostics;
+  }
+
+  private readonly _diagnostics = new Array<JsiiDiagnostic>();
+
   // external dependency assemblies (peerDependencies): name -> Set(type names)
   private readonly externalDeps = new Map<string, Set<string>>();
   // full type records of external dependency assemblies, keyed by fqn (for
   // datatype propagation across assembly boundaries)
   private readonly externalTypeByFqn = new Map<string, any>();
+  // dependency name -> (symbolId within that dependency -> fqn), the primary way
+  // foreign symbols are mapped back to the types of the assembly declaring them
+  private readonly externalFqnBySymbolId = new Map<string, Map<string, string>>();
+  // dependency name -> tsc rootDir/outDir recorded in its assembly metadata
+  private readonly externalLayout = new Map<string, { rootDir?: string; outDir?: string }>();
   private readonly stripDeprecated: boolean;
   private stripAllowList?: Set<string>;
   // Type symbols dropped by --strip-deprecated. Unlike genuinely unexported
@@ -280,9 +343,18 @@ export class Ts7Assembler {
           dep,
           new Set(Object.keys(depJsii.types ?? {}).map((f) => f.slice(depJsii.name.length + 1))),
         );
-        for (const [fqn, type] of Object.entries(depJsii.types ?? {})) {
+        const bySymbolId = new Map<string, string>();
+        for (const [fqn, type] of Object.entries<any>(depJsii.types ?? {})) {
           this.externalTypeByFqn.set(fqn, type);
+          if (typeof type.symbolId === 'string') {
+            bySymbolId.set(type.symbolId, fqn);
+          }
         }
+        this.externalFqnBySymbolId.set(dep, bySymbolId);
+        this.externalLayout.set(dep, {
+          rootDir: depJsii.metadata?.tscRootDir,
+          outDir: depJsii.metadata?.tscOutDir,
+        });
       } catch {
         /* not a jsii dependency */
       }
@@ -338,6 +410,21 @@ export class Ts7Assembler {
     if (!this.externalDeps.has(dep)) {
       return undefined;
     }
+    // Primary: match the symbol's identifier against the symbolIds recorded in
+    // the dependency's assembly (the classic compiler's symbolIdentifier lookup).
+    // The declaration lives in the dependency's compiled output, so its path is
+    // mapped from tscOutDir back to tscRootDir first.
+    const symbolId = this._symbolIdOf(sym);
+    if (symbolId != null) {
+      const [relPath, qualifiedName] = splitSymbolId(symbolId);
+      const layout = this.externalLayout.get(dep);
+      const normalized = `${normalizePath(relPath, layout?.rootDir, layout?.outDir)}:${qualifiedName}`;
+      const fqn = this.externalFqnBySymbolId.get(dep)?.get(normalized) ?? this.externalFqnBySymbolId.get(dep)?.get(symbolId);
+      if (fqn != null) {
+        return fqn;
+      }
+    }
+    // Fallback for assemblies without symbolIds: a top-level type of that name.
     if (this.externalDeps.get(dep)!.has(sym.name)) {
       return `${dep}.${sym.name}`;
     }
@@ -392,7 +479,7 @@ export class Ts7Assembler {
           }
           visitedModules.add(key);
           if (prefix === this.assemblyName) {
-            this.submodules[subFqn] = {};
+            this.submodules[subFqn] = this._submoduleSpec(e, sym, kind === SyntaxKind.SourceFile);
           }
           const subDir = path.dirname(sym.declarations?.[0]?.path ?? moduleDir);
           collect(this.checker.getExportsOfModule(sym), subFqn, subDir);
@@ -400,6 +487,7 @@ export class Ts7Assembler {
       }
     };
     collect(moduleExports, this.assemblyName, path.dirname(this.entry));
+    this._validateSubmoduleConfigs();
 
     // FQN attribution: the *canonical* home of a type is the shortest module
     // path that contains its declaration (the shortest-module-path "best
@@ -507,6 +595,68 @@ export class Ts7Assembler {
           )
         ) {
           this._registerType(nsym, nsym.name, `${fqn}.${nsym.name}`);
+        }
+      }
+    }
+  }
+
+  /**
+   * The assembly entry for a submodule (classic `_registerNamespaces`): the
+   * location of the `export * as ns from '...'` (or `export namespace ns`)
+   * declaration, its symbolId and, for module-file submodules, the targets
+   * configured in the module's `.jsiirc.json` and its README.
+   *
+   * @param exportSym the (alias) symbol the submodule is exported as
+   * @param moduleSym the resolved module-like symbol
+   * @param isModuleFile whether the submodule is a source file (vs an inline namespace)
+   */
+  private _submoduleSpec(exportSym: any, moduleSym: any, isModuleFile: boolean): spec.Submodule {
+    // Namespace exports (`export * as ns`) and inline namespaces carry their own
+    // declaration; a plain module file (SourceFile) has no meaningful position.
+    const declH = exportSym.declarations?.[0] ?? moduleSym.declarations?.[0];
+    const decl = declH && declH.kind !== this.ts7.SyntaxKind.SourceFile ? declH.resolve(this.project) : undefined;
+    const result: spec.Submodule = {
+      ...(decl ? { locationInModule: this._locationOf(decl) } : {}),
+      ...(isModuleFile ? { symbolId: this._symbolIdOf(moduleSym) } : { symbolId: this._symbolIdOf(exportSym) }),
+    };
+    if (!isModuleFile) {
+      return result;
+    }
+    const submoduleMain: string | undefined = moduleSym.declarations?.[0]?.path;
+    if (submoduleMain == null) {
+      return result;
+    }
+    const targets = loadSubmoduleTargetConfig(submoduleMain);
+    const readme = loadSubmoduleReadMe(submoduleMain, this.root);
+    return { ...result, ...(targets ? { targets } : {}), ...(readme ? { readme } : {}) };
+  }
+
+  /**
+   * Make sure that no 2 submodules are emitting into the same target namespaces
+   * (classic `validateSubmoduleConfigs`).
+   */
+  private _validateSubmoduleConfigs(): void {
+    const byLanguage: Record<string, Record<string, string[]>> = { dotnet: {}, java: {}, python: {}, go: {} };
+    const pick: Record<string, (targets: any) => string | undefined> = {
+      dotnet: (t) => t?.dotnet?.namespace,
+      java: (t) => t?.java?.package,
+      python: (t) => t?.python?.module,
+      go: (t) => t?.go?.packageName,
+    };
+    for (const [fqn, submodule] of Object.entries(this.submodules)) {
+      for (const language of Object.keys(byLanguage)) {
+        const key = pick[language](submodule.targets);
+        if (key) {
+          (byLanguage[language][key] ??= []).push(fqn);
+        }
+      }
+    }
+    for (const [language, namespaces] of Object.entries(byLanguage)) {
+      for (const [namespace, modules] of Object.entries(namespaces)) {
+        if (modules.length > 1) {
+          this._diagnostics.push(
+            JsiiDiagnostic.JSII_4010_SUBMODULE_NAMESPACE_CONFLICT.create(undefined, language, namespace, modules),
+          );
         }
       }
     }

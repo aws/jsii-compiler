@@ -174,11 +174,11 @@ project.deps.removeDependency('typescript');
 // Modernize ts-jest configuration
 if (project.jest?.config) {
   project.jest.config.transform ??= {};
+  // `test/ts-jest-transformer.js` is ts-jest bound to the `typescript6` alias: ts-jest needs the classic
+  // in-process compiler API, which the TypeScript 7 package this project builds with no longer ships.
   project.jest.config.transform['^.+\\.[t]sx?$'] = [
-    'ts-jest',
+    '<rootDir>/test/ts-jest-transformer.js',
     {
-      // ts-jest drives the classic in-process compiler API, which TypeScript 7 no longer
-      // ships; point it at a TypeScript 6 install kept under an alias for tooling only.
       compiler: 'typescript6',
       tsconfig: 'test/tsconfig.json',
       diagnostics: { ignoreCodes: ['TS151001'] },
@@ -228,7 +228,7 @@ project.addDevDeps(
   'lockfile',
   'tsx',
   'glob',
-  // Tooling-only TypeScript 6 (ts-jest needs the classic compiler API; it is not used to build jsii).
+  // Tooling-only TypeScript 6 for ts-jest (see test/ts-jest-transformer.js); jsii itself is built with TypeScript 7.
   'typescript6@npm:typescript@6',
 );
 

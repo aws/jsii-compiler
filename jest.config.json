@@ -40,7 +40,7 @@
   ],
   "transform": {
     "^.+\\.[t]sx?$": [
-      "ts-jest",
+      "<rootDir>/test/ts-jest-transformer.js",
       {
         "compiler": "typescript6",
         "tsconfig": "test/tsconfig.json",
