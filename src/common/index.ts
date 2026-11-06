@@ -1,1 +1,1 @@
-export { symbolIdentifier } from './symbol-id';
+export { normalizePath } from './symbol-id';

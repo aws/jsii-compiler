@@ -1,8 +1,6 @@
-import * as path from 'node:path';
-import * as ts from 'typescript';
 import { TypeScriptConfig, TypeScriptConfigValidationRuleSet } from '.';
 import { convertForJson } from './compiler-options';
-import { JsiiError } from '../utils';
+import { readTypeScriptConfigFile } from './read';
 import generated from './rulesets/generated.public';
 import minimal from './rulesets/minimal.public';
 import strict from './rulesets/strict.public';
@@ -88,24 +86,7 @@ export function describeRuleSet(ruleSet: TypeScriptConfigValidationRuleSet): Rul
  * @returns the parsed TypeScript configuration
  */
 export function readTypeScriptConfig(configPath: string): TypeScriptConfig {
-  const absolutePath = path.resolve(configPath);
-  const { config, error } = ts.readConfigFile(absolutePath, ts.sys.readFile);
-  if (error) {
-    throw new JsiiError(
-      `Failed to read tsconfig at "${configPath}": ${ts.flattenDiagnosticMessageText(error.messageText, '\n')}`,
-    );
-  }
-
-  const basePath = path.dirname(absolutePath);
-  const extended = ts.parseJsonConfigFileContent(config, ts.sys, basePath);
-  // the tsconfig parser adds this in, but it is not an expected compilerOption
-  delete extended.options.configFilePath;
-
-  return {
-    compilerOptions: extended.options,
-    watchOptions: extended.watchOptions,
-    include: extended.fileNames,
-  };
+  return readTypeScriptConfigFile(configPath);
 }
 
 /**
