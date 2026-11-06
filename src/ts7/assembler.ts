@@ -31,11 +31,11 @@
  */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return */
 import * as fs from 'node:fs';
-import { createRequire } from 'node:module';
 import * as path from 'node:path';
 import * as zlib from 'node:zlib';
 import * as spec from '@jsii/spec';
 
+import { findDependencyDirectory } from '../common/find-utils';
 import { symbolIdentifier } from '../common/symbol-id';
 import { normalizeConfigPath } from '../helpers';
 import { JsiiDiagnostic } from '../jsii-diagnostic';
@@ -66,6 +66,12 @@ export interface Ts7AssemblerOptions {
   readonly stripDeprecated?: boolean;
   /** Optional allowlist file of FQNs to strip (one per line). */
   readonly stripDeprecatedAllowListFile?: string;
+  /**
+   * The effective tsc `rootDir`/`outDir` of the compilation, recorded in the
+   * assembly metadata. Defaults to the values of the jsii config.
+   */
+  readonly tscRootDir?: string;
+  readonly tscOutDir?: string;
 }
 
 interface RegisteredType {
@@ -195,6 +201,9 @@ export class Ts7Assembler {
   /** The jsii features the assembly makes use of (classic `usedFeatures`). */
   private readonly usedFeatures = new Set<spec.JsiiFeature>();
 
+  /** FQNs of classes without their own constructor, whose initializer is the base type's. */
+  private readonly inheritsInitializer = new Set<string>();
+
   // external dependency assemblies (peerDependencies): name -> Set(type names)
   private readonly externalDeps = new Map<string, Set<string>>();
   // full type records of external dependency assemblies, keyed by fqn (for
@@ -205,6 +214,11 @@ export class Ts7Assembler {
   private readonly externalFqnBySymbolId = new Map<string, Map<string, string>>();
   // dependency name -> its loaded assembly (metadata drives the symbolId path mapping)
   private readonly externalAssemblies = new Map<string, spec.Assembly>();
+  // real directory of each loaded dependency -> dependency name. Declarations are
+  // attributed to a dependency by path prefix, which also works when the package
+  // is reached through a symlink (workspaces, linked fixtures) and the checker
+  // reports the resolved path, where no `node_modules` segment is present.
+  private readonly externalDepDirs = new Map<string, string>();
   private readonly stripDeprecated: boolean;
   private stripAllowList?: Set<string>;
   // Type symbols dropped by --strip-deprecated. Unlike genuinely unexported
@@ -358,8 +372,10 @@ export class Ts7Assembler {
     const pkg = this.options.packageJson;
     for (const dep of Object.keys(pkg.peerDependencies ?? {})) {
       try {
-        const req = createRequire(path.join(this.root, 'package.json'));
-        const depDir = path.dirname(req.resolve(`${dep}/package.json`));
+        // Resolved like the classic compiler (and independently of the package's
+        // `exports` map, which may not expose package.json).
+        const depDir = fs.realpathSync(findDependencyDirectory(dep, this.root));
+        this.externalDepDirs.set(depDir, dep);
         let depJsii = JSON.parse(fs.readFileSync(path.join(depDir, '.jsii'), 'utf8'));
         if (depJsii.schema === 'jsii/file-redirect') {
           depJsii = JSON.parse(zlib.gunzipSync(fs.readFileSync(path.join(depDir, depJsii.filename))).toString('utf8'));
@@ -418,18 +434,31 @@ export class Ts7Assembler {
     return type?.getAliasSymbol?.() ?? type?.aliasSymbol;
   }
 
+  /**
+   * The loaded jsii dependency a declaration path belongs to, if any: the
+   * dependency whose (real) directory is a prefix of the path, falling back to
+   * the `node_modules/<name>/` segment for paths that were not resolved.
+   */
+  private _dependencyOfPath(declPath: string): string | undefined {
+    if (!declPath) {
+      return undefined;
+    }
+    for (const [dir, dep] of this.externalDepDirs) {
+      if (declPath === dir || declPath.startsWith(`${dir}/`)) {
+        return dep;
+      }
+    }
+    const m = /node_modules\/((?:@[^/]+\/)?[^/]+)\//.exec(declPath);
+    return m && this.externalDeps.has(m[1]) ? m[1] : undefined;
+  }
+
   private _externalFqnOf(sym: any): string | undefined {
     const decl0 = sym.declarations?.[0];
     if (!decl0) {
       return undefined;
     }
-    const file = decl0.path ?? '';
-    const m = /node_modules\/((?:@[^/]+\/)?[^/]+)\//.exec(file);
-    if (!m) {
-      return undefined;
-    }
-    const dep = m[1];
-    if (!this.externalDeps.has(dep)) {
+    const dep = this._dependencyOfPath(decl0.path ?? '');
+    if (dep == null) {
       return undefined;
     }
     // Primary: match the symbol's identifier against the symbolIds recorded in
@@ -471,8 +500,7 @@ export class Ts7Assembler {
         }
         const kind = declH.kind;
         if ([SyntaxKind.ClassDeclaration, SyntaxKind.InterfaceDeclaration, SyntaxKind.EnumDeclaration].includes(kind)) {
-          const nm = /node_modules\/((?:@[^/]+\/)?[^/]+)\//.exec(declH.path ?? '');
-          if (nm && this.externalDeps.has(nm[1])) {
+          if (this._dependencyOfPath(declH.path ?? '') != null) {
             continue; // peer-dependency type: referenced externally, not owned
           }
           if (!candidates.has(sym.id)) {
@@ -497,9 +525,7 @@ export class Ts7Assembler {
             continue;
           }
           visitedModules.add(key);
-          if (prefix === this.assemblyName) {
-            this.submodules[subFqn] = this._submoduleSpec(e, sym, kind === SyntaxKind.SourceFile);
-          }
+          this.submodules[subFqn] = this._submoduleSpec(e, sym, kind === SyntaxKind.SourceFile);
           const subDir = path.dirname(sym.declarations?.[0]?.path ?? moduleDir);
           collect(this.checker.getExportsOfModule(sym), subFqn, subDir);
         }
@@ -775,6 +801,29 @@ export class Ts7Assembler {
       return result;
     };
 
+    // Initializers of classes without their own constructor: copy the base type's
+    // (base types first, so chains of such classes resolve).
+    const resolveInitializer = (fqn: string, seen = new Set<string>()): void => {
+      const type = this.types[fqn] as spec.ClassType | undefined;
+      if (type == null || !this.inheritsInitializer.has(fqn) || seen.has(fqn)) {
+        return;
+      }
+      seen.add(fqn);
+      this.inheritsInitializer.delete(fqn);
+      if (type.base != null && this.inheritsInitializer.has(type.base)) {
+        resolveInitializer(type.base, seen);
+      }
+      const baseType = type.base != null ? (dereference(type.base) as spec.ClassType | undefined) : undefined;
+      if (baseType?.initializer != null) {
+        (type as any).initializer = JSON.parse(JSON.stringify(baseType.initializer));
+      } else {
+        delete (type as any).initializer;
+      }
+    };
+    for (const fqn of [...this.inheritsInitializer]) {
+      resolveInitializer(fqn);
+    }
+
     const methodCovariant = (actual: spec.Method, expected: spec.Method) =>
       !same(actual.returns, expected.returns) &&
       !actual.static &&
@@ -829,6 +878,12 @@ export class Ts7Assembler {
       locationInModule: this._locationOf(decl),
       name,
     };
+    // Classic: the namespace is the FQN between the assembly name and the type
+    // name (submodules and enclosing types), absent for top-level types.
+    const namespace = fqn.slice(this.assemblyName.length + 1).split('.').slice(0, -1).join('.');
+    if (namespace) {
+      jsiiType.namespace = namespace;
+    }
     const docs = this._visitDocumentation(sym);
     if (docs) {
       jsiiType.docs = docs;
@@ -1019,9 +1074,14 @@ export class Ts7Assembler {
     const base: { value?: string } = {};
     const interfaces = new Set<string>();
     const erasedClassBases: any[] = [];
+    // Classic order: a type's own `implements` first, then the interfaces of its
+    // erased (non-exported) base classes, in erasure order. Erased interfaces in
+    // an `implements` clause contribute their own super interfaces in place.
+    const erasedDecls: any[] = [];
     const collectHeritage = (classDecl: any): void => {
+      const deferredBases: any[] = [];
       for (const h of classDecl.heritageClauses ?? []) {
-        const isExt = h.token === SyntaxKind.ExtendsKeyword;
+        const isExt = h.token === SyntaxKind.ExtendsKeyword && classDecl.kind !== SyntaxKind.InterfaceDeclaration;
         for (const t of h.types) {
           const s = this._heritageBaseSymbol(t);
           if (!s) {
@@ -1035,7 +1095,8 @@ export class Ts7Assembler {
               const d0 = s.declarations?.[0]?.resolve(this.project);
               if (d0 && (d0.kind === SyntaxKind.ClassDeclaration || d0.kind === SyntaxKind.InterfaceDeclaration)) {
                 erasedClassBases.push({ getSymbol: () => s, symbol: s });
-                collectHeritage(d0);
+                erasedDecls.push(d0);
+                deferredBases.push(d0);
               }
             }
           } else if (fqnRef) {
@@ -1049,6 +1110,9 @@ export class Ts7Assembler {
           }
         }
       }
+      for (const d0 of deferredBases) {
+        collectHeritage(d0);
+      }
     };
     collectHeritage(decl);
     if (base.value) {
@@ -1059,10 +1123,17 @@ export class Ts7Assembler {
     }
 
     // initializer (constructor)
-    const ctor = decl.members?.find((m: any) => m.kind === SyntaxKind.Constructor);
-    // If the class does not declare its own constructor, jsii uses the effective
-    // (inherited) constructor from the nearest base class that declares one.
-    const effectiveCtor = ctor ?? this._inheritedConstructor(decl);
+    // Classic: the first constructor declared by the class or by one of its
+    // erased base classes (in erasure order).
+    const findCtor = (d: any) => d.members?.find((m: any) => m.kind === SyntaxKind.Constructor);
+    const ctorOwners = [
+      { decl, sym },
+      ...erasedClassBases.map((b, i) => ({ decl: erasedDecls[i], sym: b.symbol })),
+    ].filter((o) => o.decl?.kind === SyntaxKind.ClassDeclaration);
+    const ctorOwner = ctorOwners.find((o) => findCtor(o.decl) != null);
+    const effectiveCtor = ctorOwner && findCtor(ctorOwner.decl);
+    // The constructor's own symbol carries its documentation (classic read it the same way).
+    const ctorSym = ctorOwner?.sym?.getMembers?.()?.get?.('__constructor');
     const ctorPrivate =
       effectiveCtor && (effectiveCtor.modifiers ?? []).some((x: any) => x.kind === SyntaxKind.PrivateKeyword);
     if (ctorPrivate) {
@@ -1087,12 +1158,18 @@ export class Ts7Assembler {
       }
       // strada: initializer docs come from the constructor symbol's JSDoc
       // (summary/remarks + tags like @default), same as any member.
-      const ctorDocs = this._docsFromDeclJsDoc(effectiveCtor);
+      const ctorDocs = ctorSym ? this._visitDocumentation(ctorSym) : this._docsFromDeclJsDoc(effectiveCtor);
       if (ctorDocs) {
         initializer.docs = ctorDocs;
       }
       jsiiType.initializer = this._withDefaultDocs(initializer);
+    } else if (jsiiType.base) {
+      // Classic: a class without its own constructor takes the initializer
+      // recorded for its base type (own or foreign), verbatim. Resolved once all
+      // types are assembled, see _finalizeInheritance.
+      this.inheritsInitializer.add(jsiiType.fqn);
     } else {
+      // Classic: `{ docs: ctx.stability && { stability } }` with the package-level context.
       const init: any = {};
       if (this.defaultStability) {
         init.docs = { stability: this.defaultStability };
@@ -1101,48 +1178,6 @@ export class Ts7Assembler {
     }
 
     this._visitMembers(sym, decl, jsiiType, false, erasedClassBases);
-  }
-
-  /**
-   * Walk the `extends` chain of a class declaration to find the nearest base
-   * class that declares a constructor, returning that constructor declaration
-   * (or undefined). Reproduces the effective/inherited initializer jsii records
-   * for a subclass that does not declare its own constructor.
-   */
-  private _inheritedConstructor(decl: any): any | undefined {
-    const { SyntaxKind } = this.ts7;
-    let current = decl;
-    const guard = new Set<any>();
-    while (current) {
-      if (guard.has(current)) {
-        return undefined;
-      }
-      guard.add(current);
-      let nextBase: any;
-      for (const h of current.heritageClauses ?? []) {
-        if (h.token !== SyntaxKind.ExtendsKeyword) {
-          continue;
-        }
-        const t = h.types?.[0];
-        if (!t) {
-          continue;
-        }
-        const s = this._heritageBaseSymbol(t);
-        const baseDecl = s?.declarations?.[0]?.resolve(this.project);
-        if (baseDecl && baseDecl.kind === SyntaxKind.ClassDeclaration) {
-          nextBase = baseDecl;
-        }
-      }
-      if (!nextBase) {
-        return undefined;
-      }
-      const baseCtor = nextBase.members?.find((m: any) => m.kind === SyntaxKind.Constructor);
-      if (baseCtor) {
-        return baseCtor;
-      }
-      current = nextBase;
-    }
-    return undefined;
   }
 
   // -------------------------------------------------------------------------
@@ -1290,6 +1325,62 @@ export class Ts7Assembler {
     }
   }
 
+  /**
+   * Documentation of a class/interface member, inherited like the classic
+   * services did it (`findBaseOfDeclaration`): a member without JSDoc of its own
+   * takes the documentation of the same-named member of the first super type
+   * (`extends` then `implements`, recursively) that documents it. The TypeScript 7
+   * checker already follows base classes, but not implemented interfaces, so the
+   * walk is done here when the checker returns nothing.
+   */
+  private _visitMemberDocumentation(msym: any, decl: any): any | undefined {
+    const own = this._visitDocumentation(msym) ?? {};
+    if (own.summary != null || own.remarks != null) {
+      return own;
+    }
+    const { SyntaxKind } = this.ts7;
+    const seen = new Set<unknown>();
+    const inherited = (typeDecl: any): any | undefined => {
+      if (typeDecl == null || seen.has(typeDecl)) {
+        return undefined;
+      }
+      seen.add(typeDecl);
+      const clauses: any[] = typeDecl.heritageClauses ?? [];
+      const ordered = [
+        ...clauses.filter((h: any) => h.token === SyntaxKind.ExtendsKeyword),
+        ...clauses.filter((h: any) => h.token !== SyntaxKind.ExtendsKeyword),
+      ];
+      for (const h of ordered) {
+        for (const t of h.types) {
+          const baseType = this.checker.getTypeAtLocation(t);
+          const prop = baseType && this.checker.getPropertyOfType(baseType, msym.name);
+          if (!prop) {
+            continue;
+          }
+          const docs = this._visitDocumentation(prop);
+          if (docs != null) {
+            return docs;
+          }
+          const propDecl = prop.declarations?.[0]?.resolve(this.project);
+          const found = inherited(propDecl?.parent);
+          if (found != null) {
+            return found;
+          }
+        }
+      }
+      return undefined;
+    };
+    // The classic compiler read the comment with inheritance (getDocumentationComment)
+    // but the tags without (getJsDocTags()), so only summary/remarks are taken over.
+    const base = inherited(decl?.parent);
+    const result = {
+      ...(base?.summary != null ? { summary: base.summary } : {}),
+      ...(base?.remarks != null ? { remarks: base.remarks } : {}),
+      ...own,
+    };
+    return Object.keys(result).length ? result : undefined;
+  }
+
   private _visitMethod(msym: any, decl: any, isStatic: boolean): any {
     const { SyntaxKind } = this.ts7;
     const sig = this.checker.getSignatureFromDeclaration(decl);
@@ -1330,7 +1421,7 @@ export class Ts7Assembler {
         m.returns = opt.optional ? { optional: true, type: ret } : { type: ret };
       }
     }
-    const d = this._visitDocumentation(msym);
+    const d = this._visitMemberDocumentation(msym, decl);
     if (d) {
       m.docs = d;
     }
@@ -1371,7 +1462,7 @@ export class Ts7Assembler {
     if (q != null || opt.optional) {
       p.optional = true;
     }
-    const d = this._visitDocumentation(psym);
+    const d = this._visitMemberDocumentation(psym, decl);
     if (d) {
       p.docs = d;
     }
@@ -1928,7 +2019,7 @@ export class Ts7Assembler {
       }
       return undefined;
     };
-    const setIfDefined = (key: string, value: string | undefined, transform: (v: string) => string = (v) => v.trim()) => {
+    const setIfDefined = (key: string, value: string | undefined, transform: (v: string) => string = (v) => v) => {
       if (value !== undefined) {
         docs[key] = transform(value);
       }
@@ -1938,7 +2029,7 @@ export class Ts7Assembler {
     setIfDefined('default', eatTag('default', 'defaultValue'));
     const deprecated = eatTag('deprecated');
     setIfDefined('deprecated', deprecated);
-    setIfDefined('example', eatTag('example'), (v) => v.replace(/^\n/, ''));
+    setIfDefined('example', eatTag('example'));
     setIfDefined('returns', eatTag('returns', 'return'));
     setIfDefined('see', eatTag('see'));
     if (eatTag('subclassable') !== undefined) {
@@ -1961,7 +2052,7 @@ export class Ts7Assembler {
       docs.custom = {};
       for (const [key, value] of tagValues.entries()) {
         // Key must have a value or it will be stripped from the assembly
-        docs.custom[key] = value.trim() === '' ? 'true' : value.trim();
+        docs.custom[key] = value === '' ? 'true' : value;
       }
     }
     return Object.keys(docs).length ? docs : undefined;
@@ -2034,11 +2125,11 @@ export class Ts7Assembler {
         // rootDir/outDir may be absolute (just like for tsc); they are normalized
         // to be relative to the package root so no absolute path leaks into the
         // assembly and breaks the reproducibility check of downstream consumers.
-        ...(this.options.projectInfo.tsc?.rootDir != null
-          ? { tscRootDir: normalizeConfigPath(this.options.projectRoot, this.options.projectInfo.tsc.rootDir) }
+        ...(this.options.tscRootDir != null
+          ? { tscRootDir: normalizeConfigPath(this.options.projectRoot, this.options.tscRootDir) }
           : {}),
-        ...(this.options.projectInfo.tsc?.outDir != null
-          ? { tscOutDir: normalizeConfigPath(this.options.projectRoot, this.options.projectInfo.tsc.outDir) }
+        ...(this.options.tscOutDir != null
+          ? { tscOutDir: normalizeConfigPath(this.options.projectRoot, this.options.tscOutDir) }
           : {}),
       },
       ...(docs ? { docs } : {}),

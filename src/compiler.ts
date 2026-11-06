@@ -138,6 +138,7 @@ export class Compiler {
       projectRoot: this.projectRoot,
       projectInfo: this.options.projectInfo,
       tsconfigFileName: this.configFileName,
+      generatedTsconfig: !this.userProvidedTypeScriptConfig,
       stripDeprecated: this.options.stripDeprecated,
       stripDeprecatedAllowListFile: this.options.stripDeprecatedAllowListFile,
       compressAssembly: this.options.compressAssembly,

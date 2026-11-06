@@ -27,6 +27,8 @@ export interface Ts7Project {
   readonly checker: any;
   /** The owning `API` session (exposes `batch()` for multi-request round-trips). */
   readonly api: any;
+  /** The root files of the configuration (`parsedCommandLine.fileNames`). */
+  readonly rootFileNames: readonly string[];
 }
 
 /**
@@ -72,7 +74,12 @@ export class Ts7Host {
     if (!project) {
       throw new Error(`TS7 project not found for ${this.tsconfigPath}`);
     }
-    return { program: project.program, checker: project.checker, api: this.api };
+    return {
+      program: project.program,
+      checker: project.checker,
+      api: this.api,
+      rootFileNames: project.parsedCommandLine.fileNames,
+    };
   }
 
   /** Dispose the snapshot and close the API session / native process. */
