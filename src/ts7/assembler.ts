@@ -198,11 +198,15 @@ function sortUnionLikeClassic(refs: readonly spec.TypeReference[], rankOfFqn: (f
       return rankOfFqn(ref.fqn);
     }
     if (spec.isCollectionTypeReference(ref)) {
-      // Collections of primitives are instantiated early (the standard library
-      // uses them); other collections when first referenced, i.e. after the named
-      // types of the union. Their relative order is kept.
-      const element = rank(ref.collection.elementtype);
-      return element < 100 ? element + 0.5 : Number.MAX_SAFE_INTEGER / 2;
+      // Arrays of primitives are instantiated early (the standard library uses
+      // them, after the primitives themselves); maps and other collections when
+      // first referenced, i.e. after the named types of the union. The relative
+      // order of the late collections is kept.
+      const element = ref.collection.elementtype;
+      if (ref.collection.kind === spec.CollectionKind.Array && spec.isPrimitiveTypeReference(element)) {
+        return 50 + rank(element);
+      }
+      return Number.MAX_SAFE_INTEGER / 2;
     }
     if (spec.isUnionTypeReference(ref)) {
       return Math.min(...ref.union.types.map(rank));
@@ -418,7 +422,18 @@ export class Ts7Assembler {
     let cursor = 0;
     let rawRendered = rawComment;
     let allFound = true;
+    let rawCursor = 0;
     for (const m of rawComment.matchAll(linkRe)) {
+      // Anchor the search on the (end of the) raw text preceding this link, so a
+      // link text that also occurs earlier in the comment is not matched there.
+      const preceding = rawComment.slice(rawCursor, m.index).trimEnd().slice(-24).trimStart();
+      rawCursor = (m.index ?? 0) + m[0].length;
+      if (preceding) {
+        const anchor = result.indexOf(preceding, cursor);
+        if (anchor >= 0) {
+          cursor = anchor + preceding.length;
+        }
+      }
       const kind = m[1];
       const after = m[2].replace(/^\s+/, '');
       const nm = /^[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*(?:#[A-Za-z_$][\w$]*)*/.exec(after);
@@ -1622,7 +1637,8 @@ export class Ts7Assembler {
     };
     // The classic compiler read the comment with inheritance (getDocumentationComment)
     // but the tags without (getJsDocTags()), so only summary/remarks are taken over.
-    const base = inherited(decl?.parent);
+    // A parameter property is declared in the constructor; its type is the class.
+    const base = inherited(decl?.kind === SyntaxKind.Parameter ? decl.parent?.parent : decl?.parent);
     const result = {
       ...(base?.summary != null ? { summary: base.summary } : {}),
       ...(base?.remarks != null ? { remarks: base.remarks } : {}),
@@ -1713,12 +1729,18 @@ export class Ts7Assembler {
       p.optional = true;
     }
     const d = this._visitMemberDocumentation(psym, decl) ?? {};
-    if (d.summary == null && d.remarks == null && decl.kind === SyntaxKind.Parameter) {
-      // Classic: a parameter property without JSDoc of its own takes the
-      // constructor's `@param <name>` text as its documentation comment.
+    if (decl.kind === SyntaxKind.Parameter) {
+      // Classic: the documentation comment of a parameter property is its own
+      // JSDoc followed by the constructor's `@param <name>` text (when present).
       const paramText = this._paramDocComment(psym, decl);
-      if (paramText) {
-        const { summary, remarks } = this._splitSummary(paramText.trim());
+      const own = this._docCommentWithClassicLinks(psym);
+      const ownText = typeof own === 'string' ? own.trim() : '';
+      // The TypeScript 7 checker already uses the `@param` text when the
+      // parameter has no JSDoc of its own; only the combination is missing.
+      if (paramText && ownText !== '' && !ownText.includes(paramText.trim())) {
+        const combined = [ownText, paramText.trim()].join('\n');
+        const { summary, remarks } = this._splitSummary(combined);
+        delete d.remarks;
         if (remarks) {
           d.remarks = remarks;
         }
