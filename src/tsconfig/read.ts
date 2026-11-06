@@ -2,6 +2,7 @@ import * as fs from 'node:fs';
 import { createRequire } from 'node:module';
 import * as path from 'node:path';
 
+import { convertForJson } from './compiler-options';
 import type { CompilerOptionsJson, TypeScriptConfig } from './index';
 import { JsiiError } from '../utils';
 
@@ -61,7 +62,7 @@ export function readTypeScriptConfigFile(configPath: string): TypeScriptConfig {
   const seen = new Set<string>();
   const result = readOne(absolutePath, seen, path.dirname(absolutePath));
   delete (result as any).extends;
-  return result;
+  return { ...result, compilerOptions: convertForJson(result.compilerOptions) };
 }
 
 function readOne(absolutePath: string, seen: Set<string>, targetDir: string): TypeScriptConfig {

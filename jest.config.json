@@ -42,7 +42,7 @@
     "^.+\\.[t]sx?$": [
       "ts-jest",
       {
-        "compiler": "typescript",
+        "compiler": "typescript6",
         "tsconfig": "test/tsconfig.json",
         "diagnostics": {
           "ignoreCodes": [

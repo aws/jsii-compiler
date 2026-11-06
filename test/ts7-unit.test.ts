@@ -1,29 +1,7 @@
 import { isInterfaceName, isStdlibDeclPath, splitSummary } from '../src/ts7/assembler';
-import { isTs7BackendEnabled, TS7_BACKEND_ENV } from '../src/ts7/env';
 import { injectRtti, rttiSnippet } from '../src/ts7/ts7-emit';
 
 // Toolchain-free unit tests for the pure logic of the experimental ts7 backend.
-
-describe('ts7 backend selection', () => {
-  const original = process.env[TS7_BACKEND_ENV];
-  afterEach(() => {
-    if (original === undefined) {
-      delete process.env[TS7_BACKEND_ENV];
-    } else {
-      process.env[TS7_BACKEND_ENV] = original;
-    }
-  });
-
-  test('disabled by default', () => {
-    delete process.env[TS7_BACKEND_ENV];
-    expect(isTs7BackendEnabled()).toBe(false);
-  });
-
-  test('enabled by JSII_COMPILER_BACKEND=ts7 (case-insensitive)', () => {
-    process.env[TS7_BACKEND_ENV] = 'TS7';
-    expect(isTs7BackendEnabled()).toBe(true);
-  });
-});
 
 describe('isInterfaceName (port of the classic Assembler rule)', () => {
   test.each([

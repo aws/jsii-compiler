@@ -177,7 +177,9 @@ if (project.jest?.config) {
   project.jest.config.transform['^.+\\.[t]sx?$'] = [
     'ts-jest',
     {
-      compiler: 'typescript',
+      // ts-jest drives the classic in-process compiler API, which TypeScript 7 no longer
+      // ships; point it at a TypeScript 6 install kept under an alias for tooling only.
+      compiler: 'typescript6',
       tsconfig: 'test/tsconfig.json',
       diagnostics: { ignoreCodes: ['TS151001'] },
     },
@@ -226,6 +228,8 @@ project.addDevDeps(
   'lockfile',
   'tsx',
   'glob',
+  // Tooling-only TypeScript 6 (ts-jest needs the classic compiler API; it is not used to build jsii).
+  'typescript6@npm:typescript@6',
 );
 
 project.preCompileTask.exec('tsx build-tools/code-gen.ts', {

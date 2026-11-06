@@ -36,6 +36,7 @@ import * as path from 'node:path';
 import * as zlib from 'node:zlib';
 import * as spec from '@jsii/spec';
 
+import { normalizeConfigPath } from '../helpers';
 import type { ProjectInfo } from '../project-info';
 import { SHORT_VERSION, VERSION } from '../version';
 import { Ts7Api } from './ts7-api';
@@ -73,6 +74,15 @@ interface RegisteredType {
  * Reproduces the subset of jsii's assembly generation needed for normal-path
  * `.jsii` parity, over the TS7 API.
  */
+/**
+ * Member ordering of the classic assembler (`_sortMembers`): static members
+ * first, then immutable, then required, then lexicographical by name.
+ */
+function compareMembers(l: any, r: any): number {
+  const key = (m: any) => [m.static ? '0' : '1', m.immutable ? '0' : '1', !m.optional ? '0' : '1', m.name].join('|');
+  return key(l).localeCompare(key(r));
+}
+
 export class Ts7Assembler {
   private readonly ts7: Ts7Api;
   private readonly checker: any;
@@ -993,10 +1003,10 @@ export class Ts7Assembler {
     }
 
     if (props.length) {
-      jsiiType.properties = props.sort((a, b) => a.name.localeCompare(b.name));
+      jsiiType.properties = props.sort(compareMembers);
     }
     if (methods.length) {
-      jsiiType.methods = methods.sort((a, b) => a.name.localeCompare(b.name));
+      jsiiType.methods = methods.sort(compareMembers);
     }
   }
 
@@ -1613,31 +1623,64 @@ export class Ts7Assembler {
       }
       docs.summary = summary;
     }
+    // Exact port of jsii's parseDocParts (src/docs.ts of the classic compiler):
+    // every tag is collected once, well-known tags are consumed into their
+    // dedicated fields (with the same aliases and precedence), and whatever is
+    // left over becomes `docs.custom`. `@param` is handled with the parameter
+    // itself and `@jsii` is internal-only; neither surfaces in the API docs.
+    const tagValues = new Map<string, string>();
     for (const tag of this._jsDocTags(sym)) {
+      if (tag.name === 'param' || tag.name === 'jsii') {
+        continue;
+      }
       let tagText = typeof tag.text === 'string' ? tag.text : (tag.text ?? []).map((p: any) => p.text).join('');
       tagText = tagText.replace(/\{@link\s+([^}]*?)\s*\}/g, '{@link $1 }');
-      switch (tag.name) {
-        case 'default':
-          docs.default = tagText.trim();
-          break;
-        case 'deprecated':
-          docs.deprecated = tagText.trim();
-          docs.stability = 'deprecated';
-          break;
-        case 'stability':
-          docs.stability = tagText.trim();
-          break;
-        case 'example':
-          docs.example = tagText.replace(/^\n/, '');
-          break;
-        case 'returns':
-          docs.returns = tagText.trim();
-          break;
-        case 'see':
-          docs.see = tagText.trim();
-          break;
-        default:
-          break;
+      tagValues.set(tag.name, tagText);
+    }
+    const eatTag = (...names: string[]): string | undefined => {
+      for (const name of names) {
+        if (tagValues.has(name)) {
+          const value = tagValues.get(name);
+          tagValues.delete(name);
+          return value ?? '';
+        }
+      }
+      return undefined;
+    };
+    const setIfDefined = (key: string, value: string | undefined, transform: (v: string) => string = (v) => v.trim()) => {
+      if (value !== undefined) {
+        docs[key] = transform(value);
+      }
+    };
+
+    eatTag('struct'); // a type-system hint, consumed by the datatype detection, not documentation
+    setIfDefined('default', eatTag('default', 'defaultValue'));
+    const deprecated = eatTag('deprecated');
+    setIfDefined('deprecated', deprecated);
+    setIfDefined('example', eatTag('example'), (v) => v.replace(/^\n/, ''));
+    setIfDefined('returns', eatTag('returns', 'return'));
+    setIfDefined('see', eatTag('see'));
+    if (eatTag('subclassable') !== undefined) {
+      docs.subclassable = true;
+    }
+    setIfDefined('stability', eatTag('stability'));
+    // @experimental and @stable are shorthands for the matching @stability
+    const experimental = eatTag('experimental') !== undefined;
+    const stable = eatTag('stable') !== undefined;
+    if (experimental) {
+      docs.stability = 'experimental';
+    }
+    if (stable) {
+      docs.stability = 'stable';
+    }
+    if (deprecated !== undefined) {
+      docs.stability = 'deprecated';
+    }
+    if (tagValues.size > 0) {
+      docs.custom = {};
+      for (const [key, value] of tagValues.entries()) {
+        // Key must have a value or it will be stripped from the assembly
+        docs.custom[key] = value.trim() === '' ? 'true' : value.trim();
       }
     }
     return Object.keys(docs).length ? docs : undefined;
@@ -1708,11 +1751,14 @@ export class Ts7Assembler {
         ...info.metadata,
         // Downstream consumers need these to map a symbolId in the outDir to a
         // symbolId in the rootDir (same as the classic backend records).
-        ...(this.options.packageJson.jsii?.tsc?.rootDir != null
-          ? { tscRootDir: this.options.packageJson.jsii.tsc.rootDir }
+        // rootDir/outDir may be absolute (just like for tsc); they are normalized
+        // to be relative to the package root so no absolute path leaks into the
+        // assembly and breaks the reproducibility check of downstream consumers.
+        ...(this.options.projectInfo.tsc?.rootDir != null
+          ? { tscRootDir: normalizeConfigPath(this.options.projectRoot, this.options.projectInfo.tsc.rootDir) }
           : {}),
-        ...(this.options.packageJson.jsii?.tsc?.outDir != null
-          ? { tscOutDir: this.options.packageJson.jsii.tsc.outDir }
+        ...(this.options.projectInfo.tsc?.outDir != null
+          ? { tscOutDir: normalizeConfigPath(this.options.projectRoot, this.options.projectInfo.tsc.outDir) }
           : {}),
       },
       ...(docs ? { docs } : {}),

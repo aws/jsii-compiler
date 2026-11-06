@@ -1,8 +1,8 @@
-import { DiagnosticCategory } from 'typescript';
 
 import { compileJsiiForTest } from '../src';
 import { Code, JsiiDiagnostic } from '../src/jsii-diagnostic';
 import { isSilenced, parseWarningCodes, silencedWarnings } from '../src/warnings';
+import { DiagnosticCategory } from '../src/diagnostic';
 
 beforeEach(() => {
   silencedWarnings.clear();

@@ -1,9 +1,9 @@
 import * as spec from '@jsii/spec';
 import { writeAssembly, loadAssemblyFromPath } from '@jsii/spec';
-import * as ts from 'typescript';
 
 import { sourceToAssemblyHelper, TestWorkspace, compileJsiiForTest } from '../lib';
 import { compileJsiiForErrors } from './compiler-helpers';
+import { DiagnosticCategory } from '../src/diagnostic';
 
 test('submodules loaded from directories can have a README', () => {
   const assembly = sourceToAssemblyHelper({
@@ -480,7 +480,7 @@ describe('submodule namespace conflicts', () => {
       { captureDiagnostics: true },
     );
     const warnings = result.diagnostics
-      .filter((d) => d.category === ts.DiagnosticCategory.Warning)
+      .filter((d) => d.category === DiagnosticCategory.Warning)
       .map((d) => `${d.messageText}`);
     expect(warnings).toContainEqual(expect.stringMatching(/dotnet.*Same\.Namespace.*testpkg\.sub1.*testpkg\.sub2/));
   });
@@ -501,7 +501,7 @@ describe('submodule namespace conflicts', () => {
       { captureDiagnostics: true },
     );
     const warnings = result.diagnostics
-      .filter((d) => d.category === ts.DiagnosticCategory.Warning)
+      .filter((d) => d.category === DiagnosticCategory.Warning)
       .map((d) => `${d.messageText}`);
     expect(warnings).toContainEqual(expect.stringMatching(/java.*same\.pkg.*testpkg\.sub1.*testpkg\.sub2/));
   });
@@ -518,7 +518,7 @@ describe('submodule namespace conflicts', () => {
       { captureDiagnostics: true },
     );
     const warnings = result.diagnostics
-      .filter((d) => d.category === ts.DiagnosticCategory.Warning)
+      .filter((d) => d.category === DiagnosticCategory.Warning)
       .map((d) => `${d.messageText}`);
     expect(warnings).toContainEqual(expect.stringMatching(/python.*same_module.*testpkg\.sub1.*testpkg\.sub2/));
   });
@@ -535,7 +535,7 @@ describe('submodule namespace conflicts', () => {
       { captureDiagnostics: true },
     );
     const warnings = result.diagnostics
-      .filter((d) => d.category === ts.DiagnosticCategory.Warning)
+      .filter((d) => d.category === DiagnosticCategory.Warning)
       .map((d) => `${d.messageText}`);
     expect(warnings).toContainEqual(expect.stringMatching(/go.*samepkg.*testpkg\.sub1.*testpkg\.sub2/));
   });

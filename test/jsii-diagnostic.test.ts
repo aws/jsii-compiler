@@ -1,6 +1,6 @@
-import { DiagnosticCategory } from 'typescript';
 
 import { Code, configureCategories } from '../src/jsii-diagnostic';
+import { DiagnosticCategory } from '../src/diagnostic';
 
 describe('jsii diagnostics', () => {
   describe('configureCategories', () => {

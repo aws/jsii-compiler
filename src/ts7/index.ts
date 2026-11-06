@@ -52,21 +52,20 @@ export interface Ts7EmitResult {
 }
 
 /**
- * Derive the entrypoint .ts from the package.json `types`/`main` fields.
+ * Derive the entrypoint .ts from the project's declared `types` entry.
  *
- * Mirrors the strada Assembler's `mainFile` computation: start from the declared
- * `types` (or `main`), turn the `.d.ts`/`.js` into `.ts`, then — if an
+ * Mirrors the classic Assembler's `mainFile` computation: start from the
+ * declared `types`, turn the `.d.ts`/`.js` into `.ts`, then — if an
  * out-of-source build is configured (tsc `outDir`) — re-root the path from the
  * `outDir` into the `rootDir`. This correctly handles both conventional
  * `src`->`lib` layouts and in-place (`rootDir === outDir`) layouts.
  */
-function deriveEntry(projectRoot: string, pkg: any): string {
-  const dts: string = pkg.types ?? pkg.main ?? 'index.d.ts';
+function deriveEntry(projectRoot: string, projectInfo: ProjectInfo): string {
+  const dts: string = projectInfo.types ?? 'index.d.ts';
   let mainFile = dts.replace(/\.d\.ts(x?)$/, '.ts$1').replace(/\.js$/, '.ts');
 
-  const tsc = pkg.jsii?.tsc ?? {};
-  const outDir: string | undefined = tsc.outDir;
-  const rootDir: string | undefined = tsc.rootDir;
+  const outDir = projectInfo.tsc?.outDir;
+  const rootDir = projectInfo.tsc?.rootDir;
   if (outDir != null) {
     // strip the outDir prefix, then prepend rootDir (if any)
     const rel = path.relative(outDir, mainFile);
@@ -80,8 +79,7 @@ function deriveEntry(projectRoot: string, pkg: any): string {
  */
 export function ts7Emit(options: Ts7EmitOptions): Ts7EmitResult {
   const { projectRoot, projectInfo } = options;
-  const pkg = JSON.parse(fs.readFileSync(path.join(projectRoot, 'package.json'), 'utf8'));
-  const entry = deriveEntry(projectRoot, pkg);
+  const entry = deriveEntry(projectRoot, projectInfo);
 
   const host = Ts7Host.open(options.projectRoot, options.tsconfigFileName);
   try {
@@ -96,13 +94,13 @@ export function ts7Emit(options: Ts7EmitOptions): Ts7EmitResult {
     }
 
     const assembler = new Ts7Assembler(host.ts7, project, {
-      packageJson: pkg,
+      packageJson: projectInfo.packageJson,
       projectInfo,
       projectRoot,
       entry,
-      assemblyName: pkg.name,
-      defaultStability: pkg.stability,
-      stripDeprecated: options.stripDeprecated ?? !!pkg['cdk-build']?.stripDeprecated,
+      assemblyName: projectInfo.name,
+      defaultStability: projectInfo.stability,
+      stripDeprecated: options.stripDeprecated ?? !!(projectInfo.packageJson as any)['cdk-build']?.stripDeprecated,
       stripDeprecatedAllowListFile: options.stripDeprecatedAllowListFile,
       readme: loadReadme(projectRoot),
     });
@@ -126,8 +124,8 @@ export function ts7Emit(options: Ts7EmitOptions): Ts7EmitResult {
       ({ emittedFiles } = runTs7EmitPipeline(project, {
         projectRoot,
         assembly,
-        outDir: pkg.jsii?.tsc?.outDir,
-        rootDir: pkg.jsii?.tsc?.rootDir,
+        outDir: projectInfo.tsc?.outDir,
+        rootDir: projectInfo.tsc?.rootDir,
       }));
     } catch (err) {
       LOG.error(`ts7 backend: emit pipeline failed: ${(err as Error).stack ?? (err as Error).message}`);

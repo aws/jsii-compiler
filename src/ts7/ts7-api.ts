@@ -13,7 +13,7 @@
  * alias. 
  * ---------------------------------------------------------------------------
  */
-import { createRequire } from 'node:module';
+import * as nodeModule from 'node:module';
 import * as path from 'node:path';
 import * as semver from 'semver';
 
@@ -78,7 +78,7 @@ export function resolveTypeScript7PackageDir(projectRoot: string, env: NodeJS.Pr
     for (const base of bases) {
       let dir: string;
       try {
-        dir = path.dirname(createRequire(base).resolve(`${candidate}/package.json`));
+        dir = path.dirname(nodeModule.createRequire(base).resolve(`${candidate}/package.json`));
       } catch {
         continue;
       }
@@ -112,6 +112,19 @@ function isNewEnough(version: string | undefined): boolean {
   return version != null && semver.valid(version) != null && semver.gte(version, TS7_MIN_VERSION);
 }
 
+/**
+ * `createRequire` from Node's own `Module`, even when a test runner (jest) hands
+ * out a sandboxed subclass whose loader cannot load ES modules: the real class is
+ * the deepest one on the prototype chain that still provides `createRequire`.
+ */
+function nodeCreateRequire(filename: string): NodeJS.Require {
+  let real: any = (nodeModule as any).Module ?? nodeModule;
+  while (typeof Object.getPrototypeOf(real)?.createRequire === 'function') {
+    real = Object.getPrototypeOf(real);
+  }
+  return real.createRequire(filename);
+}
+
 let cached: Ts7Api | undefined;
 
 /**
@@ -131,13 +144,12 @@ export function loadTs7Api(projectRoot: string): Ts7Api {
   // regardless of how (or under which name) the package was installed.
   const apiPath = path.join(packageDir, 'dist', 'api', 'sync', 'api.js');
   const astPath = path.join(packageDir, 'dist', 'ast', 'index.js');
+  const nativeRequire = nodeCreateRequire(__filename);
   let apiModule: any;
   let astModule: any;
   try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    apiModule = require(apiPath);
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    astModule = require(astPath);
+    apiModule = nativeRequire(apiPath);
+    astModule = nativeRequire(astPath);
   } catch (err) {
     throw new Error(
       `Failed to load the TypeScript 7 programmatic API from "${packageDir}" (typescript ${version}): ${

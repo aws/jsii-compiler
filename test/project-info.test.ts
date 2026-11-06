@@ -4,11 +4,11 @@ import * as path from 'node:path';
 import * as spec from '@jsii/spec';
 import { writeAssembly } from '@jsii/spec';
 import clone from 'clone';
-import * as ts from 'typescript';
 
 import { loadProjectInfo, PackageJson } from '../src/project-info';
 import { TypeScriptConfigValidationRuleSet } from '../src/tsconfig';
 import { VERSION } from '../src/version';
+import { DiagnosticCategory } from '../src/diagnostic';
 
 const BASE_PROJECT = {
   name: 'jsii-test',
@@ -225,10 +225,10 @@ describe('loadProjectInfo', () => {
           expect(info.diagnostics).toBeDefined();
           const diagnostics = info.diagnostics!;
           expect(Object.keys(diagnostics).sort()).toEqual(['diagCode1', 'diagCode2', 'diagCode3', 'diagCode4']);
-          expect(diagnostics.diagCode1).toEqual(ts.DiagnosticCategory.Error);
-          expect(diagnostics.diagCode2).toEqual(ts.DiagnosticCategory.Warning);
-          expect(diagnostics.diagCode3).toEqual(ts.DiagnosticCategory.Suggestion);
-          expect(diagnostics.diagCode4).toEqual(ts.DiagnosticCategory.Message);
+          expect(diagnostics.diagCode1).toEqual(DiagnosticCategory.Error);
+          expect(diagnostics.diagCode2).toEqual(DiagnosticCategory.Warning);
+          expect(diagnostics.diagCode3).toEqual(DiagnosticCategory.Suggestion);
+          expect(diagnostics.diagCode4).toEqual(DiagnosticCategory.Message);
         },
         (info) => {
           const diagnostics = {

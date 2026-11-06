@@ -1,9 +1,9 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import * as ts from 'typescript';
+import { DiagnosticCategory } from '../src/diagnostic';
 
-import { toTsDiagnostic } from '../src/ts7';
+import { toDiagnostic } from '../src/ts7';
 import { resolveTypeScript7PackageDir, TS7_INSTALL_HINT, TS7_TYPESCRIPT_ENV } from '../src/ts7/ts7-api';
 import { _formatDiagnostic } from '../src/utils';
 
@@ -26,7 +26,7 @@ describe('resolveTypeScript7PackageDir', () => {
     expect(() => resolveTypeScript7PackageDir('/nonexistent', { [TS7_TYPESCRIPT_ENV]: dir })).toThrow(/>= 7\.1/);
   });
 
-  test('falls back to the typescript7 alias installed with this compiler', () => {
+  test('falls back to the typescript package installed with this compiler', () => {
     const dir = resolveTypeScript7PackageDir('/nonexistent', {});
     const pkg = JSON.parse(fs.readFileSync(path.join(dir, 'package.json'), 'utf8'));
     expect(pkg.name).toBe('typescript');
@@ -34,20 +34,20 @@ describe('resolveTypeScript7PackageDir', () => {
   });
 
   test('install hint is a single npm command', () => {
-    expect(TS7_INSTALL_HINT).toBe('npm i -D typescript7@npm:typescript@beta');
+    expect(TS7_INSTALL_HINT).toBe('npm i -D typescript@beta');
   });
 });
 
-describe('toTsDiagnostic', () => {
+describe('toDiagnostic', () => {
   const source = 'export const x: number = "a";\n';
-  const readSource = (fileName: string) => ts.createSourceFile(fileName, source, ts.ScriptTarget.Latest, false);
+  const readSource = (_fileName: string) => source;
 
   test('maps the TS7 wire shape to a ts.Diagnostic with a real source range', () => {
-    const d = toTsDiagnostic(
+    const d = toDiagnostic(
       { fileName: '/p/src/bad.ts', pos: 13, end: 14, code: 2322, category: 1, text: 'Type mismatch.' },
       readSource,
     );
-    expect(d.category).toBe(ts.DiagnosticCategory.Error);
+    expect(d.category).toBe(DiagnosticCategory.Error);
     expect(d.code).toBe(2322);
     expect(d.file?.fileName).toBe('/p/src/bad.ts');
     expect(d.start).toBe(13);
@@ -56,7 +56,7 @@ describe('toTsDiagnostic', () => {
   });
 
   test('renders through the classic formatter with file(line,col) and source context', () => {
-    const d = toTsDiagnostic(
+    const d = toDiagnostic(
       { fileName: '/p/src/bad.ts', pos: 13, end: 14, code: 2322, category: 1, text: 'Type mismatch.' },
       readSource,
     );
@@ -66,7 +66,7 @@ describe('toTsDiagnostic', () => {
   });
 
   test('tolerates diagnostics without a file', () => {
-    const d = toTsDiagnostic({ code: 5023, category: 1, text: 'Unknown compiler option.' }, readSource);
+    const d = toDiagnostic({ code: 5023, category: 1, text: 'Unknown compiler option.' }, readSource);
     expect(d.file).toBeUndefined();
     expect(d.start).toBeUndefined();
     expect(d.messageText).toBe('Unknown compiler option.');

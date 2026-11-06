@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import * as ts from 'typescript';
 
+import { DiagnosticCategory } from '../src/diagnostic';
 import { Compiler } from '../src/compiler';
 import { ProjectInfo } from '../src/project-info';
 import { formatDiagnostic } from '../src/utils';
@@ -38,7 +38,7 @@ for (const source of fs.readdirSync(SOURCE_DIR)) {
       const diagnostics = emitResult.diagnostics
         .filter(
           // Remove suggestion diagnostics, we don't care much for those for now...
-          (diag) => diag.category !== ts.DiagnosticCategory.Suggestion,
+          (diag) => diag.category !== DiagnosticCategory.Suggestion,
         )
         .map((diag) => formatDiagnostic(diag, SOURCE_DIR))
         .sort();

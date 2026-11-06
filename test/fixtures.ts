@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { lock, unlock } from 'lockfile';
-import { DiagnosticCategory } from 'typescript';
+import { DiagnosticCategory } from '../src/diagnostic';
 import { Compiler } from '../src/compiler';
 import { loadProjectInfo } from '../src/project-info';
 import { formatDiagnostic } from '../src/utils';

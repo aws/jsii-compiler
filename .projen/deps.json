@@ -136,6 +136,11 @@
       "type": "build"
     },
     {
+      "name": "typescript6",
+      "version": "npm:typescript@6",
+      "type": "build"
+    },
+    {
       "name": "@jsii/check-node",
       "type": "runtime"
     },
