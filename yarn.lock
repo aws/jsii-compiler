@@ -5845,8 +5845,8 @@ __metadata:
     npm: "npm:^12"
     npm-check-updates: "npm:^20"
     prettier: "npm:^2.8.8"
-    projen: "npm:^0.104.19"
-    semver: "npm:^7.8.5"
+    projen: "npm:^0.104.23"
+    semver: "npm:^7.8.6"
     semver-intersect: "npm:^1.5.0"
     sort-json: "npm:^2.0.1"
     spdx-license-list: "npm:^6.12.0"
@@ -7208,9 +7208,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"projen@npm:^0.104.19":
-  version: 0.104.19
-  resolution: "projen@npm:0.104.19"
+"projen@npm:^0.104.23":
+  version: 0.104.23
+  resolution: "projen@npm:0.104.23"
   dependencies:
     "@iarna/toml": "npm:^2.2.5"
     case: "npm:^1.6.3"
@@ -7232,7 +7232,7 @@ __metadata:
     constructs: ^10.5.0
   bin:
     projen: bin/projen
-  checksum: 10c0/d8f9caaaddae13ba51f1b047544d2dc6094679919add66aaac60c1537441d15b47d39086c64135ae6f1982abdd7c9bff4da58c0d778c67dbcaa373d7296ec252
+  checksum: 10c0/cc6c043e55b0f214d510c49c3bd2d6c802f2977012281a4a515162ab1091ebf215ddf660591ecd0cf5eaae5f84906a1d71ecebcae9e47c9fa1f0e715a6343ae0
   languageName: node
   linkType: hard
 
@@ -7638,6 +7638,15 @@ __metadata:
   bin:
     semver: bin/semver.js
   checksum: 10c0/b1f3127a5be8125a94f37188b361c212466c292c6910adce3ec106cff5dc211ccaedc4739c11bb70fda59d6fc1f040a9bca289f4e093451521a2372e5231fe0c
+  languageName: node
+  linkType: hard
+
+"semver@npm:^7.8.6":
+  version: 7.8.6
+  resolution: "semver@npm:7.8.6"
+  bin:
+    semver: bin/semver.js
+  checksum: 10c0/bf0a4d16eb067e5391323649e46b4a268644d7f8ee88e37c7668d35e861ec145b6e7df576d898007fc0d9a2cedcbc33f71460aa3bbea18eedfa5af58c064d7fe
   languageName: node
   linkType: hard
 
