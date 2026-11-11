@@ -21,7 +21,7 @@ import {
   TypeReference,
   UnionTypeReference,
 } from '@jsii/spec';
-import * as ts from 'typescript';
+import * as ts from '#typescript';
 
 import { JsiiDiagnostic } from '../jsii-diagnostic';
 import * as bindings from '../node-bindings';

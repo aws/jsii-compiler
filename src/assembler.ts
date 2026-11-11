@@ -6,7 +6,7 @@ import { describeTypeReference, writeAssembly, SPEC_FILE_NAME, PackageJson } fro
 import chalk from 'chalk';
 import deepEqual from 'fast-deep-equal/es6';
 import * as log4js from 'log4js';
-import * as ts from 'typescript';
+import * as ts from '#typescript';
 
 import * as Case from './case';
 import { symbolIdentifier } from './common/symbol-id';

@@ -261,7 +261,8 @@ if (require.main === module) {
             case 'jsii':
               return [require.resolve('../lib/main.js'), workDir, '--silence-warnings=reserved-word'];
             case 'tsc':
-              return [require.resolve('typescript/bin/tsc'), '--build', workDir];
+              // The TypeScript 7 package doesn't export its bin/ directory
+              return [join(require.resolve('#typescript/package.json'), '..', 'bin', 'tsc'), '--build', workDir];
           }
         })();
 

@@ -1,5 +1,5 @@
 import * as path from 'node:path';
-import * as ts from 'typescript';
+import * as ts from '#typescript';
 import { TypeScriptConfig, TypeScriptConfigValidationRuleSet } from '.';
 import { convertForJson } from './compiler-options';
 import { JsiiError } from '../utils';

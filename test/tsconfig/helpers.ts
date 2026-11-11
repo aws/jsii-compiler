@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import fc from 'fast-check';
-import * as ts from 'typescript';
+import * as ts from '#typescript';
 import { TypeScriptConfig } from '../../src/tsconfig';
 import {
   convertLibForJson,
@@ -363,6 +363,7 @@ function filterModelKeys<T>(arbs: RecordModel<T>, keepOnly?: string[]): RecordMo
 }
 
 function tsLibs(): string[] {
+  // TypeScript 7 builds the lib files into the compiler binary, so read the list from the TypeScript 6 package
   const libdir = path.dirname(require.resolve('typescript'));
   const allFiles = fs.readdirSync(libdir);
   return allFiles.filter((file) => file.startsWith('lib.') && file.endsWith('.d.ts') && file !== 'lib.d.ts');

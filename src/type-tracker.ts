@@ -1,4 +1,4 @@
-import * as ts from 'typescript';
+import * as ts from '#typescript';
 
 /**
  * A class that tracks the TypeScript source AST nodes for certain jsii types

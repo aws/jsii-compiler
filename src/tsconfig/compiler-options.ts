@@ -1,4 +1,4 @@
-import * as ts from 'typescript';
+import * as ts from '#typescript';
 import * as Case from '../case';
 
 export const BASE_COMPILER_OPTIONS: ts.CompilerOptions = {

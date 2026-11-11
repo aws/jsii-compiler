@@ -1,5 +1,5 @@
 import * as log4js from 'log4js';
-import * as ts from 'typescript';
+import * as ts from '#typescript';
 
 import { Code, JsiiDiagnostic } from './jsii-diagnostic';
 import { isSilenced } from './warnings';
