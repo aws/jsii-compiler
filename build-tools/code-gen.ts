@@ -5,7 +5,7 @@ import { join } from 'node:path';
 
 const { version } = JSON.parse(readFileSync(join(__dirname, '..', 'package.json'), 'utf-8'));
 
-const { commit, suffix } = (function () {
+const { commit, suffix } = (() => {
   const githubSha = process.env.GITHUB_SHA;
   if (githubSha) {
     return { commit: githubSha, suffix: '' };
@@ -30,9 +30,9 @@ const { commit, suffix } = (function () {
   if (diffStat.error != null) {
     throw diffStat.error;
   }
-  if (diffStat.status == 0) {
+  if (diffStat.status === 0) {
     return { commit: revParse.stdout.trim(), suffix: '@local' };
-  } else if (diffStat.status == 1) {
+  } else if (diffStat.status === 1) {
     return { commit: revParse.stdout.trim(), suffix: '@dirty' };
   } else {
     const description = diffStat.signal != null ? `signal ${diffStat.signal}` : `exit code ${diffStat.status}`;

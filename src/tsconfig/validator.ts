@@ -269,6 +269,7 @@ function looseEqual(a: any, b: any): boolean {
     }
     // if both values are the same object
     // or if both values are loose equal
+    // biome-ignore lint/suspicious/noDoubleEquals: loose equality is intended
     return Object.is(a, b) || a == b;
   } catch {
     return false;
@@ -333,7 +334,7 @@ export class Match {
         // if both are arrays and of the same length, compare elements
         // if one of them is not, or they are a different length,
         // skip comparing elements as the the equality check later will fail
-        if (Array.isArray(expected) && Array.isArray(actual) && expected.length == actual.length) {
+        if (Array.isArray(expected) && Array.isArray(actual) && expected.length === actual.length) {
           // compare all elements with loose typing
           return expected.every((e) => actual.some((a) => looseEqual(a, e)));
         }
@@ -402,7 +403,10 @@ export class ValidationError extends Error {
 }
 
 export class ObjectValidator {
-  public constructor(public ruleSet: RuleSet, private readonly dataName: string = 'data') {}
+  public constructor(
+    public ruleSet: RuleSet,
+    private readonly dataName: string = 'data',
+  ) {}
 
   /**
    * Validated the provided data against the set of rules.

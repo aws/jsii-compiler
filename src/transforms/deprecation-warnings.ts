@@ -26,7 +26,10 @@ export class DeprecationWarningsInjector {
   private shouldRenderValidatorCache: Record<string, boolean> = {};
   private validatorCacheSeenSet = new Set<string>();
 
-  public constructor(private readonly typeChecker: ts.TypeChecker, private readonly typeTracker: TypeTracker) {}
+  public constructor(
+    private readonly typeChecker: ts.TypeChecker,
+    private readonly typeTracker: TypeTracker,
+  ) {}
 
   public process(assembly: Assembly, projectInfo: ProjectInfo) {
     const projectRoot = projectInfo.projectRoot;
@@ -159,8 +162,8 @@ export class DeprecationWarningsInjector {
           const typesToInspect = spec.isCollectionTypeReference(prop.type)
             ? [prop.type.collection.elementtype]
             : spec.isUnionTypeReference(prop.type)
-            ? prop.type.union.types
-            : [prop.type];
+              ? prop.type.union.types
+              : [prop.type];
 
           for (const typeToInspect of typesToInspect) {
             if (!spec.isNamedTypeReference(typeToInspect)) {

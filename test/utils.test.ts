@@ -1,6 +1,6 @@
 import { DiagnosticCategory } from 'typescript';
 import { JsiiDiagnostic } from '../src/jsii-diagnostic';
-import { parsePerson, parseRepository, formatCompilationSummary } from '../src/utils';
+import { formatCompilationSummary, parsePerson, parseRepository } from '../src/utils';
 import { silencedWarnings } from '../src/warnings';
 
 function makeDiag(category: DiagnosticCategory): import('typescript').Diagnostic {

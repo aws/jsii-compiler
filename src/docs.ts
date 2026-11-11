@@ -55,7 +55,7 @@ enum DocTag {
   JSII = 'jsii',
 }
 
-const RECOGNIZED_TAGS: ReadonlySet<String> = new Set(Object.values(DocTag));
+const RECOGNIZED_TAGS: ReadonlySet<string> = new Set(Object.values(DocTag));
 
 /**
  * Parse all doc comments that apply to a symbol into JSIIDocs format

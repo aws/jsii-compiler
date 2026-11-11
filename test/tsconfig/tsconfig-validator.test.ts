@@ -1,10 +1,10 @@
 import fc from 'fast-check';
-import { fcTsconfig } from './helpers';
 import { TypeScriptConfigValidationRuleSet } from '../../src/tsconfig';
 import rulesForGenerated from '../../src/tsconfig/rulesets/generated.public';
 import rulesForMinimal from '../../src/tsconfig/rulesets/minimal.public';
 import rulesForStrict from '../../src/tsconfig/rulesets/strict.public';
 import { TypeScriptConfigValidator } from '../../src/tsconfig/tsconfig-validator';
+import { fcTsconfig } from './helpers';
 
 describe('rule sets', () => {
   test('minimal', () => {

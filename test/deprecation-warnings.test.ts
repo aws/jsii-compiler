@@ -3,9 +3,8 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as vm from 'node:vm';
-
-import { compile, Lock } from './fixtures';
 import { compileJsiiForTest, HelperCompilationResult } from '../lib';
+import { compile, Lock } from './fixtures';
 
 const DEPRECATED = '/** @deprecated Use something else */';
 
@@ -993,7 +992,7 @@ function createVmContext(
     // single spaces.
     require: (id: string) => {
       if (!id.startsWith('./')) {
-        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        // biome-ignore lint/style/noCommonJs: emulates require() for the compiled module
         return require(id);
       }
       const code = jsFile(compilation, path.basename(id, '.js'))

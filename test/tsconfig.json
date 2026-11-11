@@ -8,8 +8,7 @@
     "module": "node20"
   },
   "include": [
-    "**/*.ts",
-    "build-tools/**/*.ts"
+    "**/*.ts"
   ],
   "exclude": [
     "node_modules",

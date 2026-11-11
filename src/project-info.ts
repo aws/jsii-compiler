@@ -12,7 +12,7 @@ import { JsiiDiagnostic } from './jsii-diagnostic';
 import { TypeScriptConfigValidationRuleSet } from './tsconfig';
 import { JsiiError, parsePerson, parseRepository } from './utils';
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-require-imports
+// biome-ignore lint/style/noCommonJs: CommonJS module loaded with require()
 const spdx: Set<string> = require('spdx-license-list/simple');
 
 const LOG = log4js.getLogger('jsii/package-info');
@@ -212,7 +212,6 @@ export function loadProjectInfo(projectRoot: string): ProjectInfoResult {
           `${devDependencies[name]}`,
         ),
       );
-      continue;
     }
   }
 

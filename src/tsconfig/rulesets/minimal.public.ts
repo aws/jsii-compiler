@@ -1,5 +1,5 @@
-import incompatibleOptions from './incompatible-options';
 import { RuleSet } from '../validator';
+import incompatibleOptions from './incompatible-options';
 
 // The public rule set used for the "minimal" tsconfig validation setting
 // To goal of this rule set is to only prevent obvious misconfigurations,

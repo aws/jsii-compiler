@@ -1,8 +1,8 @@
 import * as spec from '@jsii/spec';
-import { writeAssembly, loadAssemblyFromPath } from '@jsii/spec';
+import { loadAssemblyFromPath, writeAssembly } from '@jsii/spec';
 import * as ts from 'typescript';
 
-import { sourceToAssemblyHelper, TestWorkspace, compileJsiiForTest } from '../lib';
+import { compileJsiiForTest, sourceToAssemblyHelper, TestWorkspace } from '../lib';
 import { compileJsiiForErrors } from './compiler-helpers';
 
 test('submodules loaded from directories can have a README', () => {

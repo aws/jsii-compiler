@@ -430,6 +430,4 @@ export class BuildWorkflow {
   }
 }
 
-const isOdd = function (x: number): boolean {
-  return Boolean(x & 1);
-};
+const isOdd = (x: number): boolean => Boolean(x & 1);

@@ -1,13 +1,13 @@
-import { mkdirSync, existsSync, mkdtempSync, rmSync, writeFileSync, readFileSync, symlinkSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, isAbsolute, join } from 'node:path';
 import { loadAssemblyFromPath, SPEC_FILE_NAME, SPEC_FILE_NAME_COMPRESSED } from '@jsii/spec';
 import * as ts from 'typescript';
-import { compile, Lock } from './fixtures';
 import { Compiler } from '../src/compiler';
 import { ProjectInfo } from '../src/project-info';
 import { TypeScriptConfigValidationRuleSet } from '../src/tsconfig';
 import { TypeScriptConfigValidator } from '../src/tsconfig/tsconfig-validator';
+import { compile, Lock } from './fixtures';
 
 // Make the typescript module's properties configurable so jest.spyOn works.
 // TS 6.0 exports non-configurable properties that cannot be spied on directly.

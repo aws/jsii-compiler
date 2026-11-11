@@ -18,64 +18,60 @@ for (const source of fs.readdirSync(SOURCE_DIR)) {
     continue;
   }
   const filePath = path.join(SOURCE_DIR, source);
-  test(
-    source.replace(/neg\.(.+)\.ts/, '$1'),
-    () => {
-      const { strict, stripDeprecated } = _getPragmas(filePath);
+  test(source.replace(/neg\.(.+)\.ts/, '$1'), () => {
+    const { strict, stripDeprecated } = _getPragmas(filePath);
 
-      // Change in dir, so relative paths are processed correctly.
-      process.chdir(SOURCE_DIR);
+    // Change in dir, so relative paths are processed correctly.
+    process.chdir(SOURCE_DIR);
 
-      const compiler = new Compiler({
-        projectInfo: _makeProjectInfo(source),
-        failOnWarnings: strict,
-        stripDeprecated,
-      });
-      const emitResult = compiler.emit(path.join(SOURCE_DIR, source));
+    const compiler = new Compiler({
+      projectInfo: _makeProjectInfo(source),
+      failOnWarnings: strict,
+      stripDeprecated,
+    });
+    const emitResult = compiler.emit(path.join(SOURCE_DIR, source));
 
-      expect(emitResult.emitSkipped).toBeTruthy();
+    expect(emitResult.emitSkipped).toBeTruthy();
 
-      const diagnostics = emitResult.diagnostics
-        .filter(
-          // Remove suggestion diagnostics, we don't care much for those for now...
-          (diag) => diag.category !== ts.DiagnosticCategory.Suggestion,
-        )
-        .map((diag) => formatDiagnostic(diag, SOURCE_DIR))
-        .sort();
+    const diagnostics = emitResult.diagnostics
+      .filter(
+        // Remove suggestion diagnostics, we don't care much for those for now...
+        (diag) => diag.category !== ts.DiagnosticCategory.Suggestion,
+      )
+      .map((diag) => formatDiagnostic(diag, SOURCE_DIR))
+      .sort();
 
-      expect(diagnostics.length).toBeGreaterThan(0);
-      expect(
-        diagnostics
-          // Remove ANSI color codes from the message so it's nicer in the snapshots file
-          // eslint-disable-next-line no-control-regex
-          .map((diag) => diag.replace(/\x1B\[[0-9;]*[a-z]/gi, ''))
-          .join(''),
-      ).toMatchSnapshot();
+    expect(diagnostics.length).toBeGreaterThan(0);
+    expect(
+      diagnostics
+        // Remove ANSI color codes from the message so it's nicer in the snapshots file
+        // biome-ignore lint/suspicious/noControlCharactersInRegex: matches ANSI escape sequences
+        .map((diag) => diag.replace(/\x1B\[[0-9;]*[a-z]/gi, ''))
+        .join(''),
+    ).toMatchSnapshot();
 
-      // Cleaning up...
-      for (const file of fs.readdirSync(SOURCE_DIR)) {
-        if (file.startsWith('neg.') && (file.endsWith('.d.ts') || file.endsWith('.js'))) {
-          fs.rmSync(path.join(SOURCE_DIR, file), {
-            force: true,
-            recursive: true,
-          });
-        }
-        fs.rmSync(path.join(SOURCE_DIR, '.jsii'), {
-          force: true,
-          recursive: true,
-        });
-        fs.rmSync(path.join(SOURCE_DIR, 'tsconfig.json'), {
-          force: true,
-          recursive: true,
-        });
-        fs.rmSync(path.join(SOURCE_DIR, '.build'), {
+    // Cleaning up...
+    for (const file of fs.readdirSync(SOURCE_DIR)) {
+      if (file.startsWith('neg.') && (file.endsWith('.d.ts') || file.endsWith('.js'))) {
+        fs.rmSync(path.join(SOURCE_DIR, file), {
           force: true,
           recursive: true,
         });
       }
-    },
-    50000,
-  );
+      fs.rmSync(path.join(SOURCE_DIR, '.jsii'), {
+        force: true,
+        recursive: true,
+      });
+      fs.rmSync(path.join(SOURCE_DIR, 'tsconfig.json'), {
+        force: true,
+        recursive: true,
+      });
+      fs.rmSync(path.join(SOURCE_DIR, '.build'), {
+        force: true,
+        recursive: true,
+      });
+    }
+  }, 50000);
 }
 
 const STRICT_MARKER = '///!STRICT!';

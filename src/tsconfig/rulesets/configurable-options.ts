@@ -1,5 +1,5 @@
-import jsiiConfiguredOptions from './jsii-configured-options';
 import { Match, RuleSet } from '../validator';
+import jsiiConfiguredOptions from './jsii-configured-options';
 
 // A rule set defining all compilerOptions that can be configured by users with or without constraints.
 // These are options jsii doesn't have a particular opinion about

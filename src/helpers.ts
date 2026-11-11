@@ -9,8 +9,8 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { PackageJson, loadAssemblyFromPath, writeAssembly } from '@jsii/spec';
 import * as spec from '@jsii/spec';
+import { loadAssemblyFromPath, PackageJson, writeAssembly } from '@jsii/spec';
 import { Diagnostic, DiagnosticCategory } from 'typescript';
 
 import { Compiler, CompilerOptions } from './compiler';
@@ -213,7 +213,7 @@ function inTempDir<T>(block: () => T): T {
 
 function inOtherDir(dir: string) {
   // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-constraint
-  return <T extends unknown>(block: () => T): T => {
+  return <T>(block: () => T): T => {
     const origDir = process.cwd();
     process.chdir(dir);
     try {

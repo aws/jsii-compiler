@@ -1,7 +1,6 @@
 {
   "files": [
     ".backportrc.json",
-    ".eslintrc.json",
     ".gitattributes",
     ".github/pull_request_template.md",
     ".github/workflows/auto-approve.yml",
@@ -20,7 +19,6 @@
     ".github/workflows/upgrade-preview-v7.1.yml",
     ".gitignore",
     ".npmignore",
-    ".prettierrc.json",
     ".projen/deps.json",
     ".projen/files.json",
     ".projen/tasks.json",

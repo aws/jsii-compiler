@@ -74,6 +74,7 @@ describe('Built-in matchers', () => {
               // this uses loose equality, while catching any not comparable values
               comparator: (a, b) => {
                 try {
+                  // biome-ignore lint/suspicious/noDoubleEquals: mimics the matcher's loose equality
                   return a == b || Match.arrEq(a as any)(b);
                 } catch {
                   return false;

@@ -1,6 +1,6 @@
-import jsiiConfiguredOptions from './jsii-configured-options';
 import { BASE_COMPILER_OPTIONS, convertForJson } from '../compiler-options';
 import { Match, RuleSet, RuleType } from '../validator';
+import jsiiConfiguredOptions from './jsii-configured-options';
 
 // The public rule set used for the "generated" tsconfig validation setting.\
 // The goal of this rule set is to ensure a tsconfig is compatible to the one jsii would generate for the user.

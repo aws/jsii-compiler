@@ -5,8 +5,8 @@ import * as ts from 'typescript';
 import * as Case from './case';
 import { Emitter } from './emitter';
 import { JsiiDiagnostic } from './jsii-diagnostic';
-import { getRelatedNode } from './node-bindings';
 import * as bindings from './node-bindings';
+import { getRelatedNode } from './node-bindings';
 import { ProjectInfo } from './project-info';
 import { isAllowedCovariantSubtype } from './type-analysis';
 import { createTypeResolver } from './type-reference';
@@ -18,7 +18,10 @@ export interface ValidationResult extends ts.EmitResult {
 export class Validator implements Emitter {
   public static VALIDATIONS: ValidationFunction[] = _defaultValidations();
 
-  public constructor(public readonly projectInfo: ProjectInfo, public readonly assembly: spec.Assembly) {}
+  public constructor(
+    public readonly projectInfo: ProjectInfo,
+    public readonly assembly: spec.Assembly,
+  ) {}
 
   public emit(): ValidationResult {
     const diagnostics = new Array<ts.Diagnostic>();

@@ -2,7 +2,7 @@ import * as crypto from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as spec from '@jsii/spec';
-import { describeTypeReference, writeAssembly, SPEC_FILE_NAME, PackageJson } from '@jsii/spec';
+import { describeTypeReference, PackageJson, SPEC_FILE_NAME, writeAssembly } from '@jsii/spec';
 import chalk from 'chalk';
 import deepEqual from 'fast-deep-equal/es6';
 import * as log4js from 'log4js';
@@ -31,7 +31,7 @@ import { JsiiError, parentFqn } from './utils';
 import { Validator } from './validator';
 import { SHORT_VERSION, VERSION } from './version';
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-require-imports
+// biome-ignore lint/style/noCommonJs: sort-json ships no type declarations
 const sortJson = require('sort-json');
 
 const LOG = log4js.getLogger('jsii/assembler');
@@ -1312,9 +1312,9 @@ export class Assembler implements Emitter {
         const member = ts.isConstructorDeclaration(memberDecl)
           ? getConstructor(this._typeChecker.getTypeAtLocation(memberDecl.parent))
           : ts.isIndexSignatureDeclaration(memberDecl)
-          ? type.symbol.members?.get(ts.InternalSymbolName.Index) ??
-            type.symbol.exports?.get(ts.InternalSymbolName.Index)
-          : this._typeChecker.getSymbolAtLocation(ts.getNameOfDeclaration(memberDecl) ?? memberDecl);
+            ? (type.symbol.members?.get(ts.InternalSymbolName.Index) ??
+              type.symbol.exports?.get(ts.InternalSymbolName.Index))
+            : this._typeChecker.getSymbolAtLocation(ts.getNameOfDeclaration(memberDecl) ?? memberDecl);
 
         if (member && this._isPrivateOrInternal(member, memberDecl as ts.ClassElement)) {
           continue;
@@ -1366,6 +1366,7 @@ export class Assembler implements Emitter {
     const memberEmitContext = ctx.replaceStability(jsiiType.docs && jsiiType.docs.stability);
 
     // Find the first defined constructor in this class, or it's erased bases
+    // biome-ignore lint/suspicious/noShadowRestrictedNames: local variable, not the property
     const constructor = [type, ...erasedBases].map(getConstructor).find((ctor) => ctor != null);
     const ctorDeclaration = constructor && (constructor.declarations?.[0] as ts.ConstructorDeclaration | undefined);
     if (constructor && ctorDeclaration) {
@@ -1846,12 +1847,22 @@ export class Assembler implements Emitter {
         jsiiType.datatype = true;
       } else if (hints.struct) {
         this._diagnostics.push(
-          jsiiType.methods!.reduce((diag, mthod) => {
-            const node = bindings.getMethodRelatedNode(mthod);
-            return node
-              ? diag.addRelatedInformation(ts.getNameOfDeclaration(node) ?? node, 'A method is declared here')
-              : diag;
-          }, JsiiDiagnostic.JSII_7001_ILLEGAL_HINT.create(declaration && _findHint(declaration, 'struct')!, 'struct', 'interfaces with only readonly properties').addRelatedInformationIf(ts.getNameOfDeclaration(declaration) ?? declaration, 'The annotated declartion is here')),
+          jsiiType.methods!.reduce(
+            (diag, mthod) => {
+              const node = bindings.getMethodRelatedNode(mthod);
+              return node
+                ? diag.addRelatedInformation(ts.getNameOfDeclaration(node) ?? node, 'A method is declared here')
+                : diag;
+            },
+            JsiiDiagnostic.JSII_7001_ILLEGAL_HINT.create(
+              declaration && _findHint(declaration, 'struct')!,
+              'struct',
+              'interfaces with only readonly properties',
+            ).addRelatedInformationIf(
+              ts.getNameOfDeclaration(declaration) ?? declaration,
+              'The annotated declartion is here',
+            ),
+          ),
         );
       }
 
@@ -2343,7 +2354,7 @@ export class Assembler implements Emitter {
         if (
           typeDecl != null &&
           ts.isTypeLiteralNode(typeDecl) &&
-          typeDecl.members.length == 1 &&
+          typeDecl.members.length === 1 &&
           ts.isIndexSignatureDeclaration(typeDecl.members[0]) &&
           typeDecl.members[0].parameters[0].type != null &&
           ts.isTemplateLiteralTypeNode(typeDecl.members[0].parameters[0].type)
@@ -2462,8 +2473,8 @@ export class Assembler implements Emitter {
       const allMethods = Sets.union(...interfaces.map((int) => this.allMethods(int)));
 
       for (let i = 1; i < interfaces.length; i++) {
-        let int0 = interfaces[0];
-        let int1 = interfaces[i];
+        const int0 = interfaces[0];
+        const int1 = interfaces[i];
 
         for (const prop of allProps) {
           const p1 = int0.properties?.find((p) => p.name === prop);
@@ -3256,7 +3267,10 @@ function isProhibitedMemberName(name: string) {
  * Information about the context in which a declaration is emitted.
  */
 class EmitContext {
-  public constructor(public readonly namespace: readonly string[], public readonly stability?: spec.Stability) {}
+  public constructor(
+    public readonly namespace: readonly string[],
+    public readonly stability?: spec.Stability,
+  ) {}
 
   /**
    * Create a new EmitContext by appending a namespace entry at the end.

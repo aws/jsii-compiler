@@ -132,7 +132,7 @@ async function main(): Promise<void> {
 
   // Check if the work-tree is dirty or not...
   const dirty = await git('diff', '--cached');
-  if (dirty != '') {
+  if (dirty !== '') {
     if (ignoreDirty) {
       console.warn('↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧↧');
       console.warn('WARNING: You have un-committed changes, and --ignore-dirty was specified...');
@@ -227,7 +227,7 @@ async function main(): Promise<void> {
   // The latest release in this versionMajorMinor:
   const latestRelease = tags.find(({ tag }) => tag.prerelease.length === 0)?.tag;
   // The latest pre-release in this versionMajorMinor with the requested identifier:
-  let latestPrerelease =
+  const latestPrerelease =
     prerelease != null
       ? tags.find(({ tag }) => {
           // If there's an "actual" release, and the pre-release is older than it, ignore it.
@@ -247,9 +247,9 @@ async function main(): Promise<void> {
 
   const { version } =
     prerelease != null
-      ? (latestPrerelease ?? latestRelease)?.inc('prerelease', prerelease) ??
-        new SemVer(`${versionMajorMinor}.0-${prerelease}.0`)
-      : latestRelease?.inc('patch') ?? new SemVer(`${versionMajorMinor}.0`);
+      ? ((latestPrerelease ?? latestRelease)?.inc('prerelease', prerelease) ??
+        new SemVer(`${versionMajorMinor}.0-${prerelease}.0`))
+      : (latestRelease?.inc('patch') ?? new SemVer(`${versionMajorMinor}.0`));
 
   if (verbose) {
     console.debug(`Determined version number: ${version}`);

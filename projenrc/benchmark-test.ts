@@ -200,7 +200,7 @@ export class BenchmarkTest {
 }
 
 if (require.main === module) {
-  (async function () {
+  (async () => {
     const { compiler, silent, clean } = await yargs
       .scriptName('yarn projen test:benchmark')
       .option('silent', {
@@ -256,7 +256,7 @@ if (require.main === module) {
 
       // Build with the selected compiler
       const time = await new Promise((ok, ko) => {
-        const command = (function () {
+        const command = (() => {
           switch (compiler) {
             case 'jsii':
               return [require.resolve('../lib/main.js'), workDir, '--silence-warnings=reserved-word'];

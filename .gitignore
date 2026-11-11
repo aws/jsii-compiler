@@ -42,14 +42,13 @@ jspm_packages/
 !/jest.config.json
 /coverage/
 !/.github/pull_request_template.md
-!/.prettierrc.json
+!/biome.jsonc
 !/test/
 !/tsconfig.json
 !/test/tsconfig.json
 !/src/
 /lib
 /dist/
-!/.eslintrc.json
 !/projenrc/tsconfig.json
 !/.github/workflows/upgrade-main.yml
 !/.github/workflows/upgrade-maintenance-v5.9.yml

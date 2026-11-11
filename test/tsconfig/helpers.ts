@@ -220,7 +220,7 @@ export function fcTsconfig(
       include: fc.array(fc.string()),
       exclude: fc.array(fc.string()),
       references:
-        options.references ?? true
+        (options.references ?? true)
           ? fc.array(
               fc.record(
                 {

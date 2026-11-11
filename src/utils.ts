@@ -198,7 +198,7 @@ export function parseRepository(value: string): { url: string } {
 }
 
 const ANSI_REGEX =
-  // eslint-disable-next-line no-control-regex
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: matches ANSI escape sequences
   /[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g;
 
 export function stripAnsi(x: string): string {
@@ -221,7 +221,10 @@ export class JsiiError extends Error {
    * @param message The error message to be printed to the user.
    * @param showHelp Print the help before the error.
    */
-  constructor(public override readonly message: string, public readonly showHelp = false) {
+  constructor(
+    public override readonly message: string,
+    public readonly showHelp = false,
+  ) {
     super(message);
     Object.setPrototypeOf(this, JsiiError.prototype);
   }

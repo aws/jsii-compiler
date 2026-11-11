@@ -1,4 +1,4 @@
-import { javascript, JsonPatch, github, typescript, YamlFile } from 'projen';
+import { github, JsonPatch, javascript, typescript, YamlFile } from 'projen';
 import { YarnNodeLinker } from 'projen/lib/javascript/yarnrc';
 import { BuildWorkflow } from './projenrc/build-workflow';
 import { JsiiCalcFixtures } from './projenrc/fixtures';
@@ -12,6 +12,7 @@ import { UpgradeDependencies } from './projenrc/upgrade-dependencies';
 //  .kiro/steering/new-typescript-release.md
 
 const workflowNodeVersion = 'lts/*';
+const biome = javascript.biome_config;
 
 const project = new typescript.TypeScriptProject({
   projenrcTs: true,
@@ -69,17 +70,71 @@ const project = new typescript.TypeScriptProject({
     },
   },
 
-  prettier: true,
-  prettierOptions: {
-    ignoreFile: false,
-    settings: {
-      bracketSpacing: true,
-      printWidth: 120,
-      quoteProps: javascript.QuoteProps.CONSISTENT,
-      semi: true,
-      singleQuote: true,
-      tabWidth: 2,
-      trailingComma: javascript.TrailingComma.ALL,
+  biome: true,
+  biomeOptions: {
+    biomeConfig: {
+      files: {
+        // src/** and test/** are added by projen
+        includes: ['build-tools/**', '.projenrc.ts'],
+      },
+      // Matches the formatting previously applied by prettier
+      formatter: {
+        indentStyle: biome.IndentStyle.SPACE,
+        indentWidth: 2,
+        lineWidth: 120,
+      },
+      javascript: {
+        formatter: {
+          bracketSpacing: true,
+          quoteProperties: biome.QuoteProperties.PRESERVE,
+          quoteStyle: biome.QuoteStyle.SINGLE,
+          semicolons: biome.Semicolons.ALWAYS,
+          trailingCommas: biome.JsTrailingCommas.ALL,
+        },
+      },
+      linter: {
+        rules: {
+          // Rules carried over from the previous ESLint configuration
+          complexity: {
+            noForEach: 'error',
+            useLiteralKeys: 'error',
+          },
+          correctness: {
+            noUndeclaredDependencies: {
+              level: 'error',
+              options: {
+                devDependencies: ['**/test/**', '**/build-tools/**', '**/.projenrc.ts', '**/projenrc/**'],
+              },
+            },
+          },
+          nursery: {
+            noFloatingPromises: 'error',
+            noUselessAwait: 'error',
+          },
+          style: {
+            noCommonJs: 'error',
+            useNodejsImportProtocol: 'error',
+            // Not enforced by ESLint and used throughout the codebase
+            noNonNullAssertion: 'off',
+            useArrayLiterals: 'off',
+            useImportType: 'off',
+          },
+          suspicious: {
+            // Not enforced by ESLint and used throughout the codebase
+            noExplicitAny: 'off',
+            // TypeScript infers these from later assignments, and noImplicitAny is on
+            noImplicitAnyLet: 'off',
+            noTemplateCurlyInString: 'off',
+          },
+        },
+      },
+      overrides: [
+        {
+          // fast-check's fc.assert() is typed as returning `void | Promise<void>`
+          includes: ['test/**'],
+          linter: { rules: { nursery: { noFloatingPromises: 'off' } } },
+        },
+      ],
     },
   },
 
@@ -148,16 +203,22 @@ project.tryFindObjectFile('projenrc/tsconfig.json')?.patch(
   // projenrc/support.ts needs these files
   JsonPatch.add('/include/-', '../src/support.ts'),
   JsonPatch.add('/include/-', '../src/version.ts'),
+  // build-tools/*.ts are not part of any other tsconfig project
+  JsonPatch.add('/include/-', '../build-tools/**/*.ts'),
 );
 
 // Don't show .gitignore'd files in the VSCode explorer
 project.vscode!.settings.addSetting('explorer.excludeGitIgnore', true);
 // Use the TypeScript SDK from the project dependencies
-project.vscode!.settings.addSetting('typescript.tsdk', 'node_modules/typescript/lib');
-// Format-on-save using ESLint
-project.vscode!.extensions.addRecommendations('dbaeumer.vscode-eslint');
-project.vscode!.settings.addSetting('editor.codeActionsOnSave', { 'source.fixAll.eslint': 'explicit' });
-project.vscode!.settings.addSetting('eslint.validate', ['typescript']);
+project.vscode!.settings.addSetting('js/ts.tsdk.path', 'node_modules/typescript/lib');
+// Format-on-save using Biome
+project.vscode!.extensions.addRecommendations('biomejs.biome');
+project.vscode!.settings.addSetting('editor.defaultFormatter', 'biomejs.biome');
+project.vscode!.settings.addSetting('editor.formatOnSave', true);
+project.vscode!.settings.addSetting('editor.codeActionsOnSave', {
+  'source.fixAll.biome': 'explicit',
+  'source.organizeImports.biome': 'explicit',
+});
 
 // Exports map...
 project.package.addField('exports', {
@@ -219,7 +280,6 @@ project.addDevDeps(
   '@types/lockfile',
   '@types/semver',
   'clone',
-  'eslint-plugin-unicorn',
   'fast-check',
   'jsii-1.x@npm:jsii@1',
   'lockfile',
@@ -233,26 +293,11 @@ project.preCompileTask.exec('ts-node build-tools/code-gen.ts', {
 project.gitignore.addPatterns('/src/version.ts', '/jsii-outdir/', '/test/negatives/.*');
 project.gitignore.exclude('.DS_Store', '.lock');
 
-// Exclude negatives from tsconfig and eslint...
+// Exclude negatives from tsconfig and biome...
 project.tsconfigDev.addExclude('test/negatives/**/*.ts');
-project.eslint?.addIgnorePattern('test/negatives/**/*.ts');
-
-// Customize ESLint rules
-project.tsconfigDev.addInclude('build-tools/**/*.ts');
-// build-tools/*.ts are loose files not owned by a tsconfig project; allow the
-// typescript-eslint project service to lint them via the default project
-// (projen 0.101 switched eslint to `parserOptions.projectService`).
-project.eslint?.allowDefaultProjectFiles('build-tools/code-gen.ts');
-project.eslint!.rules!['no-bitwise'] = ['off']; // The TypeScript compiler API leverages some bit-flags.
-project.eslint!.rules!.quotes = ['error', 'single', { avoidEscape: true, allowTemplateLiterals: true }];
-
-// Add Unicorn rules (https://github.com/sindresorhus/eslint-plugin-unicorn#rules)
-project.eslint?.addPlugins('unicorn');
-project.eslint?.addRules({
-  'unicorn/prefer-node-protocol': ['error'],
-  'unicorn/no-array-for-each': ['error'],
-  'unicorn/no-unnecessary-await': ['error'],
-});
+project.biome?.addFilePattern('!test/negatives');
+project.biome?.addFilePattern('!**/*.d.ts');
+project.biome?.addFilePattern('!**/*.md');
 
 // Register jsii-calc stuff in the work stream
 new JsiiCalcFixtures(project);

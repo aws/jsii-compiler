@@ -1,9 +1,9 @@
 import * as ts from 'typescript';
 import { sourceToAssemblyHelper } from '../lib';
 import { JsiiDiagnostic } from '../src';
-import { compileJsiiForErrors } from './compiler-helpers';
 import { Directives } from '../src/directives';
 import { formatDiagnostic, stripAnsi } from '../src/utils';
+import { compileJsiiForErrors } from './compiler-helpers';
 
 test('non-directive tags', () => {
   // Given

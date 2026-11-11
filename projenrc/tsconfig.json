@@ -9,7 +9,8 @@
     "**/*.ts",
     "../.projenrc.ts",
     "../src/support.ts",
-    "../src/version.ts"
+    "../src/version.ts",
+    "../build-tools/**/*.ts"
   ],
   "exclude": [
     "node_modules"

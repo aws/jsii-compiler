@@ -5,7 +5,7 @@ import * as ts from 'typescript';
 import { TypeSystemHints } from './docs';
 import { WARNINGSCODE_FILE_NAME } from './transforms/deprecation-warnings';
 import { Violation } from './tsconfig/validator';
-import { JSII_DIAGNOSTICS_CODE, _formatDiagnostic } from './utils';
+import { _formatDiagnostic, JSII_DIAGNOSTICS_CODE } from './utils';
 
 /**
  * Descriptors for all valid jsii diagnostic codes.

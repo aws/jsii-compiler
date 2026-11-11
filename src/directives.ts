@@ -41,7 +41,7 @@ export class Directives {
         case 'internal':
           this.tsInternal ??= tag;
           break;
-        case 'jsii':
+        case 'jsii': {
           const comments = getComments(tag);
           if (comments.length === 0) {
             onDiagnostic(JsiiDiagnostic.JSII_2000_MISSING_DIRECTIVE_ARGUMENT.create(tag));
@@ -66,6 +66,7 @@ export class Directives {
             }
           }
           break;
+        }
         default: // Ignore
       }
     }

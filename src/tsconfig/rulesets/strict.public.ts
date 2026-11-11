@@ -1,8 +1,8 @@
+import { Match, RuleSet, RuleType } from '../validator';
 import configurableOptions from './configurable-options';
 import deprecatedOptions from './deprecated-options';
 import incompatibleOptions from './incompatible-options';
 import strictFamilyOptions from './strict-family-options';
-import { Match, RuleSet, RuleType } from '../validator';
 
 // The public rule set used for the "strict" tsconfig validation setting.
 // The goal of this rule set is to ensure a tsconfig that is following best practices for jsii.

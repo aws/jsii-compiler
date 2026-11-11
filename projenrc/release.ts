@@ -1,7 +1,7 @@
 import { github, typescript } from 'projen';
 import { workflowSetup } from './common';
 
-export const enum PublishTargetOutput {
+export enum PublishTargetOutput {
   DIST_TAG = 'dist-tag',
   GITHUB_RELEASE = 'github-release',
   IS_LATEST = 'latest',
@@ -16,11 +16,14 @@ export interface ReleaseWorkflowProps {
 }
 
 export class ReleaseWorkflow {
-  public constructor(private readonly project: typescript.TypeScriptProject, props: ReleaseWorkflowProps) {
+  public constructor(
+    private readonly project: typescript.TypeScriptProject,
+    props: ReleaseWorkflowProps,
+  ) {
     new ReleaseTask(project);
     new TagReleaseTask(project);
 
-    let release = project.github!.addWorkflow('release');
+    const release = project.github!.addWorkflow('release');
 
     release.runName = 'Release ${{ github.ref_name }}';
 

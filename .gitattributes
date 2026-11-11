@@ -3,7 +3,6 @@
 * text=auto eol=lf
 *.snap linguist-generated
 /.backportrc.json linguist-generated
-/.eslintrc.json linguist-generated linguist-language=JSON-with-Comments
 /.gitattributes linguist-generated
 /.github/pull_request_template.md linguist-generated
 /.github/workflows/auto-approve.yml linguist-generated
@@ -23,7 +22,6 @@
 /.gitignore linguist-generated
 /.npmignore linguist-generated
 /.pnp.* binary linguist-vendored
-/.prettierrc.json linguist-generated
 /.projen/** linguist-generated
 /.projen/deps.json linguist-generated
 /.projen/files.json linguist-generated
@@ -34,6 +32,7 @@
 /.yarn/plugins/**/* binary
 /.yarn/releases/* binary
 /.yarnrc.yml linguist-generated
+/biome.jsonc linguist-generated linguist-language=JSON-with-Comments
 /jest.config.json linguist-generated
 /LICENSE linguist-generated
 /package.json linguist-generated

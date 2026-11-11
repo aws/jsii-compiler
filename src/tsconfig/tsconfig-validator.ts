@@ -1,8 +1,8 @@
 import * as path from 'node:path';
 import * as ts from 'typescript';
+import { JsiiError } from '../utils';
 import { TypeScriptConfig, TypeScriptConfigValidationRuleSet } from '.';
 import { convertForJson } from './compiler-options';
-import { JsiiError } from '../utils';
 import generated from './rulesets/generated.public';
 import minimal from './rulesets/minimal.public';
 import strict from './rulesets/strict.public';

@@ -45,7 +45,7 @@ export async function emitSupportPolicyInformation() {
 
   const data = await getReleasesDocument();
 
-  if (data.current == RELEASE_LINE) {
+  if (data.current === RELEASE_LINE) {
     // Current release is not close to deprecation
     return;
   }

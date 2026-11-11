@@ -4,6 +4,21 @@
     "PATH": "$(yarn exec node --print process.env.PATH)"
   },
   "tasks": {
+    "biome": {
+      "name": "biome",
+      "description": "Runs Biome against the codebase",
+      "steps": [
+        {
+          "execArgs": [
+            "biome",
+            "check",
+            "--no-errors-on-unmatched",
+            "--write"
+          ],
+          "receiveArgs": true
+        }
+      ]
+    },
     "build": {
       "name": "build",
       "description": "Full release build",
@@ -104,32 +119,6 @@
       "steps": [
         {
           "spawn": "default"
-        }
-      ]
-    },
-    "eslint": {
-      "name": "eslint",
-      "description": "Runs eslint against the codebase",
-      "env": {
-        "ESLINT_USE_FLAT_CONFIG": "false",
-        "NODE_NO_WARNINGS": "1"
-      },
-      "steps": [
-        {
-          "execArgs": [
-            "eslint",
-            "--ext",
-            ".ts,.tsx",
-            "--fix",
-            "--no-error-on-unmatched-pattern",
-            "$@",
-            "src",
-            "test",
-            "build-tools",
-            "projenrc",
-            ".projenrc.ts"
-          ],
-          "receiveArgs": true
         }
       ]
     },
@@ -250,7 +239,7 @@
           "receiveArgs": true
         },
         {
-          "spawn": "eslint"
+          "spawn": "biome"
         }
       ]
     },

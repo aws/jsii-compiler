@@ -353,8 +353,8 @@ export class Compiler implements Emitter {
       this.options.projectReferences !== undefined
         ? this.options.projectReferences
         : this.options.projectInfo.projectReferences !== undefined
-        ? this.options.projectInfo.projectReferences
-        : false;
+          ? this.options.projectInfo.projectReferences
+          : false;
     if (isComposite) {
       references = this.findProjectReferences();
     }
@@ -524,7 +524,7 @@ export class Compiler implements Emitter {
    * Returns undefined if no such tsconfig could be found.
    */
   private findMonorepoPeerTsconfig(depName: string): string | undefined {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports,@typescript-eslint/no-var-requires
+    // biome-ignore lint/style/noCommonJs: lazily loaded
     const { builtinModules } = require('node:module');
     if ((builtinModules ?? []).includes(depName)) {
       // Can happen for modules like 'punycode' which are declared as dependency for polyfill purposes

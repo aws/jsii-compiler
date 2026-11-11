@@ -2,7 +2,6 @@
 /.projen/
 /jest.config.json
 /coverage/
-/.prettierrc.json
 /test/
 /test/tsconfig.json
 /src/
@@ -16,7 +15,6 @@ dist
 /.idea/
 /.projenrc.js
 tsconfig.tsbuildinfo
-/.eslintrc.json
 /projenrc/tsconfig.json
 /.*
 /CODE_OF_CONDUCT.md

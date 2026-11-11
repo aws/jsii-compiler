@@ -6,21 +6,13 @@ import { visitTypeReference } from './type-visitor';
  */
 export function typeReferenceToString(x: spec.TypeReference): string {
   return visitTypeReference<string>(x, {
-    named: function (ref: spec.NamedTypeReference) {
-      return ref.fqn;
-    },
-    primitive: function (ref: spec.PrimitiveTypeReference) {
-      return ref.primitive;
-    },
-    collection: function (ref: spec.CollectionTypeReference) {
-      return `${ref.collection.kind}<${typeReferenceToString(ref.collection.elementtype)}>`;
-    },
-    union: function (ref: spec.UnionTypeReference) {
-      return ref.union.types.map(typeReferenceToString).join(' | ');
-    },
-    intersection: function (ref: spec.IntersectionTypeReference) {
-      return ref.intersection.types.map(typeReferenceToString).join(' & ');
-    },
+    named: (ref: spec.NamedTypeReference) => ref.fqn,
+    primitive: (ref: spec.PrimitiveTypeReference) => ref.primitive,
+    collection: (ref: spec.CollectionTypeReference) =>
+      `${ref.collection.kind}<${typeReferenceToString(ref.collection.elementtype)}>`,
+    union: (ref: spec.UnionTypeReference) => ref.union.types.map(typeReferenceToString).join(' | '),
+    intersection: (ref: spec.IntersectionTypeReference) =>
+      ref.intersection.types.map(typeReferenceToString).join(' & '),
   });
 }
 

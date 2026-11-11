@@ -1,7 +1,7 @@
 import { parse } from 'semver';
 import { PublishTargetOutput } from './release';
 
-(async function () {
+(async () => {
   // Import ESM modules from CJS
   const core = await import('@actions/core');
   const gh = await import('@actions/github');
@@ -24,7 +24,7 @@ import { PublishTargetOutput } from './release';
 
   const latest = prerelease
     ? false
-    : await (async function () {
+    : await (async () => {
         if (!process.env.GITHUB_TOKEN) {
           console.error('Missing GITHUB_TOKEN environment variable. This is required!');
           process.exit(2);

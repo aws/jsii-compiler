@@ -135,7 +135,7 @@ export class DeprecatedRemover {
                 this.typeChecker,
                 bindings.getClassRelatedNode(typeInfo)!,
                 typeInfo.base in assembly.types
-                  ? bindings.getClassRelatedNode(assembly.types[typeInfo.base] as ClassType) ?? typeInfo.base
+                  ? (bindings.getClassRelatedNode(assembly.types[typeInfo.base] as ClassType) ?? typeInfo.base)
                   : typeInfo.base,
               )
             : Transformation.removeBaseClass(this.typeChecker, bindings.getClassRelatedNode(typeInfo)!),
@@ -163,7 +163,7 @@ export class DeprecatedRemover {
                   this.typeChecker,
                   bindings.getClassOrInterfaceRelatedNode(typeInfo)!,
                   candidateFqn in assembly.types
-                    ? bindings.getInterfaceRelatedNode(assembly.types[candidateFqn] as InterfaceType) ?? candidateFqn
+                    ? (bindings.getInterfaceRelatedNode(assembly.types[candidateFqn] as InterfaceType) ?? candidateFqn)
                     : candidateFqn,
                 ),
               );
