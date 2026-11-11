@@ -147,8 +147,7 @@ project.tsconfig?.file?.patch(
 );
 project.tryFindObjectFile('projenrc/tsconfig.json')?.patch(
   // projenrc/support.ts needs these files
-  JsonPatch.add('/include/-', '../src/support.ts'),
-  JsonPatch.add('/include/-', '../src/version.ts'),
+  JsonPatch.add('/include/-', '../src/support-types.ts'),
 );
 
 // Don't show .gitignore'd files in the VSCode explorer
