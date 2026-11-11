@@ -1,4 +1,4 @@
-import * as ts from 'typescript';
+import * as ts from '#typescript';
 import { sourceToAssemblyHelper } from '../lib';
 import { JsiiDiagnostic } from '../src';
 import { compileJsiiForErrors } from './compiler-helpers';

@@ -4,7 +4,7 @@ import * as spec from '@jsii/spec';
 import { findAssemblyFile, loadAssemblyFromFile } from '@jsii/spec';
 import * as log4js from 'log4js';
 import * as semver from 'semver';
-import * as ts from 'typescript';
+import * as ts from '#typescript';
 
 import { findDependencyDirectory } from './common/find-utils';
 import { ASSEMBLY_FEATURES_SUPPORTED } from './helpers';

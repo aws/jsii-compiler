@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import chalk from 'chalk';
 import * as log4js from 'log4js';
-import * as ts from 'typescript';
+import * as ts from '#typescript';
 
 import { Assembler } from './assembler';
 import { findDependencyDirectory } from './common/find-utils';

@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as spec from '@jsii/spec';
 import { Assembly } from '@jsii/spec';
-import * as ts from 'typescript';
+import * as ts from '#typescript';
 
 import { symbolIdentifier } from '../common/symbol-id';
 import { ProjectInfo } from '../project-info';

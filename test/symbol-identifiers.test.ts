@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Assembly } from '@jsii/spec';
-import * as ts from 'typescript';
+import * as ts from '#typescript';
 import { compileJsiiForTest, normalizePath, symbolIdentifier } from '../lib';
 
 test('Symbol map is generated', () => {

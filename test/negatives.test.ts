@@ -1,6 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import * as ts from 'typescript';
+import * as ts from '#typescript';
 
 import { Compiler } from '../src/compiler';
 import { ProjectInfo } from '../src/project-info';

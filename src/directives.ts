@@ -1,4 +1,4 @@
-import * as ts from 'typescript';
+import * as ts from '#typescript';
 import { JsiiDiagnostic } from './jsii-diagnostic';
 
 /**

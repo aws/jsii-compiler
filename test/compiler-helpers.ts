@@ -1,4 +1,4 @@
-import { Diagnostic, DiagnosticCategory } from 'typescript';
+import { Diagnostic, DiagnosticCategory } from '#typescript';
 import { CompilerOptions } from '../src/compiler';
 import { compileJsiiForTest, TestCompilationOptions } from '../src/helpers';
 

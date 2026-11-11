@@ -99,6 +99,7 @@ const project = new typescript.TypeScriptProject({
     },
     junitReporting: false,
   },
+  typecheckTests: true,
 
   buildWorkflow: false, // We have our own build workflow (need matrix test)
   release: false, // We have our own release workflow
@@ -167,18 +168,30 @@ project.package.addField('exports', {
   './common': './lib/common/index.js',
 });
 
-// Remove TypeScript devDependency (it's a direct/normal dependency here)
-project.deps.removeDependency('typescript');
+// Code imports TypeScript as `#typescript`, so switching it back to the plain `typescript` package later only needs
+// a change here.
+project.package.addField('imports', {
+  '#typescript': '@typescript/native',
+  '#typescript/*': '@typescript/native/*',
+});
 
-// Modernize ts-jest configuration
+// The compiler depends on TypeScript 7 under the `@typescript/native` alias. The plain `typescript` dev dependency is
+// TypeScript 6, for typescript-eslint, which needs the TypeScript 6 compiler API.
+project.addDevDeps('typescript@~6.0');
+
+// Run tests with swc instead of ts-jest, which needs the TypeScript 6 compiler API. swc doesn't type-check, so the
+// test suite is type-checked with `tsc` before the tests run (see `typecheckTests`).
+project.deps.removeDependency('ts-jest');
+project.addDevDeps('@swc/core', '@swc/jest');
 if (project.jest?.config) {
   project.jest.config.transform ??= {};
   project.jest.config.transform['^.+\\.[t]sx?$'] = [
-    'ts-jest',
+    '@swc/jest',
     {
-      compiler: 'typescript',
-      tsconfig: 'test/tsconfig.json',
-      diagnostics: { ignoreCodes: ['TS151001'] },
+      jsc: {
+        parser: { syntax: 'typescript' },
+        target: 'es2023',
+      },
     },
   ];
 }
@@ -207,7 +220,7 @@ project.addDeps(
   'semver-intersect',
   'sort-json',
   'spdx-license-list',
-  `typescript@7.1.0-beta`,
+  '@typescript/native@npm:typescript@7.1.0-beta',
   'yargs',
 );
 
@@ -234,8 +247,14 @@ project.gitignore.addPatterns('/src/version.ts', '/jsii-outdir/', '/test/negativ
 project.gitignore.exclude('.DS_Store', '.lock');
 
 // Exclude negatives from tsconfig and eslint...
-project.tsconfigDev.addExclude('test/negatives/**/*.ts');
+// (paths in the test tsconfig are relative to test/)
+project.tsconfigDev.addExclude('negatives/**/*.ts');
+// The root tsconfig is composite, so the test project must list the src files that tests import
+project.tsconfigDev.addInclude('../src/**/*.ts');
 project.eslint?.addIgnorePattern('test/negatives/**/*.ts');
+// Treat `#typescript` as internal. It resolves to the TypeScript 7 package, which is named `typescript` and would be
+// mistaken for the TypeScript 6 dev dependency.
+project.tryFindObjectFile('.eslintrc.json')?.patch(JsonPatch.add('/settings/import~1internal-regex', '^#'));
 
 // Customize ESLint rules
 project.tsconfigDev.addInclude('build-tools/**/*.ts');

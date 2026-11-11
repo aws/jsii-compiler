@@ -1,4 +1,4 @@
-import * as ts from 'typescript';
+import * as ts from '#typescript';
 
 import { Directives } from './directives';
 import { Code, JsiiDiagnostic } from './jsii-diagnostic';

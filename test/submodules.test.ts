@@ -1,6 +1,6 @@
 import * as spec from '@jsii/spec';
 import { writeAssembly, loadAssemblyFromPath } from '@jsii/spec';
-import * as ts from 'typescript';
+import * as ts from '#typescript';
 
 import { sourceToAssemblyHelper, TestWorkspace, compileJsiiForTest } from '../lib';
 import { compileJsiiForErrors } from './compiler-helpers';

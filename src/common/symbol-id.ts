@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { Assembly } from '@jsii/spec';
-import * as ts from 'typescript';
+import * as ts from '#typescript';
 
 import { findUp } from './find-utils';
 

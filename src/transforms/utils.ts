@@ -1,4 +1,4 @@
-import { CustomTransformers } from 'typescript';
+import { CustomTransformers } from '#typescript';
 
 /**
  * Combines a collection of `CustomTransformers` configurations into a single
