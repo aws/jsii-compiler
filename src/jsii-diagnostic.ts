@@ -646,7 +646,7 @@ export class JsiiDiagnostic implements ts.Diagnostic {
   public static readonly JSII_5015_REDECLARED_INTERFACE_MEMBER = Code.error({
     code: 5015,
     formatter: (memberName: string, iface: spec.InterfaceType) =>
-      `Interface "${iface.fqn}" re-declares member "${memberName}". This is not supported as it results in invalid C#.`,
+      `Interface "${iface.fqn}" re-declares member "${memberName}" with a different type or signature. Re-declared members must match the inherited declaration exactly, as C# interfaces cannot narrow inherited members.`,
     name: 'language-compatibility/redeclared-interface-member',
   });
 
