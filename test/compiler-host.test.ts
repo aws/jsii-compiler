@@ -1,9 +1,9 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { DiagnosticCategory } from '../src/diagnostic';
 
-import { toDiagnostic } from '../src/ts7';
-import { resolveTypeScript7PackageDir } from '../src/ts7/ts7-api';
+import { toDiagnostic } from '../src/compiler';
+import { resolveTypeScript7PackageDir } from '../src/compiler-host';
+import { DiagnosticCategory } from '../src/diagnostic';
 import { _formatDiagnostic } from '../src/utils';
 
 // Toolchain-free tests for the TypeScript 7 API loader and diagnostics mapping.
@@ -21,7 +21,7 @@ describe('toDiagnostic', () => {
   const source = 'export const x: number = "a";\n';
   const readSource = (_fileName: string) => source;
 
-  test('maps the TS7 wire shape to a ts.Diagnostic with a real source range', () => {
+  test('maps the TypeScript 7 wire shape to a Diagnostic with a real source range', () => {
     const d = toDiagnostic(
       { fileName: '/p/src/bad.ts', pos: 13, end: 14, code: 2322, category: 1, text: 'Type mismatch.' },
       readSource,

@@ -1,32 +1,20 @@
 /*
  * ===========================================================================
- * Experimental TypeScript 7 (tsgo) backend for jsii.
+ * The jsii Assembler: reads a TypeScript program through the TypeScript 7
+ * programmatic API (the out-of-process `sync` client, see compiler-host.ts)
+ * and produces the `spec.Assembly` (`.jsii`).
  *
- * WHAT THIS IS
- *   A TypeScript-7-native reimplementation of the jsii Assembler that reads the
- *   out-of-process TypeScript 7 API (`typescript/sync`) directly and produces
- *   a `spec.Assembly` (`.jsii`). It is a structured port of a validated
- *   feasibility prototype that reproduced real `.jsii` output on aws-cdk-lib
- *   (~21k types); the current backend reaches 100% type/member parity there.
+ * The assembler reads the raw TypeScript 7 handles directly rather than
+ * wrapping them to look like the in-process `ts.Program` / `ts.TypeChecker`
+ * of TypeScript 6; the structure and method names of the previous
+ * implementation (`_visitClass`, `_visitInterface`, `_visitEnum`,
+ * `_visitMethod`, `_visitProperty`, `_visitDocumentation`) are kept so the
+ * two can be compared. The `.jsii` it produces was compared field by field
+ * with the previous implementation's on aws-cdk-lib and the fixtures.
  *
- * WHY A SEPARATE ASSEMBLER (and not a facade over the classic Assembler)
- *   The classic Assembler (src/assembler.ts, ~3500 lines) is tightly coupled to
- *   the in-process `ts.Program`/`ts.TypeChecker` object model. Faking those
- *   shapes over the TS7 API would break `node-bindings` WeakMap identity and be
- *   only partially correct. The goal of this experimental phase is to PROVE
- *   `.jsii` parity on the TS7 API as fast and reliably as possible; a directed
- *   TS7-native port achieves that with zero regression risk to the default
- *   path. Whether/how to unify the two assemblers is a follow-up decision to be
- *   made from parity data. To keep that comparison tractable, this file mirrors
- *   the classic Assembler's structure and method names (`_visitClass`,
- *   `_visitInterface`, `_visitEnum`, `_visitMethod`, `_visitProperty`,
- *   `_visitDocumentation`).
- *
- * SCOPE
- *   Normal-path parity only. jsii's own DIAGNOSTICS (the JSII_xxxx
- *   error/warning suite manufactured by src/jsii-diagnostic.ts) are not
- *   produced by this backend; TypeScript compilation errors ARE surfaced (see
- *   ts7/index.ts).
+ * Not produced here (yet): the JSII_xxxx validation diagnostics of the
+ * previous validator. TypeScript compilation errors are surfaced and fail the
+ * build (see compiler.ts).
  * ===========================================================================
  */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return */
@@ -35,19 +23,18 @@ import * as path from 'node:path';
 import * as zlib from 'node:zlib';
 import * as spec from '@jsii/spec';
 
-import { findDependencyDirectory } from '../common/find-utils';
-import { symbolIdentifier } from '../common/symbol-id';
-import { normalizeConfigPath } from '../helpers';
-import { JsiiDiagnostic } from '../jsii-diagnostic';
-import * as literate from '../literate';
-import { validateTargets, type ProjectInfo } from '../project-info';
-import { isAllowedCovariantSubtype } from '../type-analysis';
-import { createTypeResolver } from '../type-reference';
-import { SHORT_VERSION, VERSION } from '../version';
-import { Ts7Api } from './ts7-api';
-import { Ts7Project } from './ts7-host';
+import { findDependencyDirectory } from './common/find-utils';
+import { symbolIdentifier } from './common/symbol-id';
+import { TypeScriptApi, TypeScriptProject } from './compiler-host';
+import { normalizeConfigPath } from './helpers';
+import { JsiiDiagnostic } from './jsii-diagnostic';
+import * as literate from './literate';
+import { validateTargets, type ProjectInfo } from './project-info';
+import { isAllowedCovariantSubtype } from './type-analysis';
+import { createTypeResolver } from './type-reference';
+import { SHORT_VERSION, VERSION } from './version';
 
-export interface Ts7AssemblerOptions {
+export interface AssemblerOptions {
   /** package.json contents of the package being assembled. */
   readonly packageJson: any;
   /** The fully-resolved jsii project info (targets, metadata, dependency closure, ...). */
@@ -81,10 +68,6 @@ interface RegisteredType {
   readonly fqn: string;
 }
 
-/**
- * Reproduces the subset of jsii's assembly generation needed for normal-path
- * `.jsii` parity, over the TS7 API.
- */
 /**
  * Load the `.jsiirc.json` targets of a submodule: `<dir>/.jsiirc.json` for a
  * directory module (`index.ts`), `.<name>.jsiirc.json` next to a file module.
@@ -231,11 +214,11 @@ function compareMembers(l: any, r: any): number {
   return key(l).localeCompare(key(r));
 }
 
-export class Ts7Assembler {
-  private readonly ts7: Ts7Api;
+export class Assembler {
+  private readonly ts: TypeScriptApi;
   private readonly checker: any;
   private readonly program: any;
-  private readonly project: Ts7Project;
+  private readonly project: TypeScriptProject;
 
   private readonly root: string;
   private readonly assemblyName: string;
@@ -300,8 +283,8 @@ export class Ts7Assembler {
   // subclasses — so member re-listing must not treat it as an erased base.
   private readonly strippedTypeSymIds = new Set<unknown>();
 
-  public constructor(ts7: Ts7Api, project: Ts7Project, private readonly options: Ts7AssemblerOptions) {
-    this.ts7 = ts7;
+  public constructor(ts: TypeScriptApi, project: TypeScriptProject, private readonly options: AssemblerOptions) {
+    this.ts = ts;
     this.project = project;
     this.program = project.program;
     this.checker = project.checker;
@@ -332,7 +315,7 @@ export class Ts7Assembler {
 
     const entrySf = this.program.getSourceFile(this.entry);
     if (!entrySf) {
-      throw new Error(`ts7: entrypoint not found: ${this.entry}`);
+      throw new Error(`ts: entrypoint not found: ${this.entry}`);
     }
     const moduleSymbol = this.checker.getSymbolAtLocation(entrySf);
     const moduleExports = this.checker.getExportsOfModule(moduleSymbol);
@@ -353,7 +336,7 @@ export class Ts7Assembler {
   // -------------------------------------------------------------------------
 
   private _resolveAlias(sym: any): any {
-    const { SymbolFlags } = this.ts7;
+    const { SymbolFlags } = this.ts;
     let s = sym;
     while ((s.flags & SymbolFlags.Alias) !== 0) {
       s = this.checker.getAliasedSymbol(s);
@@ -481,7 +464,7 @@ export class Ts7Assembler {
 
   /** Whether a `{@link A.b.c}` name resolves at `location` (classic `getSymbolAtLocation` on the link name). */
   private _resolvesLinkName(name: string, location: any): boolean {
-    const { SymbolFlags, SyntaxKind } = this.ts7;
+    const { SymbolFlags, SyntaxKind } = this.ts;
     const parts = name.split('.');
     try {
       let sym: any = this.checker.resolveName(
@@ -695,7 +678,7 @@ export class Ts7Assembler {
   // -------------------------------------------------------------------------
 
   private _registerModuleExports(moduleExports: any[]): void {
-    const { SyntaxKind, SymbolFlags } = this.ts7;
+    const { SyntaxKind, SymbolFlags } = this.ts;
     const candidates = new Map<
       unknown,
       Array<{ name: string; prefix: string; moduleDir: string; sym: any; aliasDeclH?: any }>
@@ -807,7 +790,7 @@ export class Ts7Assembler {
   }
 
   private _registerType(sym: any, name: string, fqn: string): void {
-    const { SyntaxKind } = this.ts7;
+    const { SyntaxKind } = this.ts;
     const isFirst = !this.typeFqnBySymbolId.has(sym.id);
     if (!isFirst) {
       // Already registered under its canonical fqn. A *different* fqn means a
@@ -871,7 +854,7 @@ export class Ts7Assembler {
     // Namespace exports (`export * as ns`) and inline namespaces carry their own
     // declaration; a plain module file (SourceFile) has no meaningful position.
     const declH = exportSym.declarations?.[0] ?? moduleSym.declarations?.[0];
-    const decl = declH && declH.kind !== this.ts7.SyntaxKind.SourceFile ? declH.resolve(this.project) : undefined;
+    const decl = declH && declH.kind !== this.ts.SyntaxKind.SourceFile ? declH.resolve(this.project) : undefined;
     const result: spec.Submodule = {
       ...(decl ? { locationInModule: this._locationOf(decl) } : {}),
       ...(isModuleFile ? { symbolId: this._symbolIdOf(moduleSym) } : { symbolId: this._symbolIdOf(exportSym) }),
@@ -1108,7 +1091,7 @@ export class Ts7Assembler {
   // -------------------------------------------------------------------------
 
   private _visitNode(name: string, sym: any, decl: any, fqn: string): void {
-    const { SyntaxKind } = this.ts7;
+    const { SyntaxKind } = this.ts;
     const jsiiType: any = {
       assembly: this.assemblyName,
       fqn,
@@ -1148,7 +1131,7 @@ export class Ts7Assembler {
   }
 
   private _visitEnum(sym: any, decl: any, fqn: string, jsiiType: any): void {
-    const { SyntaxKind } = this.ts7;
+    const { SyntaxKind } = this.ts;
     jsiiType.kind = 'enum';
     const members: any[] = [];
     // strada derives enum members from the enum TYPE's union constituents
@@ -1306,7 +1289,7 @@ export class Ts7Assembler {
   }
 
   private _visitClass(sym: any, decl: any, jsiiType: any): void {
-    const { SyntaxKind } = this.ts7;
+    const { SyntaxKind } = this.ts;
     jsiiType.kind = 'class';
     const mods = decl.modifiers ?? [];
     if (mods.some((x: any) => x.kind === SyntaxKind.AbstractKeyword)) {
@@ -1441,7 +1424,7 @@ export class Ts7Assembler {
   // -------------------------------------------------------------------------
 
   private _visitMembers(sym: any, decl: any, jsiiType: any, isInterface: boolean, erasedBases: any[] = []): void {
-    const { SyntaxKind, SymbolFlags } = this.ts7;
+    const { SyntaxKind, SymbolFlags } = this.ts;
     const type = this.checker.getTypeAtLocation(decl);
     const props: any[] = [];
     const methods: any[] = [];
@@ -1610,7 +1593,7 @@ export class Ts7Assembler {
     if (own.summary != null || own.remarks != null) {
       return own;
     }
-    const { SyntaxKind } = this.ts7;
+    const { SyntaxKind } = this.ts;
     const seen = new Set<unknown>();
     const inherited = (typeDecl: any): any | undefined => {
       if (typeDecl == null || seen.has(typeDecl)) {
@@ -1655,7 +1638,7 @@ export class Ts7Assembler {
   }
 
   private _visitMethod(msym: any, decl: any, isStatic: boolean): any {
-    const { SyntaxKind } = this.ts7;
+    const { SyntaxKind } = this.ts;
     const sig = this.checker.getSignatureFromDeclaration(decl);
     const m: any = { locationInModule: this._locationOf(decl), name: msym.name };
     if (isStatic) {
@@ -1702,7 +1685,7 @@ export class Ts7Assembler {
   }
 
   private _visitProperty(psym: any, decl: any, isStatic: boolean): any {
-    const { SyntaxKind } = this.ts7;
+    const { SyntaxKind } = this.ts;
     const t = this.checker.getTypeOfSymbolAtLocation(psym, decl);
     const opt: { optional?: boolean } = {};
     const p: any = {
@@ -1790,7 +1773,7 @@ export class Ts7Assembler {
     const inline = this._inlineJsDocText(decl);
     const tagText = this._paramDocComment(prm, decl);
     let comments = inline != null && tagText != null ? `${inline}\n${tagText}` : inline ?? tagText;
-    if (comments === undefined && decl?.parent?.kind === this.ts7.SyntaxKind.Constructor) {
+    if (comments === undefined && decl?.parent?.kind === this.ts.SyntaxKind.Constructor) {
       comments = this._inheritedCtorParamDoc(prm, decl);
     }
     if (comments) {
@@ -1928,7 +1911,7 @@ export class Ts7Assembler {
    * Build a jsii docs object from a declaration's leading JSDoc, mirroring what
    * `_visitDocumentation` produces from the symbol doc APIs (summary/remarks +
    * the doc tags jsii consumes). Used for constructor (initializer) docs, where
-   * no symbol-level doc read exists on the ts7 path.
+   * no symbol-level doc read exists on the ts path.
    */
   private _docsFromDeclJsDoc(decl: any): any | undefined {
     const block = this._leadingJsDocBlock(decl);
@@ -2036,7 +2019,7 @@ export class Ts7Assembler {
    * own docs recurse into the owner's super types.
    */
   private _symbolDocTextFromSource(psym: any, seen: Set<string>): string | undefined {
-    const { SyntaxKind } = this.ts7;
+    const { SyntaxKind } = this.ts;
     const d0 = psym.declarations?.[0];
     const key = `${d0?.path}:${d0?.index}`;
     if (!d0 || seen.has(key)) {
@@ -2063,7 +2046,7 @@ export class Ts7Assembler {
   // -------------------------------------------------------------------------
 
   private _unionNodeOf(typeNode: any): any {
-    const { SyntaxKind } = this.ts7;
+    const { SyntaxKind } = this.ts;
     if (!typeNode) {
       return undefined;
     }
@@ -2108,7 +2091,7 @@ export class Ts7Assembler {
   }
 
   private _typeReference(type: any, optionalOut?: { optional?: boolean }, typeNode?: any): any {
-    const { TypeFlags } = this.ts7;
+    const { TypeFlags } = this.ts;
     if (!type) {
       return { primitive: 'any' };
     }
@@ -2186,7 +2169,7 @@ export class Ts7Assembler {
   }
 
   private _unionTypeReference(type: any, optionalOut?: { optional?: boolean }, typeNode?: any): any {
-    const { TypeFlags } = this.ts7;
+    const { TypeFlags } = this.ts;
     const all = type.getTypes();
     const parts = all.filter((t: any) => !(t.flags & (TypeFlags.Undefined | TypeFlags.Null)));
     if (optionalOut && parts.length !== all.length) {

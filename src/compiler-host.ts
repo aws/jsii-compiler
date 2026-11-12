@@ -1,14 +1,16 @@
 /*
  * ---------------------------------------------------------------------------
- * Loader for the TypeScript 7 programmatic API the compiler runs against: the
- * `sync` entry point of the TypeScript package (an out-of-process client
- * talking to the native `tsc` binary bundled in the package's platform-specific
- * dependency), plus the AST enums.
+ * Access to the TypeScript 7 programmatic API: loading the `sync` client and
+ * the AST enums of the TypeScript package (`#typescript`), and the
+ * `CompilerHost` that owns an API session and the project snapshot opened for
+ * a tsconfig (program + checker). The assembler reads the raw handles the
+ * session returns; nothing here imitates the in-process `ts.Program` /
+ * `ts.TypeChecker` of TypeScript 6.
  *
- * The package is installed under the `@typescript/native` alias and imported as
- * `#typescript` (see the `imports` field of package.json); the plain
- * `typescript` dev dependency is TypeScript 6, for the development tools that
- * still need the in-process compiler API.
+ * The TypeScript package is installed under the `@typescript/native` alias and
+ * imported as `#typescript` (see the `imports` field of package.json); the
+ * plain `typescript` dev dependency is TypeScript 6, for the development tools
+ * that still need the in-process compiler API.
  *
  * The API is loaded with Node's own `require` rather than a static `import`:
  * the package is ESM, and a test runner's module loader (jest) cannot load ES
@@ -27,7 +29,7 @@ export const TS7_MIN_VERSION = '7.1.0-0';
  * surface that the compiler consumes. This favours a working `.jsii` over
  * precise typings (see the file header of `assembler.ts`).
  */
-export interface Ts7Api {
+export interface TypeScriptApi {
   /* eslint-disable @typescript-eslint/naming-convention */
   readonly API: any;
   readonly SymbolFlags: any;
@@ -85,12 +87,12 @@ function nodeCreateRequire(filename: string): NodeJS.Require {
   return real.createRequire(filename);
 }
 
-let cached: Ts7Api | undefined;
+let cached: TypeScriptApi | undefined;
 
 /**
  * Load the TypeScript 7 `sync` API and the AST enums.
  */
-export function loadTs7Api(): Ts7Api {
+export function loadTypeScriptApi(): TypeScriptApi {
   if (cached) {
     return cached;
   }
@@ -121,4 +123,83 @@ export function loadTs7Api(): Ts7Api {
     version,
   };
   return cached;
+}
+
+export interface TypeScriptProject {
+  /** The raw `Program` handle. */
+  readonly program: any;
+  /** The raw `TypeChecker` handle. */
+  readonly checker: any;
+  /** The owning `API` session (exposes `batch()` for multi-request round-trips). */
+  readonly api: any;
+  /** The root files of the configuration (`parsedCommandLine.fileNames`). */
+  readonly rootFileNames: readonly string[];
+}
+
+/**
+ * Owns a single API session and the snapshot opened for a project.
+ */
+export class CompilerHost {
+  /**
+   * Open an API session against `projectRoot`/`tsconfig.json` and return a host
+   * bound to the resulting program + checker.
+   */
+  public static open(projectRoot: string, tsconfigFileName = 'tsconfig.json'): CompilerHost {
+    const ts = loadTypeScriptApi();
+    const tsconfigPath = path.join(projectRoot, tsconfigFileName);
+
+    // collectTiming lets us report RPC request counts / bytes for perf work
+    // (opt-in via JSII_TS7_TIMING; negligible overhead but off by default).
+    const collectTiming = !!process.env.JSII_TS7_TIMING;
+    const api = new ts.API({ cwd: projectRoot, collectTiming });
+    const snapshot = api.createSnapshot({ openProjects: [tsconfigPath] });
+
+    return new CompilerHost(ts, api, snapshot, tsconfigPath);
+  }
+
+  private constructor(
+    public readonly ts: TypeScriptApi,
+    private readonly api: any,
+    private readonly snapshot: any,
+    public readonly tsconfigPath: string,
+  ) {}
+
+  /** RPC timing info (requestCount/bytes) when JSII_TS7_TIMING is enabled. */
+  public getTimingInfo(): any {
+    try {
+      return this.api.getTimingInfo();
+    } catch {
+      return undefined;
+    }
+  }
+
+  /** The program + checker for the opened project. */
+  public getProject(): TypeScriptProject {
+    const project = this.snapshot.getConfiguredProject(this.tsconfigPath);
+    if (!project) {
+      throw new Error(`TypeScript project not found for ${this.tsconfigPath}`);
+    }
+    return {
+      program: project.program,
+      checker: project.checker,
+      api: this.api,
+      rootFileNames: project.parsedCommandLine.fileNames,
+    };
+  }
+
+  /** Dispose the snapshot and close the API session / native process. */
+  public close(): void {
+    // Tolerate a channel that is already gone (e.g. the server process exited):
+    // dispose/close can throw EPIPE, which must not mask the real result.
+    try {
+      this.snapshot.dispose();
+    } catch {
+      /* ignore */
+    }
+    try {
+      this.api.close();
+    } catch {
+      /* ignore */
+    }
+  }
 }

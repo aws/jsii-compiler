@@ -1,17 +1,11 @@
 /*
  * ---------------------------------------------------------------------------
- * Experimental TypeScript 7 (tsgo) backend for jsii.
- *
- * Emit pipeline: produce the JS / d.ts artifacts via the TypeScript 7
- * `program.emit()`, then run the jsii runtime-type-information (rtti)
- * post-emit pass that injects the `Symbol.for("jsii.rtti")` marker onto each
- * exported class. This mirrors what strada does with a `CustomTransformer`
- * (src/transforms/runtime-info.ts), but as a post-emit text pass over the
- * emitted `.js` (the injected rtti was verified byte-identical to strada's at
- * runtime on real packages).
- *
- * Out of scope for this experimental phase: the `.warnings.jsii.js`
- * generation (deprecation-warnings) and the deprecated-remover emit surgery.
+ * Emit: produce the JS / d.ts artifacts via the TypeScript 7 `program.emit()`,
+ * then inject the jsii runtime type information (the `Symbol.for("jsii.rtti")`
+ * marker on each exported class) into the emitted `.js`. The previous
+ * implementation did the injection with a `CustomTransformer` during emit; the
+ * TypeScript 7 API has no transformer hook, so this is a post-emit text pass
+ * (the injected code is the same).
  * ---------------------------------------------------------------------------
  */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return */
@@ -20,11 +14,11 @@ import * as path from 'node:path';
 import * as spec from '@jsii/spec';
 import * as log4js from 'log4js';
 
-import { Ts7Project } from './ts7-host';
+import { TypeScriptProject } from './compiler-host';
 
-const LOG = log4js.getLogger('jsii/ts7');
+const LOG = log4js.getLogger('jsii/emitter');
 
-export interface Ts7EmitPipelineOptions {
+export interface EmitProjectOptions {
   readonly projectRoot: string;
   readonly assembly: spec.Assembly;
   /** tsc `outDir` from the jsii config (for mapping source -> emitted js path). */
@@ -33,7 +27,7 @@ export interface Ts7EmitPipelineOptions {
   readonly rootDir?: string;
 }
 
-export interface Ts7EmitPipelineResult {
+export interface EmitProjectResult {
   readonly emittedFiles: string[];
 }
 
@@ -52,7 +46,7 @@ const RTTI_SYMBOL = 'jsii.rtti';
  * destabilize the out-of-process session (EPIPE / process exit). The
  * whole-project emit collapses this to one request.
  */
-export function runTs7EmitPipeline(project: Ts7Project, options: Ts7EmitPipelineOptions): Ts7EmitPipelineResult {
+export function emitProject(project: TypeScriptProject, options: EmitProjectOptions): EmitProjectResult {
   const { program } = project;
   const root = options.projectRoot;
   const assembly = options.assembly;
@@ -121,7 +115,7 @@ export function runTs7EmitPipeline(project: Ts7Project, options: Ts7EmitPipeline
         classesHere = classesByJsRel.get([...candidates][0]);
       } else if (candidates && candidates.size > 1) {
         LOG.warn(
-          `ts7 backend: skipping rtti injection for ${jsRel} (ambiguous basename across ${candidates.size} files)`,
+          `ts backend: skipping rtti injection for ${jsRel} (ambiguous basename across ${candidates.size} files)`,
         );
       }
     }
@@ -177,7 +171,7 @@ export function injectRtti(source: string, snippet: string): string {
  * Exported for unit tests.
  */
 export function rttiSnippet(classes: Array<{ name: string; fqn: string }>, version: string): string {
-  let snippet = '\n// jsii runtime type information (injected by the ts7 backend, post-emit)\n';
+  let snippet = '\n// jsii runtime type information (injected after emit)\n';
   for (const c of classes) {
     snippet +=
       `try { Object.defineProperty(exports.${c.name}, Symbol.for("${RTTI_SYMBOL}"), ` +
