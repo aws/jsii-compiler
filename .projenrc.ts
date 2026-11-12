@@ -345,11 +345,11 @@ new github.PullRequestBackport(project, {
 new UpdateIntegPackage(project);
 
 for (const task of project.tasks.all) {
-  task.steps.forEach((step, index) => {
+  for (const [index, step] of task.steps.entries()) {
     if (step.execArgs?.[0] === 'tsc') {
       task.updateStep(index, { ...step, execArgs: [TSC, ...step.execArgs.slice(1)] });
     }
-  });
+  }
 }
 
 project.synth();
