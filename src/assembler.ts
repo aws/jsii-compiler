@@ -344,8 +344,45 @@ export class Assembler {
     return s;
   }
 
+  /**
+   * Whether a symbol is hidden from the jsii type model: marked `@internal`,
+   * named with a leading underscore, or ignored with `@jsii ignore` on every one
+   * of its declarations (the classic `_isPrivateOrInternal`).
+   */
   private _isInternal(sym: any): boolean {
-    return this._jsDocTags(sym).some((t: any) => t.name === 'internal') || sym.name.startsWith('_');
+    return (
+      this._jsDocTags(sym).some((t: any) => t.name === 'internal') || sym.name.startsWith('_') || this._isIgnored(sym)
+    );
+  }
+
+  /**
+   * Whether every declaration of the symbol carries the `@jsii ignore` directive.
+   * All declarations must be ignored so that a partially-ignored merged
+   * declaration stays a visible part of the public API, as in the classic
+   * compiler. The tags of a symbol are aggregated over its declarations, so a
+   * merged declaration is checked per declaration on the raw JSDoc text.
+   */
+  private _isIgnored(sym: any): boolean {
+    const decls: any[] = sym.declarations ?? [];
+    if (decls.length === 0 || !this._jsDocTags(sym).some((t: any) => isIgnoreDirective(t))) {
+      return false;
+    }
+    if (decls.length === 1) {
+      return true;
+    }
+    return decls.every((handle) => {
+      const block = this._leadingJsDocBlock(handle.resolve(this.project));
+      return block != null && this._jsDocLines(block).some((line) => /^@jsii\s+ignore(\s|$)/.test(line));
+    });
+
+    /** `@jsii ignore` (a `@jsii` tag whose directive text, on any of its lines, is `ignore`). */
+    function isIgnoreDirective(tag: any): boolean {
+      if (tag.name !== 'jsii') {
+        return false;
+      }
+      const text: string = typeof tag.text === 'string' ? tag.text : (tag.text ?? []).map((p: any) => p.text).join('');
+      return text.split(/[\n,]/).some((part) => part.trim().split(/\s+/)[0] === 'ignore');
+    }
   }
 
   private _isDeprecated(sym: any): boolean {
@@ -713,6 +750,9 @@ export class Assembler {
           (sym.flags & SymbolFlags.ValueModule) !== 0 ||
           (sym.flags & SymbolFlags.NamespaceModule) !== 0
         ) {
+          if (kind !== SyntaxKind.SourceFile && this._isIgnored(sym)) {
+            continue; // `@jsii ignore` on a namespace hides all of its nested declarations
+          }
           const subFqn = `${prefix}.${e.name}`;
           const key = `${sym.id}:${subFqn}`;
           if (visitedModules.has(key)) {
