@@ -161,22 +161,9 @@ jobs:
         with:
           node-version: lts/*
           registry-url: https://registry.npmjs.org/
-      - name: Federate to AWS
-        id: federate_to_aws
-        uses: aws-actions/configure-aws-credentials@v6
-        with:
-          aws-region: us-east-1
-          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
-          role-session-name: GHA-aws-jsii-compiler@${{ github.ref_name }}
-      - name: Set NODE_AUTH_TOKEN
-        id: set_node_auth_token
-        run: |-
-          secret=$(aws secretsmanager get-secret-value --secret-id=${{ secrets.NPM_TOKEN_ARN }} --query=SecretString --output=text)
-          token=$(node -p "(${secret}).token")
-          unset secret
-          echo "::add-mask::${token}"
-          echo "NODE_AUTH_TOKEN=${token}" >> $GITHUB_ENV
-          unset token
+      - name: Update npm
+        id: update_npm
+        run: npm install -g npm@^11.21.0
       - name: Publish
         id: publish
         run: npm publish ${{ github.workspace }}/js/jsii-*.tgz --access=public --provenance --tag=${{ needs.build.outputs.dist-tag }}
