@@ -40,7 +40,7 @@ export class Ts7Host {
    * bound to the resulting program + checker.
    */
   public static open(projectRoot: string, tsconfigFileName = 'tsconfig.json'): Ts7Host {
-    const ts7 = loadTs7Api(projectRoot);
+    const ts7 = loadTs7Api();
     const tsconfigPath = path.join(projectRoot, tsconfigFileName);
 
     // collectTiming lets us report RPC request counts / bytes for perf work

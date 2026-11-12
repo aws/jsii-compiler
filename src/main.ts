@@ -5,8 +5,8 @@ import * as path from 'node:path';
 import * as util from 'node:util';
 import chalk from 'chalk';
 import * as log4js from 'log4js';
-import { version as tsVersion } from 'typescript/package.json';
 import * as yargs from 'yargs';
+import { version as tsVersion } from '#typescript/package.json';
 
 import { Compiler } from './compiler';
 import { configureCategories, JsiiDiagnostic } from './jsii-diagnostic';
@@ -167,7 +167,6 @@ enum OPTION_GROUP {
             validateTypeScriptConfig,
             compressAssembly: argv['compress-assembly'],
           });
-
 
           const startTime = Date.now();
           const emitResult = compiler.emit();

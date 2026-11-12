@@ -171,9 +171,7 @@ export class Code<T extends DiagnosticMessageFormatter = DiagnosticMessageFormat
    */
   public set category(newValue: DiagnosticCategory) {
     if (this.isError && newValue !== DiagnosticCategory.Error) {
-      throw new Error(
-        `Illegal attempt to override category of error ${this.code} to ${DiagnosticCategory[newValue]}`,
-      );
+      throw new Error(`Illegal attempt to override category of error ${this.code} to ${DiagnosticCategory[newValue]}`);
     }
     this.#category = newValue;
   }
@@ -409,7 +407,9 @@ export class JsiiDiagnostic implements Diagnostic {
   public static readonly JSII_3001_EXPOSED_INTERNAL_TYPE = Code.error({
     code: 3001,
     formatter: (symbolName: string, isThisType: boolean, typeUse: string) =>
-      `Type ${isThisType ? `"this" (aka: "${symbolName}")` : `"${symbolName}"`} cannot be used as the ${typeUse} because it is private or @internal`,
+      `Type ${
+        isThisType ? `"this" (aka: "${symbolName}")` : `"${symbolName}"`
+      } cannot be used as the ${typeUse} because it is private or @internal`,
     name: 'type-model/use-of-internal-type',
   });
 
@@ -928,7 +928,10 @@ export class JsiiDiagnostic implements Diagnostic {
    *
    * @returns `this`
    */
-  public maybeAddRelatedInformation(node: DiagnosticLocation | undefined, message: JsiiDiagnostic['messageText']): this {
+  public maybeAddRelatedInformation(
+    node: DiagnosticLocation | undefined,
+    message: JsiiDiagnostic['messageText'],
+  ): this {
     if (node == null) {
       return this;
     }

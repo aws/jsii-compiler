@@ -48,7 +48,15 @@ export function enumAsKebab(enumData: Record<string, string | number>): string[]
 }
 
 /** Options whose string values TypeScript matches case-insensitively. */
-const CASE_INSENSITIVE_OPTIONS = ['target', 'module', 'moduleResolution', 'moduleDetection', 'jsx', 'newLine', 'importsNotUsedAsValues'];
+const CASE_INSENSITIVE_OPTIONS = [
+  'target',
+  'module',
+  'moduleResolution',
+  'moduleDetection',
+  'jsx',
+  'newLine',
+  'importsNotUsedAsValues',
+];
 
 /** Spellings TypeScript accepts as aliases of a canonical value. */
 const VALUE_ALIASES: { [option: string]: { [alias: string]: string } } = {
@@ -77,7 +85,12 @@ export function convertForJson(opt: CompilerOptionsJson): CompilerOptionsJson {
   }
   if (Array.isArray(out.lib)) {
     out.lib = out.lib.map((lib) =>
-      typeof lib === 'string' ? lib.toLowerCase().replace(/^lib\./, '').replace(/\.d\.ts$/, '') : lib,
+      typeof lib === 'string'
+        ? lib
+            .toLowerCase()
+            .replace(/^lib\./, '')
+            .replace(/\.d\.ts$/, '')
+        : lib,
     );
   }
   return out;

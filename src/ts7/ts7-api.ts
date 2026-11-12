@@ -1,35 +1,31 @@
 /*
  * ---------------------------------------------------------------------------
- * Experimental TypeScript 7 (tsgo) backend for jsii.
+ * Loader for the TypeScript 7 programmatic API the compiler runs against: the
+ * `sync` entry point of the TypeScript package (an out-of-process client
+ * talking to the native `tsc` binary bundled in the package's platform-specific
+ * dependency), plus the AST enums.
  *
- * This module locates and loads the TypeScript 7 programmatic API that the
- * backend runs against: the `typescript/sync` entry point shipped with the
- * `typescript` package since 7.1 (an out-of-process client talking to the
- * native `tsc` binary bundled in the package's platform-specific dependency).
+ * The package is installed under the `@typescript/native` alias and imported as
+ * `#typescript` (see the `imports` field of package.json); the plain
+ * `typescript` dev dependency is TypeScript 6, for the development tools that
+ * still need the in-process compiler API.
  *
- * The API is loaded dynamically (not a static `import`) because it lives in a
- * SECOND copy of the `typescript` package: the compiler itself depends on the
- * current TypeScript release line, so the 7.x package is installed under an
- * alias. 
+ * The API is loaded with Node's own `require` rather than a static `import`:
+ * the package is ESM, and a test runner's module loader (jest) cannot load ES
+ * modules through `require()`, while Node >= 22.12 can.
  * ---------------------------------------------------------------------------
  */
 import * as nodeModule from 'node:module';
 import * as path from 'node:path';
 import * as semver from 'semver';
 
-/** Environment variable pointing at the directory of a `typescript` (>= 7.1) package install. */
-export const TS7_TYPESCRIPT_ENV = 'JSII_TS7_TYPESCRIPT';
-
-/** Minimum TypeScript version that ships the `typescript/sync` programmatic API. */
+/** Minimum TypeScript version that ships the `sync` programmatic API. */
 export const TS7_MIN_VERSION = '7.1.0-0';
-
-/** One-line install hint, used in error messages. */
-export const TS7_INSTALL_HINT = 'npm i -D typescript@beta';
 
 /**
  * A very small, intentionally loose view of the pieces of the TypeScript 7 API
- * surface that the ts7 backend consumes. This experimental phase favours a
- * working `.jsii` over precise typings (see the file header of `assembler.ts`).
+ * surface that the compiler consumes. This favours a working `.jsii` over
+ * precise typings (see the file header of `assembler.ts`).
  */
 export interface Ts7Api {
   /* eslint-disable @typescript-eslint/naming-convention */
@@ -40,62 +36,26 @@ export interface Ts7Api {
   /* eslint-enable @typescript-eslint/naming-convention */
   /** Combines request generators so `api.batch(all(...))` issues them in one round-trip. */
   readonly all: (...generators: any[]) => any;
-  /** Directory of the `typescript` package the API was loaded from. */
+  /** Directory of the TypeScript package the API was loaded from. */
   readonly packageDir: string;
   /** Version of that package. */
   readonly version: string;
 }
 
 /**
- * Resolve the directory of a `typescript` package that is new enough to expose
- * the `typescript/sync` API.
- *
- * Resolution order:
- *  1. `JSII_TS7_TYPESCRIPT` (explicit package directory)
- *  2. the `typescript` package, resolved from the project being compiled and
- *     then from this compiler's own install, when it is >= 7.1
- *
- * Exported for unit tests.
+ * The directory of the TypeScript 7 package (`#typescript`), after checking
+ * that it is new enough to expose the `sync` API. Exported for unit tests.
  */
-export function resolveTypeScript7PackageDir(projectRoot: string, env: NodeJS.ProcessEnv = process.env): string {
-  const explicit = env[TS7_TYPESCRIPT_ENV];
-  if (explicit) {
-    const dir = path.resolve(explicit);
-    const version = readPackageVersion(dir);
-    if (!isNewEnough(version)) {
-      throw new Error(
-        `${TS7_TYPESCRIPT_ENV} points at ${dir}, which holds typescript ${version ?? '<unknown>'}; ` +
-          `the ts7 backend needs typescript >= 7.1 (${TS7_MIN_VERSION}).`,
-      );
-    }
-    return dir;
+export function resolveTypeScript7PackageDir(): string {
+  const dir = path.dirname(nodeCreateRequire(__filename).resolve('#typescript/package.json'));
+  const version = readPackageVersion(dir);
+  if (!isNewEnough(version)) {
+    throw new Error(
+      `The TypeScript package at ${dir} is typescript ${version ?? '<unknown>'}; ` +
+        `jsii needs typescript >= 7.1 (${TS7_MIN_VERSION}) for its programmatic API.`,
+    );
   }
-
-  const bases = [path.join(projectRoot, 'package.json'), __filename];
-  const candidates = ['typescript'];
-  const seen: string[] = [];
-  for (const candidate of candidates) {
-    for (const base of bases) {
-      let dir: string;
-      try {
-        dir = path.dirname(nodeModule.createRequire(base).resolve(`${candidate}/package.json`));
-      } catch {
-        continue;
-      }
-      const version = readPackageVersion(dir);
-      if (isNewEnough(version)) {
-        return dir;
-      }
-      seen.push(`${candidate}@${version ?? '<unknown>'} (${dir})`);
-    }
-  }
-
-  throw new Error(
-    'jsii needs the TypeScript 7.1+ programmatic API (`typescript/sync`), which was not found. ' +
-      `Install it with \`${TS7_INSTALL_HINT}\`, ` +
-      `or set ${TS7_TYPESCRIPT_ENV} to the directory of a typescript >= 7.1 package.` +
-      (seen.length ? ` Found but too old: ${seen.join(', ')}.` : ''),
-  );
+  return dir;
 }
 
 function readPackageVersion(dir: string): string | undefined {
@@ -128,28 +88,21 @@ function nodeCreateRequire(filename: string): NodeJS.Require {
 let cached: Ts7Api | undefined;
 
 /**
- * Load the TypeScript 7 `sync` API and the AST enums. Throws a helpful error
- * (with the install one-liner) when no suitable package exists.
+ * Load the TypeScript 7 `sync` API and the AST enums.
  */
-export function loadTs7Api(projectRoot: string): Ts7Api {
+export function loadTs7Api(): Ts7Api {
   if (cached) {
     return cached;
   }
-  const packageDir = resolveTypeScript7PackageDir(projectRoot);
+  const packageDir = resolveTypeScript7PackageDir();
   const version = readPackageVersion(packageDir) ?? '<unknown>';
 
-  // The package is ESM; Node >= 22.12 can `require()` ES modules synchronously,
-  // which keeps the compiler's public API (e.g. `compileJsiiForTest`) synchronous.
-  // Entry points are loaded by path so the package's own `#enums/*` imports resolve
-  // regardless of how (or under which name) the package was installed.
-  const apiPath = path.join(packageDir, 'dist', 'api', 'sync', 'api.js');
-  const astPath = path.join(packageDir, 'dist', 'ast', 'index.js');
   const nativeRequire = nodeCreateRequire(__filename);
   let apiModule: any;
   let astModule: any;
   try {
-    apiModule = nativeRequire(apiPath);
-    astModule = nativeRequire(astPath);
+    apiModule = nativeRequire('#typescript/sync');
+    astModule = nativeRequire('#typescript/ast');
   } catch (err) {
     throw new Error(
       `Failed to load the TypeScript 7 programmatic API from "${packageDir}" (typescript ${version}): ${

@@ -19,5 +19,4 @@ export interface ReleasesDocument {
   readonly endOfSupport?: readonly ReleaseLine[];
 }
 
-
 export type ReleaseLine = `${number}.${number}`;

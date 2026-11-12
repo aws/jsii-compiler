@@ -11,9 +11,9 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { PackageJson, loadAssemblyFromPath, writeAssembly } from '@jsii/spec';
 import * as spec from '@jsii/spec';
+import { Compiler, CompilerOptions } from './compiler';
 import { Diagnostic, DiagnosticCategory } from './diagnostic';
 
-import { Compiler, CompilerOptions } from './compiler';
 import { loadProjectInfo, ProjectInfo } from './project-info';
 import { formatDiagnostic, JsiiError } from './utils';
 

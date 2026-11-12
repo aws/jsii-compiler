@@ -116,7 +116,21 @@ export function fcTsconfig(
     locale: fc.string(),
     mapRoot: fc.string(),
     maxNodeModuleJsDepth: fc.nat(),
-    module: fc.constantFrom('commonjs', 'amd', 'umd', 'system', 'es2015', 'es2020', 'es2022', 'esnext', 'node16', 'node18', 'node20', 'nodenext', 'preserve'),
+    module: fc.constantFrom(
+      'commonjs',
+      'amd',
+      'umd',
+      'system',
+      'es2015',
+      'es2020',
+      'es2022',
+      'esnext',
+      'node16',
+      'node18',
+      'node20',
+      'nodenext',
+      'preserve',
+    ),
     moduleResolution: fc.constantFrom('classic', 'node10', 'node16', 'nodenext', 'bundler'), // remove deprecated value
     moduleSuffixes: fc.array(fc.string()),
     moduleDetection: fc.constantFrom('legacy', 'auto', 'force'),
@@ -175,7 +189,20 @@ export function fcTsconfig(
     stripInternal: fc.boolean(),
     suppressExcessPropertyErrors: fc.boolean(),
     suppressImplicitAnyIndexErrors: fc.boolean(),
-    target: fc.constantFrom('es5', 'es2015', 'es2016', 'es2017', 'es2018', 'es2019', 'es2020', 'es2021', 'es2022', 'es2023', 'es2024', 'esnext'),
+    target: fc.constantFrom(
+      'es5',
+      'es2015',
+      'es2016',
+      'es2017',
+      'es2018',
+      'es2019',
+      'es2020',
+      'es2021',
+      'es2022',
+      'es2023',
+      'es2024',
+      'esnext',
+    ),
     traceResolution: fc.boolean(),
     useUnknownInCatchVariables: fc.boolean(),
     resolveJsonModule: fc.boolean(),
@@ -200,8 +227,20 @@ export function fcTsconfig(
   const requiredKeys = findRequiredKeysFromRuleSet(options.compilerRuleSet) ?? [];
 
   const watchOptionsModel: RecordModel<{ [option: string]: unknown }> = {
-    watchFile: fc.constantFrom('fixedpollinginterval', 'prioritypollinginterval', 'dynamicprioritypolling', 'fixedchunksizepolling', 'usefsevents', 'usefseventsonparentdirectory'),
-    watchDirectory: fc.constantFrom('usefsevents', 'fixedpollinginterval', 'dynamicprioritypolling', 'fixedchunksizepolling'),
+    watchFile: fc.constantFrom(
+      'fixedpollinginterval',
+      'prioritypollinginterval',
+      'dynamicprioritypolling',
+      'fixedchunksizepolling',
+      'usefsevents',
+      'usefseventsonparentdirectory',
+    ),
+    watchDirectory: fc.constantFrom(
+      'usefsevents',
+      'fixedpollinginterval',
+      'dynamicprioritypolling',
+      'fixedchunksizepolling',
+    ),
     fallbackPolling: fc.constantFrom('fixedinterval', 'priorityinterval', 'dynamicpriority', 'fixedchunksize'),
     synchronousWatchDirectory: fc.boolean(),
     excludeDirectories: fc.array(fc.string()),
@@ -359,12 +398,21 @@ function filterModelKeys<T>(arbs: RecordModel<T>, keepOnly?: string[]): RecordMo
 
 function tsLibs(): string[] {
   // TypeScript 7 ships the `lib.<name>.d.ts` files next to the native compiler, in the
-  // platform-specific package; their names are the valid `lib` entries.
-  const tsDir = path.dirname(require.resolve('typescript/package.json'));
-  const platformDir = path.join(tsDir, 'node_modules', '@typescript', `typescript-${process.platform}-${process.arch}`);
-  const libDir = fs.existsSync(platformDir)
-    ? path.join(platformDir, 'lib')
-    : path.join(tsDir, '..', '@typescript', `typescript-${process.platform}-${process.arch}`, 'lib');
+  // platform-specific package (a dependency of the TypeScript package, so it is found in
+  // the TypeScript package's own node_modules or in the nearest enclosing one); their
+  // names are the valid `lib` entries.
+  const tsDir = path.dirname(require.resolve('#typescript/package.json'));
+  const platformPackage = path.join('@typescript', `typescript-${process.platform}-${process.arch}`, 'lib');
+  const candidates = [path.join(tsDir, 'node_modules', platformPackage)];
+  for (let dir = path.dirname(tsDir); dir !== path.dirname(dir); dir = path.dirname(dir)) {
+    if (path.basename(dir) === 'node_modules') {
+      candidates.push(path.join(dir, platformPackage));
+    }
+  }
+  const libDir = candidates.find((candidate) => fs.existsSync(candidate));
+  if (libDir == null) {
+    throw new Error(`Unable to locate the TypeScript lib directory (looked in ${candidates.join(', ')})`);
+  }
   return fs
     .readdirSync(libDir)
     .filter((f) => /^lib\..+\.d\.ts$/.test(f) && f !== 'lib.d.ts')

@@ -4,9 +4,9 @@ import * as spec from '@jsii/spec';
 import { findAssemblyFile, loadAssemblyFromFile } from '@jsii/spec';
 import * as log4js from 'log4js';
 import * as semver from 'semver';
+import { findDependencyDirectory } from './common/find-utils';
 import { Diagnostic, DiagnosticCategory } from './diagnostic';
 
-import { findDependencyDirectory } from './common/find-utils';
 import { ASSEMBLY_FEATURES_SUPPORTED } from './helpers';
 import { JsiiDiagnostic } from './jsii-diagnostic';
 import { TypeScriptConfigValidationRuleSet } from './tsconfig';

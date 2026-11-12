@@ -206,7 +206,10 @@ describe('symbolId resolution for consumed packages (https://github.com/aws/jsii
   });
 
   test('aliases are resolved and members use the # separator', () => {
-    const target: FakeSymbol = { flags: 8192 /* Method */, qualifiedName: `"${join(packageDir, 'lib', 'index')}".Foo.bar` };
+    const target: FakeSymbol = {
+      flags: 8192 /* Method */,
+      qualifiedName: `"${join(packageDir, 'lib', 'index')}".Foo.bar`,
+    };
     const alias: FakeSymbol = { flags: 2097152 /* Alias */, qualifiedName: 'unused', target };
     const symbolId = computeSymbolId({ name: 'testpkg', jsii: {} }, { metadata: {} } as unknown as Assembly, alias);
 

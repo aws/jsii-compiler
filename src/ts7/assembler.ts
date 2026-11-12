@@ -181,7 +181,10 @@ function skipSeparatorFromLinkText(text: string): string {
  * dependencies before own types), then collections in their declared order, and
  * nested unions ranked by their first constituent.
  */
-function sortUnionLikeClassic(refs: readonly spec.TypeReference[], rankOfFqn: (fqn: string) => number): spec.TypeReference[] {
+function sortUnionLikeClassic(
+  refs: readonly spec.TypeReference[],
+  rankOfFqn: (fqn: string) => number,
+): spec.TypeReference[] {
   const rank = (ref: spec.TypeReference): number => {
     if (spec.isPrimitiveTypeReference(ref)) {
       const order = [
@@ -269,6 +272,10 @@ export class Ts7Assembler {
 
   /** FQNs of classes without their own constructor, whose initializer is the base type's. */
   private readonly inheritsInitializer = new Set<string>();
+
+  /** Declaration rank of each own type FQN, for ordering union constituents (see _declarationRank). */
+  private readonly declarationRanks = new Map<string, number>();
+  private programFileIndex?: Map<string, number>;
 
   // external dependency assemblies (peerDependencies): name -> Set(type names)
   private readonly externalDeps = new Map<string, Set<string>>();
@@ -452,8 +459,7 @@ export class Ts7Assembler {
         if (resolved) {
           classic = `{@${kind} ${name}${rest}}`;
         } else {
-          const separator =
-            suffix === 0 || (text.charCodeAt(suffix) === 124 && !name.endsWith(' ')) ? ' ' : '';
+          const separator = suffix === 0 || (text.charCodeAt(suffix) === 124 && !name.endsWith(' ')) ? ' ' : '';
           classic = `{@${kind} ${name}${separator}${rest}}`;
         }
         modern = `${name0.replace(/#/g, '.')}${text}`;
@@ -1087,9 +1093,6 @@ export class Ts7Assembler {
     this.declarationRanks.set(fqn, 1_000_000 + file * 1_000_000 + (d0?.index ?? 0));
   }
 
-  private readonly declarationRanks = new Map<string, number>();
-  private programFileIndex?: Map<string, number>;
-
   /**
    * The symbolId of a symbol, computed by the same `symbolIdentifier` the
    * classic compiler (and jsii-rosetta) use: the path is made relative to the
@@ -1115,7 +1118,11 @@ export class Ts7Assembler {
     };
     // Classic: the namespace is the FQN between the assembly name and the type
     // name (submodules and enclosing types), absent for top-level types.
-    const namespace = fqn.slice(this.assemblyName.length + 1).split('.').slice(0, -1).join('.');
+    const namespace = fqn
+      .slice(this.assemblyName.length + 1)
+      .split('.')
+      .slice(0, -1)
+      .join('.');
     if (namespace) {
       jsiiType.namespace = namespace;
     }

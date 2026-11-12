@@ -86,7 +86,6 @@ describe(Compiler, () => {
       expect(() => validator.validate(tsconfig)).not.toThrow();
     });
 
-
     test('absolute rootDir is emitted as a relative tscRootDir in the assembly', () => {
       const outDir = 'jsii-outdir';
       const rootDir = 'jsii-rootdir';
@@ -269,8 +268,6 @@ describe(Compiler, () => {
       expect(result.diagnostics).toEqual([]);
       expect(result.emitSkipped).toBe(false);
     });
-
-
 
     test('creates file equivalent to uncompressed file', () => {
       const uncompressedSourceDir = mkdtempSync(join(tmpdir(), 'jsii-tmpdir'));

@@ -1,7 +1,7 @@
+import { Diagnostic, DiagnosticCategory } from '../src/diagnostic';
 import { JsiiDiagnostic } from '../src/jsii-diagnostic';
 import { parsePerson, parseRepository, formatCompilationSummary } from '../src/utils';
 import { silencedWarnings } from '../src/warnings';
-import { Diagnostic, DiagnosticCategory } from '../src/diagnostic';
 
 function makeDiag(category: DiagnosticCategory): Diagnostic {
   return { category, code: 1234, file: undefined, start: undefined, length: undefined, messageText: 'test' };

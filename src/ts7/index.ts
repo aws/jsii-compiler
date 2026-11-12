@@ -28,7 +28,6 @@ import { Ts7Assembler } from './assembler';
 import { runTs7EmitPipeline } from './ts7-emit';
 import { Ts7Host } from './ts7-host';
 
-
 // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
 const sortJson = require('sort-json');
 
@@ -144,7 +143,11 @@ export function ts7Emit(options: Ts7EmitOptions): Ts7EmitResult {
         typeCount: 0,
         emittedFiles: [],
         emitSkipped: true,
-        diagnostics: [...tsDiagnostics, ...assembler.diagnostics, JsiiDiagnostic.JSII_9997_UNKNOWN_ERROR.createDetached(e)],
+        diagnostics: [
+          ...tsDiagnostics,
+          ...assembler.diagnostics,
+          JsiiDiagnostic.JSII_9997_UNKNOWN_ERROR.createDetached(e),
+        ],
       };
     }
     const jsiiDiagnostics = assembler.diagnostics;
@@ -258,7 +261,7 @@ export function toDiagnostic(d: any, readSource: (fileName: string) => string | 
     file,
     start: hasRange ? d.pos : undefined,
     length: hasRange ? d.end - d.pos : undefined,
-    messageText: typeof d.text === 'string' ? d.text : (d.messageText ?? d.message ?? String(d)),
+    messageText: typeof d.text === 'string' ? d.text : d.messageText ?? d.message ?? String(d),
   };
 }
 

@@ -3,8 +3,8 @@ import { get } from 'node:https';
 import { join } from 'node:path';
 import chalk from 'chalk';
 
-import { RELEASE_LINE } from './version';
 import { ReleasesDocument } from './support-types';
+import { RELEASE_LINE } from './version';
 
 const SILENCE_ENV_VAR = 'JSII_SILENCE_SUPPORT_WARNING';
 const THIRTY_DAYS_IN_MILLIS = 2_592_000_000;

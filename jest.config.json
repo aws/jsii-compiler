@@ -40,14 +40,13 @@
   ],
   "transform": {
     "^.+\\.[t]sx?$": [
-      "<rootDir>/test/ts-jest-transformer.js",
+      "@swc/jest",
       {
-        "compiler": "typescript6",
-        "tsconfig": "test/tsconfig.json",
-        "diagnostics": {
-          "ignoreCodes": [
-            "TS151001"
-          ]
+        "jsc": {
+          "parser": {
+            "syntax": "typescript"
+          },
+          "target": "es2023"
         }
       }
     ]

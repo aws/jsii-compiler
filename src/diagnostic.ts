@@ -100,7 +100,9 @@ export function formatDiagnosticWithColorAndContext(diagnostic: Diagnostic, proj
     }
     out += ' - ';
   }
-  out += `${color(categoryName(diagnostic.category))}${chalk.grey(` TS${diagnostic.code}: `)}${diagnostic.messageText}\n`;
+  out += `${color(categoryName(diagnostic.category))}${chalk.grey(` TS${diagnostic.code}: `)}${
+    diagnostic.messageText
+  }\n`;
 
   if (diagnostic.file && text != null && diagnostic.start != null) {
     const start = getLineAndCharacterOfPosition(text, diagnostic.start);
@@ -113,7 +115,9 @@ export function formatDiagnosticWithColorAndContext(diagnostic: Diagnostic, proj
       out += `${chalk.black.bgWhite(String(i + 1).padStart(gutterWidth))} ${lineText}\n`;
       const from = i === start.line ? start.character : 0;
       const to = i === end.line ? Math.max(end.character, from + 1) : lineText.length;
-      out += `${chalk.black.bgWhite(' '.repeat(gutterWidth))} ${' '.repeat(from)}${color('~'.repeat(Math.max(to - from, 1)))}\n`;
+      out += `${chalk.black.bgWhite(' '.repeat(gutterWidth))} ${' '.repeat(from)}${color(
+        '~'.repeat(Math.max(to - from, 1)),
+      )}\n`;
     }
   }
   return out;

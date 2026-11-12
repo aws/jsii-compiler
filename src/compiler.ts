@@ -269,7 +269,11 @@ export class Compiler {
 
     const config: TypeScriptConfig =
       files.length > 0
-        ? { ...this.tsconfig, files: files.map((f) => path.relative(this.projectRoot, path.resolve(this.projectRoot, f))), include: undefined }
+        ? {
+            ...this.tsconfig,
+            files: files.map((f) => path.relative(this.projectRoot, path.resolve(this.projectRoot, f))),
+            include: undefined,
+          }
         : this.tsconfig;
     LOG.debug(`Creating or updating ${chalk.blue(this.configPath)}`);
     fs.writeFileSync(this.configPath, JSON.stringify(config, null, 2), 'utf8');

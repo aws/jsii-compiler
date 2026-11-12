@@ -1,6 +1,6 @@
 import { CompilerOptions } from '../src/compiler';
-import { compileJsiiForTest, TestCompilationOptions } from '../src/helpers';
 import { Diagnostic, DiagnosticCategory } from '../src/diagnostic';
+import { compileJsiiForTest, TestCompilationOptions } from '../src/helpers';
 
 export function compileJsiiForErrors<O extends Omit<TestCompilationOptions, 'captureDiagnostics'>>(
   source: string | { 'index.ts': string; [name: string]: string },

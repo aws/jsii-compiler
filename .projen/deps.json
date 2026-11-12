@@ -9,6 +9,14 @@
       "type": "build"
     },
     {
+      "name": "@swc/core",
+      "type": "build"
+    },
+    {
+      "name": "@swc/jest",
+      "type": "build"
+    },
+    {
       "name": "@types/clone",
       "type": "build"
     },
@@ -128,16 +136,12 @@
       "type": "build"
     },
     {
-      "name": "ts-jest",
-      "type": "build"
-    },
-    {
       "name": "tsx",
       "type": "build"
     },
     {
-      "name": "typescript6",
-      "version": "npm:typescript@6",
+      "name": "typescript",
+      "version": "~6.0",
       "type": "build"
     },
     {
@@ -146,6 +150,11 @@
     },
     {
       "name": "@jsii/spec",
+      "type": "runtime"
+    },
+    {
+      "name": "@typescript/native",
+      "version": "npm:typescript@7.1.0-beta",
       "type": "runtime"
     },
     {
@@ -179,11 +188,6 @@
     },
     {
       "name": "spdx-license-list",
-      "type": "runtime"
-    },
-    {
-      "name": "typescript",
-      "version": "7.1.0-beta",
       "type": "runtime"
     },
     {
