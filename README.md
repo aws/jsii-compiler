@@ -31,10 +31,10 @@ The current status of `jsii` compiler releases is:
 
 `jsii` 6.0 adopts [TypeScript 6.0][ts-6.0-announcement]. The actions below are driven by TypeScript 6.0's new defaults
 and deprecations; see the [TypeScript 6.0 announcement][ts-6.0-announcement] and the
-[Node Target Mapping][ts2node-target-mapping] notes for the upstream details.
+[Node Target Mapping][ts-node-target-mapping] notes for the upstream details.
 
 [ts-6.0-announcement]: https://devblogs.microsoft.com/typescript/announcing-typescript-6-0/
-[ts2node-target-mapping]: https://github.com/microsoft/TypeScript/wiki/Node-Target-Mapping
+[ts-node-target-mapping]: https://github.com/microsoft/TypeScript/wiki/Node-Target-Mapping
 
 #### If jsii generates your `tsconfig.json`
 
