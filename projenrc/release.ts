@@ -252,7 +252,7 @@ export class ReleaseWorkflow {
           },
         },
         {
-          // Uses npm trusted publishing (OIDC), so no token is needed here.
+          // Uses npm trusted publishing (OIDC), so no token is needed.
           name: 'Publish',
           run: [
             'npm publish ${{ github.workspace }}/js/jsii-*.tgz',
@@ -260,23 +260,6 @@ export class ReleaseWorkflow {
             '--provenance',
             `--tag=\${{ needs.build.outputs.${PublishTargetOutput.DIST_TAG} }}`,
           ].join(' '),
-        },
-        {
-          ...federateToAwsStep,
-          // Trusted publishing does not cover `npm dist-tag`, so tagging "latest" still needs a token.
-          if: `fromJSON(needs.build.outputs.${PublishTargetOutput.IS_LATEST})`,
-        },
-        {
-          name: 'Set NODE_AUTH_TOKEN',
-          if: `fromJSON(needs.build.outputs.${PublishTargetOutput.IS_LATEST})`,
-          run: [
-            'secret=$(aws secretsmanager get-secret-value --secret-id=${{ secrets.NPM_TOKEN_ARN }} --query=SecretString --output=text)',
-            'token=$(node -p "(${secret}).token")',
-            'unset secret',
-            'echo "::add-mask::${token}"', // !!! IMPORTANT !!! (Ensures the value does not leak into public logs)
-            'echo "NODE_AUTH_TOKEN=${token}" >> $GITHUB_ENV',
-            'unset token',
-          ].join('\n'),
         },
         {
           name: 'Tag "latest"',
