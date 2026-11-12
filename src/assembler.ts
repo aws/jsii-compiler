@@ -1949,7 +1949,7 @@ export class Assembler implements Emitter {
           if (isIdenticalRedeclaration(member, baseMember)) {
             // Bases are visited nearest-first, so the closest one wins.
             member.overrides ??= base.fqn;
-            this.usedFeatures.add('interface-invariant-overrides');
+            this.usedFeatures.add('interface-member-doc-overrides');
             continue;
           }
           this._diagnostics.push(
