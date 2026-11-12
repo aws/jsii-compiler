@@ -310,7 +310,8 @@ class ReleaseTask {
 
     task.spawn(project.packageTask);
 
-    task.exec('yarn version 0.0.0', {
+    // `--force` is needed because 0.0.0 is lower than the release version.
+    task.exec('yarn version 0.0.0 --force', {
       name: 'reset-version',
     });
   }
