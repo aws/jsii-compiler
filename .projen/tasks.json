@@ -75,7 +75,7 @@
       "steps": [
         {
           "execArgs": [
-            "tsc",
+            "node_modules/@typescript/native/bin/tsc",
             "--build"
           ]
         }
@@ -87,7 +87,7 @@
       "steps": [
         {
           "execArgs": [
-            "tsc",
+            "node_modules/@typescript/native/bin/tsc",
             "--noEmit",
             "-p",
             "projenrc/tsconfig.json"
@@ -253,7 +253,7 @@
         {
           "name": "Type-check the test suite",
           "execArgs": [
-            "tsc",
+            "node_modules/@typescript/native/bin/tsc",
             "--noEmit",
             "-p",
             "test/tsconfig.json"
@@ -351,7 +351,7 @@
       "steps": [
         {
           "execArgs": [
-            "tsc",
+            "node_modules/@typescript/native/bin/tsc",
             "--build",
             "-w"
           ]
