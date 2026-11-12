@@ -117,7 +117,7 @@ describe('isSilenced', () => {
   });
 });
 
-// TODO(ts7): re-enable once the jsii validation diagnostics (the classic validator) are ported to the
+// @TODO(ts7): re-enable once the jsii validation diagnostics (the classic validator) are ported to the
 // TypeScript 7 assembler; the compiler currently emits the assembly without these checks.
 // (The passing cases in these two groups would be vacuous without the warnings being produced.)
 describe.skip('silencing integration', () => {
@@ -172,7 +172,7 @@ describe.skip('silencing integration', () => {
   });
 });
 
-// TODO(ts7): inline `@jsii suppress` directives need the source AST, which the TypeScript 7 compiler does not
+// @TODO(ts7): inline `@jsii suppress` directives need the source AST, which the TypeScript 7 compiler does not
 // hold in-process; port with the validation diagnostics.
 describe.skip('inline @jsii suppress', () => {
   afterEach(() => {

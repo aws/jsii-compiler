@@ -18,7 +18,7 @@ for (const source of fs.readdirSync(SOURCE_DIR)) {
     continue;
   }
   const filePath = path.join(SOURCE_DIR, source);
-  // TODO(ts7): all negatives except the plain TypeScript compilation error expect jsii validation diagnostics
+  // @TODO(ts7): all negatives except the plain TypeScript compilation error expect jsii validation diagnostics
   // (the classic validator), which are not ported to the TypeScript 7 assembler yet; re-enable with that port.
   const testOrSkip = source === 'neg.compilation-error.ts' ? test : test.skip;
   testOrSkip(

@@ -108,7 +108,7 @@ describe('Covariant overrides in classes are allowed', () => {
     });
   });
 
-  // TODO(ts7): re-enable once the jsii validation diagnostics (the classic validator) are ported to the
+  // @TODO(ts7): re-enable once the jsii validation diagnostics (the classic validator) are ported to the
   // TypeScript 7 assembler; the compiler currently emits the assembly without these checks.
   describe.skip('Interface implementation cannot be covariant', () => {
     test('property implementation with narrower type', () => {
@@ -152,7 +152,7 @@ describe('Covariant overrides in classes are allowed', () => {
     });
   });
 
-  // TODO(ts7): re-enable once the jsii validation diagnostics (the classic validator) are ported to the
+  // @TODO(ts7): re-enable once the jsii validation diagnostics (the classic validator) are ported to the
   // TypeScript 7 assembler; the compiler currently emits the assembly without these checks.
   describe.skip('Static members cannot be covariant', () => {
     test('static properties must have exact same type', () => {
@@ -198,7 +198,7 @@ describe('Covariant overrides in classes are allowed', () => {
     });
   });
 
-  // TODO(ts7): re-enable once the jsii validation diagnostics (the classic validator) are ported to the
+  // @TODO(ts7): re-enable once the jsii validation diagnostics (the classic validator) are ported to the
   // TypeScript 7 assembler; the compiler currently emits the assembly without these checks.
   describe.skip('Parameter types cannot be contravariant', () => {
     test('method parameters cannot widen types in overrides', () => {
@@ -319,7 +319,7 @@ describe('Covariant overrides in classes are allowed', () => {
       });
     });
 
-    // TODO(ts7): re-enable once the jsii validation diagnostics (the classic validator) are ported to the
+    // @TODO(ts7): re-enable once the jsii validation diagnostics (the classic validator) are ported to the
     // TypeScript 7 assembler; the compiler currently emits the assembly without these checks.
     describe.skip('Record mappings do not support covariant overrides', () => {
       test('property with Record<string, T> type cannot be narrowed', () => {

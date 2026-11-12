@@ -127,6 +127,43 @@ describe(Compiler, () => {
       }
     });
 
+    test('rootDir and outDir are added to assembly', () => {
+      const outDir = 'jsii-outdir';
+      const rootDir = 'jsii-rootdir';
+      const sourceDir = mkdtempSync(join(tmpdir(), 'jsii-tmpdir'));
+      mkdirSync(join(sourceDir, rootDir), { recursive: true });
+
+      try {
+        writeFileSync(join(sourceDir, rootDir, 'index.ts'), 'export class MarkerA {}');
+        // Intentionally using lower case name - it should be case-insensitive
+        writeFileSync(join(sourceDir, rootDir, 'readme.md'), '# Test Package');
+
+        const compiler = new Compiler({
+          projectInfo: {
+            ..._makeProjectInfo(sourceDir, join(outDir, 'index.d.ts')),
+            tsc: {
+              outDir,
+              rootDir,
+            },
+          },
+          failOnWarnings: true,
+          projectReferences: false,
+        });
+
+        compiler.emit();
+
+        const assembly = loadAssemblyFromPath(sourceDir);
+        expect(assembly.metadata).toEqual(
+          expect.objectContaining({
+            tscRootDir: rootDir,
+            tscOutDir: outDir,
+          }),
+        );
+      } finally {
+        rmSync(sourceDir, { force: true, recursive: true });
+      }
+    });
+
     test('emits declaration map when feature is enabled', () => {
       const sourceDir = mkdtempSync(join(tmpdir(), 'jsii-tmpdir'));
 
@@ -267,6 +304,27 @@ describe(Compiler, () => {
       const result = compiler.emit();
       expect(result.diagnostics).toEqual([]);
       expect(result.emitSkipped).toBe(false);
+    });
+  });
+
+  describe('compressed assembly option', () => {
+    test('creates a gzipped assembly file', () => {
+      const sourceDir = mkdtempSync(join(tmpdir(), 'jsii-tmpdir'));
+
+      try {
+        writeFileSync(join(sourceDir, 'index.ts'), 'export class MarkerA {}');
+
+        const compiler = new Compiler({
+          projectInfo: _makeProjectInfo(sourceDir, 'index.d.ts'),
+          compressAssembly: true,
+        });
+
+        compiler.emit();
+
+        expect(existsSync(join(sourceDir, SPEC_FILE_NAME_COMPRESSED))).toBeTruthy();
+      } finally {
+        rmSync(sourceDir, { force: true, recursive: true });
+      }
     });
 
     test('creates file equivalent to uncompressed file', () => {

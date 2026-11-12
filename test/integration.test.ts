@@ -19,7 +19,7 @@ afterAll(async () => {
 // Note: Tests will run in this order, which is required for the v1
 // compatibility test to succeed...
 
-// TODO(ts7): re-enable once --add-deprecation-warnings is implemented on the TypeScript 7 compiler;
+// @TODO(ts7): re-enable once --add-deprecation-warnings is implemented on the TypeScript 7 compiler;
 // requesting it currently fails with an explicit error.
 test.skip('integration test', () => {
   const calcBaseOfBaseRoot = compile(lock!, '@scope/jsii-calc-base-of-base', false);

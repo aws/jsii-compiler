@@ -6,7 +6,7 @@ import { compileJsiiForTest, HelperCompilationResult } from '../lib';
 
 const DEPRECATED = '/** @deprecated stripped */';
 
-// TODO(ts7): re-enable once --strip-deprecated also removes deprecated members from the emitted .js/.d.ts
+// @TODO(ts7): re-enable once --strip-deprecated also removes deprecated members from the emitted .js/.d.ts
 // (the assembly is already stripped; the emit-side transform is not ported yet).
 test.skip('produces correct output', () => {
   const result = compileJsiiForTest(MULTI_FILE_EXAMPLE, undefined /* callback */, { stripDeprecated: true });
@@ -151,7 +151,7 @@ test.skip('produces correct output', () => {
   `);
 });
 
-// TODO(ts7): re-enable once --strip-deprecated also removes deprecated members from the emitted .js/.d.ts
+// @TODO(ts7): re-enable once --strip-deprecated also removes deprecated members from the emitted .js/.d.ts
 // (the assembly is already stripped; the emit-side transform is not ported yet).
 test.skip('cross-file deprecated heritage', () => {
   const result = compileJsiiForTest(
@@ -233,7 +233,7 @@ describe('stripDeprecatedAllowList', () => {
     expect(declFilesSnapshot(resultStripEmpty)).toEqual(declFilesSnapshot(resultNoStrip));
   });
 
-  // TODO(ts7): re-enable once --strip-deprecated also removes deprecated members from the emitted .js/.d.ts
+  // @TODO(ts7): re-enable once --strip-deprecated also removes deprecated members from the emitted .js/.d.ts
   // (the assembly is already stripped; the emit-side transform is not ported yet).
   test.skip('strips only allowlisted items if subset is present', () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'jsiideprecatedremover'));

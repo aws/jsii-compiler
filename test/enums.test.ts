@@ -56,7 +56,7 @@ test('enums can have a mix of letters and number', () => {
   expect((assembly.types!['testpkg.Foo'] as EnumType).members).toEqual([{ name: 'Q5X' }, { name: 'IB3M' }]);
 });
 
-// TODO(ts7): re-enable once the jsii validation diagnostics (the classic validator) are ported to the
+// @TODO(ts7): re-enable once the jsii validation diagnostics (the classic validator) are ported to the
 // TypeScript 7 assembler; the compiler currently emits the assembly without these checks.
 test.skip('enums with the same assigned value should fail', () => {
   expect(

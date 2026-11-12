@@ -142,7 +142,7 @@ describe('positive tests', () => {
   });
 });
 
-// TODO(ts7): re-enable once the jsii validation diagnostics (the classic validator) are ported to the
+// @TODO(ts7): re-enable once the jsii validation diagnostics (the classic validator) are ported to the
 // TypeScript 7 assembler; the compiler currently emits the assembly without these checks.
 describe.skip('intersection type may not be used in output position', () => {
   function expectIntersectionTypeError(code: string) {
@@ -237,7 +237,7 @@ describe.skip('intersection type may not be used in output position', () => {
   });
 });
 
-// TODO(ts7): re-enable once the jsii validation diagnostics (the classic validator) are ported to the
+// @TODO(ts7): re-enable once the jsii validation diagnostics (the classic validator) are ported to the
 // TypeScript 7 assembler; the compiler currently emits the assembly without these checks.
 test.skip.each([
   ['IFoo', 'string', 'Found non-interface type in type intersection: string'],
@@ -262,7 +262,7 @@ test.skip.each([
   expect(errs).toContainEqual(expect.stringContaining(errorMessage));
 });
 
-// TODO(ts7): re-enable once the jsii validation diagnostics (the classic validator) are ported to the
+// @TODO(ts7): re-enable once the jsii validation diagnostics (the classic validator) are ported to the
 // TypeScript 7 assembler; the compiler currently emits the assembly without these checks.
 test.skip('intersection types may not be used as constructor args', () => {
   const errs = compileJsiiForErrors(
@@ -279,7 +279,7 @@ test.skip('intersection types may not be used as constructor args', () => {
   expect(errs).toContainEqual(expect.stringContaining('Intersection types cannot be used as constructor arguments'));
 });
 
-// TODO(ts7): re-enable once the jsii validation diagnostics (the classic validator) are ported to the
+// @TODO(ts7): re-enable once the jsii validation diagnostics (the classic validator) are ported to the
 // TypeScript 7 assembler; the compiler currently emits the assembly without these checks.
 test.skip.each([
   ['readonly bar: string', 'readonly bar: string', true as const],
