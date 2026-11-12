@@ -179,6 +179,11 @@ project.package.addField('imports', {
 // TypeScript 6, for typescript-eslint, which needs the TypeScript 6 compiler API.
 project.addDevDeps('typescript@~6.0');
 
+// Both TypeScript packages provide a `tsc` binary, and which one a bare `tsc` resolves to depends on how the task is
+// started: `npx projen` gets TypeScript 7, but `yarn build` and `yarn release` get TypeScript 6. Point every `tsc` step
+// at the TypeScript 7 binary so all of them compile with the same version.
+const TSC = 'node_modules/@typescript/native/bin/tsc';
+
 // Run tests with swc instead of ts-jest, which needs the TypeScript 6 compiler API. swc doesn't type-check, so the
 // test suite is type-checked with `tsc` before the tests run (see `typecheckTests`).
 project.deps.removeDependency('ts-jest');
@@ -338,5 +343,13 @@ new github.PullRequestBackport(project, {
 });
 
 new UpdateIntegPackage(project);
+
+for (const task of project.tasks.all) {
+  for (const [index, step] of task.steps.entries()) {
+    if (step.execArgs?.[0] === 'tsc') {
+      task.updateStep(index, { ...step, execArgs: [TSC, ...step.execArgs.slice(1)] });
+    }
+  }
+}
 
 project.synth();
