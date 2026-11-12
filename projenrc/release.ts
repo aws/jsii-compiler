@@ -251,19 +251,13 @@ export class ReleaseWorkflow {
             'registry-url': `https://registry.npmjs.org/`,
           },
         },
-        federateToAwsStep,
         {
-          name: 'Set NODE_AUTH_TOKEN',
-          run: [
-            'secret=$(aws secretsmanager get-secret-value --secret-id=${{ secrets.NPM_TOKEN_ARN }} --query=SecretString --output=text)',
-            'token=$(node -p "(${secret}).token")',
-            'unset secret',
-            'echo "::add-mask::${token}"', // !!! IMPORTANT !!! (Ensures the value does not leak into public logs)
-            'echo "NODE_AUTH_TOKEN=${token}" >> $GITHUB_ENV',
-            'unset token',
-          ].join('\n'),
+          // `npm dist-tag` with trusted publishing requires npm 11.21.0 or later.
+          name: 'Update npm',
+          run: 'npm install -g npm@^11.21.0',
         },
         {
+          // Uses npm trusted publishing (OIDC), so no token is needed.
           name: 'Publish',
           run: [
             'npm publish ${{ github.workspace }}/js/jsii-*.tgz',
