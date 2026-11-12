@@ -161,6 +161,9 @@ jobs:
         with:
           node-version: lts/*
           registry-url: https://registry.npmjs.org/
+      - name: Update npm
+        id: update_npm
+        run: npm install -g npm@^11.21.0
       - name: Publish
         id: publish
         run: npm publish ${{ github.workspace }}/js/jsii-*.tgz --access=public --provenance --tag=${{ needs.build.outputs.dist-tag }}
