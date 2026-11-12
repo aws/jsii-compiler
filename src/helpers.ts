@@ -31,7 +31,7 @@ export type MultipleSourceFiles = {
 export const ASSEMBLY_FEATURES_SUPPORTED: spec.JsiiFeature[] = [
   'intersection-types',
   'class-covariant-overrides',
-  'interface-invariant-overrides',
+  'interface-member-doc-overrides',
 ];
 
 /**

@@ -15,7 +15,7 @@ describe('Interfaces may re-declare inherited members with an identical shape', 
       }
     `);
 
-    expect(result.assembly.usedFeatures).toContain('interface-invariant-overrides');
+    expect(result.assembly.usedFeatures).toContain('interface-member-doc-overrides');
 
     const child = result.assembly.types!['testpkg.ChildOptions'] as spec.InterfaceType;
     expect(child.properties).toEqual([
@@ -90,6 +90,6 @@ describe('Interfaces may re-declare inherited members with an identical shape', 
       }
     `);
 
-    expect(result.assembly.usedFeatures ?? []).not.toContain('interface-invariant-overrides');
+    expect(result.assembly.usedFeatures ?? []).not.toContain('interface-member-doc-overrides');
   });
 });
