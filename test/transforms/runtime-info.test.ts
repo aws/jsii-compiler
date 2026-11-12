@@ -1,141 +1,78 @@
-import * as ts from '#typescript';
+import { compileJsiiForTest } from '../../lib';
 
-import { RuntimeTypeInfoInjector } from '../../src/transforms/runtime-info';
+// The runtime type information (`Symbol.for("jsii.rtti")` on each exported class) used to be injected by a
+// TypeScript transformer during emit. The TypeScript 7 API has no transformer hook, so the compiler injects it
+// into the emitted JavaScript after the emit (see src/emitter.ts). These tests check the emitted files end to end:
+// the injected code is loaded and the marker is read back the way the jsii runtime does.
+
+const RTTI = Symbol.for('jsii.rtti');
 
 test('leaves files without classes unaltered', () => {
-  expect(transformedSource(EXAMPLE_NO_CLASS, 'Foo')).not.toContain('JSII_RTTI_SYMBOL');
-});
-
-test('leaves files without classes with metadata unaltered', () => {
-  expect(transformedSource(EXAMPLE_SINGLE_CLASS)).not.toContain('JSII_RTTI_SYMBOL');
-});
-
-test('adds jsii.rtti symbol at the top of each file when classes are present', () => {
-  expect(transformedSource(EXAMPLE_SINGLE_CLASS, 'Foo')).toContain(
-    'const JSII_RTTI_SYMBOL_1 = Symbol.for("jsii.rtti");',
-  );
+  const files = compile({ 'index.ts': 'export const n = 1;' });
+  expect(files['index.js']).not.toContain('jsii.rtti');
 });
 
 test('adds runtime info for a class', () => {
-  expect(transformedSource(EXAMPLE_SINGLE_CLASS, 'Foo')).toContain(
-    'private static readonly [JSII_RTTI_SYMBOL_1] = { fqn: "RuntimeInfoTest.Foo", version: "1.2.3" }',
-  );
+  const exports = load(compile({ 'index.ts': 'export class Foo {}' }));
+  expect(exports.Foo[RTTI]).toEqual({ fqn: 'testpkg.Foo', version: '0.0.1' });
 });
 
 test('adds runtime info for each class', () => {
-  const transformed = transformedSource(EXAMPLE_MULTIPLE_CLASSES, 'Foo', 'Bar');
-  expect(transformed).toContain(
-    'private static readonly [JSII_RTTI_SYMBOL_1] = { fqn: "RuntimeInfoTest.Foo", version: "1.2.3" }',
-  );
-  expect(transformed).toContain(
-    'private static readonly [JSII_RTTI_SYMBOL_1] = { fqn: "RuntimeInfoTest.Bar", version: "1.2.3" }',
-  );
+  const exports = load(compile({ 'index.ts': 'export class Foo {}\nexport class Bar {}' }));
+  expect(exports.Foo[RTTI]).toEqual({ fqn: 'testpkg.Foo', version: '0.0.1' });
+  expect(exports.Bar[RTTI]).toEqual({ fqn: 'testpkg.Bar', version: '0.0.1' });
 });
 
-test('skips runtime info if not available', () => {
-  const transformed = transformedSource(EXAMPLE_MULTIPLE_CLASSES, 'Foo');
-  expect(transformed).toContain(
-    'private static readonly [JSII_RTTI_SYMBOL_1] = { fqn: "RuntimeInfoTest.Foo", version: "1.2.3" }',
+test('skips runtime info for classes that are not part of the assembly', () => {
+  const exports = load(
+    compile({
+      'index.ts': ['export class Foo {}', '/** @internal */', 'export class _Hidden {}'].join('\n'),
+    }),
   );
-  expect(transformed).not.toContain(
-    'private static readonly [JSII_RTTI_SYMBOL_1] = { fqn: "RuntimeInfoTest.Bar", version: "1.2.3" }',
-  );
+  expect(exports.Foo[RTTI]).toEqual({ fqn: 'testpkg.Foo', version: '0.0.1' });
+  expect(exports._Hidden[RTTI]).toBeUndefined();
 });
 
-test('creates a unique name if the default is taken', () => {
-  // Conflicting example has existing variable for JSII_RTTI_SYMBOL_1, so transformation should use _2.
-  const transformed = transformedSource(EXAMPLE_CONFLICTING_NAME, 'Foo');
-  expect(transformed).toContain('const JSII_RTTI_SYMBOL_2 = Symbol.for("jsii.rtti");');
-  expect(transformed).toContain(
-    'private static readonly [JSII_RTTI_SYMBOL_2] = { fqn: "RuntimeInfoTest.Foo", version: "1.2.3" }',
-  );
+test('injects into every file that declares classes, with the file-local export names', () => {
+  const files = compile({
+    'index.ts': 'export * from "./other";\nexport class Foo {}',
+    'other.ts': 'export class Other {}',
+  });
+  expect(load(files, 'index.js').Foo[RTTI]).toEqual({ fqn: 'testpkg.Foo', version: '0.0.1' });
+  expect(load(files, 'other.js').Other[RTTI]).toEqual({ fqn: 'testpkg.Other', version: '0.0.1' });
 });
 
-function transformedSource(source: string, ...classNames: string[]) {
-  const mockedTypeInfo = mockedTypeInfoForClasses(...classNames);
-  const injector = new TestRuntimeTypeInfoInjector(mockedTypeInfo);
-  const transformed = ts.transform(ts.createSourceFile('source.ts', source, ts.ScriptTarget.Latest), [
-    injector.runtimeTypeTransformer(),
-  ]);
-  return ts.createPrinter().printBundle(ts.factory.createBundle(transformed.transformed));
+test('does not clash with existing names in the module', () => {
+  // The previous transformer declared a `JSII_RTTI_SYMBOL_<n>` constant and had to pick a unique name; the
+  // injected code declares nothing, so a module using that name is unaffected.
+  const exports = load(
+    compile({
+      'index.ts': 'const JSII_RTTI_SYMBOL_1 = 42;\nexport const taken = JSII_RTTI_SYMBOL_1;\nexport class Foo {}',
+    }),
+  );
+  expect(exports.taken).toBe(42);
+  expect(exports.Foo[RTTI]).toEqual({ fqn: 'testpkg.Foo', version: '0.0.1' });
+});
+
+test('keeps the sourceMappingURL comment as the last line of the file', () => {
+  const js = compile({ 'index.ts': 'export class Foo {}' })['index.js'];
+  const lines = js.trimEnd().split('\n');
+  expect(lines[lines.length - 1]).toMatch(/^\/\/# sourceMappingURL=/);
+  expect(js.indexOf('jsii.rtti')).toBeLessThan(js.indexOf('//# sourceMappingURL='));
+});
+
+function compile(source: { 'index.ts': string; [name: string]: string }): Record<string, string> {
+  return compileJsiiForTest(source).files;
 }
 
-/** Test subclass of RuntimeTypeInfoInjector that accepts overrides for type info */
-class TestRuntimeTypeInfoInjector extends RuntimeTypeInfoInjector {
-  public constructor(private readonly typeInfo: Map<string, string>) {
-    super('1.2.3');
-  }
-
-  protected override getClassFqn(clazz: ts.ClassDeclaration): string | undefined {
-    return clazz.name ? this.typeInfo.get(clazz.name.text) : undefined;
-  }
+/** Evaluate an emitted CommonJS file (without its relative imports) and return its `exports`. */
+function load(files: Record<string, string>, fileName = 'index.js'): any {
+  const exports: any = {};
+  const module = { exports };
+  // Relative imports are not needed to read the markers of the file's own classes; stub them out.
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const requireStub = (id: string) => (id.startsWith('.') ? {} : require(id));
+  // eslint-disable-next-line @typescript-eslint/no-implied-eval, @typescript-eslint/no-require-imports
+  new Function('exports', 'require', 'module', files[fileName])(exports, requireStub, module);
+  return module.exports;
 }
-
-/**
- * Mock the Map<ts.ClassDefinition, string> of classes to fqns.
- * This assumes each class name only appears once in the source,
- * which is a reasonable assumption for these tests.
- */
-function mockedTypeInfoForClasses(...classNames: string[]): Map<string, string> {
-  const typeInfoMap = new Map<string, string>();
-  for (const clazz of classNames) typeInfoMap.set(clazz, `RuntimeInfoTest.${clazz}`);
-  return typeInfoMap;
-}
-
-/**
- * ===============================
- * =    EXAMPLE SOURCE FILES     =
- * ===============================
- */
-
-const EXAMPLE_NO_CLASS = `
-import * as ts from 'typescript';
-
-interface Foo {
-  readonly foobar: string;
-}
-`;
-
-const EXAMPLE_SINGLE_CLASS = `
-import * as ts from 'typescript';
-
-class Foo {
-  constructor(public readonly bar: string) {}
-}
-`;
-
-const EXAMPLE_MULTIPLE_CLASSES = `
-class Foo {
-  constructor(public readonly bar: string) {}
-  public doStuff() { return 42; }
-}
-
-interface FooBar {
-  readonly answer: number;
-}
-
-/**
- * A bar.
- */
-class Bar {
-  public doStuffToo() {
-    return new class implements FooBar {
-      public readonly answer = 21;
-    }();
-  }
-}
-
-export default class {
-  constructor() {}
-}
-`;
-
-const EXAMPLE_CONFLICTING_NAME = `
-import * as ts from 'typescript';
-
-const JSII_RTTI_SYMBOL_1 = 42;
-
-export class Foo {
-  constructor(public readonly bar: string) {}
-}
-`;

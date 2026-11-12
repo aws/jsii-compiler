@@ -161,6 +161,7 @@ enum OPTION_GROUP {
             stripDeprecated: argv['strip-deprecated'] != null,
             stripDeprecatedAllowListFile: argv['strip-deprecated'],
             addDeprecationWarnings: argv['add-deprecation-warnings'],
+            watch: argv.watch,
             generateTypeScriptConfig: argv['generate-tsconfig'],
             typeScriptConfig,
             validateTypeScriptConfig,
@@ -168,7 +169,7 @@ enum OPTION_GROUP {
           });
 
           const startTime = Date.now();
-          const emitResult = argv.watch ? await compiler.watch() : compiler.emit();
+          const emitResult = compiler.emit();
 
           const allDiagnostics = [...projectInfoDiagnostics, ...emitResult.diagnostics];
 

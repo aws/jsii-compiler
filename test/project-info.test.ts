@@ -4,7 +4,7 @@ import * as path from 'node:path';
 import * as spec from '@jsii/spec';
 import { writeAssembly } from '@jsii/spec';
 import clone from 'clone';
-import * as ts from '#typescript';
+import * as ts from 'typescript';
 
 import { loadProjectInfo, PackageJson } from '../src/project-info';
 import { TypeScriptConfigValidationRuleSet } from '../src/tsconfig';

@@ -1,5 +1,5 @@
 import * as log4js from 'log4js';
-import * as ts from '#typescript';
+import { Diagnostic, DiagnosticCategory, formatDiagnosticWithColorAndContext } from './diagnostic';
 
 import { Code, JsiiDiagnostic } from './jsii-diagnostic';
 import { isSilenced } from './warnings';
@@ -27,25 +27,25 @@ export const JSII_DIAGNOSTICS_CODE = 9999;
  */
 export function diagnosticsLogger(
   logger: log4js.Logger,
-  diagnostic: ts.Diagnostic,
+  diagnostic: Diagnostic,
 ): ((message: any, ...args: any[]) => void) | undefined {
   switch (diagnostic.category) {
-    case ts.DiagnosticCategory.Error:
+    case DiagnosticCategory.Error:
       if (!logger.isErrorEnabled()) {
         return undefined;
       }
       return logger.error.bind(logger);
-    case ts.DiagnosticCategory.Warning:
+    case DiagnosticCategory.Warning:
       if (!logger.isWarnEnabled()) {
         return undefined;
       }
       return logger.warn.bind(logger);
-    case ts.DiagnosticCategory.Message:
+    case DiagnosticCategory.Message:
       if (!logger.isDebugEnabled()) {
         return undefined;
       }
       return logger.debug.bind(logger);
-    case ts.DiagnosticCategory.Suggestion:
+    case DiagnosticCategory.Suggestion:
     default:
       if (!logger.isTraceEnabled()) {
         return undefined;
@@ -62,7 +62,7 @@ export function diagnosticsLogger(
  *
  * @returns a formatted string.
  */
-export function formatDiagnostic(diagnostic: ts.Diagnostic, projectRoot: string) {
+export function formatDiagnostic(diagnostic: Diagnostic, projectRoot: string) {
   if (JsiiDiagnostic.isJsiiDiagnostic(diagnostic)) {
     // Ensure we leverage pre-rendered diagnostics where available.
     return diagnostic.format(projectRoot);
@@ -80,14 +80,8 @@ export function formatDiagnostic(diagnostic: ts.Diagnostic, projectRoot: string)
  *
  * @returns a formatted string.
  */
-export function _formatDiagnostic(diagnostic: ts.Diagnostic, projectRoot: string) {
-  const formatDiagnosticsHost: ts.FormatDiagnosticsHost = {
-    getCurrentDirectory: () => projectRoot,
-    getCanonicalFileName: (fileName) => fileName,
-    getNewLine: () => ts.sys.newLine,
-  };
-
-  const message = ts.formatDiagnosticsWithColorAndContext([diagnostic], formatDiagnosticsHost);
+export function _formatDiagnostic(diagnostic: Diagnostic, projectRoot: string) {
+  const message = formatDiagnosticWithColorAndContext(diagnostic, projectRoot);
 
   if (!JsiiDiagnostic.isJsiiDiagnostic(diagnostic)) {
     return message;
@@ -107,7 +101,7 @@ export function _formatDiagnostic(diagnostic: ts.Diagnostic, projectRoot: string
   return formatted;
 }
 
-export function logDiagnostic(diagnostic: ts.Diagnostic, projectRoot: string) {
+export function logDiagnostic(diagnostic: Diagnostic, projectRoot: string) {
   if (isSilenced(diagnostic)) {
     return;
   }
@@ -122,7 +116,7 @@ export function logDiagnostic(diagnostic: ts.Diagnostic, projectRoot: string) {
  * Format a compilation summary with status line and counts line.
  */
 export function formatCompilationSummary(
-  diagnostics: readonly ts.Diagnostic[],
+  diagnostics: readonly Diagnostic[],
   emitSkipped: boolean,
   elapsedMs: number,
 ): string {
@@ -130,9 +124,9 @@ export function formatCompilationSummary(
   let warnings = 0;
   let silenced = 0;
   for (const d of diagnostics) {
-    if (d.category === ts.DiagnosticCategory.Error) {
+    if (d.category === DiagnosticCategory.Error) {
       errors++;
-    } else if (d.category === ts.DiagnosticCategory.Warning) {
+    } else if (d.category === DiagnosticCategory.Warning) {
       if (isSilenced(d)) {
         silenced++;
       } else {

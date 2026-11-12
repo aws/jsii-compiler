@@ -2,8 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Assembly } from '@jsii/spec';
-import * as ts from '#typescript';
-import { compileJsiiForTest, normalizePath, symbolIdentifier } from '../lib';
+import { compileJsiiForTest, normalizePath, symbolIdentifier, SymbolIdChecker, SymbolIdSymbol } from '../lib';
 
 test('Symbol map is generated', () => {
   const result = compileJsiiForTest(
@@ -154,6 +153,11 @@ describe('symbolId resolution for consumed packages (https://github.com/aws/jsii
   // only the `.d.ts` files and `package.json` are available, and the symbol
   // id must be re-rooted from the outDir (`lib/`) into the rootDir (`src/`)
   // to match the `symbolId` values recorded in the assembly.
+  //
+  // `symbolIdentifier` only needs `getAliasedSymbol` / `getFullyQualifiedName`
+  // and the symbol flags, so the checker is modelled structurally here: this is
+  // the same contract both the classic `ts.TypeChecker` (jsii-rosetta) and the
+  // TypeScript 7 checker fulfil.
   let packageDir: string;
 
   beforeEach(() => {
@@ -166,17 +170,20 @@ describe('symbolId resolution for consumed packages (https://github.com/aws/jsii
     rmSync(packageDir, { force: true, recursive: true });
   });
 
-  function computeSymbolId(packageJson: object, assembly: Assembly): string | undefined {
+  interface FakeSymbol extends SymbolIdSymbol {
+    readonly qualifiedName: string;
+    readonly target?: FakeSymbol;
+  }
+
+  const checker: SymbolIdChecker<FakeSymbol> = {
+    getAliasedSymbol: (sym) => sym.target ?? sym,
+    getFullyQualifiedName: (sym) => sym.qualifiedName,
+  };
+
+  function computeSymbolId(packageJson: object, assembly: Assembly, sym?: FakeSymbol): string | undefined {
     writeFileSync(join(packageDir, 'package.json'), JSON.stringify(packageJson, null, 2));
-
-    const entry = join(packageDir, 'lib', 'index.d.ts');
-    const program = ts.createProgram([entry], {});
-    const typeChecker = program.getTypeChecker();
-    const sourceFile = program.getSourceFile(entry)!;
-    const moduleSymbol = typeChecker.getSymbolAtLocation(sourceFile)!;
-    const fooSymbol = typeChecker.getExportsOfModule(moduleSymbol).find((s) => s.name === 'Foo')!;
-
-    return symbolIdentifier(typeChecker, fooSymbol, { assembly });
+    const foo: FakeSymbol = { flags: 32 /* Class */, qualifiedName: `"${join(packageDir, 'lib', 'index')}".Foo` };
+    return symbolIdentifier(checker, sym ?? foo, { assembly });
   }
 
   test('outDir is read from jsii.tsc in package.json when present', () => {
@@ -196,5 +203,16 @@ describe('symbolId resolution for consumed packages (https://github.com/aws/jsii
     } as unknown as Assembly);
 
     expect(symbolId).toEqual('src/index:Foo');
+  });
+
+  test('aliases are resolved and members use the # separator', () => {
+    const target: FakeSymbol = {
+      flags: 8192 /* Method */,
+      qualifiedName: `"${join(packageDir, 'lib', 'index')}".Foo.bar`,
+    };
+    const alias: FakeSymbol = { flags: 2097152 /* Alias */, qualifiedName: 'unused', target };
+    const symbolId = computeSymbolId({ name: 'testpkg', jsii: {} }, { metadata: {} } as unknown as Assembly, alias);
+
+    expect(symbolId).toEqual('lib/index:Foo#bar');
   });
 });
