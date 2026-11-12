@@ -252,6 +252,11 @@ export class ReleaseWorkflow {
           },
         },
         {
+          // `npm dist-tag` with trusted publishing requires npm 11.21.0 or later.
+          name: 'Update npm',
+          run: 'npm install -g npm@^11.21.0',
+        },
+        {
           // Uses npm trusted publishing (OIDC), so no token is needed.
           name: 'Publish',
           run: [
