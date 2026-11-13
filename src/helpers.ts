@@ -28,7 +28,11 @@ export type MultipleSourceFiles = {
 /**
  * Assembly features supported by this compiler
  */
-export const ASSEMBLY_FEATURES_SUPPORTED: spec.JsiiFeature[] = ['intersection-types', 'class-covariant-overrides'];
+export const ASSEMBLY_FEATURES_SUPPORTED: spec.JsiiFeature[] = [
+  'intersection-types',
+  'class-covariant-overrides',
+  'interface-member-doc-overrides',
+];
 
 /**
  * Compile a piece of source and return the JSII assembly for it

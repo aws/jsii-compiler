@@ -1929,26 +1929,36 @@ export class Assembler implements Emitter {
       }
     });
 
-    // Check that no interface declares a member that's already declared
-    // in a base type (not allowed in C#).
-    const names = memberNames(jsiiType);
+    // Check that any member an interface re-declares from a base type keeps
+    // the exact same shape. Re-declaring is useful to change documentation
+    // (e.g. a different `@default`), but C# interfaces cannot narrow a member's
+    // type (no covariance), so anything else is rejected.
+    const members = typeMembers(jsiiType);
     const checkNoIntersection = (...bases: spec.Type[]) => {
       for (const base of bases) {
         if (!spec.isInterfaceType(base)) {
           continue;
         }
 
-        const baseMembers = memberNames(base);
-        for (const memberName of names) {
-          if (baseMembers.includes(memberName)) {
-            this._diagnostics.push(
-              JsiiDiagnostic.JSII_5015_REDECLARED_INTERFACE_MEMBER.create(
-                type.symbol.valueDeclaration ?? type.symbol.declarations?.[0],
-                memberName,
-                jsiiType,
-              ),
-            );
+        const baseMembers = typeMembers(base);
+        for (const [memberName, member] of Object.entries(members)) {
+          const baseMember = baseMembers[memberName];
+          if (memberName === '' || baseMember == null) {
+            continue;
           }
+          if (isIdenticalRedeclaration(member, baseMember)) {
+            // Bases are visited nearest-first, so the closest one wins.
+            member.overrides ??= base.fqn;
+            this.usedFeatures.add('interface-member-doc-overrides');
+            continue;
+          }
+          this._diagnostics.push(
+            JsiiDiagnostic.JSII_5015_REDECLARED_INTERFACE_MEMBER.create(
+              type.symbol.valueDeclaration ?? type.symbol.declarations?.[0],
+              memberName,
+              jsiiType,
+            ),
+          );
         }
         // Recurse upwards
         this._deferUntilTypesAvailable(fqn, base.interfaces ?? [], type.symbol.valueDeclaration, checkNoIntersection);
@@ -3123,12 +3133,41 @@ function apply<T, U>(x: T | undefined, fn: (x: T) => U | undefined): U | undefin
 }
 
 /**
- * Return all members names of a JSII interface type
- *
- * Returns empty string for a non-interface type.
+ * Whether `member` re-declares `baseMember` with exactly the same shape, so
+ * that only its documentation differs. Such re-declarations can be represented
+ * in all target languages (C# needs the `new` modifier).
  */
-function memberNames(jsiiType: spec.InterfaceType | spec.ClassType): string[] {
-  return Object.keys(typeMembers(jsiiType)).filter((n) => n !== '');
+function isIdenticalRedeclaration(
+  member: spec.Property | spec.Method,
+  baseMember: spec.Property | spec.Method,
+): boolean {
+  if (spec.isMethod(member) && spec.isMethod(baseMember)) {
+    const params = member.parameters ?? [];
+    const baseParams = baseMember.parameters ?? [];
+    return (
+      !!member.static === !!baseMember.static &&
+      !!member.async === !!baseMember.async &&
+      deepEqual(member.returns, baseMember.returns) &&
+      params.length === baseParams.length &&
+      params.every(
+        (param, i) =>
+          deepEqual(param.type, baseParams[i].type) &&
+          !!param.optional === !!baseParams[i].optional &&
+          !!param.variadic === !!baseParams[i].variadic,
+      )
+    );
+  }
+
+  if (!spec.isMethod(member) && !spec.isMethod(baseMember)) {
+    return (
+      !!member.static === !!baseMember.static &&
+      !!member.optional === !!baseMember.optional &&
+      !!member.immutable === !!baseMember.immutable &&
+      deepEqual(member.type, baseMember.type)
+    );
+  }
+
+  return false;
 }
 
 function typeMembers(jsiiType: spec.InterfaceType | spec.ClassType): {

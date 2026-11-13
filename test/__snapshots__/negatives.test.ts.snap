@@ -48,55 +48,6 @@ neg.const-enum.ts:1:8 - error JSII1000: Exported "const enum" declarations are n
 
 `;
 
-exports[`double-interface-members 1`] = `
-neg.double-interface-members.ts:2:3 - error JSII3008: The "foo" property of struct "jsii.A" must be "readonly". Rename "jsii.A" to "IA" if it is meant to be a behavioral interface. [type-model/struct-props-must-be-readonly]
-
-2   foo: number;
-    ~~~
-
-neg.double-interface-members.ts:4:1 - error JSII5015: Interface "jsii.B" re-declares member "foo". This is not supported as it results in invalid C#. [language-compatibility/redeclared-interface-member]
-
-4 export interface B extends A {
-  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-5   foo: number;
-  ~~~~~~~~~~~~~~
-6 }
-  ~
-
-neg.double-interface-members.ts:5:3 - error JSII3008: The "foo" property of struct "jsii.B" must be "readonly". Rename "jsii.B" to "IB" if it is meant to be a behavioral interface. [type-model/struct-props-must-be-readonly]
-
-5   foo: number;
-    ~~~
-
-
-`;
-
-exports[`double-interface-members-deeper 1`] = `
-neg.double-interface-members-deeper.ts:9:1 - error JSII5015: Interface "jsii.IC" re-declares member "foo". This is not supported as it results in invalid C#. [language-compatibility/redeclared-interface-member]
-
- 9 export interface IC extends IB {
-   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-10   foo(): void;
-   ~~~~~~~~~~~~~~
-11 }
-   ~
-
-
-`;
-
-exports[`double-interface-members-method 1`] = `
-neg.double-interface-members-method.ts:4:1 - error JSII5015: Interface "jsii.IB" re-declares member "foo". This is not supported as it results in invalid C#. [language-compatibility/redeclared-interface-member]
-
-4 export interface IB extends IA {
-  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-5   foo(): void;
-  ~~~~~~~~~~~~~~
-6 }
-  ~
-
-
-`;
-
 exports[`downgrade-to-readonly 1`] = `
 neg.downgrade-to-readonly.ts:8:24 - error JSII5010: "jsii.Implementation#property" turns readonly when implementing jsii.IInterface. Make it mutable [language-compatibility/override-changes-mutability]
 
@@ -921,6 +872,47 @@ neg.property-name.3.ts:2:10 - error JSII5000: Methods and properties cannot have
 2   public getFoo?: number;
            ~~~~~~
 
+
+`;
+
+exports[`redeclared-interface-member-method-narrowed 1`] = `
+neg.redeclared-interface-member-method-narrowed.ts:8:1 - error JSII5015: Interface "jsii.IB" re-declares member "foo" with a different type or signature. Re-declared members must match the inherited declaration exactly, as C# interfaces cannot narrow inherited members. [language-compatibility/redeclared-interface-member]
+
+ 8 export interface IB extends IA {
+   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 9   // Narrowing the return type is valid TypeScript, but not valid C#.
+   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+10   foo(): Subclass;
+   ~~~~~~~~~~~~~~~~~~
+11 }
+   ~
+
+
+`;
+
+exports[`redeclared-interface-member-narrowed 1`] = `
+neg.redeclared-interface-member-narrowed.ts:10:17 - error JSII5004: "jsii.IB#foo" changes the property type to "jsii.Subclass" when implementing jsii.IA. Change it to "jsii.Superclass" [language-compatibility/override-changes-property-type]
+
+10   readonly foo: Subclass;
+                   ~~~~~~~~
+
+  neg.redeclared-interface-member-narrowed.ts:5:17
+    5   readonly foo: Superclass;
+                      ~~~~~~~~~~
+    The implemented declaration is here.
+
+`;
+
+exports[`redeclared-interface-member-required 1`] = `
+neg.redeclared-interface-member-required.ts:7:17 - error JSII5009: "jsii.B#foo" turns required when implementing jsii.A. Make it optional [language-compatibility/override-changes-prop-optional]
+
+7   readonly foo: string;
+                  ~~~~~~
+
+  neg.redeclared-interface-member-required.ts:2:15
+    2   readonly foo?: string;
+                    ~
+    The implemented declaration is here.
 
 `;
 
