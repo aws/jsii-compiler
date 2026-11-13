@@ -1,21 +1,25 @@
+import * as crypto from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import * as spec from '@jsii/spec';
+import { writeAssembly } from '@jsii/spec';
 import chalk from 'chalk';
 import * as log4js from 'log4js';
-import * as ts from 'typescript';
 
 import { Assembler } from './assembler';
 import { findDependencyDirectory } from './common/find-utils';
-import { Emitter } from './emitter';
+import { CompilerHost } from './compiler-host';
+import { Diagnostic, DiagnosticCategory } from './diagnostic';
+import { emitProject } from './emitter';
 import { JsiiDiagnostic } from './jsii-diagnostic';
+import * as literate from './literate';
 import { ProjectInfo } from './project-info';
-import { WARNINGSCODE_FILE_NAME } from './transforms/deprecation-warnings';
 import { TypeScriptConfig, TypeScriptConfigValidationRuleSet } from './tsconfig';
-import { BASE_COMPILER_OPTIONS, convertForJson } from './tsconfig/compiler-options';
+import { BASE_COMPILER_OPTIONS } from './tsconfig/compiler-options';
+import { parseTsconfigJson, readTypeScriptConfigFile } from './tsconfig/read';
 import { TypeScriptConfigValidator } from './tsconfig/tsconfig-validator';
 import { ValidationError } from './tsconfig/validator';
 import * as utils from './utils';
-import { isSilenced } from './warnings';
 
 const LOG = log4js.getLogger('jsii/compiler');
 export const DIAGNOSTICS = 'diagnostics';
@@ -24,7 +28,12 @@ export const JSII_DIAGNOSTICS_CODE = 9999;
 export interface CompilerOptions {
   /** The information about the project to be built */
   projectInfo: ProjectInfo;
-  /** Whether the compiler should watch for changes or just compile once */
+  /**
+   * Whether the compiler should watch for changes or just compile once.
+   *
+   * Watch mode is not available on the TypeScript 7 backend; setting this to
+   * `true` makes `emit()` fail with an explicit error.
+   */
   watch?: boolean;
   /** Whether to detect and generate TypeScript project references */
   projectReferences?: boolean;
@@ -34,7 +43,13 @@ export interface CompilerOptions {
   stripDeprecated?: boolean;
   /** The path to an allowlist of FQNs to strip if stripDeprecated is set */
   stripDeprecatedAllowListFile?: string;
-  /** Whether to add warnings for deprecated elements */
+  /**
+   * Whether to add warnings for deprecated elements.
+   *
+   * Not implemented on the TypeScript 7 backend yet; requesting it fails with
+   * an explicit error instead of silently producing an assembly without the
+   * `.warnings.jsii.js` module.
+   */
   addDeprecationWarnings?: boolean;
   /**
    * The name of the tsconfig file to generate.
@@ -61,12 +76,24 @@ export interface CompilerOptions {
   compressAssembly?: boolean;
 }
 
-export class Compiler implements Emitter {
-  private readonly system: ts.System;
-  private readonly compilerHost: ts.CompilerHost;
+export interface EmitResult {
+  readonly emitSkipped: boolean;
+  readonly diagnostics: readonly Diagnostic[];
+  /** The files written by the compiler (absolute paths). */
+  readonly emittedFiles?: readonly string[];
+}
+
+/**
+ * Compiles a jsii project with the TypeScript 7 programmatic API.
+ *
+ * The compiler owns the `tsconfig.json` handling (generating one from the
+ * project's `package.json`, or validating a user-provided one) and delegates the
+ * type analysis, assembly generation and emit to `buildProject`, which drives the
+ * out-of-process TypeScript 7 compiler.
+ */
+export class Compiler {
   private readonly userProvidedTypeScriptConfig: boolean;
   private readonly tsconfig: TypeScriptConfig;
-  private rootFiles: string[] = [];
   private readonly configPath: string;
   private readonly projectRoot: string;
 
@@ -81,110 +108,63 @@ export class Compiler implements Emitter {
     const configFileName = options.typeScriptConfig ?? options.generateTypeScriptConfig ?? 'tsconfig.json';
     this.configPath = path.join(this.projectRoot, configFileName);
     this.userProvidedTypeScriptConfig = Boolean(options.typeScriptConfig);
-
-    this.system = {
-      ...ts.sys,
-      getCurrentDirectory: () => this.projectRoot,
-      createDirectory: (pth) => ts.sys.createDirectory(path.resolve(this.projectRoot, pth)),
-      deleteFile: ts.sys.deleteFile && ((pth) => ts.sys.deleteFile!(path.join(this.projectRoot, pth))),
-      fileExists: (pth) => ts.sys.fileExists(path.resolve(this.projectRoot, pth)),
-      getFileSize: ts.sys.getFileSize && ((pth) => ts.sys.getFileSize!(path.resolve(this.projectRoot, pth))),
-      readFile: (pth, encoding) => ts.sys.readFile(path.resolve(this.projectRoot, pth), encoding),
-      watchFile:
-        ts.sys.watchFile &&
-        ((pth, callback, pollingInterval, watchOptions) =>
-          ts.sys.watchFile!(path.resolve(this.projectRoot, pth), callback, pollingInterval, watchOptions)),
-      writeFile: (pth, data, writeByteOrderMark) =>
-        ts.sys.writeFile(path.resolve(this.projectRoot, pth), data, writeByteOrderMark),
-    };
-
     this.tsconfig = this.configureTypeScript();
-    this.compilerHost = ts.createIncrementalCompilerHost(this.tsconfig.compilerOptions, this.system);
+  }
+
+  /** The name of the tsconfig file this compiler builds from (relative to the project root). */
+  public get configFileName(): string {
+    return path.relative(this.projectRoot, this.configPath);
   }
 
   /**
-   * Compiles the configured program.
-   *
-   * @param files can be specified to override the standard source code location logic. Useful for example when testing "negatives".
+   * Compiles the configured project once.
    */
-  public emit(...files: string[]): ts.EmitResult {
-    this.prepareForBuild(...files);
-    return this.buildOnce();
-  }
-
   /**
-   * Watches for file-system changes and dynamically recompiles the project as needed. In non-blocking mode, this
-   * returns the TypeScript watch handle for the application to use.
+   * Compiles the configured project once.
    *
-   * @internal
+   * @param files can be specified to override the standard source code location
+   *              logic (the generated tsconfig then lists exactly these files).
+   *              Useful for example when testing "negatives".
    */
-  public async watch(opts: NonBlockingWatchOptions): Promise<ts.Watch<ts.BuilderProgram>>;
-  /**
-   * Watches for file-system changes and dynamically recompiles the project as needed. In blocking mode, this results
-   * in a never-resolving promise.
-   */
-  public async watch(): Promise<never>;
-  public async watch(opts?: NonBlockingWatchOptions): Promise<ts.Watch<ts.BuilderProgram> | never> {
-    this.prepareForBuild();
-
-    const host = ts.createWatchCompilerHost(
-      this.configPath,
-      {
-        ...this.tsconfig.compilerOptions,
-        noEmitOnError: false,
-      },
-      this.system,
-      ts.createEmitAndSemanticDiagnosticsBuilderProgram,
-      opts?.reportDiagnostics,
-      opts?.reportWatchStatus,
-      this.tsconfig.watchOptions,
-    );
-    if (!host.getDefaultLibLocation) {
-      throw new Error('No default library location was found on the TypeScript compiler host!');
+  public emit(...files: string[]): EmitResult {
+    if (this.options.watch) {
+      throw new utils.JsiiError('--watch is not supported by the TypeScript 7 based compiler', true);
     }
-    const orig = host.afterProgramCreate;
-    // This is a callback cascade, so it's "okay" to return an unhandled promise there. This may
-    // cause an unhandled promise rejection warning, but that's not a big deal.
-    //
-    // eslint-disable-next-line @typescript-eslint/no-misused-promises
-    host.afterProgramCreate = (builderProgram) => {
-      const startTime = Date.now();
-      const emitResult = this.consumeProgram(builderProgram.getProgram(), host.getDefaultLibLocation!());
+    if (this.options.addDeprecationWarnings) {
+      throw new utils.JsiiError('--add-deprecation-warnings is not supported by the TypeScript 7 based compiler yet');
+    }
+    if (files.length > 0 && this.userProvidedTypeScriptConfig) {
+      throw new utils.JsiiError('Explicit source files cannot be combined with a user-provided tsconfig');
+    }
+    if (!this.userProvidedTypeScriptConfig) {
+      this.writeTypeScriptConfig(files);
+    }
 
-      for (const diag of emitResult.diagnostics.filter((d) => d.code === JSII_DIAGNOSTICS_CODE)) {
-        utils.logDiagnostic(diag, this.projectRoot);
-      }
+    const result = buildProject({
+      projectRoot: this.projectRoot,
+      projectInfo: this.options.projectInfo,
+      tsconfigFileName: this.configFileName,
+      generatedTsconfig: !this.userProvidedTypeScriptConfig,
+      stripDeprecated: this.options.stripDeprecated,
+      stripDeprecatedAllowListFile: this.options.stripDeprecatedAllowListFile,
+      compressAssembly: this.options.compressAssembly,
+    });
 
-      console.log(
-        utils.formatCompilationSummary(emitResult.diagnostics, emitResult.emitSkipped, Date.now() - startTime),
-      );
+    if (!result.emitSkipped) {
+      LOG.info(`assembled ${result.typeCount} types, emitted ${result.emittedFiles.length} files`);
+    }
 
-      if (orig) {
-        orig.call(host, builderProgram);
-      }
-      if (opts?.compilationComplete) {
-        opts.compilationComplete(emitResult);
-      }
+    const hasWarnings = result.diagnostics.some((d) => d.category === 0 /* Warning */);
+    return {
+      emitSkipped: result.emitSkipped || (this.options.failOnWarnings === true && hasWarnings),
+      diagnostics: result.diagnostics,
+      emittedFiles: result.emittedFiles,
     };
-    const watch = ts.createWatchProgram(host);
-
-    if (opts?.nonBlocking) {
-      // In non-blocking mode, returns the handle to the TypeScript watch interface.
-      return watch;
-    }
-    // In blocking mode, returns a never-resolving promise.
-    return new Promise<never>(() => null);
   }
 
-  /**
-   * Prepares the project for build, by creating the necessary configuration
-   * file(s), and assigning the relevant root file(s).
-   *
-   * @param files the files that were specified as input in the CLI invocation.
-   */
   private configureTypeScript(): TypeScriptConfig {
     if (this.userProvidedTypeScriptConfig) {
-      const config = this.readTypeScriptConfig();
+      const config = readTypeScriptConfigFile(this.configPath);
 
       // emit a warning if validation is disabled
       const rules = this.options.validateTypeScriptConfig ?? TypeScriptConfigValidationRuleSet.NONE;
@@ -200,11 +180,7 @@ export class Compiler implements Emitter {
         const configName = path.relative(this.projectRoot, this.configPath);
         try {
           const validator = new TypeScriptConfigValidator(rules);
-          validator.validate({
-            ...config,
-            // convert the internal format to the user format which is what the validator operates on
-            compilerOptions: convertForJson(config.compilerOptions),
-          });
+          validator.validate(config);
         } catch (error: unknown) {
           if (error instanceof ValidationError) {
             utils.logDiagnostic(
@@ -232,119 +208,10 @@ export class Compiler implements Emitter {
   }
 
   /**
-   * Final preparations of the project for build.
+   * Builds the TypeScript config object from jsii config.
    *
-   * These are preparations that either
-   * - must happen immediately before the build, or
-   * - can be different for every build like assigning the relevant root file(s).
-   *
-   * @param files the files that were specified as input in the CLI invocation.
-   */
-  private prepareForBuild(...files: string[]) {
-    if (!this.userProvidedTypeScriptConfig) {
-      this.writeTypeScriptConfig();
-    }
-
-    this.rootFiles = this.determineSources(files);
-  }
-
-  /**
-   * Do a single build
-   */
-  private buildOnce(): ts.EmitResult {
-    if (!this.compilerHost.getDefaultLibLocation) {
-      throw new Error('No default library location was found on the TypeScript compiler host!');
-    }
-
-    const tsconf = this.tsconfig!;
-
-    const prog = ts.createIncrementalProgram({
-      rootNames: this.rootFiles.concat(_pathOfLibraries(tsconf.compilerOptions, this.compilerHost)),
-      options: tsconf.compilerOptions,
-      // Make the references absolute for the compiler
-      projectReferences: tsconf.references?.map((ref) => ({
-        path: path.resolve(path.dirname(this.configPath), ref.path),
-      })),
-      host: this.compilerHost,
-    });
-
-    return this.consumeProgram(prog.getProgram(), this.compilerHost.getDefaultLibLocation());
-  }
-
-  private consumeProgram(program: ts.Program, stdlib: string): ts.EmitResult {
-    const diagnostics = [...ts.getPreEmitDiagnostics(program)];
-    let hasErrors = false;
-
-    if (!hasErrors && this.diagsHaveAbortableErrors(diagnostics)) {
-      hasErrors = true;
-      LOG.error('Compilation errors prevented the JSII assembly from being created');
-    }
-
-    // Do the "Assembler" part first because we need some of the analysis done in there
-    // to post-process the AST
-    const assembler = new Assembler(this.options.projectInfo, this.system, program, stdlib, {
-      stripDeprecated: this.options.stripDeprecated,
-      stripDeprecatedAllowListFile: this.options.stripDeprecatedAllowListFile,
-      addDeprecationWarnings: this.options.addDeprecationWarnings,
-      compressAssembly: this.options.compressAssembly,
-    });
-
-    try {
-      const assmEmit = assembler.emit();
-      if (!hasErrors && (assmEmit.emitSkipped || this.diagsHaveAbortableErrors(assmEmit.diagnostics))) {
-        hasErrors = true;
-        LOG.error('Type model errors prevented the JSII assembly from being created');
-      }
-
-      diagnostics.push(...assmEmit.diagnostics);
-    } catch (e: any) {
-      diagnostics.push(JsiiDiagnostic.JSII_9997_UNKNOWN_ERROR.createDetached(e));
-      hasErrors = true;
-    }
-
-    // Do the emit, but add in transformers which are going to replace real
-    // comments with synthetic ones.
-    const emit = program.emit(
-      undefined, // targetSourceFile
-      undefined, // writeFile
-      undefined, // cancellationToken
-      undefined, // emitOnlyDtsFiles
-      assembler.customTransformers,
-    );
-    diagnostics.push(...emit.diagnostics);
-
-    if (!hasErrors && (emit.emitSkipped || this.diagsHaveAbortableErrors(emit.diagnostics))) {
-      hasErrors = true;
-      LOG.error('Compilation errors prevented the JSII assembly from being created');
-    }
-
-    // Some extra validation on the config.
-    // Make sure that { "./.warnings.jsii.js": "./.warnings.jsii.js" } is in the set of
-    // exports, if they are specified.
-    if (this.options.addDeprecationWarnings && this.options.projectInfo.exports !== undefined) {
-      const expected = `./${WARNINGSCODE_FILE_NAME}`;
-      const warningsExport = Object.entries(this.options.projectInfo.exports).filter(
-        ([k, v]) => k === expected && v === expected,
-      );
-
-      if (warningsExport.length === 0) {
-        hasErrors = true;
-        diagnostics.push(JsiiDiagnostic.JSII_0007_MISSING_WARNINGS_EXPORT.createDetached());
-      }
-    }
-
-    return {
-      emitSkipped: hasErrors,
-      diagnostics: ts.sortAndDeduplicateDiagnostics(diagnostics),
-      emittedFiles: emit.emittedFiles,
-    };
-  }
-
-  /**
-   * Build the TypeScript config object from jsii config
-   *
-   * This is the object that will be written to disk
-   * unless an existing tsconfig was provided.
+   * This is the object that will be written to disk unless an existing tsconfig
+   * is passed in.
    */
   private buildTypeScriptConfig(): TypeScriptConfig {
     let references: string[] | undefined;
@@ -355,6 +222,7 @@ export class Compiler implements Emitter {
         : this.options.projectInfo.projectReferences !== undefined
         ? this.options.projectInfo.projectReferences
         : false;
+
     if (isComposite) {
       references = this.findProjectReferences();
     }
@@ -388,39 +256,16 @@ export class Compiler implements Emitter {
   }
 
   /**
-   * Load the TypeScript config object from a provided file
-   */
-  private readTypeScriptConfig(): TypeScriptConfig {
-    const projectRoot = this.options.projectInfo.projectRoot;
-    const { config, error } = ts.readConfigFile(this.configPath, ts.sys.readFile);
-    if (error) {
-      utils.logDiagnostic(error, projectRoot);
-      throw new utils.JsiiError(`Failed to load tsconfig at ${this.configPath}`);
-    }
-    const extended = ts.parseJsonConfigFileContent(config, ts.sys, projectRoot);
-    // the tsconfig parser adds this in, but it is not an expected compilerOption
-    delete extended.options.configFilePath;
-
-    return {
-      compilerOptions: extended.options,
-      watchOptions: extended.watchOptions,
-      include: extended.fileNames,
-    };
-  }
-
-  /**
    * Creates a `tsconfig.json` file to improve the IDE experience.
-   *
-   * @return the fully qualified path to the `tsconfig.json` file
    */
-  private writeTypeScriptConfig(): void {
+  private writeTypeScriptConfig(files: string[] = []): void {
     const commentKey = '_generated_by_jsii_';
     const commentValue = 'Generated by jsii - safe to delete, and ideally should be in .gitignore';
 
     (this.tsconfig as any)[commentKey] = commentValue;
 
     if (fs.existsSync(this.configPath)) {
-      const { config: currentConfig } = ts.readConfigFile(this.configPath, ts.sys.readFile);
+      const currentConfig = parseTsconfigJson(fs.readFileSync(this.configPath, 'utf8'), this.configPath);
       if (currentConfig && !(commentKey in currentConfig)) {
         throw new utils.JsiiError(
           `A '${this.configPath}' file that was not generated by jsii is in ${this.options.projectInfo.projectRoot}. Aborting instead of overwriting.`,
@@ -428,13 +273,16 @@ export class Compiler implements Emitter {
       }
     }
 
-    const outputConfig = {
-      ...this.tsconfig,
-      compilerOptions: convertForJson(this.tsconfig?.compilerOptions),
-    };
-
+    const config: TypeScriptConfig =
+      files.length > 0
+        ? {
+            ...this.tsconfig,
+            files: files.map((f) => path.relative(this.projectRoot, path.resolve(this.projectRoot, f))),
+            include: undefined,
+          }
+        : this.tsconfig;
     LOG.debug(`Creating or updating ${chalk.blue(this.configPath)}`);
-    fs.writeFileSync(this.configPath, JSON.stringify(outputConfig, null, 2), 'utf8');
+    fs.writeFileSync(this.configPath, JSON.stringify(config, null, 2), 'utf8');
   }
 
   /**
@@ -467,16 +315,15 @@ export class Compiler implements Emitter {
         continue;
       }
 
-      const { config: tsconfig } = ts.readConfigFile(tsconfigFile, this.system.readFile);
+      const tsconfig = parseTsconfigJson(fs.readFileSync(tsconfigFile, 'utf8'), tsconfigFile);
 
       // Add references to any TypeScript package we find that is 'composite' enabled.
       // Make it relative.
       if (tsconfig.compilerOptions?.composite) {
         ret.push(path.relative(this.options.projectInfo.projectRoot, path.dirname(tsconfigFile)));
       } else {
-        // Not a composite package--if this package is in a node_modules directory, that is most
-        // likely correct, otherwise it is most likely an error (heuristic here, I don't know how to
-        // properly check this).
+        // Not a composite package--if this package is in a 'node_modules' directory, that is most
+        // likely correct, otherwise it is most likely an error (heuristic).
         if (tsconfigFile.includes('node_modules')) {
           LOG.warn('%s: not a composite TypeScript package, but it probably should be', path.dirname(tsconfigFile));
         }
@@ -487,44 +334,12 @@ export class Compiler implements Emitter {
   }
 
   /**
-   * Find source files using the same mechanism that the TypeScript compiler itself uses.
+   * Find source files for a dependency that is also a sibling in a monorepo.
    *
-   * Respects includes/excludes/etc.
-   *
-   * This makes it so that running 'typescript' and running 'jsii' has the same behavior.
-   */
-  private determineSources(files: string[]): string[] {
-    // explicitly requested files
-    if (files.length > 0) {
-      return [...files];
-    }
-
-    // for user provided config we already have parsed the full list of files
-    if (this.userProvidedTypeScriptConfig) {
-      return [...(this.tsconfig.include ?? [])];
-    }
-
-    // finally get the file list for the generated config
-    const parseConfigHost = parseConfigHostFromCompilerHost(this.compilerHost);
-    const parsed = ts.parseJsonConfigFileContent(this.tsconfig, parseConfigHost, this.options.projectInfo.projectRoot);
-    return [...parsed.fileNames];
-  }
-
-  /**
-   * Resolve the given dependency name from the current package, and find the associated tsconfig.json location
-   *
-   * Because we have the following potential directory layout:
-   *
-   *   package/node_modules/some_dependency
-   *   package/tsconfig.json
-   *
-   * We resolve symlinks and only find a "TypeScript" dependency if doesn't have 'node_modules' in
-   * the path after resolving symlinks (i.e., if it's a peer package in the same monorepo).
-   *
-   * Returns undefined if no such tsconfig could be found.
+   * This method is used to find project references.
    */
   private findMonorepoPeerTsconfig(depName: string): string | undefined {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports,@typescript-eslint/no-var-requires
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { builtinModules } = require('node:module');
     if ((builtinModules ?? []).includes(depName)) {
       // Can happen for modules like 'punycode' which are declared as dependency for polyfill purposes
@@ -539,7 +354,7 @@ export class Compiler implements Emitter {
         return undefined;
       }
 
-      // Resolve symlinks, to check if this is a monorepo peer
+      // Resolve symlinks, to get a correct relative path
       const dependencyRealPath = fs.realpathSync(dep);
       if (dependencyRealPath.split(path.sep).includes('node_modules')) {
         return undefined;
@@ -554,71 +369,308 @@ export class Compiler implements Emitter {
       throw e;
     }
   }
+}
 
-  private diagsHaveAbortableErrors(diags: readonly ts.Diagnostic[]) {
-    return diags.some(
-      (d) =>
-        d.category === ts.DiagnosticCategory.Error ||
-        (this.options.failOnWarnings && d.category === ts.DiagnosticCategory.Warning && !isSilenced(d)),
-    );
+// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
+const sortJson = require('sort-json');
+
+export interface BuildProjectOptions {
+  readonly projectRoot: string;
+  readonly projectInfo: ProjectInfo;
+  /** The tsconfig file to open, relative to `projectRoot` (default `tsconfig.json`). */
+  readonly tsconfigFileName?: string;
+  /**
+   * Whether the tsconfig was generated by jsii (as opposed to user-provided).
+   * A generated config may be amended with an inferred `rootDir`.
+   */
+  readonly generatedTsconfig?: boolean;
+  readonly stripDeprecated?: boolean;
+  readonly stripDeprecatedAllowListFile?: string;
+  readonly compressAssembly?: boolean;
+}
+
+export interface BuildProjectResult {
+  readonly assembly?: spec.Assembly;
+  readonly typeCount: number;
+  readonly emittedFiles: string[];
+  readonly emitSkipped: boolean;
+  readonly diagnostics: readonly Diagnostic[];
+}
+
+/**
+ * Derive the entrypoint .ts from the project's declared `types` entry.
+ *
+ * Mirrors the classic Assembler's `mainFile` computation: start from the
+ * declared `types`, turn the `.d.ts`/`.js` into `.ts`, then — if an
+ * out-of-source build is configured (tsc `outDir`) — re-root the path from the
+ * `outDir` into the `rootDir`. This correctly handles both conventional
+ * `src`->`lib` layouts and in-place (`rootDir === outDir`) layouts.
+ */
+function deriveEntry(projectRoot: string, projectInfo: ProjectInfo, rootDir?: string, outDir?: string): string {
+  const dts: string = projectInfo.types ?? 'index.d.ts';
+  let mainFile = dts.replace(/\.d\.ts(x?)$/, '.ts$1').replace(/\.js$/, '.ts');
+
+  if (outDir != null) {
+    // strip the outDir prefix, then prepend rootDir (if any)
+    const rel = path.relative(outDir, mainFile);
+    mainFile = rootDir != null ? path.join(rootDir, rel) : rel;
+  }
+  return path.resolve(projectRoot, mainFile);
+}
+
+/**
+ * Run the ts backend for a package: produce and write the `.jsii` assembly.
+ */
+export function buildProject(options: BuildProjectOptions): BuildProjectResult {
+  const { projectRoot, projectInfo } = options;
+
+  let host = CompilerHost.open(options.projectRoot, options.tsconfigFileName);
+  let project = host.getProject();
+  let tsDiagnostics = collectTsDiagnostics(project.program);
+  let tscRootDir = projectInfo.tsc?.rootDir;
+  const tscOutDir = projectInfo.tsc?.outDir;
+
+  // TypeScript 7 no longer infers `rootDir` from the common directory of the
+  // sources when `outDir` is set (TS5011). The classic compiler relied on that
+  // inference for the output layout and recorded the inferred directory as
+  // `metadata.tscRootDir`; do the same for generated configs: infer it from the
+  // program's root files, write it into the tsconfig and open the project again.
+  if (options.generatedTsconfig && tscRootDir == null && tsDiagnostics.some((d) => d.code === 5011)) {
+    const inferred = inferRootDir(project.rootFileNames, projectRoot);
+    if (inferred != null) {
+      const tsconfigPath = path.join(projectRoot, options.tsconfigFileName ?? 'tsconfig.json');
+      const tsconfig = JSON.parse(fs.readFileSync(tsconfigPath, 'utf8'));
+      tsconfig.compilerOptions = { ...tsconfig.compilerOptions, rootDir: inferred };
+      fs.writeFileSync(tsconfigPath, JSON.stringify(tsconfig, null, 2), 'utf8');
+      host.close();
+      host = CompilerHost.open(options.projectRoot, options.tsconfigFileName);
+      project = host.getProject();
+      tsDiagnostics = collectTsDiagnostics(project.program);
+      tscRootDir = inferred;
+    }
+  }
+
+  const entry = deriveEntry(projectRoot, projectInfo, tscRootDir, tscOutDir);
+
+  try {
+    // Surface TypeScript compilation errors BEFORE assembling, with the same
+    // reject-on-error behaviour as the default backend: a program that does not
+    // compile must not produce an assembly.
+    if (tsDiagnostics.some((d) => d.category === DiagnosticCategory.Error)) {
+      return { typeCount: 0, emittedFiles: [], emitSkipped: true, diagnostics: tsDiagnostics };
+    }
+
+    const assembler = new Assembler(host.ts, project, {
+      packageJson: projectInfo.packageJson,
+      projectInfo,
+      projectRoot,
+      entry,
+      assemblyName: projectInfo.name,
+      defaultStability: projectInfo.stability,
+      stripDeprecated: options.stripDeprecated ?? !!(projectInfo.packageJson as any)['cdk-build']?.stripDeprecated,
+      stripDeprecatedAllowListFile: options.stripDeprecatedAllowListFile,
+      tscRootDir,
+      tscOutDir,
+      readme: loadReadme(projectRoot),
+    });
+
+    let assembly: spec.Assembly;
+    try {
+      assembly = assembler.assemble();
+    } catch (e: any) {
+      // Same contract as the classic compiler: a failure while assembling is
+      // reported as a JSII9997 error diagnostic rather than crashing the build.
+      return {
+        typeCount: 0,
+        emittedFiles: [],
+        emitSkipped: true,
+        diagnostics: [
+          ...tsDiagnostics,
+          ...assembler.diagnostics,
+          JsiiDiagnostic.JSII_9997_UNKNOWN_ERROR.createDetached(e),
+        ],
+      };
+    }
+    const jsiiDiagnostics = assembler.diagnostics;
+    if (jsiiDiagnostics.some((d) => d.category === DiagnosticCategory.Error)) {
+      return {
+        typeCount: 0,
+        emittedFiles: [],
+        emitSkipped: true,
+        diagnostics: [...tsDiagnostics, ...jsiiDiagnostics],
+      };
+    }
+
+    if (process.env.JSII_TS7_TIMING) {
+      LOG.info(`ts doc-cache hits (RPCs avoided): ${assembler.docCacheHits}`);
+    }
+
+    // Write the assembly first (the parity artifact), reusing @jsii/spec's writer
+    // so the on-disk format (incl. the compressed file-redirect variant) matches
+    // the strada path exactly.
+    writeAssembly(projectRoot, fingerprint(assembly), { compress: options.compressAssembly ?? false });
+
+    // Then emit JS/d.ts and inject jsii rtti (post-emit pass). An emit failure
+    // fails the build (emitSkipped + a synthetic diagnostic); the assembly file
+    // is left on disk to aid debugging, but the exit status reflects the error.
+    let emittedFiles: string[] = [];
+    try {
+      ({ emittedFiles } = emitProject(project, {
+        projectRoot,
+        assembly,
+        outDir: tscOutDir,
+        rootDir: tscRootDir,
+      }));
+    } catch (err) {
+      LOG.error(`ts backend: emit pipeline failed: ${(err as Error).stack ?? (err as Error).message}`);
+      return {
+        assembly,
+        typeCount: Object.keys(assembly.types ?? {}).length,
+        emittedFiles: [],
+        emitSkipped: true,
+        diagnostics: [syntheticErrorDiagnostic(`ts backend: emit pipeline failed: ${(err as Error).message}`)],
+      };
+    }
+
+    return {
+      assembly,
+      typeCount: Object.keys(assembly.types ?? {}).length,
+      emittedFiles,
+      emitSkipped: false,
+      diagnostics: [...tsDiagnostics, ...jsiiDiagnostics], // non-error diagnostics (warnings/suggestions) pass through
+    };
+  } finally {
+    if (process.env.JSII_TS7_TIMING) {
+      const t = host.getTimingInfo?.();
+      if (t?.totals) {
+        LOG.info(
+          `ts timing: requests=${t.totals.requestCount} roundTripMs=${Math.round(t.totals.roundTripMs)} ` +
+            `serverTimeMs=${Math.round(t.totals.serverTimeMs ?? 0)} transportOverheadMs=${Math.round(
+              t.totals.transportOverheadMs ?? 0,
+            )} ` +
+            `sent=${t.totals.bytesSent} recv=${t.totals.bytesReceived}`,
+        );
+      }
+    }
+    host.close();
   }
 }
 
 /**
- * Options for Watch in non-blocking mode.
- *
- * @internal
+ * Collect the program's pre-emit diagnostics (options, global, syntactic and
+ * semantic) from the program and map them to jsii's `Diagnostic` for the
+ * standard reporting pipeline.
  */
-export interface NonBlockingWatchOptions {
-  /**
-   * Signals non-blocking execution
-   */
-  readonly nonBlocking: true;
-
-  /**
-   * Configures the diagnostics reporter
-   */
-  readonly reportDiagnostics: ts.DiagnosticReporter;
-
-  /**
-   * Configures the watch status reporter
-   */
-  readonly reportWatchStatus: ts.WatchStatusReporter;
-
-  /**
-   * This hook gets invoked when a compilation cycle (complete with Assembler execution) completes.
-   */
-  readonly compilationComplete: (emitResult: ts.EmitResult) => void;
-}
-
-function _pathOfLibraries(options: ts.CompilerOptions, host: ts.CompilerHost | ts.WatchCompilerHost<any>): string[] {
-  // Prefer user libraries, falling back to a library based on the target if not supplied by the user.
-  // This matches tsc behavior.
-  const libs = options.lib ?? [ts.getDefaultLibFileName(options)];
-  if (libs.length === 0) {
-    return [];
-  }
-
-  const libDir = host.getDefaultLibLocation?.();
-  if (!libDir) {
-    throw new Error(`Compiler host doesn't have a default library directory available for ${libs.join(', ')}`);
-  }
-  return libs.map((name) => path.join(libDir, name));
-}
-
-function parseConfigHostFromCompilerHost(host: ts.CompilerHost): ts.ParseConfigHost {
-  // Copied from upstream
-  // https://github.com/Microsoft/TypeScript/blob/9e05abcfd3f8bb3d6775144ede807daceab2e321/src/compiler/program.ts#L3105
-  return {
-    fileExists: (f) => host.fileExists(f),
-    readDirectory(root, extensions, excludes, includes, depth) {
-      if (host.readDirectory === undefined) {
-        throw new Error("'CompilerHost.readDirectory' must be implemented to correctly process 'projectReferences'");
+function collectTsDiagnostics(program: any): Diagnostic[] {
+  const call = (name: string): any[] => (typeof program[name] === 'function' ? program[name]() ?? [] : []);
+  const raw: any[] = [
+    ...call('getProgramDiagnostics'),
+    ...call('getGlobalDiagnostics'),
+    ...call('getSyntacticDiagnostics'),
+    ...call('getSemanticDiagnostics'),
+  ];
+  const texts = new Map<string, string | undefined>();
+  const readSource = (fileName: string): string | undefined => {
+    if (!texts.has(fileName)) {
+      try {
+        texts.set(fileName, fs.readFileSync(fileName, 'utf8'));
+      } catch {
+        texts.set(fileName, undefined);
       }
-      return host.readDirectory(root, extensions, excludes, includes, depth);
-    },
-    readFile: (f) => host.readFile(f),
-    useCaseSensitiveFileNames: host.useCaseSensitiveFileNames(),
-    trace: host.trace ? (s) => host.trace!(s) : undefined,
+    }
+    return texts.get(fileName);
   };
+  return raw.map((d) => toDiagnostic(d, readSource));
+}
+
+/**
+ * Map one TypeScript 7 API diagnostic (`{ fileName, pos, end, code, category, text }`)
+ * to jsii's `Diagnostic`. The file text is attached so the formatter renders the
+ * same `file:line:col - error TSxxxx:` layout, with source context, that the
+ * classic compiler produced. Exported for unit tests.
+ */
+export function toDiagnostic(d: any, readSource: (fileName: string) => string | undefined): Diagnostic {
+  const category = Object.values(DiagnosticCategory).includes(d.category)
+    ? (d.category as DiagnosticCategory)
+    : DiagnosticCategory.Error;
+  const fileName: string | undefined = typeof d.fileName === 'string' ? d.fileName : undefined;
+  const file = fileName != null ? { fileName, text: readSource(fileName) } : undefined;
+  const hasRange = file != null && typeof d.pos === 'number' && typeof d.end === 'number' && d.end >= d.pos;
+  return {
+    category,
+    code: typeof d.code === 'number' ? d.code : 0,
+    file,
+    start: hasRange ? d.pos : undefined,
+    length: hasRange ? d.end - d.pos : undefined,
+    messageText: typeof d.text === 'string' ? d.text : d.messageText ?? d.message ?? String(d),
+  };
+}
+
+/** An error diagnostic with no source location. */
+function syntheticErrorDiagnostic(messageText: string): Diagnostic {
+  return {
+    category: DiagnosticCategory.Error,
+    code: 0,
+    file: undefined,
+    start: undefined,
+    length: undefined,
+    messageText,
+  };
+}
+
+/**
+ * Load and render the package README the same way the default backend does
+ * (including literate example inclusion), so `assembly.readme` matches.
+ */
+function loadReadme(projectRoot: string): spec.ReadMe | undefined {
+  const fileName = fs.readdirSync(projectRoot).find((file) => file.toLocaleLowerCase() === 'readme.md');
+  if (fileName == null) {
+    return undefined;
+  }
+  const readmePath = path.join(projectRoot, fileName);
+  return {
+    markdown: literate
+      .includeAndRenderExamples(literate.loadFromFile(readmePath), literate.fileSystemLoader(projectRoot), projectRoot)
+      .join('\n'),
+  };
+}
+
+/**
+ * Port of the classic `inferRootDir`: the longest directory (relative to the
+ * project root) shared by all root files of the configuration, or `undefined`
+ * when they only share the project root itself.
+ */
+function inferRootDir(rootFileNames: readonly string[], projectRoot: string): string | undefined {
+  const directories = rootFileNames
+    .filter((fileName) => !fileName.split(path.sep).includes('node_modules'))
+    .map((fileName) => path.relative(projectRoot, path.dirname(fileName)))
+    .map(segmentPath);
+  if (directories.length === 0) {
+    return undefined;
+  }
+  const maxPrefix = Math.min(...directories.map((segments) => segments.length - 1));
+  let commonIndex = -1;
+  while (commonIndex < maxPrefix && new Set(directories.map((segments) => segments[commonIndex + 1])).size === 1) {
+    commonIndex++;
+  }
+  if (commonIndex < 0) {
+    return undefined;
+  }
+  return directories[0][commonIndex];
+
+  function segmentPath(fileName: string): string[] {
+    const result = new Array<string>();
+    for (let parent = fileName; parent !== path.dirname(parent); parent = path.dirname(parent)) {
+      result.unshift(parent);
+    }
+    return result;
+  }
+}
+
+/** Mirror of strada `_fingerprint`: sort keys, hash, stamp `fingerprint`. */
+function fingerprint(assembly: spec.Assembly): spec.Assembly {
+  delete (assembly as any).fingerprint;
+  const sorted = sortJson(assembly);
+  const hash = crypto.createHash('sha256').update(JSON.stringify(sorted)).digest('base64');
+  return { ...sorted, fingerprint: hash };
 }

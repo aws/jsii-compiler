@@ -3,31 +3,11 @@ import { get } from 'node:https';
 import { join } from 'node:path';
 import chalk from 'chalk';
 
+import { ReleasesDocument } from './support-types';
 import { RELEASE_LINE } from './version';
 
 const SILENCE_ENV_VAR = 'JSII_SILENCE_SUPPORT_WARNING';
 const THIRTY_DAYS_IN_MILLIS = 2_592_000_000;
-
-/** @internal */
-export interface ReleasesDocument {
-  /**
-   * The release line that occupies the 'Current' stage.
-   */
-  readonly current: ReleaseLine;
-  /**
-   * Release lines currently in 'Maintenance' with the date at which they are
-   * planned to go into the 'End-of-Support' stage. This date should always be
-   * set a minimum of 6 months in the future when a release line is added to the
-   * list.
-   */
-  readonly maintenance: { readonly [release: ReleaseLine]: Date };
-  /**
-   * Release lines that are currently out-of-support. This is semantically
-   * equivalent to being in the `maintenance` list with a past date, but offers
-   * slightly faster look-up.
-   */
-  readonly endOfSupport?: readonly ReleaseLine[];
-}
 
 /**
  * Checks whether the current release line is close to End-of-Support (within
@@ -151,5 +131,3 @@ function veryVisibleMessage(formatter: chalk.Chalk, ...lines: readonly string[])
   console.error(spacer);
   console.error(border);
 }
-
-type ReleaseLine = `${number}.${number}`;

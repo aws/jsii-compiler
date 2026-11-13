@@ -4,9 +4,9 @@ import * as spec from '@jsii/spec';
 import { findAssemblyFile, loadAssemblyFromFile } from '@jsii/spec';
 import * as log4js from 'log4js';
 import * as semver from 'semver';
-import * as ts from 'typescript';
-
 import { findDependencyDirectory } from './common/find-utils';
+import { Diagnostic, DiagnosticCategory } from './diagnostic';
+
 import { ASSEMBLY_FEATURES_SUPPORTED } from './helpers';
 import { JsiiDiagnostic } from './jsii-diagnostic';
 import { TypeScriptConfigValidationRuleSet } from './tsconfig';
@@ -17,28 +17,29 @@ const spdx: Set<string> = require('spdx-license-list/simple');
 
 const LOG = log4js.getLogger('jsii/package-info');
 
-export type TSCompilerOptions = Partial<
-  Pick<
-    ts.CompilerOptions,
-    // Directory preferences
-    | 'outDir'
-    | 'rootDir'
-    // TypeScript path mapping
-    | 'paths'
-    // Style preferences
-    | 'forceConsistentCasingInFileNames'
-    | 'noImplicitOverride'
-    | 'noPropertyAccessFromIndexSignature'
-    | 'noUncheckedIndexedAccess'
-    // Source map preferences
-    | 'declarationMap'
-    | 'inlineSourceMap'
-    | 'inlineSources'
-    | 'sourceMap'
-    // Types limitations
-    | 'types'
-  >
->;
+/**
+ * The subset of TypeScript compiler options a jsii project may configure
+ * (`jsii.tsc` in `package.json`), in their JSON form.
+ */
+export interface TSCompilerOptions {
+  // Directory preferences
+  readonly outDir?: string;
+  readonly rootDir?: string;
+  // TypeScript path mapping
+  readonly paths?: { [prefix: string]: string[] };
+  // Style preferences
+  readonly forceConsistentCasingInFileNames?: boolean;
+  readonly noImplicitOverride?: boolean;
+  readonly noPropertyAccessFromIndexSignature?: boolean;
+  readonly noUncheckedIndexedAccess?: boolean;
+  // Source map preferences
+  readonly declarationMap?: boolean;
+  readonly inlineSourceMap?: boolean;
+  readonly inlineSources?: boolean;
+  readonly sourceMap?: boolean;
+  // Types limitations
+  readonly types?: string[];
+}
 
 /**
  * The assembly targets have some typing in `spec.PackageJson`, extract it.
@@ -86,7 +87,7 @@ export interface ProjectInfo {
   readonly targets: AssemblyTargets;
   readonly metadata?: { readonly [key: string]: any };
   readonly jsiiVersionFormat: 'short' | 'full';
-  readonly diagnostics?: { readonly [code: string]: ts.DiagnosticCategory };
+  readonly diagnostics?: { readonly [code: string]: DiagnosticCategory };
   readonly description?: string;
   readonly homepage?: string;
   readonly contributors?: readonly spec.Person[];
@@ -166,14 +167,14 @@ export interface PackageJson {
 
 export interface ProjectInfoResult {
   readonly projectInfo: ProjectInfo;
-  readonly diagnostics: readonly ts.Diagnostic[];
+  readonly diagnostics: readonly Diagnostic[];
 }
 
 export function loadProjectInfo(projectRoot: string): ProjectInfoResult {
   const packageJsonPath = path.join(projectRoot, 'package.json');
   const pkg: PackageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
 
-  const diagnostics: ts.Diagnostic[] = [];
+  const diagnostics: Diagnostic[] = [];
 
   let bundleDependencies: { [name: string]: string } | undefined;
   for (const name of pkg.bundleDependencies ?? pkg.bundledDependencies ?? []) {
@@ -695,27 +696,27 @@ function mergeMetadata(
 
 function _loadDiagnostics(entries?: { [key: string]: string }):
   | {
-      readonly [key: string]: ts.DiagnosticCategory;
+      readonly [key: string]: DiagnosticCategory;
     }
   | undefined {
   if (entries === undefined || Object.keys(entries).length === 0) {
     return undefined;
   }
-  const result: { [key: string]: ts.DiagnosticCategory } = {};
+  const result: { [key: string]: DiagnosticCategory } = {};
   for (const code of Object.keys(entries)) {
-    let category: ts.DiagnosticCategory;
+    let category: DiagnosticCategory;
     switch (entries[code].trim().toLowerCase()) {
       case 'error':
-        category = ts.DiagnosticCategory.Error;
+        category = DiagnosticCategory.Error;
         break;
       case 'warning':
-        category = ts.DiagnosticCategory.Warning;
+        category = DiagnosticCategory.Warning;
         break;
       case 'suggestion':
-        category = ts.DiagnosticCategory.Suggestion;
+        category = DiagnosticCategory.Suggestion;
         break;
       case 'message':
-        category = ts.DiagnosticCategory.Message;
+        category = DiagnosticCategory.Message;
         break;
       default:
         throw new JsiiError(`Invalid category '${entries[code]}' for code '${code}'`);

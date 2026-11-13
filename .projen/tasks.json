@@ -75,7 +75,7 @@
       "steps": [
         {
           "execArgs": [
-            "tsc",
+            "node_modules/@typescript/native/bin/tsc",
             "--build"
           ]
         }
@@ -87,8 +87,17 @@
       "steps": [
         {
           "execArgs": [
-            "ts-node",
-            "--project",
+            "node_modules/@typescript/native/bin/tsc",
+            "--noEmit",
+            "-p",
+            "projenrc/tsconfig.json"
+          ],
+          "name": "typecheck"
+        },
+        {
+          "execArgs": [
+            "tsx",
+            "--tsconfig",
             "projenrc/tsconfig.json",
             ".projenrc.ts"
           ]
@@ -177,7 +186,7 @@
       "description": "Runs after successful compilation",
       "steps": [
         {
-          "exec": "ts-node projenrc/prepare-fixtures.ts",
+          "exec": "tsx projenrc/prepare-fixtures.ts",
           "name": "prepare-fixtures"
         }
       ]
@@ -191,7 +200,7 @@
       "description": "Prepare the project for compilation",
       "steps": [
         {
-          "exec": "ts-node build-tools/code-gen.ts",
+          "exec": "tsx build-tools/code-gen.ts",
           "name": "code-gen"
         }
       ]
@@ -201,7 +210,7 @@
       "description": "Prepare a release bundle",
       "steps": [
         {
-          "exec": "ts-node projenrc/set-version.ts",
+          "exec": "tsx projenrc/set-version.ts",
           "name": "set-version",
           "receiveArgs": true
         },
@@ -221,7 +230,7 @@
           "spawn": "package"
         },
         {
-          "exec": "yarn version 0.0.0",
+          "exec": "yarn version 0.0.0 --force",
           "name": "reset-version"
         }
       ]
@@ -231,7 +240,7 @@
       "description": "Tag this commit for release",
       "steps": [
         {
-          "exec": "ts-node projenrc/tag-release.ts",
+          "exec": "tsx projenrc/tag-release.ts",
           "name": "tag-release",
           "receiveArgs": true
         }
@@ -241,6 +250,15 @@
       "name": "test",
       "description": "Run tests",
       "steps": [
+        {
+          "name": "Type-check the test suite",
+          "execArgs": [
+            "node_modules/@typescript/native/bin/tsc",
+            "--noEmit",
+            "-p",
+            "test/tsconfig.json"
+          ]
+        },
         {
           "execArgs": [
             "jest",
@@ -259,7 +277,7 @@
       "description": "Executes the benchmark test",
       "steps": [
         {
-          "exec": "ts-node ./projenrc/benchmark-test.ts",
+          "exec": "tsx ./projenrc/benchmark-test.ts",
           "receiveArgs": true
         }
       ]
@@ -269,7 +287,7 @@
       "description": "Updates the fixtures/.tarballs/aws-cdk-lib.tgz file with a fresh snapshot.",
       "steps": [
         {
-          "exec": "ts-node projenrc/update-integ-package.ts",
+          "exec": "tsx projenrc/update-integ-package.ts",
           "receiveArgs": true
         }
       ]
@@ -296,19 +314,19 @@
       },
       "steps": [
         {
-          "exec": "npm-check-updates --dep dev --upgrade --target=minor --cooldown=3 --reject='jsii-1.x,typescript'"
+          "exec": "npm-check-updates --dep dev --upgrade --target=minor --cooldown=3 --reject='jsii-1.x,typescript,@typescript/native'"
         },
         {
-          "exec": "npm-check-updates --dep optional --upgrade --target=minor --cooldown=3 --reject='jsii-1.x,typescript'"
+          "exec": "npm-check-updates --dep optional --upgrade --target=minor --cooldown=3 --reject='jsii-1.x,typescript,@typescript/native'"
         },
         {
-          "exec": "npm-check-updates --dep peer --upgrade --target=minor --cooldown=3 --reject='jsii-1.x,typescript'"
+          "exec": "npm-check-updates --dep peer --upgrade --target=minor --cooldown=3 --reject='jsii-1.x,typescript,@typescript/native'"
         },
         {
-          "exec": "npm-check-updates --dep prod --upgrade --target=minor --cooldown=3 --reject='jsii-1.x,typescript'"
+          "exec": "npm-check-updates --dep prod --upgrade --target=minor --cooldown=3 --reject='jsii-1.x,typescript,@typescript/native'"
         },
         {
-          "exec": "npm-check-updates --dep bundle --upgrade --target=minor --cooldown=3 --reject='jsii-1.x,typescript'"
+          "exec": "npm-check-updates --dep bundle --upgrade --target=minor --cooldown=3 --reject='jsii-1.x,typescript,@typescript/native'"
         },
         {
           "exec": "npm-check-updates --upgrade --target=patch --filter=typescript --cooldown=3"
@@ -333,7 +351,7 @@
       "steps": [
         {
           "execArgs": [
-            "tsc",
+            "node_modules/@typescript/native/bin/tsc",
             "--build",
             "-w"
           ]

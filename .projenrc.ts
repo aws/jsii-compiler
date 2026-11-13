@@ -1,5 +1,4 @@
 import { javascript, JsonPatch, github, typescript, YamlFile } from 'projen';
-import { YarnNodeLinker } from 'projen/lib/javascript/yarnrc';
 import { BuildWorkflow } from './projenrc/build-workflow';
 import { JsiiCalcFixtures } from './projenrc/fixtures';
 import { ReleaseWorkflow } from './projenrc/release';
@@ -14,23 +13,25 @@ import { UpgradeDependencies } from './projenrc/upgrade-dependencies';
 const workflowNodeVersion = 'lts/*';
 
 const project = new typescript.TypeScriptProject({
+  name: 'jsii',
+  license: 'Apache-2.0',
+  authorName: 'Amazon Web Services',
+  authorUrl: 'https://aws.amazon.com',
+  homepage: 'https://aws.github.io/jsii',
+  repository: 'https://github.com/aws/jsii-compiler.git',
+
   projenrcTs: true,
+  runner: typescript.TypeScriptRunner.tsx({ typeCheck: true }),
 
   packageManager: javascript.NodePackageManager.YARN_BERRY,
   yarnBerryOptions: {
+    // Yarn patches `typescript` on install to support Plug'n'Play. Before 4.17.1, that patch fails on TypeScript 7,
+    // which no longer ships the JavaScript compiler files the patch edits.
+    version: '4.18.1',
     yarnRcOptions: {
-      nodeLinker: YarnNodeLinker.NODE_MODULES,
+      nodeLinker: javascript.YarnNodeLinker.NODE_MODULES,
     },
   },
-
-  name: 'jsii',
-  license: 'Apache-2.0',
-
-  authorName: 'Amazon Web Services',
-  authorUrl: 'https://aws.amazon.com',
-
-  homepage: 'https://aws.github.io/jsii',
-  repository: 'https://github.com/aws/jsii-compiler.git',
 
   pullRequestTemplateContents: [
     '',
@@ -44,7 +45,7 @@ const project = new typescript.TypeScriptProject({
 
   autoDetectBin: true,
 
-  minNodeVersion: '20.16.0', // Node.js 20 LTS
+  minNodeVersion: '22.12.0', // Node.js 22 LTS
   tsconfig: {
     compilerOptions: {
       // @see https://github.com/microsoft/TypeScript/wiki/Node-Target-Mapping
@@ -98,6 +99,7 @@ const project = new typescript.TypeScriptProject({
     },
     junitReporting: false,
   },
+  typecheckTests: true,
 
   buildWorkflow: false, // We have our own build workflow (need matrix test)
   release: false, // We have our own release workflow
@@ -146,8 +148,7 @@ project.tsconfig?.file?.patch(
 );
 project.tryFindObjectFile('projenrc/tsconfig.json')?.patch(
   // projenrc/support.ts needs these files
-  JsonPatch.add('/include/-', '../src/support.ts'),
-  JsonPatch.add('/include/-', '../src/version.ts'),
+  JsonPatch.add('/include/-', '../src/support-types.ts'),
 );
 
 // Don't show .gitignore'd files in the VSCode explorer
@@ -167,18 +168,35 @@ project.package.addField('exports', {
   './common': './lib/common/index.js',
 });
 
-// Remove TypeScript devDependency (it's a direct/normal dependency here)
-project.deps.removeDependency('typescript');
+// Code imports TypeScript as `#typescript`, so switching it back to the plain `typescript` package later only needs
+// a change here.
+project.package.addField('imports', {
+  '#typescript': '@typescript/native',
+  '#typescript/*': '@typescript/native/*',
+});
 
-// Modernize ts-jest configuration
+// The compiler depends on TypeScript 7 under the `@typescript/native` alias. The plain `typescript` dev dependency is
+// TypeScript 6, for typescript-eslint, which needs the TypeScript 6 compiler API.
+project.addDevDeps('typescript@~6.0');
+
+// Both TypeScript packages provide a `tsc` binary, and which one a bare `tsc` resolves to depends on how the task is
+// started: `npx projen` gets TypeScript 7, but `yarn build` and `yarn release` get TypeScript 6. Point every `tsc` step
+// at the TypeScript 7 binary so all of them compile with the same version.
+const TSC = 'node_modules/@typescript/native/bin/tsc';
+
+// Run tests with swc instead of ts-jest, which needs the TypeScript 6 compiler API. swc doesn't type-check, so the
+// test suite is type-checked with `tsc` before the tests run (see `typecheckTests`).
+project.deps.removeDependency('ts-jest');
+project.addDevDeps('@swc/core', '@swc/jest');
 if (project.jest?.config) {
   project.jest.config.transform ??= {};
   project.jest.config.transform['^.+\\.[t]sx?$'] = [
-    'ts-jest',
+    '@swc/jest',
     {
-      compiler: 'typescript',
-      tsconfig: 'test/tsconfig.json',
-      diagnostics: { ignoreCodes: ['TS151001'] },
+      jsc: {
+        parser: { syntax: 'typescript' },
+        target: 'es2023',
+      },
     },
   ];
 }
@@ -207,7 +225,7 @@ project.addDeps(
   'semver-intersect',
   'sort-json',
   'spdx-license-list',
-  `typescript@~${SUPPORT_POLICY.current}`,
+  '@typescript/native@npm:typescript@7.1.0-beta',
   'yargs',
 );
 
@@ -227,15 +245,21 @@ project.addDevDeps(
   'glob',
 );
 
-project.preCompileTask.exec('ts-node build-tools/code-gen.ts', {
+project.preCompileTask.exec('tsx build-tools/code-gen.ts', {
   name: 'code-gen',
 });
 project.gitignore.addPatterns('/src/version.ts', '/jsii-outdir/', '/test/negatives/.*');
 project.gitignore.exclude('.DS_Store', '.lock');
 
 // Exclude negatives from tsconfig and eslint...
-project.tsconfigDev.addExclude('test/negatives/**/*.ts');
+// (paths in the test tsconfig are relative to test/)
+project.tsconfigDev.addExclude('negatives/**/*.ts');
+// The root tsconfig is composite, so the test project must list the src files that tests import
+project.tsconfigDev.addInclude('../src/**/*.ts');
 project.eslint?.addIgnorePattern('test/negatives/**/*.ts');
+// Treat `#typescript` as internal. It resolves to the TypeScript 7 package, which is named `typescript` and would be
+// mistaken for the TypeScript 6 dev dependency.
+project.tryFindObjectFile('.eslintrc.json')?.patch(JsonPatch.add('/settings/import~1internal-regex', '^#'));
 
 // Customize ESLint rules
 project.tsconfigDev.addInclude('build-tools/**/*.ts');
@@ -319,5 +343,13 @@ new github.PullRequestBackport(project, {
 });
 
 new UpdateIntegPackage(project);
+
+for (const task of project.tasks.all) {
+  for (const [index, step] of task.steps.entries()) {
+    if (step.execArgs?.[0] === 'tsc') {
+      task.updateStep(index, { ...step, execArgs: [TSC, ...step.execArgs.slice(1)] });
+    }
+  }
+}
 
 project.synth();

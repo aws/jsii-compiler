@@ -47,7 +47,6 @@ exports[`integration test: @scope/jsii-calc-base 1`] = `
   "license": "Apache-2.0",
   "metadata": {
     "jsii": {
-      "compiledWithDeprecationWarnings": true,
       "pacmak": {
         "hasDefaultInterfaces": false,
       },
@@ -524,7 +523,6 @@ exports[`integration test: @scope/jsii-calc-lib 1`] = `
   "license": "Apache-2.0",
   "metadata": {
     "jsii": {
-      "compiledWithDeprecationWarnings": true,
       "pacmak": {
         "hasDefaultInterfaces": true,
       },
@@ -1645,7 +1643,6 @@ exports[`integration test: jsii-calc 1`] = `
   "license": "Apache-2.0",
   "metadata": {
     "jsii": {
-      "compiledWithDeprecationWarnings": true,
       "pacmak": {
         "hasDefaultInterfaces": true,
       },
@@ -2711,10 +2708,10 @@ that the value set is of the expected type and throw otherwise.",
                   "primitive": "number",
                 },
                 {
-                  "fqn": "jsii-calc.Multiply",
+                  "fqn": "@scope/jsii-calc-lib.Number",
                 },
                 {
-                  "fqn": "@scope/jsii-calc-lib.Number",
+                  "fqn": "jsii-calc.Multiply",
                 },
               ],
             },
@@ -4595,7 +4592,7 @@ I will repeat this example again, but in an",
                               ],
                             },
                           },
-                          "kind": "map",
+                          "kind": "array",
                         },
                       },
                       {
@@ -4612,7 +4609,7 @@ I will repeat this example again, but in an",
                               ],
                             },
                           },
-                          "kind": "array",
+                          "kind": "map",
                         },
                       },
                     ],
@@ -4659,7 +4656,7 @@ I will repeat this example again, but in an",
                             ],
                           },
                         },
-                        "kind": "map",
+                        "kind": "array",
                       },
                     },
                     {
@@ -4676,7 +4673,7 @@ I will repeat this example again, but in an",
                             ],
                           },
                         },
-                        "kind": "array",
+                        "kind": "map",
                       },
                     },
                   ],

@@ -15,7 +15,7 @@ export class BenchmarkTest {
   ) {
     project.addTask('test:benchmark', {
       description: 'Executes the benchmark test',
-      exec: 'ts-node ./projenrc/benchmark-test.ts',
+      exec: 'tsx ./projenrc/benchmark-test.ts',
       receiveArgs: true,
     });
 
@@ -261,7 +261,8 @@ if (require.main === module) {
             case 'jsii':
               return [require.resolve('../lib/main.js'), workDir, '--silence-warnings=reserved-word'];
             case 'tsc':
-              return [require.resolve('typescript/bin/tsc'), '--build', workDir];
+              // The TypeScript 7 package doesn't export its bin/ directory
+              return [join(require.resolve('#typescript/package.json'), '..', 'bin', 'tsc'), '--build', workDir];
           }
         })();
 

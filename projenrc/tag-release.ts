@@ -1,7 +1,7 @@
 import { spawn } from 'node:child_process';
 import { SemVer } from 'semver';
-import { versionMajorMinor } from 'typescript';
 import * as yargs from 'yargs';
+import { versionMajorMinor } from '#typescript';
 
 type PrereleaseIdentifier = 'dev' | 'pre' | 'alpha' | 'beta' | 'rc';
 

@@ -13,7 +13,9 @@ beforeEach(() => {
   jest.restoreAllMocks();
 });
 
-describe('Function generation', () => {
+// @TODO(ts7): re-enable once --add-deprecation-warnings is implemented on the TypeScript 7 compiler;
+// requesting it currently fails with an explicit error.
+describe.skip('Function generation', () => {
   test('generates the print function', () => {
     const result = compileJsiiForTest('', undefined /* callback */, {
       addDeprecationWarnings: true,
@@ -483,7 +485,9 @@ class DeprecationError extends Error {
   });
 });
 
-describe('Call injections', () => {
+// @TODO(ts7): re-enable once --add-deprecation-warnings is implemented on the TypeScript 7 compiler;
+// requesting it currently fails with an explicit error.
+describe.skip('Call injections', () => {
   test('does not add warnings by default', () => {
     const result = compileJsiiForTest(
       `
@@ -731,7 +735,9 @@ describe('Call injections', () => {
   });
 });
 
-describe('thrown exceptions have the expected stack trace', () => {
+// @TODO(ts7): re-enable once --add-deprecation-warnings is implemented on the TypeScript 7 compiler;
+// requesting it currently fails with an explicit error.
+describe.skip('thrown exceptions have the expected stack trace', () => {
   test('constructor', () => {
     const compilation = compileJsiiForTest(
       `

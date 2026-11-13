@@ -5,8 +5,8 @@ import * as path from 'node:path';
 import * as util from 'node:util';
 import chalk from 'chalk';
 import * as log4js from 'log4js';
-import { version as tsVersion } from 'typescript/package.json';
 import * as yargs from 'yargs';
+import { version as tsVersion } from '#typescript/package.json';
 
 import { Compiler } from './compiler';
 import { configureCategories, JsiiDiagnostic } from './jsii-diagnostic';
@@ -161,6 +161,7 @@ enum OPTION_GROUP {
             stripDeprecated: argv['strip-deprecated'] != null,
             stripDeprecatedAllowListFile: argv['strip-deprecated'],
             addDeprecationWarnings: argv['add-deprecation-warnings'],
+            watch: argv.watch,
             generateTypeScriptConfig: argv['generate-tsconfig'],
             typeScriptConfig,
             validateTypeScriptConfig,
@@ -168,7 +169,7 @@ enum OPTION_GROUP {
           });
 
           const startTime = Date.now();
-          const emitResult = argv.watch ? await compiler.watch() : compiler.emit();
+          const emitResult = compiler.emit();
 
           const allDiagnostics = [...projectInfoDiagnostics, ...emitResult.diagnostics];
 

@@ -31,6 +31,8 @@ strict.shouldPass('stripInternal', Match.optional(Match.FALSE));
 strict.shouldPass('noEmitOnError', Match.TRUE);
 strict.shouldPass('declaration', Match.TRUE);
 strict.shouldPass('noUncheckedSideEffectImports', Match.optional(Match.TRUE));
+strict.shouldPass('esModuleInterop', Match.optional(Match.TRUE));
+strict.shouldPass('allowSyntheticDefaultImports', Match.optional(Match.TRUE));
 
 // Deprecated ts options that should not be used with jsii
 strict.import(deprecatedOptions);

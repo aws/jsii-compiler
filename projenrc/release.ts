@@ -85,7 +85,7 @@ export class ReleaseWorkflow {
         {
           name: 'Determine Target',
           id: publishTarget,
-          run: 'yarn ts-node projenrc/publish-target.ts "$RELEASE_TAG"',
+          run: 'yarn tsx projenrc/publish-target.ts "$RELEASE_TAG"',
           env: {
             RELEASE_TAG: '${{ github.ref_name }}',
             // A GitHub token is required to list GitHub Releases, so we can tell if the `latest` dist-tag is needed.
@@ -291,7 +291,7 @@ class ReleaseTask {
       description: 'Prepare a release bundle',
     });
 
-    task.exec('ts-node projenrc/set-version.ts', {
+    task.exec('tsx projenrc/set-version.ts', {
       name: 'set-version',
       receiveArgs: true,
     });
@@ -304,7 +304,8 @@ class ReleaseTask {
 
     task.spawn(project.packageTask);
 
-    task.exec('yarn version 0.0.0', {
+    // `--force` is needed because 0.0.0 is lower than the release version.
+    task.exec('yarn version 0.0.0 --force', {
       name: 'reset-version',
     });
   }
@@ -316,7 +317,7 @@ class TagReleaseTask {
       description: 'Tag this commit for release',
     });
 
-    task.exec('ts-node projenrc/tag-release.ts', {
+    task.exec('tsx projenrc/tag-release.ts', {
       name: 'tag-release',
       receiveArgs: true,
     });

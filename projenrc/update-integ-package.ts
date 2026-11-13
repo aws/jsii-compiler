@@ -7,8 +7,8 @@ import * as path from 'node:path';
 import * as glob from 'glob';
 import { typescript } from 'projen';
 import * as tar from 'tar';
-import * as ts from 'typescript';
 import * as yargs from 'yargs';
+import * as ts from '#typescript';
 import { copySync } from './utils';
 
 export class UpdateIntegPackage {
@@ -17,7 +17,7 @@ export class UpdateIntegPackage {
 
     project.addTask('test:benchmark:update-aws-cdk-lib-snapshot', {
       description: 'Updates the fixtures/.tarballs/aws-cdk-lib.tgz file with a fresh snapshot.',
-      exec: 'ts-node projenrc/update-integ-package.ts',
+      exec: 'tsx projenrc/update-integ-package.ts',
       receiveArgs: true,
     });
   }

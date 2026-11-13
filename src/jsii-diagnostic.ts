@@ -1,9 +1,7 @@
 import * as spec from '@jsii/spec';
 import { camel, constant, pascal } from 'case';
-import * as ts from 'typescript';
+import { Diagnostic, DiagnosticCategory, DiagnosticSourceFile } from './diagnostic';
 
-import { TypeSystemHints } from './docs';
-import { WARNINGSCODE_FILE_NAME } from './transforms/deprecation-warnings';
 import { Violation } from './tsconfig/validator';
 import { JSII_DIAGNOSTICS_CODE, _formatDiagnostic } from './utils';
 
@@ -26,7 +24,7 @@ export class Code<T extends DiagnosticMessageFormatter = DiagnosticMessageFormat
     formatter: T;
     name: string;
   }) {
-    return new Code<T>(code, name, ts.DiagnosticCategory.Message, formatter);
+    return new Code<T>(code, name, DiagnosticCategory.Message, formatter);
   }
 
   /**
@@ -41,7 +39,7 @@ export class Code<T extends DiagnosticMessageFormatter = DiagnosticMessageFormat
     formatter: T;
     name: string;
   }) {
-    return new Code<T>(code, name, ts.DiagnosticCategory.Suggestion, formatter);
+    return new Code<T>(code, name, DiagnosticCategory.Suggestion, formatter);
   }
 
   /**
@@ -56,7 +54,7 @@ export class Code<T extends DiagnosticMessageFormatter = DiagnosticMessageFormat
     formatter: T;
     name: string;
   }) {
-    return new Code<T>(code, name, ts.DiagnosticCategory.Warning, formatter);
+    return new Code<T>(code, name, DiagnosticCategory.Warning, formatter);
   }
 
   /**
@@ -71,7 +69,7 @@ export class Code<T extends DiagnosticMessageFormatter = DiagnosticMessageFormat
     formatter: T;
     name: string;
   }) {
-    return new Code<T>(code, name, ts.DiagnosticCategory.Error, formatter);
+    return new Code<T>(code, name, DiagnosticCategory.Error, formatter);
   }
 
   /**
@@ -113,10 +111,10 @@ export class Code<T extends DiagnosticMessageFormatter = DiagnosticMessageFormat
   private static readonly byName: Map<string, Code> = new Map();
 
   // eslint-disable-next-line @typescript-eslint/explicit-member-accessibility
-  readonly #defaultCategory: ts.DiagnosticCategory;
+  readonly #defaultCategory: DiagnosticCategory;
 
   // eslint-disable-next-line @typescript-eslint/explicit-member-accessibility
-  #category?: ts.DiagnosticCategory;
+  #category?: DiagnosticCategory;
 
   // eslint-disable-next-line @typescript-eslint/explicit-member-accessibility
   #formatter: T;
@@ -132,7 +130,7 @@ export class Code<T extends DiagnosticMessageFormatter = DiagnosticMessageFormat
   private constructor(
     public readonly code: number,
     public readonly name: string,
-    defaultCategory: ts.DiagnosticCategory,
+    defaultCategory: DiagnosticCategory,
     formatter: T,
   ) {
     this.#defaultCategory = defaultCategory;
@@ -154,28 +152,26 @@ export class Code<T extends DiagnosticMessageFormatter = DiagnosticMessageFormat
    * category.
    */
   public get isError(): boolean {
-    return this.#defaultCategory === ts.DiagnosticCategory.Error;
+    return this.#defaultCategory === DiagnosticCategory.Error;
   }
 
   /**
    * The diagnostic category this particular code is filed as.
    */
-  public get category(): ts.DiagnosticCategory {
+  public get category(): DiagnosticCategory {
     return this.#category ?? this.#defaultCategory;
   }
 
   /**
    * Update the diagnostic category for this particular code. If `isError` is
-   * `true`, attempting to set anything other than `ts.DiagnosticCategory.Error`
+   * `true`, attempting to set anything other than `DiagnosticCategory.Error`
    * will result in an error being throw.
    *
    * @param newValue the new diagnostic category to be used.
    */
-  public set category(newValue: ts.DiagnosticCategory) {
-    if (this.isError && newValue !== ts.DiagnosticCategory.Error) {
-      throw new Error(
-        `Illegal attempt to override category of error ${this.code} to ${ts.DiagnosticCategory[newValue]}`,
-      );
+  public set category(newValue: DiagnosticCategory) {
+    if (this.isError && newValue !== DiagnosticCategory.Error) {
+      throw new Error(`Illegal attempt to override category of error ${this.code} to ${DiagnosticCategory[newValue]}`);
     }
     this.#category = newValue;
   }
@@ -201,7 +197,7 @@ export class Code<T extends DiagnosticMessageFormatter = DiagnosticMessageFormat
    * @param location the source code location attachment of the message.
    * @param args     the arguments to the message formatter.
    */
-  public create(location: ts.Node | undefined, ...args: Parameters<T>): JsiiDiagnostic {
+  public create(location: DiagnosticLocation | undefined, ...args: Parameters<T>): JsiiDiagnostic {
     return new JsiiDiagnostic(this, this.#formatter(...args), location);
   }
 }
@@ -209,7 +205,14 @@ export class Code<T extends DiagnosticMessageFormatter = DiagnosticMessageFormat
 /**
  * A jsii-specific diagnostic entry.
  */
-export class JsiiDiagnostic implements ts.Diagnostic {
+/** A source range a diagnostic points at. */
+export interface DiagnosticLocation {
+  readonly file: DiagnosticSourceFile;
+  readonly start: number;
+  readonly length: number;
+}
+
+export class JsiiDiagnostic implements Diagnostic {
   //////////////////////////////////////////////////////////////////////////////
   // 0001 => 0999 -- PACKAGE METADATA PROBLEMS
 
@@ -261,7 +264,7 @@ export class JsiiDiagnostic implements ts.Diagnostic {
     code: 7,
     formatter: () =>
       'If you are compiling with --add-deprecation-warnings and your package.json ' +
-      `declares subpath exports, you must include { "./${WARNINGSCODE_FILE_NAME}": "./${WARNINGSCODE_FILE_NAME}" } ` +
+      `declares subpath exports, you must include { "./.warnings.jsii.js": "./.warnings.jsii.js" } ` +
       'in the set of exports.',
     name: 'metadata/missing-warnings-export',
   });
@@ -403,9 +406,9 @@ export class JsiiDiagnostic implements ts.Diagnostic {
 
   public static readonly JSII_3001_EXPOSED_INTERNAL_TYPE = Code.error({
     code: 3001,
-    formatter: (symbol: ts.Symbol, isThisType: boolean, typeUse: string) =>
+    formatter: (symbolName: string, isThisType: boolean, typeUse: string) =>
       `Type ${
-        isThisType ? `"this" (aka: "${symbol.name}")` : `"${symbol.name}"`
+        isThisType ? `"this" (aka: "${symbolName}")` : `"${symbolName}"`
       } cannot be used as the ${typeUse} because it is private or @internal`,
     name: 'type-model/use-of-internal-type',
   });
@@ -425,20 +428,8 @@ export class JsiiDiagnostic implements ts.Diagnostic {
 
   public static readonly JSII_3004_INVALID_SUPERTYPE = Code.error({
     code: 3004,
-    formatter: (clause: ts.HeritageClause, badDeclaration: ts.Declaration) => {
-      return `Illegal ${clauseType(clause.token)} clause for an exported API: ${ts.SyntaxKind[badDeclaration.kind]}`;
-
-      function clauseType(token: ts.SyntaxKind): string {
-        switch (token) {
-          case ts.SyntaxKind.ExtendsKeyword:
-            return 'extends';
-          case ts.SyntaxKind.ImplementsKeyword:
-            return 'implements';
-          default:
-            return ts.SyntaxKind[token];
-        }
-      }
-    },
+    formatter: (clauseType: string, badDeclarationKind: string) =>
+      `Illegal ${clauseType} clause for an exported API: ${badDeclarationKind}`,
     name: 'type-model/invalid-supertype',
   });
 
@@ -675,8 +666,8 @@ export class JsiiDiagnostic implements ts.Diagnostic {
 
   public static readonly JSII_5019_MEMBER_TYPE_NAME_CONFLICT = Code.warning({
     code: 5019,
-    formatter: (memberKind: 'method' | 'property', memberSymbol: ts.Symbol, declaringType: spec.Type) =>
-      `The ${memberKind} name "${memberSymbol.name}" conflicts with the declaring ${declaringType.kind} "${declaringType.name}". This will result in renaming the ${declaringType.kind} to "_${declaringType.name}" in C#. Consider renaming "${memberSymbol.name}".`,
+    formatter: (memberKind: 'method' | 'property', memberName: string, declaringType: spec.Type) =>
+      `The ${memberKind} name "${memberName}" conflicts with the declaring ${declaringType.kind} "${declaringType.name}". This will result in renaming the ${declaringType.kind} to "_${declaringType.name}" in C#. Consider renaming "${memberName}".`,
     name: 'language-compatibility/member-name-conflicts-with-type-name',
   });
 
@@ -713,7 +704,7 @@ export class JsiiDiagnostic implements ts.Diagnostic {
 
   public static readonly JSII_7001_ILLEGAL_HINT = Code.error({
     code: 7001,
-    formatter: (hint: keyof TypeSystemHints, ...valid: readonly string[]) =>
+    formatter: (hint: string, ...valid: readonly string[]) =>
       `Illegal use of "@${hint}" hint. It is only valid on ${valid.join(', ')}.`,
     name: 'documentation/illegal-hint',
   });
@@ -836,10 +827,10 @@ export class JsiiDiagnostic implements ts.Diagnostic {
 
   public static readonly JSII_9998_UNSUPPORTED_NODE = Code.message({
     code: 9998,
-    formatter: (kindOrMessage: ts.SyntaxKind | string) =>
-      typeof kindOrMessage === 'string'
-        ? kindOrMessage
-        : `Unsupported ${ts.SyntaxKind[kindOrMessage]} node. This declaration will not be accessible from other languages.`,
+    formatter: (kindOrMessage: string) =>
+      /^[A-Z]\w*$/.test(kindOrMessage)
+        ? `Unsupported ${kindOrMessage} node. This declaration will not be accessible from other languages.`
+        : kindOrMessage,
     name: 'miscellaneous/unsupported-node',
   });
 
@@ -849,7 +840,7 @@ export class JsiiDiagnostic implements ts.Diagnostic {
    * Determines whether a `Diagnostic` instance is a `JsiiDiagnostic` or not.
    * @param diag
    */
-  public static isJsiiDiagnostic(diag: ts.Diagnostic): diag is JsiiDiagnostic {
+  public static isJsiiDiagnostic(diag: Diagnostic): diag is JsiiDiagnostic {
     return (diag as unknown as JsiiDiagnostic).domain === JsiiDiagnostic.DOMAIN;
   }
 
@@ -870,16 +861,16 @@ export class JsiiDiagnostic implements ts.Diagnostic {
 
   private readonly domain = JsiiDiagnostic.DOMAIN;
 
-  public readonly category: ts.DiagnosticCategory;
+  public readonly category: DiagnosticCategory;
   public readonly code: number = JSII_DIAGNOSTICS_CODE;
   public readonly jsiiCode: number;
-  public readonly messageText: string | ts.DiagnosticMessageChain;
+  public readonly messageText: string;
 
-  public readonly file: ts.SourceFile | undefined;
+  public readonly file: DiagnosticSourceFile | undefined;
   public readonly start: number | undefined;
   public readonly length: number | undefined;
 
-  public readonly relatedInformation = new Array<ts.DiagnosticRelatedInformation>();
+  public readonly relatedInformation = new Array<JsiiDiagnostic>();
 
   // eslint-disable-next-line @typescript-eslint/explicit-member-accessibility
   #formatted?: string;
@@ -889,22 +880,22 @@ export class JsiiDiagnostic implements ts.Diagnostic {
    *
    * @internal
    */
-  public constructor(code: Code, messageText: string | ts.DiagnosticMessageChain, location?: ts.Node) {
+  public constructor(code: Code, messageText: string, location?: DiagnosticLocation) {
     this.category = code.category;
     this.jsiiCode = code.code;
     this.messageText = messageText;
 
     if (location != null) {
-      this.file = location.getSourceFile();
-      this.start = location.getStart(this.file);
-      this.length = location.getEnd() - this.start;
+      this.file = location.file;
+      this.start = location.start;
+      this.length = location.length;
     }
   }
 
-  public addRelatedInformation(node: ts.Node, message: JsiiDiagnostic['messageText']): this {
+  public addRelatedInformation(location: DiagnosticLocation, message: JsiiDiagnostic['messageText']): this {
     // Don't relate info into the TypeScript standard library
-    if (!/[\\/]typescript[\\/]lib[\\/]lib\..+\.d\.ts$/.test(node.getSourceFile().fileName)) {
-      this.relatedInformation.push(JsiiDiagnostic.JSII_9999_RELATED_INFO.create(node, message));
+    if (!/[\\/]typescript[\\/]lib[\\/]lib\..+\.d\.ts$/.test(location.file.fileName)) {
+      this.relatedInformation.push(JsiiDiagnostic.JSII_9999_RELATED_INFO.create(location, message));
     }
     // Clearing out #formatted, as this would no longer be the correct string.
     this.#formatted = undefined;
@@ -920,7 +911,7 @@ export class JsiiDiagnostic implements ts.Diagnostic {
    *
    * @returns `this`
    */
-  public addRelatedInformationIf(node: ts.Node | undefined, message: JsiiDiagnostic['messageText']): this {
+  public addRelatedInformationIf(node: DiagnosticLocation | undefined, message: JsiiDiagnostic['messageText']): this {
     if (node != null) {
       return this.addRelatedInformation(node, message);
     } else {
@@ -937,7 +928,10 @@ export class JsiiDiagnostic implements ts.Diagnostic {
    *
    * @returns `this`
    */
-  public maybeAddRelatedInformation(node: ts.Node | undefined, message: JsiiDiagnostic['messageText']): this {
+  public maybeAddRelatedInformation(
+    node: DiagnosticLocation | undefined,
+    message: JsiiDiagnostic['messageText'],
+  ): this {
     if (node == null) {
       return this;
     }
@@ -964,7 +958,7 @@ export class JsiiDiagnostic implements ts.Diagnostic {
 
 export type DiagnosticMessageFormatter = (...args: any[]) => JsiiDiagnostic['messageText'];
 
-export function configureCategories(records: { [code: string]: ts.DiagnosticCategory }) {
+export function configureCategories(records: { [code: string]: DiagnosticCategory }) {
   for (const [code, category] of Object.entries(records)) {
     const diagCode = Code.lookup(diagnosticCode(code));
     if (!diagCode) {
