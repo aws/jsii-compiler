@@ -182,19 +182,6 @@ async function main(): Promise<void> {
     );
   }
 
-  // Check that the current commit wasn't already tagged...
-  const existingTag = tags.find((tag) => tag.commit === HEAD);
-  if (existingTag != null) {
-    const message = `Commit ${HEAD} was already tagged as ${existingTag.tag.version}!`;
-    if (idempotent) {
-      console.info(message);
-      console.log('Idempotent success!');
-      return;
-    } else {
-      throw new Error(message);
-    }
-  }
-
   // Make sure we have all remote tags pulled in.
   await git('fetch', remote, `refs/tags/v${versionMajorMinor}.*:refs/tags/v${versionMajorMinor}.*`);
 
@@ -275,7 +262,7 @@ async function main(): Promise<void> {
 }
 
 /**
- * Computes the `--exclude` options to be passed tino `git describe` to filter
+ * Computes the `--exclude` options to be passed into `git describe` to filter
  * out any pre-release tags considered "inferior" to the current one, so that
  * releases may be published that upgrade an artifact from one prerelease tier
  * to the next tier (up to regular release).
