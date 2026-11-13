@@ -355,6 +355,24 @@ neg.implementation-changes-types.6.ts:10:21 - error JSII5004: "jsii.SomethingImp
 `;
 
 exports[`implementing-method-changes-optionality 1`] = `
+neg.implementing-method-changes-optionality.ts:7:17 - warning JSII5022: "jsii.Implementor#method" renames parameter "required" to "_required" when implementing jsii.IInterface. Rename it to "required": parameter names are part of the API in languages with keyword arguments (e.g. Python) [language-compatibility/override-changes-param-name]
+
+7   public method(_required: string, _optional: number): void {
+                  ~~~~~~~~~
+
+  neg.implementing-method-changes-optionality.ts:3:10
+    3   method(required: string, optional?: number): void;
+               ~~~~~~~~
+    The implemented declaration is here.
+neg.implementing-method-changes-optionality.ts:7:36 - warning JSII5022: "jsii.Implementor#method" renames parameter "optional" to "_optional" when implementing jsii.IInterface. Rename it to "optional": parameter names are part of the API in languages with keyword arguments (e.g. Python) [language-compatibility/override-changes-param-name]
+
+7   public method(_required: string, _optional: number): void {
+                                     ~~~~~~~~~
+
+  neg.implementing-method-changes-optionality.ts:3:28
+    3   method(required: string, optional?: number): void;
+                                 ~~~~~~~~
+    The implemented declaration is here.
 neg.implementing-method-changes-optionality.ts:7:47 - error JSII5008: "jsii.Implementor#method" turns parameter "_optional" required when implementing jsii.IInterface. Make it optional [language-compatibility/override-changes-param-optional]
 
 7   public method(_required: string, _optional: number): void {
@@ -368,6 +386,24 @@ neg.implementing-method-changes-optionality.ts:7:47 - error JSII5008: "jsii.Impl
 `;
 
 exports[`implementing-method-changes-optionality.1 1`] = `
+neg.implementing-method-changes-optionality.1.ts:7:17 - warning JSII5022: "jsii.Implementor#method" renames parameter "required" to "_required" when overriding jsii.AbstractClass. Rename it to "required": parameter names are part of the API in languages with keyword arguments (e.g. Python) [language-compatibility/override-changes-param-name]
+
+7   public method(_required: string, _optional: number): void {
+                  ~~~~~~~~~
+
+  neg.implementing-method-changes-optionality.1.ts:3:26
+    3   public abstract method(required: string, optional?: number): void;
+                               ~~~~~~~~
+    The implemented declaration is here.
+neg.implementing-method-changes-optionality.1.ts:7:36 - warning JSII5022: "jsii.Implementor#method" renames parameter "optional" to "_optional" when overriding jsii.AbstractClass. Rename it to "optional": parameter names are part of the API in languages with keyword arguments (e.g. Python) [language-compatibility/override-changes-param-name]
+
+7   public method(_required: string, _optional: number): void {
+                                     ~~~~~~~~~
+
+  neg.implementing-method-changes-optionality.1.ts:3:44
+    3   public abstract method(required: string, optional?: number): void;
+                                                 ~~~~~~~~
+    The implemented declaration is here.
 neg.implementing-method-changes-optionality.1.ts:7:47 - error JSII5008: "jsii.Implementor#method" turns parameter "_optional" required when overriding jsii.AbstractClass. Make it optional [language-compatibility/override-changes-param-optional]
 
 7   public method(_required: string, _optional: number): void {

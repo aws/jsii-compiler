@@ -482,6 +482,18 @@ function _defaultValidations(): ValidationFunction[] {
             ),
           );
         }
+        // Variadic parameters can't be passed by name (e.g. `*args` in Python), so their name doesn't matter
+        if (expParam.name !== actParam.name && !expParam.variadic && !actParam.variadic) {
+          diagnostic(
+            JsiiDiagnostic.JSII_5022_OVERRIDE_CHANGES_PARAM_NAME.create(
+              declarationName(actParamNode),
+              label,
+              action,
+              actParam,
+              expParam,
+            ).maybeAddRelatedInformation(declarationName(expParamNode), 'The implemented declaration is here.'),
+          );
+        }
       }
     }
 
