@@ -1,7 +1,7 @@
 import { Match, RuleSet } from '../validator';
 
-// A rule set for deprecated compilerOptions that should not be used with jsii.
-// These options are deprecated in TypeScript 6.0 and will be removed in TypeScript 7.0.
+// A rule set for compilerOptions and values that TypeScript has deprecated or removed. They should not be used with jsii.
+// TypeScript rejects removed options on its own; listing them here makes tsconfig validation report them as well.
 // This is an internal rule set, that may be used by other rule sets.
 const deprecatedOptions = new RuleSet();
 deprecatedOptions.shouldPass('prepend', Match.MISSING);
