@@ -698,6 +698,13 @@ export class JsiiDiagnostic implements ts.Diagnostic {
     name: 'language-compatibility/abstract-class-missing-prop-impl',
   });
 
+  public static readonly JSII_5022_OVERRIDE_CHANGES_PARAM_NAME = Code.warning({
+    code: 5022,
+    formatter: (newElement: string, action: string, newParam: spec.Parameter, oldParam: spec.Parameter) =>
+      `"${newElement}" renames parameter "${oldParam.name}" to "${newParam.name}" when ${action}. Rename it to "${oldParam.name}": parameter names are part of the API in languages with keyword arguments (e.g. Python)`,
+    name: 'language-compatibility/override-changes-param-name',
+  });
+
   //////////////////////////////////////////////////////////////////////////////
   // 6000 => 6999 -- RESERVED
 
