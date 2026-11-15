@@ -337,8 +337,9 @@ function formatInlineLinkFromSource(link: ts.JSDocLink | ts.JSDocLinkCode | ts.J
     .replace(/\r?\n\s*\*\s?/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
-  // Match TypeScript's docs rendering: `{@link URL | label}` → `{@link URL label}`.
-  return flattened.replace(/^\{@(link|linkcode|linkplain)\s+(\S+)\s*\|\s*/i, '{@$1 $2 ');
+  // TypeScript drops `|` and inserts a space even when the source has no whitespace:
+  // `{@link URL|label}` and `{@link URL | label}` both become `{@link URL label}`.
+  return flattened.replace(/^\{@(link|linkcode|linkplain)\s+([^|]+?)\s*\|\s*/i, '{@$1 $2 ');
 }
 
 /**

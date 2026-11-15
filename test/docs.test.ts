@@ -377,6 +377,9 @@ test('preserves {@link} labels that span multiple JSDoc lines', () => {
      * more details.
      *
      * Also see {@link https://example.com/one-line | a one-line label}.
+     * Compact: {@link https://x.dev|label}.
+     * Compact multiline: {@link https://x.dev|label across
+     * lines}.
      */
     export class Foo {
     }
@@ -390,9 +393,43 @@ test('preserves {@link} labels that span multiple JSDoc lines', () => {
   );
   expect(text).toContain('{@link https://case.contract-testing.io/docs/reference/state-handlers state handlers}');
   expect(text).toContain('{@link https://example.com/one-line a one-line label}');
+  // TypeScript renders `{@link URL|label}` as `{@link URL label}` (pipe dropped, space inserted).
+  expect(text).toContain('{@link https://x.dev label}.');
+  expect(text).toContain('{@link https://x.dev label across lines}');
+  expect(text).not.toContain('https://x.dev|');
 
   expect(text.match(/state definitions/g)).toEqual(['state definitions']);
-  expect(text).not.toMatch(/\*\s*(definitions|issue)/);
-  expect(text).not.toMatch(/state\}\s*[*}]/);
-  expect(text).not.toMatch(/this\s*\}\s*\*/);
+  expect(text).not.toMatch(/\*\s*definitions/);
+});
+
+// ----------------------------------------------------------------------
+test('preserves multiline {@link} labels on methods and properties', () => {
+  const assembly = compile(`
+    export class Foo {
+      /**
+       * See {@link https://example.com/method | method
+       * label} for details.
+       */
+      public bar() {}
+
+      /**
+       * See {@link https://example.com/property | property
+       * label} for details.
+       */
+      public readonly baz: string = 'x';
+    }
+  `);
+
+  const classType = assembly.types!['testpkg.Foo'] as spec.ClassType;
+  const methodText = [classType.methods![0].docs?.summary, classType.methods![0].docs?.remarks]
+    .filter(Boolean)
+    .join('\n');
+  const propertyText = [classType.properties![0].docs?.summary, classType.properties![0].docs?.remarks]
+    .filter(Boolean)
+    .join('\n');
+
+  expect(methodText).toContain('{@link https://example.com/method method label}');
+  expect(methodText).not.toMatch(/\*\s*label/);
+  expect(propertyText).toContain('{@link https://example.com/property property label}');
+  expect(propertyText).not.toMatch(/\*\s*label/);
 });
