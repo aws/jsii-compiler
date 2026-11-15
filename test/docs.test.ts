@@ -366,3 +366,33 @@ test('@example can contain @ sign', () => {
   const classType = assembly.types!['testpkg.Foo'] as spec.ClassType;
   expect(classType.docs!.example).toBe("import * as x from '@banana';");
 });
+
+// ----------------------------------------------------------------------
+test('preserves {@link} labels that span multiple JSDoc lines', () => {
+  const assembly = compile(`
+    /**
+     * Matches the content of a variable that comes from a state. See {@link https://case.contract-testing.io/docs/defining-contracts/state-definitions | state
+     * definitions}
+     * and {@link https://case.contract-testing.io/docs/reference/state-handlers | state handlers} for
+     * more details.
+     *
+     * Also see {@link https://example.com/one-line | a one-line label}.
+     */
+    export class Foo {
+    }
+  `);
+
+  const docs = assembly.types!['testpkg.Foo'].docs!;
+  const text = [docs.summary, docs.remarks].filter(Boolean).join('\n');
+
+  expect(text).toContain(
+    '{@link https://case.contract-testing.io/docs/defining-contracts/state-definitions state definitions}',
+  );
+  expect(text).toContain('{@link https://case.contract-testing.io/docs/reference/state-handlers state handlers}');
+  expect(text).toContain('{@link https://example.com/one-line a one-line label}');
+
+  expect(text.match(/state definitions/g)).toEqual(['state definitions']);
+  expect(text).not.toMatch(/\*\s*(definitions|issue)/);
+  expect(text).not.toMatch(/state\}\s*[*}]/);
+  expect(text).not.toMatch(/this\s*\}\s*\*/);
+});
