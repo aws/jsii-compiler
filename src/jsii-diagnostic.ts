@@ -425,8 +425,10 @@ export class JsiiDiagnostic implements ts.Diagnostic {
 
   public static readonly JSII_3004_INVALID_SUPERTYPE = Code.error({
     code: 3004,
-    formatter: (clause: ts.HeritageClause, badDeclaration: ts.Declaration) => {
-      return `Illegal ${clauseType(clause.token)} clause for an exported API: ${ts.SyntaxKind[badDeclaration.kind]}`;
+    formatter: (clause: ts.HeritageClause, badDeclaration?: ts.Declaration) => {
+      return `Illegal ${clauseType(clause.token)} clause for an exported API: ${
+        badDeclaration ? ts.SyntaxKind[badDeclaration.kind] : 'unnamed base type'
+      }`;
 
       function clauseType(token: ts.SyntaxKind): string {
         switch (token) {
