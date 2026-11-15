@@ -300,6 +300,7 @@ function rejoinMultilineInlineLinks(comment: string, symbol: ts.Symbol): string 
 }
 
 function rejoinTruncatedLinksFromParts(comment: string, parts: readonly ts.JSDocComment[]): string {
+  let searchFrom = 0;
   for (let i = 0; i < parts.length - 1; i++) {
     const part = parts[i];
     const rest = parts[i + 1];
@@ -315,15 +316,17 @@ function rejoinTruncatedLinksFromParts(comment: string, parts: readonly ts.JSDoc
       continue;
     }
     const leaked = rest.text.slice(0, leakedClose + 1);
-    const leakedAt = comment.indexOf(leaked);
+    const leakedAt = comment.indexOf(`}${leaked}`, searchFrom);
     if (leakedAt < 0) {
       continue;
     }
     const linkStart = comment.lastIndexOf('{@', leakedAt);
-    if (linkStart < 0) {
+    if (linkStart < searchFrom) {
       continue;
     }
-    comment = comment.slice(0, linkStart) + formatInlineLinkFromSource(part) + comment.slice(leakedAt + leaked.length);
+    const repaired = formatInlineLinkFromSource(part);
+    comment = comment.slice(0, linkStart) + repaired + comment.slice(leakedAt + 1 + leaked.length);
+    searchFrom = linkStart + repaired.length;
   }
   return comment;
 }
@@ -339,7 +342,7 @@ function formatInlineLinkFromSource(link: ts.JSDocLink | ts.JSDocLinkCode | ts.J
     .trim();
   // TypeScript drops `|` and inserts a space even when the source has no whitespace:
   // `{@link URL|label}` and `{@link URL | label}` both become `{@link URL label}`.
-  return flattened.replace(/^\{@(link|linkcode|linkplain)\s+([^|]+?)\s*\|\s*/i, '{@$1 $2 ');
+  return flattened.replace(/^\{@(link|linkcode|linkplain)\s+([^|]+?)\s*\|\s*/i, '{@$1 $2 ').replace(/\s+}/, '}');
 }
 
 /**

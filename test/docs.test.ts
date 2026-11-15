@@ -433,3 +433,23 @@ test('preserves multiline {@link} labels on methods and properties', () => {
   expect(propertyText).toContain('{@link https://example.com/property property label}');
   expect(propertyText).not.toMatch(/\*\s*label/);
 });
+
+// ----------------------------------------------------------------------
+test('does not rewrite an earlier intact {@link} when a later label closes on its own line', () => {
+  const assembly = compile(`
+    /**
+     * First {@link Bar | b} then {@link Baz | x
+} end.
+     */
+    export class Foo {
+    }
+  `);
+
+  const docs = assembly.types!['testpkg.Foo'].docs!;
+  const text = [docs.summary, docs.remarks].filter(Boolean).join('\n');
+
+  expect(text).toContain('{@link Bar b}');
+  expect(text).toContain('{@link Baz x}');
+  expect(text).not.toContain('{@link Baz x }');
+  expect(text).not.toContain('{@link Baz x}}');
+});
