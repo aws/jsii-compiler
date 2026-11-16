@@ -444,12 +444,10 @@ export class Assembler {
     // put a label that continues on the next JSDoc line back on one line. The TypeScript 7
     // rendering of such a link is broken, so the raw comment is used instead.
     let rejoined = false;
-    const rawComment = commentLines
-      .join('\n')
-      .replace(/\{@(?:link|linkcode|linkplain)\b[^}]*\n[^}]*\}/g, (link) => {
-        rejoined = true;
-        return link.replace(/\s*\n\s*/g, ' ').replace(/\s+\}$/, '}');
-      });
+    const rawComment = commentLines.join('\n').replace(/\{@(?:link|linkcode|linkplain)\b[^}]*\n[^}]*\}/g, (link) => {
+      rejoined = true;
+      return link.replace(/\s*\n\s*/g, ' ').replace(/\s+\}$/, '}');
+    });
     if (!/\{@link(code|plain)?\b/.test(rawComment)) {
       return comment;
     }
