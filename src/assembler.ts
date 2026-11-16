@@ -1095,8 +1095,62 @@ export class Assembler {
           implementationOf(property, type, (t) => t.properties);
         }
       }
+      if (spec.isInterfaceType(type) && this._redeclaresInterfaceMember(type, dereference, same)) {
+        this.usedFeatures.add('interface-member-doc-overrides');
+      }
     }
     return this.usedFeatures.size > 0 ? Array.from(this.usedFeatures).sort() : undefined;
+  }
+
+  /**
+   * Whether an interface re-declares an inherited member with exactly the same
+   * shape, so that only its documentation differs. `overrides` already points
+   * at the nearest base interface that declares the member.
+   */
+  private _redeclaresInterfaceMember(
+    type: spec.InterfaceType,
+    dereference: (fqn: string) => spec.Type | undefined,
+    same: (a: unknown, b: unknown) => boolean,
+  ): boolean {
+    const baseMember = <T extends spec.Method | spec.Property>(
+      member: T,
+      pick: (t: spec.InterfaceType) => readonly T[] | undefined,
+    ): T | undefined => {
+      const base = member.overrides != null ? dereference(member.overrides) : undefined;
+      return base != null && spec.isInterfaceType(base) ? pick(base)?.find((m) => m.name === member.name) : undefined;
+    };
+    const sameMethod = (member: spec.Method, base: spec.Method) => {
+      const params = member.parameters ?? [];
+      const baseParams = base.parameters ?? [];
+      return (
+        !!member.static === !!base.static &&
+        !!member.async === !!base.async &&
+        same(member.returns, base.returns) &&
+        params.length === baseParams.length &&
+        params.every(
+          (param, i) =>
+            same(param.type, baseParams[i].type) &&
+            !!param.optional === !!baseParams[i].optional &&
+            !!param.variadic === !!baseParams[i].variadic,
+        )
+      );
+    };
+    const sameProperty = (member: spec.Property, base: spec.Property) =>
+      !!member.static === !!base.static &&
+      !!member.optional === !!base.optional &&
+      !!member.immutable === !!base.immutable &&
+      same(member.type, base.type);
+
+    return (
+      (type.methods ?? []).some((m) => {
+        const base = baseMember(m, (t) => t.methods);
+        return base != null && sameMethod(m, base);
+      }) ||
+      (type.properties ?? []).some((p) => {
+        const base = baseMember(p, (t) => t.properties);
+        return base != null && sameProperty(p, base);
+      })
+    );
   }
 
   /**

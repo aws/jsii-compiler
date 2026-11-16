@@ -69,7 +69,7 @@
   },
   "dependencies": {
     "@jsii/check-node": "1.142.0",
-    "@jsii/spec": "1.142.0",
+    "@jsii/spec": "1.143.0",
     "@typescript/native": "npm:typescript@7.1.0-beta",
     "case": "^1.6.3",
     "chalk": "^4",
