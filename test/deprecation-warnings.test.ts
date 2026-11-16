@@ -490,12 +490,9 @@ class DeprecationError extends Error {
   });
 });
 
-<<<<<<< HEAD
 // @TODO(ts7): re-enable once --add-deprecation-warnings is implemented on the TypeScript 7 compiler;
 // requesting it currently fails with an explicit error.
-describe.skip('Call injections', () => {
-=======
-describe('cross-assembly validation', () => {
+describe.skip('cross-assembly validation', () => {
   test.each([
     ['ForeignProps', '{ old: "value" }', 'warn', 'present'],
     ['ForeignProps', '{ old: "value" }', 'fail', 'present'],
@@ -566,8 +563,9 @@ describe('cross-assembly validation', () => {
   });
 });
 
-describe('Call injections', () => {
->>>>>>> 33270d3 (fix: validate cross-assembly struct properties for deprecations (#2888))
+// @TODO(ts7): re-enable once --add-deprecation-warnings is implemented on the TypeScript 7 compiler;
+// requesting it currently fails with an explicit error.
+describe.skip('Call injections', () => {
   test('does not add warnings by default', () => {
     const result = compileJsiiForTest(
       `
