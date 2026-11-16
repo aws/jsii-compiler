@@ -911,7 +911,9 @@ export class Assembler {
     if (!isModuleFile) {
       return result;
     }
-    const submoduleMain: string | undefined = moduleSym.declarations?.[0]?.path;
+    // The declaration handle's path is lowercased on case-insensitive file systems; the
+    // source file's name keeps the case, so paths derived from it stay relative to the root.
+    const submoduleMain: string | undefined = moduleSym.declarations?.[0]?.resolve(this.project)?.fileName;
     if (submoduleMain == null) {
       return result;
     }
