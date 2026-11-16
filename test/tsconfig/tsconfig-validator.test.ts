@@ -75,8 +75,8 @@ describe('ruleset: strict', () => {
     validator.validate({
       compilerOptions: {
         strict: true,
-        target: 'es2023' as any,
-        lib: ['es2023'],
+        target: 'es2022' as any,
+        lib: ['es2022'],
         module: 'node16' as any,
         esModuleInterop: true,
         skipLibCheck: true,
