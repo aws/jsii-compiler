@@ -350,15 +350,19 @@ export class DeprecationWarningsInjector {
           );
           statementsByProp.set(`${prop.name}_`, statement);
         }
-      } else if (
-        spec.isUnionTypeReference(prop.type) &&
-        spec.isNamedTypeReference(prop.type.union.types[0]) &&
-        Object.keys(types).includes(prop.type.union.types[0].fqn)
-      ) {
-        const functionName = importedFunctionName(prop.type.union.types[0].fqn, assembly, projectInfo);
-        if (functionName) {
-          const statement = createTypeHandlerCall(functionName, `${PARAMETER_NAME}.${prop.name}`);
-          statementsByProp.set(`${prop.name}_`, statement);
+      } else if (spec.isUnionTypeReference(prop.type)) {
+        for (const unionType of prop.type.union.types) {
+          if (!spec.isNamedTypeReference(unionType)) {
+            continue;
+          }
+          if (!types[unionType.fqn] || this.shouldRenderValidator(types[unionType.fqn], assembly)) {
+            const functionName = importedFunctionName(unionType.fqn, assembly, projectInfo);
+            if (functionName) {
+              const statement = createTypeHandlerCall(functionName, `${PARAMETER_NAME}.${prop.name}`);
+              statementsByProp.set(`${prop.name}_`, statement);
+              break;
+            }
+          }
         }
       }
     }
