@@ -144,7 +144,7 @@ function parseDocParts(comments: string | undefined, tags: ts.JSDocTagInfo[]): D
     // 'param' gets parsed as a tag and as a comment for a method
     // 'jsii' is internal-only and shouldn't surface in the API doc
     if (tag.name !== DocTag.PARAM && tag.name !== DocTag.JSII) {
-      tagNames.set(tag.name, tag.text && ts.displayPartsToString(tag.text));
+      tagNames.set(tag.name, tag.text && documentationDisplayPartsToString(tag.text));
     }
   }
 

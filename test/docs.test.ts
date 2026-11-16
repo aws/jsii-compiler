@@ -488,3 +488,19 @@ test('renders {@link} labels as {@link target | label}', () => {
   expect(text).not.toContain('{@link Foob}');
   expect(text).not.toContain('{@link Foosome text}');
 });
+
+// ----------------------------------------------------------------------
+test('renders {@link} labels in @deprecated and @see as {@link target | label}', () => {
+  const assembly = compile(`
+    export class Foo {}
+    /**
+     * @deprecated use {@link Foo | the replacement} instead
+     * @see {@link https://x.dev | see label}
+     */
+    export class Probe {}
+  `);
+
+  const docs = assembly.types!['testpkg.Probe'].docs!;
+  expect(docs.deprecated).toBe('use {@link Foo | the replacement} instead');
+  expect(docs.see).toBe('{@link https://x.dev | see label}');
+});
