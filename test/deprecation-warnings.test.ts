@@ -503,6 +503,8 @@ describe.skip('cross-assembly validation', () => {
     ['ForeignProps', 'undefined', 'warn', 'present'],
     ['ForeignProps[]', '[{ old: "value" }]', 'warn', 'present'],
     ['{ [key: string]: ForeignProps }', '{ key: { old: "value" } }', 'warn', 'present'],
+    ['ForeignProps | string', '{ old: "value" }', 'warn', 'present'],
+    ['ForeignProps | string', '{ old: "value" }', 'fail', 'present'],
   ])('validates %s with %s in %s mode and %s warnings', (type, value, mode, warnings) => {
     TestWorkspace.withWorkspace((ws) => {
       const dependency = compileJsiiForTest(
