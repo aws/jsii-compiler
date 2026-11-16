@@ -61,7 +61,10 @@ const RECOGNIZED_TAGS: ReadonlySet<String> = new Set(Object.values(DocTag));
  * Parse all doc comments that apply to a symbol into JSIIDocs format
  */
 export function parseSymbolDocumentation(sym: ts.Symbol, typeChecker: ts.TypeChecker): DocsParsingResult {
-  const comment = ts.displayPartsToString(sym.getDocumentationComment(typeChecker)).trim();
+  const comment = rejoinMultilineInlineLinks(
+    ts.displayPartsToString(sym.getDocumentationComment(typeChecker)).trim(),
+    sym,
+  );
   const tags = reabsorbExampleTags(sym.getJsDocTags());
 
   // Right here we'll just guess that the first declaration site is the most important one.
@@ -269,6 +272,77 @@ function parseStability(s: string | undefined, diagnostics: string[]): spec.Stab
   }
   diagnostics.push(`Unrecognized @stability: '${s}'`);
   return undefined;
+}
+
+/**
+ * TypeScript's JSDoc parser terminates `{@link}` / `{@linkcode}` / `{@linkplain}` at a newline
+ * (`parseJSDocLink` stops on `NewLineTrivia`). It still emits a closing `}` for the truncated
+ * tag, so a label continued on the next JSDoc line leaks as `} * rest}`.
+ *
+ * Rejoin those labels from source while leaving TypeScript's rendering of well-formed
+ * single-line links unchanged.
+ */
+function rejoinMultilineInlineLinks(comment: string, symbol: ts.Symbol): string {
+  if (!/\{@link(?:code|plain)?\b/.test(comment)) {
+    return comment;
+  }
+
+  for (const declaration of symbol.getDeclarations() ?? []) {
+    for (const jsdoc of ts.getJSDocCommentsAndTags(declaration)) {
+      if (!ts.isJSDoc(jsdoc) || !Array.isArray(jsdoc.comment)) {
+        continue;
+      }
+      comment = rejoinTruncatedLinksFromParts(comment, jsdoc.comment);
+    }
+  }
+
+  return comment;
+}
+
+function rejoinTruncatedLinksFromParts(comment: string, parts: readonly ts.JSDocComment[]): string {
+  let searchFrom = 0;
+  for (let i = 0; i < parts.length - 1; i++) {
+    const part = parts[i];
+    const rest = parts[i + 1];
+    if (!ts.isJSDocLinkLike(part) || rest.kind !== ts.SyntaxKind.JSDocText) {
+      continue;
+    }
+    // A truncated tag's source does not include the closing `}`.
+    if (part.getText().includes('}')) {
+      continue;
+    }
+    const leakedClose = rest.text.indexOf('}');
+    if (leakedClose < 0) {
+      continue;
+    }
+    const leaked = rest.text.slice(0, leakedClose + 1);
+    const leakedAt = comment.indexOf(`}${leaked}`, searchFrom);
+    if (leakedAt < 0) {
+      continue;
+    }
+    const linkStart = comment.lastIndexOf('{@', leakedAt);
+    if (linkStart < searchFrom) {
+      continue;
+    }
+    const repaired = formatInlineLinkFromSource(part);
+    comment = comment.slice(0, linkStart) + repaired + comment.slice(leakedAt + 1 + leaked.length);
+    searchFrom = linkStart + repaired.length;
+  }
+  return comment;
+}
+
+function formatInlineLinkFromSource(link: ts.JSDocLink | ts.JSDocLinkCode | ts.JSDocLinkPlain): string {
+  const source = link.getSourceFile().text;
+  const open = source.indexOf('{@', link.pos);
+  const close = open >= 0 ? source.indexOf('}', open) : -1;
+  const raw = close >= 0 ? source.slice(open, close + 1) : link.getText();
+  const flattened = raw
+    .replace(/\r?\n\s*\*\s?/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  // TypeScript drops `|` and inserts a space even when the source has no whitespace:
+  // `{@link URL|label}` and `{@link URL | label}` both become `{@link URL label}`.
+  return flattened.replace(/^\{@(link|linkcode|linkplain)\s+([^|]+?)\s*\|\s*/i, '{@$1 $2 ').replace(/\s+}/, '}');
 }
 
 /**
