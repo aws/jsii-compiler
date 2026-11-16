@@ -1240,10 +1240,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@jsii/spec@npm:1.142.0":
-  version: 1.142.0
-  resolution: "@jsii/spec@npm:1.142.0"
-  checksum: 10c0/11207a5e273c521e574bd164da9d2ba25d724541996bae1b6ca954936fc28797f45266ba395477f9e08fb69a55bbc0072ad983ca2d993af0dfa7e45f61239545
+"@jsii/spec@npm:1.143.0":
+  version: 1.143.0
+  resolution: "@jsii/spec@npm:1.143.0"
+  checksum: 10c0/ac3d402bb7c9da3ab096cf7cab842b10aff07f5fbecbd7d999ef77addae4f82ee038d3f302b719e336a6aca6fdb9526edc89bf778aa911591227534336af7dcf
   languageName: node
   linkType: hard
 
@@ -5713,7 +5713,7 @@ __metadata:
     "@actions/core": "npm:^3"
     "@actions/github": "npm:^9"
     "@jsii/check-node": "npm:1.142.0"
-    "@jsii/spec": "npm:1.142.0"
+    "@jsii/spec": "npm:1.143.0"
     "@types/clone": "npm:^2.1.4"
     "@types/deep-equal": "npm:^1.0.4"
     "@types/glob": "npm:^8.1.0"
