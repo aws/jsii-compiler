@@ -117,11 +117,6 @@ export class DeprecationWarningsInjector {
    * - It references types that reference this type (recursive types).
    * - It references types from another assembly.
    *
-   * For the last one we technically return `true`, indicating that a validator
-   * *should* be rendered, but when we get to rendering no statements are
-   * actually produced and the validator function is never rendered. This was
-   * pre-existing behavior that I didn't change because introducing calls into
-   * other assemblies out of the blue introduces risk.
    */
   private shouldRenderValidator(type: spec.Type, assembly: Assembly): boolean {
     if (this.shouldRenderValidatorCache[type.fqn] !== undefined) {
@@ -334,8 +329,8 @@ export class DeprecationWarningsInjector {
         excludedProps.add(prop.name);
       }
 
-      if (spec.isNamedTypeReference(prop.type) && Object.keys(types).includes(prop.type.fqn)) {
-        if (this.shouldRenderValidator(types[prop.type.fqn], assembly)) {
+      if (spec.isNamedTypeReference(prop.type)) {
+        if (!types[prop.type.fqn] || this.shouldRenderValidator(types[prop.type.fqn], assembly)) {
           const functionName = importedFunctionName(prop.type.fqn, assembly, projectInfo);
           if (functionName) {
             const statement = createTypeHandlerCall(functionName, `${PARAMETER_NAME}.${prop.name}`);
@@ -840,13 +835,43 @@ function createTypeHandlerCall(
             [ts.factory.createIdentifier(parameter)],
           ),
         ),
-        ts.factory.createExpressionStatement(
-          ts.factory.createCallExpression(ts.factory.createIdentifier(functionName), undefined, [
-            ts.factory.createIdentifier(parameter),
-          ]),
-        ),
+        createValidatorInvocation(functionName, parameter),
       );
   }
+}
+
+function createValidatorInvocation(functionName: string, parameter: string): ts.Statement {
+  const call = ts.factory.createExpressionStatement(
+    ts.factory.createCallExpression(ts.factory.createIdentifier(functionName), undefined, [
+      ts.factory.createIdentifier(parameter),
+    ]),
+  );
+  if (!functionName.startsWith('require(')) {
+    return call;
+  }
+
+  // Dependencies may ship without a compatible warnings module. Preserve intentional deprecation failures.
+  return ts.factory.createTryStatement(
+    ts.factory.createBlock([call]),
+    ts.factory.createCatchClause(
+      ts.factory.createVariableDeclaration('error'),
+      ts.factory.createBlock([
+        ts.factory.createIfStatement(
+          ts.factory.createBinaryExpression(
+            ts.factory.createPropertyAccessChain(
+              ts.factory.createIdentifier('error'),
+              ts.factory.createToken(ts.SyntaxKind.QuestionDotToken),
+              'name',
+            ),
+            ts.SyntaxKind.EqualsEqualsEqualsToken,
+            ts.factory.createStringLiteral(DEPRECATION_ERROR),
+          ),
+          ts.factory.createThrowStatement(ts.factory.createIdentifier('error')),
+        ),
+      ]),
+    ),
+    undefined,
+  );
 }
 
 // We try-then-rethrow exceptions to avoid runtimes displaying an uncanny wall of text if the place
