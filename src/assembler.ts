@@ -440,7 +440,16 @@ export class Assembler {
       }
       commentLines.push(line);
     }
-    const rawComment = commentLines.join('\n');
+    // TypeScript ends a `{@link}` at a newline and leaks the rest of its label as text, so
+    // put a label that continues on the next JSDoc line back on one line. The TypeScript 7
+    // rendering of such a link is broken, so the raw comment is used instead.
+    let rejoined = false;
+    const rawComment = commentLines
+      .join('\n')
+      .replace(/\{@(?:link|linkcode|linkplain)\b[^}]*\n[^}]*\}/g, (link) => {
+        rejoined = true;
+        return link.replace(/\s*\n\s*/g, ' ').replace(/\s+\}$/, '}');
+      });
     if (!/\{@link(code|plain)?\b/.test(rawComment)) {
       return comment;
     }
@@ -448,7 +457,7 @@ export class Assembler {
     let result = comment;
     let cursor = 0;
     let rawRendered = rawComment;
-    let allFound = true;
+    let allFound = !rejoined;
     let rawCursor = 0;
     for (const m of rawComment.matchAll(linkRe)) {
       // Anchor the search on the (end of the) raw text preceding this link, so a
@@ -479,8 +488,10 @@ export class Assembler {
         if (resolved) {
           classic = `{@${kind} ${name}${rest}}`;
         } else {
+          // The classic parser skips the whitespace between a link name and its text.
+          const unresolvedRest = suffix === 0 ? skipSeparatorFromLinkText(text.replace(/^\s+/, '')) : rest;
           const separator = suffix === 0 || (text.charCodeAt(suffix) === 124 && !name.endsWith(' ')) ? ' ' : '';
-          classic = `{@${kind} ${name}${separator}${rest}}`;
+          classic = `{@${kind} ${name}${separator}${unresolvedRest}}`;
         }
         modern = `${name0.replace(/#/g, '.')}${text}`;
       }
