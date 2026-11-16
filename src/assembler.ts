@@ -1175,7 +1175,7 @@ export class Assembler implements Emitter {
 
       // Crawl up the inheritance tree if the current base type is not exported, so we identify the type(s) to be
       // erased, and identify the closest exported base class, should there be one.
-      while (base && this._isPrivateOrInternal(base.symbol)) {
+      while (base?.symbol && this._isPrivateOrInternal(base.symbol)) {
         LOG.debug(
           `Base class of ${chalk.green(jsiiType.fqn)} named ${chalk.green(
             base.symbol.name,
@@ -1183,6 +1183,17 @@ export class Assembler implements Emitter {
         );
         erasedBases.push(base);
         base = (base.getBaseTypes() ?? [])[0];
+      }
+      if (base && !base.symbol) {
+        const extendsClause = classDeclaration.heritageClauses?.find(
+          (clause) => clause.token === ts.SyntaxKind.ExtendsKeyword,
+        );
+        if (extendsClause) {
+          this._diagnostics.push(
+            JsiiDiagnostic.JSII_3004_INVALID_SUPERTYPE.create(extendsClause.types[0], extendsClause),
+          );
+        }
+        continue;
       }
       if (!base || isInternalSymbol(base.symbol)) {
         // There is no exported base class to be found, pretend this class has no base class.
