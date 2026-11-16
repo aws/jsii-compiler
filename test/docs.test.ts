@@ -389,13 +389,12 @@ test('preserves {@link} labels that span multiple JSDoc lines', () => {
   const text = [docs.summary, docs.remarks].filter(Boolean).join('\n');
 
   expect(text).toContain(
-    '{@link https://case.contract-testing.io/docs/defining-contracts/state-definitions state definitions}',
+    '{@link https://case.contract-testing.io/docs/defining-contracts/state-definitions | state definitions}',
   );
-  expect(text).toContain('{@link https://case.contract-testing.io/docs/reference/state-handlers state handlers}');
-  expect(text).toContain('{@link https://example.com/one-line a one-line label}');
-  // TypeScript renders `{@link URL|label}` as `{@link URL label}` (pipe dropped, space inserted).
-  expect(text).toContain('{@link https://x.dev label}.');
-  expect(text).toContain('{@link https://x.dev label across lines}');
+  expect(text).toContain('{@link https://case.contract-testing.io/docs/reference/state-handlers | state handlers}');
+  expect(text).toContain('{@link https://example.com/one-line | a one-line label}');
+  expect(text).toContain('{@link https://x.dev | label}.');
+  expect(text).toContain('{@link https://x.dev | label across lines}');
   expect(text).not.toContain('https://x.dev|');
 
   expect(text.match(/state definitions/g)).toEqual(['state definitions']);
@@ -428,9 +427,9 @@ test('preserves multiline {@link} labels on methods and properties', () => {
     .filter(Boolean)
     .join('\n');
 
-  expect(methodText).toContain('{@link https://example.com/method method label}');
+  expect(methodText).toContain('{@link https://example.com/method | method label}');
   expect(methodText).not.toMatch(/\*\s*label/);
-  expect(propertyText).toContain('{@link https://example.com/property property label}');
+  expect(propertyText).toContain('{@link https://example.com/property | property label}');
   expect(propertyText).not.toMatch(/\*\s*label/);
 });
 
@@ -448,8 +447,44 @@ test('does not rewrite an earlier intact {@link} when a later label closes on it
   const docs = assembly.types!['testpkg.Foo'].docs!;
   const text = [docs.summary, docs.remarks].filter(Boolean).join('\n');
 
-  expect(text).toContain('{@link Bar b}');
-  expect(text).toContain('{@link Baz x}');
-  expect(text).not.toContain('{@link Baz x }');
-  expect(text).not.toContain('{@link Baz x}}');
+  expect(text).toContain('{@link Bar | b}');
+  expect(text).toContain('{@link Baz | x}');
+  expect(text).not.toContain('{@link Baz | x }');
+  expect(text).not.toContain('{@link Baz | x}}');
+});
+
+// ----------------------------------------------------------------------
+test('renders {@link} labels as {@link target | label}', () => {
+  const assembly = compile(`
+    export class Foo {}
+    /**
+     * Resolved pipe {@link Foo | b}.
+     * Resolved space {@link Foo some text}.
+     * Unresolved pipe {@link Bar | b}.
+     * Unresolved space {@link Bar some text}.
+     * URL pipe {@link https://x.dev|label}.
+     * URL space {@link https://x.dev label with spaces}.
+     * Unlabeled resolved {@link Foo}.
+     * Unlabeled unresolved {@link Bar}.
+     * Unlabeled URL {@link https://x.dev}.
+     */
+    export class Probe {}
+  `);
+
+  const docs = assembly.types!['testpkg.Probe'].docs!;
+  const text = [docs.summary, docs.remarks].filter(Boolean).join('\n');
+
+  expect(text).toContain('Resolved pipe {@link Foo | b}.');
+  expect(text).toContain('Resolved space {@link Foo | some text}.');
+  expect(text).toContain('Unresolved pipe {@link Bar | b}.');
+  expect(text).toContain('Unresolved space {@link Bar | some text}.');
+  expect(text).toContain('URL pipe {@link https://x.dev | label}.');
+  expect(text).toContain('URL space {@link https://x.dev | label with spaces}.');
+  expect(text).toContain('Unlabeled resolved {@link Foo}.');
+  // TypeScript renders an unlabeled unresolved name as `{@link Bar }` (trailing space).
+  expect(text).toContain('Unlabeled unresolved {@link Bar }.');
+  expect(text).not.toContain('Unlabeled unresolved {@link Bar |');
+  expect(text).toContain('Unlabeled URL {@link https://x.dev}.');
+  expect(text).not.toContain('{@link Foob}');
+  expect(text).not.toContain('{@link Foosome text}');
 });

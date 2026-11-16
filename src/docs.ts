@@ -62,7 +62,7 @@ const RECOGNIZED_TAGS: ReadonlySet<String> = new Set(Object.values(DocTag));
  */
 export function parseSymbolDocumentation(sym: ts.Symbol, typeChecker: ts.TypeChecker): DocsParsingResult {
   const comment = rejoinMultilineInlineLinks(
-    ts.displayPartsToString(sym.getDocumentationComment(typeChecker)).trim(),
+    documentationDisplayPartsToString(sym.getDocumentationComment(typeChecker)).trim(),
     sym,
   );
   const tags = reabsorbExampleTags(sym.getJsDocTags());
@@ -83,6 +83,53 @@ export function getReferencedDocParams(sym: ts.Symbol): string[] {
     }
   }
   return ret;
+}
+
+/**
+ * Render JSDoc `SymbolDisplayPart`s while keeping `{@link}` targets and labels separate.
+ *
+ * `ts.displayPartsToString` concatenates with no separator. A resolved `{@link Foo | b}` is a
+ * `linkName` (`Foo`) followed by a `linkText` (`b`) whose `|` was already stripped, which
+ * becomes `{@link Foob}`. Unresolved names and URLs are a single `linkText` with a space
+ * between target and label. Labeled links are emitted as `{@link target | label}`; unlabeled
+ * links are left as TypeScript rendered them.
+ */
+function documentationDisplayPartsToString(parts: readonly ts.SymbolDisplayPart[] | undefined): string {
+  if (!parts?.length) {
+    return '';
+  }
+
+  let result = '';
+  for (let i = 0; i < parts.length; i++) {
+    const part = parts[i];
+    const next = parts[i + 1];
+
+    if (part.kind === 'linkName' && next?.kind === 'linkText' && next.text.trim() !== '') {
+      result += `${part.text} | `;
+      continue;
+    }
+
+    if (part.kind === 'linkText') {
+      result += parts[i - 1]?.kind === 'linkName' ? part.text : formatCombinedLinkText(part.text);
+      continue;
+    }
+
+    result += part.text;
+  }
+
+  return result;
+}
+
+function formatCombinedLinkText(text: string): string {
+  const space = text.indexOf(' ');
+  if (space <= 0) {
+    return text;
+  }
+  const label = text.slice(space + 1).trim();
+  if (label === '') {
+    return text;
+  }
+  return `${text.slice(0, space)} | ${label}`;
 }
 
 function parseDocParts(comments: string | undefined, tags: ts.JSDocTagInfo[]): DocsParsingResult {
@@ -340,9 +387,8 @@ function formatInlineLinkFromSource(link: ts.JSDocLink | ts.JSDocLinkCode | ts.J
     .replace(/\r?\n\s*\*\s?/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
-  // TypeScript drops `|` and inserts a space even when the source has no whitespace:
-  // `{@link URL|label}` and `{@link URL | label}` both become `{@link URL label}`.
-  return flattened.replace(/^\{@(link|linkcode|linkplain)\s+([^|]+?)\s*\|\s*/i, '{@$1 $2 ').replace(/\s+}/, '}');
+  // Normalize `{@link URL|label}` and `{@link URL | label}` to `{@link URL | label}`.
+  return flattened.replace(/^\{@(link|linkcode|linkplain)\s+([^|]+?)\s*\|\s*/i, '{@$1 $2 | ').replace(/\s+}/, '}');
 }
 
 /**
