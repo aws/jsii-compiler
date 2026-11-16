@@ -1,11 +1,12 @@
 // eslint-disable-next-line import/no-extraneous-dependencies
 // Collission with non-deprecated enum member
 import * as fs from 'node:fs';
+import { createRequire } from 'node:module';
 import * as path from 'node:path';
 import * as vm from 'node:vm';
 
 import { compile, Lock } from './fixtures';
-import { compileJsiiForTest, HelperCompilationResult } from '../lib';
+import { compileJsiiForTest, HelperCompilationResult, TestWorkspace } from '../lib';
 
 const DEPRECATED = '/** @deprecated Use something else */';
 
@@ -450,8 +451,6 @@ class DeprecationError extends Error {
       lock = undefined;
     }, 120_000);
 
-    // This code never did what it said it would do. The current code is not
-    // generating calls into validation routines of other assemblies
     test('generates calls for types in other assemblies', async () => {
       compile(lock!, '@scope/jsii-calc-base-of-base', true);
       const calcBaseRoot = compile(lock!, '@scope/jsii-calc-base', true);
@@ -470,12 +469,18 @@ class DeprecationError extends Error {
                     if (p.veryBaseProps != null)
                         for (const o of p.veryBaseProps)
                             if (!visitedObjects.has(o))
-                                require("@scope/jsii-calc-base-of-base/.warnings.jsii.js")._scope_jsii_calc_base_of_base_VeryBaseProps(o);
+                                try {
+                                    require("@scope/jsii-calc-base-of-base/.warnings.jsii.js")._scope_jsii_calc_base_of_base_VeryBaseProps(o);
+                                }
+                                catch (error) {
+                                    if (error?.name === "DeprecationError")
+                                        throw error;
+                                }
                 }
                 finally {
                     visitedObjects.delete(p);
                 }
-            } "
+            },"
       `);
 
       // Recompiling without deprecation warning to leave the packages in a clean state
@@ -485,9 +490,84 @@ class DeprecationError extends Error {
   });
 });
 
+<<<<<<< HEAD
 // @TODO(ts7): re-enable once --add-deprecation-warnings is implemented on the TypeScript 7 compiler;
 // requesting it currently fails with an explicit error.
 describe.skip('Call injections', () => {
+=======
+describe('cross-assembly validation', () => {
+  test.each([
+    ['ForeignProps', '{ old: "value" }', 'warn', 'present'],
+    ['ForeignProps', '{ old: "value" }', 'fail', 'present'],
+    ['ForeignProps', '{ old: "value" }', 'quiet', 'present'],
+    ['ForeignProps', '{ old: "value" }', 'warn', 'missing'],
+    ['ForeignProps', '{ old: "value" }', 'warn', 'no-handler'],
+    ['ForeignProps', '{ old: "value" }', 'warn', 'disabled'],
+    ['ForeignProps', 'undefined', 'warn', 'present'],
+    ['ForeignProps[]', '[{ old: "value" }]', 'warn', 'present'],
+    ['{ [key: string]: ForeignProps }', '{ key: { old: "value" } }', 'warn', 'present'],
+  ])('validates %s with %s in %s mode and %s warnings', (type, value, mode, warnings) => {
+    TestWorkspace.withWorkspace((ws) => {
+      const dependency = compileJsiiForTest(
+        `export interface ForeignProps {
+          /** @deprecated use new instead */
+          readonly old?: string;
+        }`,
+        { packageJson: { name: 'foreign' } },
+        { addDeprecationWarnings: warnings !== 'disabled' },
+      );
+      ws.addDependency(dependency);
+      const consumer = compileJsiiForTest(
+        `import { ForeignProps } from 'foreign';
+        export interface Props { readonly field?: ${type}; }
+        export class Consumer {
+          public static consume(props: Props): Props { return props; }
+        }
+        Consumer.consume({ field: ${value} });`,
+        {
+          compilationDirectory: ws.rootDirectory,
+          packageJson: { dependencies: { foreign: '0.0.1' } },
+        },
+        { addDeprecationWarnings: true },
+      );
+      const warningsFile = path.join(ws.dependencyDir('foreign'), '.warnings.jsii.js');
+      if (warnings === 'missing') {
+        fs.unlinkSync(warningsFile);
+      } else if (warnings === 'no-handler') {
+        fs.writeFileSync(warningsFile, 'module.exports = {};');
+      }
+      const requireDependency = createRequire(path.join(ws.rootDirectory, 'index.js'));
+      const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+      const previousMode = process.env.JSII_DEPRECATED;
+      process.env.JSII_DEPRECATED = mode;
+      try {
+        const run = () => runJsiiCode(consumer, 'warn', { require: requireDependency });
+        if (mode === 'fail') {
+          expect(run).toThrow('foreign.ForeignProps#old is deprecated');
+        } else {
+          expect(run).not.toThrow();
+          if (mode === 'warn' && warnings === 'present' && value !== 'undefined') {
+            expect(warn).toHaveBeenCalledWith(
+              '[WARNING]',
+              expect.stringContaining('foreign.ForeignProps#old is deprecated'),
+            );
+          } else {
+            expect(warn).not.toHaveBeenCalled();
+          }
+        }
+      } finally {
+        if (previousMode === undefined) {
+          delete process.env.JSII_DEPRECATED;
+        } else {
+          process.env.JSII_DEPRECATED = previousMode;
+        }
+      }
+    });
+  });
+});
+
+describe('Call injections', () => {
+>>>>>>> 33270d3 (fix: validate cross-assembly struct properties for deprecations (#2888))
   test('does not add warnings by default', () => {
     const result = compileJsiiForTest(
       `
