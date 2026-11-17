@@ -110,47 +110,31 @@ function loadSubmoduleReadMe(submoduleMain: string, projectRoot: string): spec.R
   };
 }
 
-/** Port of the classic services' `findLinkNameEnd` (where a `{@link}` name ends inside its text). */
-function findLinkNameEnd(text: string): number {
-  let pos = text.indexOf('://');
-  if (pos === 0) {
-    while (pos < text.length && text.charCodeAt(pos) !== 124) {
-      pos++;
-    }
-    return pos;
+/**
+ * Splits the inside of a `{@link ...}` tag into its target and label. The label
+ * follows a `|`, or the first whitespace when there is no `|`.
+ */
+function splitLinkTarget(body: string): { target: string; label: string } {
+  const trimmed = body.trim();
+  const pipe = trimmed.indexOf('|');
+  if (pipe >= 0) {
+    return { target: trimmed.slice(0, pipe).trim(), label: trimmed.slice(pipe + 1).trim() };
   }
-  if (text.indexOf('()') === 0) {
-    return 2;
-  }
-  if (text.charAt(0) === '<') {
-    let brackets = 0;
-    let i = 0;
-    while (i < text.length) {
-      if (text[i] === '<') {
-        brackets++;
-      }
-      if (text[i] === '>') {
-        brackets--;
-      }
-      i++;
-      if (!brackets) {
-        return i;
-      }
-    }
-  }
-  return 0;
+  const space = trimmed.search(/\s/);
+  return space < 0
+    ? { target: trimmed, label: '' }
+    : { target: trimmed.slice(0, space), label: trimmed.slice(space).trim() };
 }
 
-/** Port of the classic services' `skipSeparatorFromLinkText`. */
-function skipSeparatorFromLinkText(text: string): string {
-  let pos = 0;
-  if (text.charCodeAt(pos++) === 124) {
-    while (pos < text.length && text.charCodeAt(pos) === 32) {
-      pos++;
-    }
-    return text.slice(pos);
-  }
-  return text;
+/**
+ * Renders the `{@link}` tags in a JSDoc tag's text. Labeled links become
+ * `{@link target | label}`; unlabeled links keep the classic trailing space.
+ */
+function renderTagLinks(text: string): string {
+  return text.replace(/\{@(link|linkcode|linkplain)\s+([^}]*?)\s*\}/g, (_, kind: string, body: string) => {
+    const { target, label } = splitLinkTarget(body);
+    return label ? `{@${kind} ${target} | ${label}}` : `{@${kind} ${target} }`;
+  });
 }
 
 /**
@@ -471,27 +455,23 @@ export class Assembler {
       const kind = m[1];
       const after = m[2].replace(/^\s+/, '');
       const nm = /^[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*(?:#[A-Za-z_$][\w$]*)*/.exec(after);
+      const { target, label } = splitLinkTarget(after);
       let classic: string;
       let modern: string;
+      if (label) {
+        classic = `{@${kind} ${target} | ${label}}`;
+      } else if (!nm || target.includes('://')) {
+        classic = `{@${kind} ${target}}`;
+      } else {
+        // An unresolved name (or a `#member` name, which the classic checker never
+        // resolved) keeps the classic trailing space.
+        const resolved = !nm[0].includes('#') && this._resolvesLinkName(nm[0], decl);
+        classic = resolved ? `{@${kind} ${target}}` : `{@${kind} ${target} }`;
+      }
       if (!nm) {
-        classic = `{@${kind} ${after}}`;
         modern = after;
       } else {
-        const name0 = nm[0];
-        const text = after.slice(name0.length);
-        const suffix = findLinkNameEnd(text);
-        const name = name0 + text.slice(0, suffix);
-        const rest = skipSeparatorFromLinkText(text.slice(suffix));
-        const resolved = !name0.includes('#') && this._resolvesLinkName(name0, decl);
-        if (resolved) {
-          classic = `{@${kind} ${name}${rest}}`;
-        } else {
-          // The classic parser skips the whitespace between a link name and its text.
-          const unresolvedRest = suffix === 0 ? skipSeparatorFromLinkText(text.replace(/^\s+/, '')) : rest;
-          const separator = suffix === 0 || (text.charCodeAt(suffix) === 124 && !name.endsWith(' ')) ? ' ' : '';
-          classic = `{@${kind} ${name}${separator}${unresolvedRest}}`;
-        }
-        modern = `${name0.replace(/#/g, '.')}${text}`;
+        modern = `${nm[0].replace(/#/g, '.')}${after.slice(nm[0].length)}`;
       }
       rawRendered = rawRendered.replace(m[0], classic);
       // Re-insert the braces where the TypeScript 7 rendering of this link is.
@@ -2053,7 +2033,7 @@ export class Assembler {
       docs.summary = summary;
     }
     for (const tag of tags) {
-      const tagText = tag.text.replace(/\{@link\s+([^}]*?)\s*\}/g, '{@link $1 }');
+      const tagText = renderTagLinks(tag.text);
       switch (tag.name) {
         case 'default':
           docs.default = tagText.trim();
@@ -2385,8 +2365,9 @@ export class Assembler {
       if (tag.name === 'param' || tag.name === 'jsii') {
         continue;
       }
-      let tagText = typeof tag.text === 'string' ? tag.text : (tag.text ?? []).map((p: any) => p.text).join('');
-      tagText = tagText.replace(/\{@link\s+([^}]*?)\s*\}/g, '{@link $1 }');
+      let tagText = renderTagLinks(
+        typeof tag.text === 'string' ? tag.text : (tag.text ?? []).map((p: any) => p.text).join(''),
+      );
       if (tag.name === 'see' && /^[^\s$A-Za-z_{]/.test(tagText)) {
         // The classic parser read a name reference first when `@see` starts with an
         // identifier; otherwise the text came back as [text(''), space, text], i.e.
