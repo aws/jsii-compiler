@@ -93,6 +93,79 @@ describe('JSII_5022: overrides and implementations must keep parameter names', (
     ).toEqual([]);
   });
 
+  test('does not warn when the trailing struct parameter is renamed, because its name is not part of the API', () => {
+    expect(
+      paramNameWarnings(`
+        export interface FileAssetSource {
+          readonly sourceHash: string;
+          readonly fileName?: string;
+        }
+
+        export class DefaultSynthesizer {
+          public addFileAsset(asset: FileAssetSource): string {
+            return asset.sourceHash;
+          }
+        }
+
+        export class BootstraplessSynthesizer extends DefaultSynthesizer {
+          public addFileAsset(_asset: FileAssetSource): string {
+            throw new Error('Cannot add assets');
+          }
+        }
+
+        export interface IBucket {
+          addRule(id: string, options?: FileAssetSource): void;
+        }
+
+        export class Bucket implements IBucket {
+          public addRule(id: string, props?: FileAssetSource): void {
+            Array.isArray([id, props]);
+          }
+        }
+      `),
+    ).toEqual([]);
+  });
+
+  test('warns when a struct parameter is renamed but is not the last parameter', () => {
+    expect(
+      paramNameWarnings(`
+        export interface Props {
+          readonly value: string;
+        }
+
+        export interface IResource {
+          myFunc(props: Props, id: string): string;
+        }
+
+        export class Resource implements IResource {
+          public myFunc(options: Props, id: string) {
+            return options.value + id;
+          }
+        }
+      `),
+    ).toEqual([expect.stringMatching(/renames parameter "props" to "options"/)]);
+  });
+
+  test('warns when the trailing parameter is a union that includes a struct', () => {
+    expect(
+      paramNameWarnings(`
+        export interface Props {
+          readonly value: string;
+        }
+
+        export interface IResource {
+          myFunc(props: Props | string): string;
+        }
+
+        export class Resource implements IResource {
+          public myFunc(options: Props | string) {
+            return typeof options === 'string' ? options : options.value;
+          }
+        }
+      `),
+    ).toEqual([expect.stringMatching(/renames parameter "props" to "options"/)]);
+  });
+
   test('can be suppressed on the declaration with @jsii suppress', () => {
     expect(
       paramNameWarnings(`

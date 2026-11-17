@@ -482,8 +482,11 @@ function _defaultValidations(): ValidationFunction[] {
             ),
           );
         }
-        // Variadic parameters can't be passed by name (e.g. `*args` in Python), so their name doesn't matter
-        if (expParam.name !== actParam.name && !expParam.variadic && !actParam.variadic) {
+        // A parameter's name only matters if callers can pass it by keyword. Variadic parameters can't be
+        // (`*args` in Python), and a trailing struct parameter is replaced by keyword arguments for its
+        // fields, so its own name never appears.
+        const isLiftedStruct = i === expectedParams.length - 1 && _isLiftableStructParameter(expParam);
+        if (expParam.name !== actParam.name && !expParam.variadic && !actParam.variadic && !isLiftedStruct) {
           diagnostic(
             JsiiDiagnostic.JSII_5022_OVERRIDE_CHANGES_PARAM_NAME.create(
               declarationName(actParamNode),
@@ -495,6 +498,18 @@ function _defaultValidations(): ValidationFunction[] {
           );
         }
       }
+    }
+
+    /**
+     * Whether this parameter, if it is the last one, is turned into keyword arguments for the fields of its
+     * struct type (as in Python). This mirrors the check behind JSII5017.
+     */
+    function _isLiftableStructParameter(param: spec.Parameter): boolean {
+      if (param.variadic || !spec.isNamedTypeReference(param.type)) {
+        return false;
+      }
+      const type = _dereference(param.type);
+      return type != null && spec.isInterfaceType(type) && !!type.datatype;
     }
 
     function _assertPropertiesMatch(
