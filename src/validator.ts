@@ -517,7 +517,10 @@ function _defaultValidations(): ValidationFunction[] {
                 // Report the names callers see, which may differ from the declared ones by a leading `_`
                 { ...actParam, name: actName },
                 { ...expParam, name: expName },
-                actParam.name === expParam.name ? actParam.name : undefined,
+                // When a kept underscore is involved, renaming this one parameter may not be enough
+                expName.startsWith('_') || _withoutUnderscores(actParam.name) === _withoutUnderscores(expParam.name)
+                  ? expectedParams
+                  : undefined,
               ).maybeAddRelatedInformation(declarationName(expParamNode), 'The implemented declaration is here.'),
             );
           }
@@ -542,15 +545,20 @@ function _defaultValidations(): ValidationFunction[] {
     /**
      * The parameter's name as callers using keyword arguments see it. A leading `_` only marks an unused
      * parameter in TypeScript, and jsii-pacmak drops it from Python parameter names (as the C# target does).
-     * It keeps it if what is left isn't an ASCII identifier that starts with a letter, or could collide with
+     * It keeps it if what is left isn't an ASCII identifier that starts with a letter (`_`, `_1`, and,
+     * conservatively, non-ASCII names), or could collide with
      * another parameter, a property of the lifted struct (including inherited ones), or a name the generated
      * method body uses. Names are compared after NFKC normalization and ignoring case and underscores,
      * because Python NFKC-normalizes identifiers, and the Python name is snake_cased and may get a trailing `_`.
      *
      * This must stay in sync with jsii-pacmak's `withoutUnusedMarker`.
      */
+    function _withoutUnderscores(name: string): string {
+      return name.replace(/^_+/, '');
+    }
+
     function _visibleParameterName(param: spec.Parameter, parameters: readonly spec.Parameter[]): string {
-      const stripped = param.name.replace(/^_+/, '');
+      const stripped = _withoutUnderscores(param.name);
       if (stripped === param.name || !/^[a-z][a-z0-9_]*$/i.test(stripped)) {
         return param.name;
       }

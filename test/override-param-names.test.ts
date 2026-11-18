@@ -219,7 +219,7 @@ describe('JSII_5022: overrides and implementations must keep parameter names', (
     );
   });
 
-  test('explains a difference that comes from an underscore kept on one side only', () => {
+  test('points at the whole parameter list when a kept underscore is involved', () => {
     expect(
       paramNameWarnings(`
         export interface IResource {
@@ -231,9 +231,35 @@ describe('JSII_5022: overrides and implementations must keep parameter names', (
         }
       `),
     ).toEqual([
-      '"testpkg.Resource#f" renames parameter "_a" to "a" when implementing testpkg.IResource. Both declare it as "_a", but its leading underscore is only kept where dropping it would clash with another name, so give the other parameters the same names too: parameter names are part of the API in languages with keyword arguments (e.g. Python)',
+      '"testpkg.Resource#f" renames parameter "_a" to "a" when implementing testpkg.IResource. Use the same parameter names as the implemented declaration, (_a, a), since a leading underscore is only dropped where that doesn\'t clash with another name: parameter names are part of the API in languages with keyword arguments (e.g. Python)',
       expect.stringMatching(/renames parameter "a" to "b" .* Rename it to "a":/),
     ]);
+
+    // Renaming only the first parameter to "_a" would declare it twice
+    expect(
+      paramNameWarnings(`
+        export interface IResource {
+          f(_a: string, a: string): void;
+        }
+
+        export abstract class Resource implements IResource {
+          public abstract f(x: string, _a: string): void;
+        }
+      `),
+    ).toEqual([expect.stringMatching(/renames parameter "_a" to "x" .* implemented declaration, \(_a, a\),/)]);
+
+    // The clashing name is variadic, so it is never reported itself
+    expect(
+      paramNameWarnings(`
+        export interface IResource {
+          f(_a: string, ...a: string[]): void;
+        }
+
+        export abstract class Resource implements IResource {
+          public abstract f(b: string, ...c: string[]): void;
+        }
+      `),
+    ).toEqual([expect.stringMatching(/renames parameter "_a" to "b" .* implemented declaration, \(_a, \.\.\.a\),/)]);
   });
 
   test('does not warn when parameter names match', () => {

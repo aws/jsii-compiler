@@ -705,11 +705,13 @@ export class JsiiDiagnostic implements ts.Diagnostic {
       action: string,
       newParam: spec.Parameter,
       oldParam: spec.Parameter,
-      sameDeclaredName?: string,
+      implementedParams?: readonly spec.Parameter[],
     ) =>
       `"${newElement}" renames parameter "${oldParam.name}" to "${newParam.name}" when ${action}. ${
-        sameDeclaredName != null
-          ? `Both declare it as "${sameDeclaredName}", but its leading underscore is only kept where dropping it would clash with another name, so give the other parameters the same names too`
+        implementedParams != null
+          ? `Use the same parameter names as the implemented declaration, (${implementedParams
+              .map((param) => `${param.variadic ? '...' : ''}${param.name}`)
+              .join(', ')}), since a leading underscore is only dropped where that doesn't clash with another name`
           : `Rename it to "${oldParam.name}"`
       }: parameter names are part of the API in languages with keyword arguments (e.g. Python)`,
     name: 'language-compatibility/override-changes-param-name',
