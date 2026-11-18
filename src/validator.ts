@@ -505,19 +505,22 @@ function _defaultValidations(): ValidationFunction[] {
         }
         // A parameter's name only matters if callers can pass it by keyword. Variadic parameters can't be
         // (`*args` in Python), and the lifted struct parameter's own name never appears.
-        const expName = _visibleParameterName(expParam, expectedParams);
-        const actName = _visibleParameterName(actParam, actualParams);
-        if (expName !== actName && !expParam.variadic && !actParam.variadic && expParam !== liftedStruct) {
-          diagnostic(
-            JsiiDiagnostic.JSII_5022_OVERRIDE_CHANGES_PARAM_NAME.create(
-              declarationName(actParamNode),
-              label,
-              action,
-              // Report the names callers see, which may differ from the declared ones by a leading `_`
-              { ...actParam, name: actName },
-              { ...expParam, name: expName },
-            ).maybeAddRelatedInformation(declarationName(expParamNode), 'The implemented declaration is here.'),
-          );
+        if (!expParam.variadic && !actParam.variadic && expParam !== liftedStruct) {
+          const expName = _visibleParameterName(expParam, expectedParams);
+          const actName = _visibleParameterName(actParam, actualParams);
+          if (expName !== actName) {
+            diagnostic(
+              JsiiDiagnostic.JSII_5022_OVERRIDE_CHANGES_PARAM_NAME.create(
+                declarationName(actParamNode),
+                label,
+                action,
+                // Report the names callers see, which may differ from the declared ones by a leading `_`
+                { ...actParam, name: actName },
+                { ...expParam, name: expName },
+                actParam.name === expParam.name ? actParam.name : undefined,
+              ).maybeAddRelatedInformation(declarationName(expParamNode), 'The implemented declaration is here.'),
+            );
+          }
         }
       }
     }
@@ -539,19 +542,19 @@ function _defaultValidations(): ValidationFunction[] {
     /**
      * The parameter's name as callers using keyword arguments see it. A leading `_` only marks an unused
      * parameter in TypeScript, and jsii-pacmak drops it from Python parameter names (as the C# target does).
-     * It keeps it if what is left doesn't start with a letter, or could collide with another parameter, a
-     * property of the lifted struct (including inherited ones), or a name the generated method body uses.
-     * Names are compared ignoring case and underscores, because the Python name is snake_cased and may get
-     * a trailing `_`.
+     * It keeps it if what is left isn't an ASCII identifier that starts with a letter, or could collide with
+     * another parameter, a property of the lifted struct (including inherited ones), or a name the generated
+     * method body uses. Names are compared after NFKC normalization and ignoring case and underscores,
+     * because Python NFKC-normalizes identifiers, and the Python name is snake_cased and may get a trailing `_`.
      *
      * This must stay in sync with jsii-pacmak's `withoutUnusedMarker`.
      */
     function _visibleParameterName(param: spec.Parameter, parameters: readonly spec.Parameter[]): string {
       const stripped = param.name.replace(/^_+/, '');
-      if (stripped === param.name || !/^[a-z]/i.test(stripped)) {
+      if (stripped === param.name || !/^[a-z][a-z0-9_]*$/i.test(stripped)) {
         return param.name;
       }
-      const key = (name: string) => name.replace(/_/g, '').toLowerCase();
+      const key = (name: string) => name.normalize('NFKC').replace(/_/g, '').toLowerCase();
       const otherNames = [
         ...parameters.filter((other) => other !== param).map((other) => other.name),
         ..._liftedStructPropertyNames(parameters),

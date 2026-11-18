@@ -146,6 +146,56 @@ describe('JSII_5022: overrides and implementations must keep parameter names', (
       'f(__self: string)',
       [['_self', '__self']],
     ],
+    [
+      'the underscore is kept when dropping it would clash with a variadic parameter',
+      'f(_a: string, ...a: string[])',
+      'f(__a: string, ...a: string[])',
+      [['_a', '__a']],
+    ],
+    [
+      'the underscore is kept when dropping it would clash with the lifted parameter itself',
+      'f(_props: string, props: ChildProps)',
+      'f(__props: string, props: ChildProps)',
+      [['_props', '__props']],
+    ],
+    [
+      'the underscore is kept when dropping it would clash with a property of the lifted struct',
+      'f(_own: string, props: ChildProps)',
+      'f(__own: string, props: ChildProps)',
+      [['_own', '__own']],
+    ],
+    [
+      'the underscore is kept on a non-ASCII name',
+      'f(_gr\u00f6\u00dfe: string)',
+      'f(__gr\u00f6\u00dfe: string)',
+      [['_gr\u00f6\u00dfe', '__gr\u00f6\u00dfe']],
+    ],
+    [
+      'the underscore is kept when dropping it would clash after NFKC normalization',
+      'f(_afi: string, a\ufb01: string)',
+      'f(__afi: string, a\ufb01: string)',
+      [['_afi', '__afi']],
+    ],
+    // Every name a generated Python method body uses
+    ...[
+      'self',
+      'cls',
+      'abc',
+      'builtins',
+      'datetime',
+      'enum',
+      'typing',
+      'jsii',
+      'publication',
+      'typingExtensions',
+      'cachedTypeHints',
+      'checkType',
+    ].map((name) => [
+      `the underscore is kept on "${name}"`,
+      `f(_${name}: string)`,
+      `f(__${name}: string)`,
+      [[`_${name}`, `__${name}`]],
+    ]),
   ])('%s', (_title, declared, implemented, renames) => {
     const warnings = paramNameWarnings(`
       export interface BaseProps {
@@ -167,6 +217,23 @@ describe('JSII_5022: overrides and implementations must keep parameter names', (
     expect(warnings.map((warning) => /renames parameter "([^"]*)" to "([^"]*)"/.exec(warning)?.slice(1))).toEqual(
       renames,
     );
+  });
+
+  test('explains a difference that comes from an underscore kept on one side only', () => {
+    expect(
+      paramNameWarnings(`
+        export interface IResource {
+          f(_a: string, a: string): void;
+        }
+
+        export abstract class Resource implements IResource {
+          public abstract f(_a: string, b: string): void;
+        }
+      `),
+    ).toEqual([
+      '"testpkg.Resource#f" renames parameter "_a" to "a" when implementing testpkg.IResource. Both declare it as "_a", but its leading underscore is only kept where dropping it would clash with another name, so give the other parameters the same names too: parameter names are part of the API in languages with keyword arguments (e.g. Python)',
+      expect.stringMatching(/renames parameter "a" to "b" .* Rename it to "a":/),
+    ]);
   });
 
   test('does not warn when parameter names match', () => {
