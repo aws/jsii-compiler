@@ -700,8 +700,20 @@ export class JsiiDiagnostic implements ts.Diagnostic {
 
   public static readonly JSII_5022_OVERRIDE_CHANGES_PARAM_NAME = Code.warning({
     code: 5022,
-    formatter: (newElement: string, action: string, newParam: spec.Parameter, oldParam: spec.Parameter) =>
-      `"${newElement}" renames parameter "${oldParam.name}" to "${newParam.name}" when ${action}. Rename it to "${oldParam.name}": parameter names are part of the API in languages with keyword arguments (e.g. Python)`,
+    formatter: (
+      newElement: string,
+      action: string,
+      newParam: spec.Parameter,
+      oldParam: spec.Parameter,
+      implementedParams?: readonly spec.Parameter[],
+    ) =>
+      `"${newElement}" renames parameter "${oldParam.name}" to "${newParam.name}" when ${action}. ${
+        implementedParams != null
+          ? `Use the same parameter names as the implemented declaration, (${implementedParams
+              .map((param) => `${param.variadic ? '...' : ''}${param.name}`)
+              .join(', ')}), since a leading underscore is only dropped where that doesn't clash with another name`
+          : `Rename it to "${oldParam.name}"`
+      }: parameter names are part of the API in languages with keyword arguments (e.g. Python)`,
     name: 'language-compatibility/override-changes-param-name',
   });
 
