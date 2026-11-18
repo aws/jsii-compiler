@@ -45,7 +45,7 @@ describe('JSII_5022: overrides and implementations must keep parameter names', (
     ]);
   });
 
-  test('warns for underscore-prefixed parameters, because Python keeps the leading underscore', () => {
+  test('does not warn when only a leading underscore differs, because it is dropped from the API', () => {
     expect(
       paramNameWarnings(`
         export interface IResource {
@@ -57,8 +57,39 @@ describe('JSII_5022: overrides and implementations must keep parameter names', (
             return 'ignored';
           }
         }
+
+        export class Base {
+          public supports(_construct: string): boolean {
+            return true;
+          }
+        }
+
+        export class Derived extends Base {
+          public supports(construct: string): boolean {
+            return construct !== '';
+          }
+        }
       `),
-    ).toEqual([expect.stringMatching(/renames parameter "myParam" to "_myParam"/)]);
+    ).toEqual([]);
+  });
+
+  test('warns when the leading underscore is kept because dropping it would clash', () => {
+    expect(
+      paramNameWarnings(`
+        export interface IResource {
+          myFunc(_a: string, a: string): string;
+        }
+
+        export class Resource implements IResource {
+          public myFunc(a: string, _a: string) {
+            return a;
+          }
+        }
+      `),
+    ).toEqual([
+      expect.stringMatching(/renames parameter "_a" to "a"/),
+      expect.stringMatching(/renames parameter "a" to "_a"/),
+    ]);
   });
 
   test('does not warn when parameter names match', () => {
@@ -174,9 +205,9 @@ describe('JSII_5022: overrides and implementations must keep parameter names', (
         }
 
         export class Resource implements IResource {
-          /** @jsii suppress override-changes-param-name unused parameter */
-          public myFunc(_myParam: string) {
-            return 'ignored';
+          /** @jsii suppress override-changes-param-name renamed on purpose */
+          public myFunc(other: string) {
+            return other;
           }
         }
       `),

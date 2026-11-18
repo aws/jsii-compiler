@@ -485,7 +485,9 @@ function _defaultValidations(): ValidationFunction[] {
         }
         // A parameter's name only matters if callers can pass it by keyword. Variadic parameters can't be
         // (`*args` in Python), and the lifted struct parameter's own name never appears.
-        if (expParam.name !== actParam.name && !expParam.variadic && !actParam.variadic && expParam !== liftedStruct) {
+        const renamed =
+          _visibleParameterName(expParam, expectedParams) !== _visibleParameterName(actParam, actualParams);
+        if (renamed && !expParam.variadic && !actParam.variadic && expParam !== liftedStruct) {
           diagnostic(
             JsiiDiagnostic.JSII_5022_OVERRIDE_CHANGES_PARAM_NAME.create(
               declarationName(actParamNode),
@@ -511,6 +513,22 @@ function _defaultValidations(): ValidationFunction[] {
       }
       const type = _dereference(last.type);
       return type != null && spec.isInterfaceType(type) && type.datatype ? last : undefined;
+    }
+
+    /**
+     * The parameter's name as callers using keyword arguments see it. A leading `_` only marks an unused
+     * parameter in TypeScript: jsii-pacmak drops it from Python parameter names (as the C# target does),
+     * unless the name is only underscores or dropping it would clash with another parameter of the same
+     * signature. Mirrors jsii-pacmak's `withoutUnusedMarker`.
+     */
+    function _visibleParameterName(param: spec.Parameter, parameters: readonly spec.Parameter[]): string {
+      const strip = (name: string) => name.replace(/^_+/, '');
+      const stripped = strip(param.name);
+      if (stripped === '' || stripped === param.name) {
+        return param.name;
+      }
+      const clashes = parameters.some((other) => other !== param && strip(other.name) === stripped);
+      return clashes ? param.name : stripped;
     }
 
     function _assertPropertiesMatch(
