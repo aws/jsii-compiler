@@ -92,6 +92,83 @@ describe('JSII_5022: overrides and implementations must keep parameter names', (
     ]);
   });
 
+  // Each case is an interface method, an implementation, and the renames (as Python callers see the names)
+  // that must be reported. The expected names follow jsii-pacmak's Python output.
+  test.each([
+    ['all leading underscores are dropped', 'f(scope: string)', 'f(__scope: string)', []],
+    ['a name that is only underscores is kept', 'f(_: string)', 'f(__: string)', [['_', '__']]],
+    ['a name that would start with a digit is kept', 'f(_1: string)', 'f(__1: string)', [['_1', '__1']]],
+    [
+      'the underscore is kept when dropping it would clash, ignoring case',
+      'f(_myURL: string, myUrl: string)',
+      'f(myURL: string, _myUrl: string)',
+      [
+        ['_myURL', 'myURL'],
+        ['myUrl', '_myUrl'],
+      ],
+    ],
+    [
+      'the underscore is kept when dropping it would clash, ignoring underscores',
+      'f(_class: string, class_: string)',
+      'f(__class: string, class_: string)',
+      [['_class', '__class']],
+    ],
+    [
+      'the underscore is kept on one side only',
+      'f(_a: string, a: string)',
+      'f(_a: string, b: string)',
+      [
+        ['_a', 'a'],
+        ['a', 'b'],
+      ],
+    ],
+    [
+      'the underscore is kept when dropping it would clash with an inherited lifted property',
+      'f(_inherited: string, props: ChildProps)',
+      'f(__inherited: string, props: ChildProps)',
+      [['_inherited', '__inherited']],
+    ],
+    [
+      'the underscore is dropped when nothing clashes with the lifted properties',
+      'f(other: string, props: ChildProps)',
+      'f(_other: string, props: ChildProps)',
+      [],
+    ],
+    [
+      'the underscore is kept on a name the method body uses',
+      'f(_jsii: string)',
+      'f(__jsii: string)',
+      [['_jsii', '__jsii']],
+    ],
+    [
+      'the underscore is kept on the implicit parameter',
+      'f(_self: string)',
+      'f(__self: string)',
+      [['_self', '__self']],
+    ],
+  ])('%s', (_title, declared, implemented, renames) => {
+    const warnings = paramNameWarnings(`
+      export interface BaseProps {
+        readonly inherited: string;
+      }
+
+      export interface ChildProps extends BaseProps {
+        readonly own?: string;
+      }
+
+      export interface IResource {
+        ${declared}: void;
+      }
+
+      export abstract class Resource implements IResource {
+        public abstract ${implemented}: void;
+      }
+    `);
+    expect(warnings.map((warning) => /renames parameter "([^"]*)" to "([^"]*)"/.exec(warning)?.slice(1))).toEqual(
+      renames,
+    );
+  });
+
   test('does not warn when parameter names match', () => {
     expect(
       paramNameWarnings(`
