@@ -1262,13 +1262,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@jsii/check-node@npm:1.142.0":
-  version: 1.142.0
-  resolution: "@jsii/check-node@npm:1.142.0"
+"@jsii/check-node@npm:1.143.0":
+  version: 1.143.0
+  resolution: "@jsii/check-node@npm:1.143.0"
   dependencies:
     chalk: "npm:^4.1.2"
-    semver: "npm:^7.8.5"
-  checksum: 10c0/f35992d439ab1b6abf483b56b52326ea299815fea72f9aa945d13d237db270747c2449a47d0c9dc2538f65bff9d7482b09adc22e9f60e90275dd79258da92a4a
+    semver: "npm:^7.8.6"
+  checksum: 10c0/f828ba4d536ab380866529499b230d40d9c5716e184e53fbaa84fb80ac15a085549a911570d0e6c8a1e459c5f7eed70faa2955b58bb5ddb8675a97f162187493
   languageName: node
   linkType: hard
 
@@ -5846,7 +5846,7 @@ __metadata:
   dependencies:
     "@actions/core": "npm:^3"
     "@actions/github": "npm:^9"
-    "@jsii/check-node": "npm:1.142.0"
+    "@jsii/check-node": "npm:1.143.0"
     "@jsii/spec": "npm:1.143.0"
     "@types/clone": "npm:^2.1.4"
     "@types/deep-equal": "npm:^1.0.4"
@@ -5879,7 +5879,7 @@ __metadata:
     npm: "npm:^12"
     npm-check-updates: "npm:^20"
     prettier: "npm:^2.8.8"
-    projen: "npm:^0.105.1"
+    projen: "npm:^0.105.3"
     semver: "npm:^7.8.6"
     semver-intersect: "npm:^1.5.0"
     sort-json: "npm:^2.0.1"
@@ -7242,9 +7242,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"projen@npm:^0.105.1":
-  version: 0.105.1
-  resolution: "projen@npm:0.105.1"
+"projen@npm:^0.105.3":
+  version: 0.105.3
+  resolution: "projen@npm:0.105.3"
   dependencies:
     "@iarna/toml": "npm:^2.2.5"
     case: "npm:^1.6.3"
@@ -7266,7 +7266,7 @@ __metadata:
     constructs: ^10.5.0
   bin:
     projen: bin/projen
-  checksum: 10c0/5d22a3ccd3f600ce5d42758e943163ec95afacc44afe0052ff258913151d1757bb3289490384546ac316ccbf946c0e6740e82e9850388c778aad52e572ef6956
+  checksum: 10c0/3a3fd2ec8a5bb207e33c67523ed934b605a340b101354498319a92844346119973c765841063b1ccf0dbc03dad8a0c4db63c9fcd20fd4f284d60a2f7664b83e6
   languageName: node
   linkType: hard
 
