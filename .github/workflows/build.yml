@@ -170,6 +170,7 @@ jobs:
         node-version:
           - 22.x
           - 24.x
+          - 26.x
   matrix-clear:
     name: Unit Tests
     needs: matrix-test
@@ -277,6 +278,7 @@ jobs:
         node-version:
           - 22.x
           - 24.x
+          - 26.x
         package-manager:
           - npm
           - yarn
