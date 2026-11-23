@@ -1,9 +1,17 @@
 import { mkdirSync, existsSync, mkdtempSync, rmSync, writeFileSync, readFileSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, isAbsolute, join } from 'node:path';
-import { loadAssemblyFromPath, SPEC_FILE_NAME, SPEC_FILE_NAME_COMPRESSED } from '@jsii/spec';
+import {
+  CollectionKind,
+  loadAssemblyFromPath,
+  PrimitiveType,
+  SPEC_FILE_NAME,
+  SPEC_FILE_NAME_COMPRESSED,
+} from '@jsii/spec';
 import * as ts from 'typescript';
+import { compileJsiiForErrors } from './compiler-helpers';
 import { compile, Lock } from './fixtures';
+import { compileJsiiForTest } from '../src';
 import { Compiler } from '../src/compiler';
 import { ProjectInfo } from '../src/project-info';
 import { TypeScriptConfigValidationRuleSet } from '../src/tsconfig';
@@ -511,6 +519,207 @@ describe(Compiler, () => {
         rmSync(compressedSourceDir, { force: true, recursive: true });
       }
     });
+  });
+});
+
+const ARRAY_OF_STRING = {
+  collection: {
+    elementtype: { primitive: PrimitiveType.String },
+    kind: CollectionKind.Array,
+  },
+};
+
+describe('readonly arrays', () => {
+  test('mutable string[] control compiles as an array collection', () => {
+    const result = compileJsiiForTest(`
+      export interface Props {
+        readonly values: string[];
+      }
+    `);
+
+    expect(result.assembly.types!['testpkg.Props']).toEqual(
+      expect.objectContaining({
+        datatype: true,
+        kind: 'interface',
+        properties: [
+          expect.objectContaining({
+            immutable: true,
+            name: 'values',
+            type: ARRAY_OF_STRING,
+          }),
+        ],
+      }),
+    );
+    expect(result.files['index.d.ts']).toContain('readonly values: string[]');
+  });
+
+  test('readonly string[] compiles as an array collection', () => {
+    const result = compileJsiiForTest(`
+      export interface Props {
+        readonly values: readonly string[];
+      }
+    `);
+
+    expect(result.assembly.types!['testpkg.Props']).toEqual(
+      expect.objectContaining({
+        datatype: true,
+        kind: 'interface',
+        properties: [
+          expect.objectContaining({
+            immutable: true,
+            name: 'values',
+            type: ARRAY_OF_STRING,
+          }),
+        ],
+      }),
+    );
+    expect(result.files['index.d.ts']).toContain('readonly values: readonly string[]');
+  });
+
+  test('ReadonlyArray<string> compiles as an array collection', () => {
+    const result = compileJsiiForTest(`
+      export interface Props {
+        readonly values: ReadonlyArray<string>;
+      }
+    `);
+
+    expect(result.assembly.types!['testpkg.Props']).toEqual(
+      expect.objectContaining({
+        datatype: true,
+        kind: 'interface',
+        properties: [
+          expect.objectContaining({
+            immutable: true,
+            name: 'values',
+            type: ARRAY_OF_STRING,
+          }),
+        ],
+      }),
+    );
+    expect(result.files['index.d.ts']).toContain('readonly values: ReadonlyArray<string>');
+  });
+
+  test('readonly arrays recursively validate element types', () => {
+    const result = compileJsiiForTest(`
+      export interface Item {
+        readonly n: number;
+      }
+
+      export interface Props {
+        readonly items: readonly Item[];
+      }
+    `);
+
+    expect(result.assembly.types!['testpkg.Props']).toEqual(
+      expect.objectContaining({
+        properties: [
+          expect.objectContaining({
+            name: 'items',
+            type: {
+              collection: {
+                elementtype: { fqn: 'testpkg.Item' },
+                kind: CollectionKind.Array,
+              },
+            },
+          }),
+        ],
+      }),
+    );
+  });
+
+  test('constructor parameter and inferred return value of readonly arrays compile', () => {
+    const result = compileJsiiForTest(`
+      export interface Props {
+        readonly p: readonly string[];
+      }
+
+      export class C {
+        private s: readonly string[];
+        constructor(p: Props) {
+          this.s = p.p;
+        }
+        f() {
+          return this.s;
+        }
+      }
+    `);
+
+    expect(result.assembly.types!['testpkg.Props']).toEqual(
+      expect.objectContaining({
+        properties: [
+          expect.objectContaining({
+            name: 'p',
+            type: ARRAY_OF_STRING,
+          }),
+        ],
+      }),
+    );
+    expect(result.assembly.types!['testpkg.C']).toEqual(
+      expect.objectContaining({
+        kind: 'class',
+        initializer: expect.objectContaining({
+          parameters: [
+            expect.objectContaining({
+              name: 'p',
+              type: { fqn: 'testpkg.Props' },
+            }),
+          ],
+        }),
+        methods: [
+          expect.objectContaining({
+            name: 'f',
+            returns: { type: ARRAY_OF_STRING },
+          }),
+        ],
+      }),
+    );
+    expect(result.files['index.d.ts']).toContain('readonly p: readonly string[]');
+    expect(result.files['index.d.ts']).toMatch(/f\(\):\s*readonly string\[\]/);
+  });
+
+  test('tuple types remain unsupported', () => {
+    expect(
+      compileJsiiForErrors(`
+        export interface Props {
+          readonly pair: [string, number];
+        }
+      `),
+    ).toContainEqual('Tuple types are not supported in jsii APIs. Consider using arrays instead.');
+  });
+
+  test('readonly tuple types remain unsupported', () => {
+    expect(
+      compileJsiiForErrors(`
+        export interface Props {
+          readonly pair: readonly [string, number];
+        }
+      `),
+    ).toContainEqual('Tuple types are not supported in jsii APIs. Consider using arrays instead.');
+  });
+
+  test('user-defined type named ReadonlyArray is not treated as an array', () => {
+    const result = compileJsiiForTest(`
+      export class ReadonlyArray {
+        public readonly marker = true;
+      }
+
+      export class Consumer {
+        public readonly values: ReadonlyArray = new ReadonlyArray();
+      }
+    `);
+
+    expect(result.assembly.types!['testpkg.Consumer']).toEqual(
+      expect.objectContaining({
+        properties: [
+          expect.objectContaining({
+            name: 'values',
+            type: { fqn: 'testpkg.ReadonlyArray' },
+          }),
+        ],
+      }),
+    );
+    expect(result.files['index.d.ts']).toContain('readonly values: ReadonlyArray');
+    expect(result.files['index.d.ts']).not.toContain('readonly values: readonly');
   });
 });
 
