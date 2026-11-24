@@ -2298,7 +2298,8 @@ export class Assembler implements Emitter {
       return { type: spec.CANONICAL_ANY };
     }
 
-    if (type.symbol.name === 'Array') {
+    // Built-in Array/ReadonlyArray (including `readonly T[]`), by type identity.
+    if (type.symbol.name === 'Array' || this._typeChecker.isArrayType(type)) {
       return { type: _arrayType.call(this) };
     }
 
