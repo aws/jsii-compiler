@@ -60,6 +60,9 @@ export class Assembler implements Emitter {
   /** Map of Symbol to namespace export Symbol */
   private readonly _submoduleMap = new Map<ts.Symbol, ts.Symbol>();
 
+  /** Symbols reachable from the entry point's exports, including those of submodules and namespaces. */
+  private _entryPointExports?: ReadonlySet<ts.Symbol>;
+
   /**
    * Submodule information
    *
@@ -175,6 +178,7 @@ export class Assembler implements Emitter {
       }
       const symbol = this._typeChecker.getSymbolAtLocation(sourceFile);
       if (symbol) {
+        this._entryPointExports = this._collectEntryPointExports(symbol);
         const moduleExports = this._typeChecker.getExportsOfModule(symbol);
         moduleExports.map((item) => this._registerNamespaces(item, this.projectInfo.projectRoot));
         for (const node of moduleExports) {
@@ -1074,7 +1078,11 @@ export class Assembler implements Emitter {
     const processBaseTypes = (types: ts.Type[]) => {
       for (const iface of types) {
         // base is private/internal, so we continue recursively with it's own bases
-        if (this._isPrivateOrInternal(iface.symbol) || isInternalSymbol(iface.symbol)) {
+        if (
+          this._isPrivateOrInternal(iface.symbol) ||
+          isInternalSymbol(iface.symbol) ||
+          this._isUnexportedLocalType(iface.symbol)
+        ) {
           erasedBases.push(iface);
           if (!isInternalSymbol(iface.symbol)) {
             const bases = iface.getBaseTypes();
@@ -1175,7 +1183,7 @@ export class Assembler implements Emitter {
 
       // Crawl up the inheritance tree if the current base type is not exported, so we identify the type(s) to be
       // erased, and identify the closest exported base class, should there be one.
-      while (base?.symbol && this._isPrivateOrInternal(base.symbol)) {
+      while (base?.symbol && (this._isPrivateOrInternal(base.symbol) || this._isUnexportedLocalType(base.symbol))) {
         LOG.debug(
           `Base class of ${chalk.green(jsiiType.fqn)} named ${chalk.green(
             base.symbol.name,
@@ -1531,6 +1539,47 @@ export class Assembler implements Emitter {
     return (
       (symbol.declarations?.length ?? 0) > 0 &&
       symbol.declarations!.every((decl) => Directives.of(decl, (diag) => this._diagnostics.push(diag)).ignore != null)
+    );
+  }
+
+  /**
+   * Collects the symbols exported from the entry point, following re-exports into submodules and namespaces.
+   */
+  private _collectEntryPointExports(entryPoint: ts.Symbol): Set<ts.Symbol> {
+    const result = new Set<ts.Symbol>();
+    const visit = (moduleSymbol: ts.Symbol) => {
+      for (const exported of this._typeChecker.getExportsOfModule(moduleSymbol)) {
+        const target =
+          (exported.flags & ts.SymbolFlags.Alias) !== 0 ? this._typeChecker.getAliasedSymbol(exported) : exported;
+        if (result.has(target)) {
+          continue;
+        }
+        result.add(target);
+        if ((target.flags & ts.SymbolFlags.Module) !== 0) {
+          visit(target);
+        }
+      }
+    };
+    visit(entryPoint);
+    return result;
+  }
+
+  /**
+   * Whether a type is declared in this package's sources but is not reachable from the entry point. Such a type is
+   * hidden from jsii consumers just like a type declared without `export`, which it must have to be imported from
+   * another file.
+   */
+  private _isUnexportedLocalType(symbol: ts.Symbol): boolean {
+    if (this._entryPointExports == null || this._entryPointExports.has(symbol)) {
+      return false;
+    }
+    const declarations = symbol.declarations ?? [];
+    return (
+      declarations.length > 0 &&
+      declarations.every((decl) => {
+        const sourceFile = decl.getSourceFile();
+        return !sourceFile.isDeclarationFile && !this.program.isSourceFileFromExternalLibrary(sourceFile);
+      })
     );
   }
 
