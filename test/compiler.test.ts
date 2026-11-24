@@ -128,7 +128,6 @@ describe(Compiler, () => {
       }
     });
 
-<<<<<<< HEAD
     test('rootDir and outDir are added to assembly', () => {
       const outDir = 'jsii-outdir';
       const rootDir = 'jsii-rootdir';
@@ -161,7 +160,11 @@ describe(Compiler, () => {
             tscOutDir: outDir,
           }),
         );
-=======
+      } finally {
+        rmSync(sourceDir, { force: true, recursive: true });
+      }
+    });
+
     test.each([
       { sources: '.', types: 'index.d.ts', rootDir: undefined, advice: `Set it to "${join('dist', 'index.d.ts')}"` },
       { sources: 'lib', types: 'index.d.ts', rootDir: 'lib', advice: 'Point "types" and "main" at the compiled files' },
@@ -187,8 +190,7 @@ describe(Compiler, () => {
         const jsiiDiagnostics = result.diagnostics.filter(JsiiDiagnostic.isJsiiDiagnostic);
         // Report the misplaced "types" instead of a missing entry point next to the outDir.
         expect(jsiiDiagnostics.map((diag) => diag.jsiiCode)).toEqual([8]);
-        expect(ts.flattenDiagnosticMessageText(jsiiDiagnostics[0].messageText, '\n')).toContain(advice);
->>>>>>> b3130d6 (fix: diagnose "types" outside of tsc outDir (#2924))
+        expect(String(jsiiDiagnostics[0].messageText)).toContain(advice);
       } finally {
         rmSync(sourceDir, { force: true, recursive: true });
       }
