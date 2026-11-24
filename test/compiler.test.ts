@@ -4,6 +4,7 @@ import { dirname, isAbsolute, join } from 'node:path';
 import { loadAssemblyFromPath, SPEC_FILE_NAME, SPEC_FILE_NAME_COMPRESSED } from '@jsii/spec';
 import { compile, Lock } from './fixtures';
 import { Compiler } from '../src/compiler';
+import { JsiiDiagnostic } from '../src/jsii-diagnostic';
 import { ProjectInfo } from '../src/project-info';
 import { TypeScriptConfigValidationRuleSet } from '../src/tsconfig';
 import { TypeScriptConfigValidator } from '../src/tsconfig/tsconfig-validator';
@@ -159,6 +160,37 @@ describe(Compiler, () => {
             tscOutDir: outDir,
           }),
         );
+      } finally {
+        rmSync(sourceDir, { force: true, recursive: true });
+      }
+    });
+
+    test.each([
+      { sources: '.', types: 'index.d.ts', rootDir: undefined, advice: `Set it to "${join('dist', 'index.d.ts')}"` },
+      { sources: 'lib', types: 'index.d.ts', rootDir: 'lib', advice: 'Point "types" and "main" at the compiled files' },
+    ])('reports "types" outside of outDir (sources in $sources)', ({ sources, types, rootDir, advice }) => {
+      const sourceDir = mkdtempSync(join(tmpdir(), 'jsii-tmpdir'));
+      mkdirSync(join(sourceDir, sources), { recursive: true });
+
+      try {
+        writeFileSync(join(sourceDir, sources, 'index.ts'), 'export class MarkerA {}');
+        writeFileSync(join(sourceDir, 'README.md'), '# Test Package');
+
+        const compiler = new Compiler({
+          projectInfo: {
+            ..._makeProjectInfo(sourceDir, types),
+            tsc: { outDir: 'dist', rootDir },
+          },
+          projectReferences: false,
+        });
+
+        const result = compiler.emit();
+
+        expect(result.emitSkipped).toBe(true);
+        const jsiiDiagnostics = result.diagnostics.filter(JsiiDiagnostic.isJsiiDiagnostic);
+        // Report the misplaced "types" instead of a missing entry point next to the outDir.
+        expect(jsiiDiagnostics.map((diag) => diag.jsiiCode)).toEqual([8]);
+        expect(String(jsiiDiagnostics[0].messageText)).toContain(advice);
       } finally {
         rmSync(sourceDir, { force: true, recursive: true });
       }

@@ -419,6 +419,26 @@ function deriveEntry(projectRoot: string, projectInfo: ProjectInfo, rootDir?: st
 }
 
 /**
+ * The diagnostic for an entry point that is not part of the program. When package.json's `types` is outside of tsc's
+ * outDir, it can't be re-rooted from there, so report that (with where tsc puts the declarations) instead.
+ */
+function missingEntryDiagnostic(entry: string, projectInfo: ProjectInfo, rootDir?: string, outDir?: string) {
+  const dts: string = projectInfo.types ?? 'index.d.ts';
+  const mainFile = dts.replace(/\.d\.ts(x?)$/, '.ts$1').replace(/\.js$/, '.ts');
+  if (outDir == null || !isOutsideOfDirectory(path.relative(outDir, mainFile))) {
+    return JsiiDiagnostic.JSII_0004_COULD_NOT_FIND_ENTRYPOINT.createDetached(entry);
+  }
+  const fromRootDir = path.relative(rootDir ?? '.', dts);
+  const suggestion = isOutsideOfDirectory(fromRootDir) ? undefined : path.join(outDir, fromRootDir);
+  return JsiiDiagnostic.JSII_0008_TYPES_OUTSIDE_OUT_DIR.createDetached(dts, outDir, suggestion);
+}
+
+/** Whether a path that is relative to some directory points outside of that directory. */
+function isOutsideOfDirectory(relativePath: string): boolean {
+  return relativePath === '..' || relativePath.startsWith(`..${path.sep}`) || path.isAbsolute(relativePath);
+}
+
+/**
  * Run the ts backend for a package: produce and write the `.jsii` assembly.
  */
 export function buildProject(options: BuildProjectOptions): BuildProjectResult {
@@ -458,6 +478,15 @@ export function buildProject(options: BuildProjectOptions): BuildProjectResult {
     // compile must not produce an assembly.
     if (tsDiagnostics.some((d) => d.category === DiagnosticCategory.Error)) {
       return { typeCount: 0, emittedFiles: [], emitSkipped: true, diagnostics: tsDiagnostics };
+    }
+
+    if (!project.program.getSourceFile(entry)) {
+      return {
+        typeCount: 0,
+        emittedFiles: [],
+        emitSkipped: true,
+        diagnostics: [...tsDiagnostics, missingEntryDiagnostic(entry, projectInfo, tscRootDir, tscOutDir)],
+      };
     }
 
     const assembler = new Assembler(host.ts, project, {
