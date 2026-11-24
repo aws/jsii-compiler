@@ -13,6 +13,7 @@ import { compileJsiiForErrors } from './compiler-helpers';
 import { compile, Lock } from './fixtures';
 import { compileJsiiForTest } from '../src';
 import { Compiler } from '../src/compiler';
+import { JsiiDiagnostic } from '../src/jsii-diagnostic';
 import { ProjectInfo } from '../src/project-info';
 import { TypeScriptConfigValidationRuleSet } from '../src/tsconfig';
 import { TypeScriptConfigValidator } from '../src/tsconfig/tsconfig-validator';
@@ -218,6 +219,37 @@ describe(Compiler, () => {
           }),
         );
         expect(isAbsolute(assembly.metadata!.tscRootDir as string)).toBe(false);
+      } finally {
+        rmSync(sourceDir, { force: true, recursive: true });
+      }
+    });
+
+    test.each([
+      { sources: '.', types: 'index.d.ts', rootDir: undefined, advice: `Set it to "${join('dist', 'index.d.ts')}"` },
+      { sources: 'lib', types: 'index.d.ts', rootDir: 'lib', advice: 'Point "types" and "main" at the compiled files' },
+    ])('reports "types" outside of outDir (sources in $sources)', ({ sources, types, rootDir, advice }) => {
+      const sourceDir = mkdtempSync(join(tmpdir(), 'jsii-tmpdir'));
+      mkdirSync(join(sourceDir, sources), { recursive: true });
+
+      try {
+        writeFileSync(join(sourceDir, sources, 'index.ts'), 'export class MarkerA {}');
+        writeFileSync(join(sourceDir, 'README.md'), '# Test Package');
+
+        const compiler = new Compiler({
+          projectInfo: {
+            ..._makeProjectInfo(sourceDir, types),
+            tsc: { outDir: 'dist', rootDir },
+          },
+          projectReferences: false,
+        });
+
+        const result = compiler.emit();
+
+        expect(result.emitSkipped).toBe(true);
+        const jsiiDiagnostics = result.diagnostics.filter(JsiiDiagnostic.isJsiiDiagnostic);
+        // Report the misplaced "types" instead of a missing entry point next to the outDir.
+        expect(jsiiDiagnostics.map((diag) => diag.jsiiCode)).toEqual([8]);
+        expect(ts.flattenDiagnosticMessageText(jsiiDiagnostics[0].messageText, '\n')).toContain(advice);
       } finally {
         rmSync(sourceDir, { force: true, recursive: true });
       }

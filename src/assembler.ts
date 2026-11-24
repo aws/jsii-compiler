@@ -47,6 +47,8 @@ export class Assembler implements Emitter {
   private readonly mainFile: string;
   private readonly tscRootDir?: string;
   private readonly tscOutDir?: string;
+  /** Set when package.json's `types` is outside of tsc's outDir, to explain a missing `mainFile`. */
+  private readonly typesOutsideOutDir?: { readonly types: string; readonly suggestion?: string };
   private readonly compressAssembly?: boolean;
   private readonly usedFeatures = new Set<spec.JsiiFeature>();
 
@@ -118,6 +120,7 @@ export class Assembler implements Emitter {
     this.tscOutDir = normalizeConfigPath(projectInfo.projectRoot, program.getCompilerOptions().outDir);
     if (this.tscOutDir != null) {
       mainFile = path.relative(this.tscOutDir, mainFile);
+      const typesOutsideOutDir = isOutsideOfDirectory(mainFile);
 
       // rootDir may be set explicitly or not. If not, inferRootDir replicates
       // tsc's behavior of using the longest prefix of all built source files.
@@ -131,6 +134,16 @@ export class Assembler implements Emitter {
       );
       if (this.tscRootDir != null) {
         mainFile = path.join(this.tscRootDir, mainFile);
+      }
+
+      if (typesOutsideOutDir) {
+        // tsc writes declarations into outDir, so `types` can't be re-rooted from it, and the entry point is usually
+        // looked up in the wrong place. Remember where tsc puts the declarations, to report that if it is not found.
+        const fromRootDir = path.relative(this.tscRootDir ?? '.', dts);
+        this.typesOutsideOutDir = {
+          types: dts,
+          suggestion: isOutsideOfDirectory(fromRootDir) ? undefined : path.join(this.tscOutDir, fromRootDir),
+        };
       }
     }
 
@@ -166,7 +179,15 @@ export class Assembler implements Emitter {
 
     const sourceFile = this.program.getSourceFile(this.mainFile);
 
-    if (sourceFile == null) {
+    if (sourceFile == null && this.typesOutsideOutDir != null) {
+      this._diagnostics.push(
+        JsiiDiagnostic.JSII_0008_TYPES_OUTSIDE_OUT_DIR.createDetached(
+          this.typesOutsideOutDir.types,
+          this.tscOutDir!,
+          this.typesOutsideOutDir.suggestion,
+        ),
+      );
+    } else if (sourceFile == null) {
       this._diagnostics.push(JsiiDiagnostic.JSII_0004_COULD_NOT_FIND_ENTRYPOINT.createDetached(this.mainFile));
     } else {
       this._registerDependenciesNamespaces(sourceFile);
@@ -3383,6 +3404,11 @@ class EmitContext {
   public removeStability() {
     return new EmitContext(this.namespace, undefined);
   }
+}
+
+/** Whether a path that is relative to some directory points outside of that directory. */
+function isOutsideOfDirectory(relativePath: string): boolean {
+  return relativePath === '..' || relativePath.startsWith(`..${path.sep}`) || path.isAbsolute(relativePath);
 }
 
 function inferRootDir(program: ts.Program): string | undefined {

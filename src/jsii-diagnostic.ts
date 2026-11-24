@@ -266,6 +266,17 @@ export class JsiiDiagnostic implements ts.Diagnostic {
     name: 'metadata/missing-warnings-export',
   });
 
+  public static readonly JSII_0008_TYPES_OUTSIDE_OUT_DIR = Code.error({
+    code: 8,
+    formatter: (types: string, outDir: string, suggestion?: string) =>
+      `The "types" entry in package.json (${JSON.stringify(types)}) is outside of the TypeScript outDir ` +
+      `(${JSON.stringify(outDir)}), so the entry point cannot be found. ` +
+      (suggestion != null
+        ? `Set it to ${JSON.stringify(suggestion)} and update "main" to match.`
+        : `Point "types" and "main" at the compiled files in ${JSON.stringify(outDir)}.`),
+    name: 'metadata/types-outside-outdir',
+  });
+
   //////////////////////////////////////////////////////////////////////////////
   // 1000 => 1999 -- TYPESCRIPT LANGUAGE RESTRICTIONS
 
