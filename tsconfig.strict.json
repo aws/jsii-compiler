@@ -1,0 +1,11 @@
+{
+  "compilerOptions": {
+    "declaration": true,
+    "lib": ["es2023"],
+    "module": "node20",
+    "noEmitOnError": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "target": "es2023"
+  }
+}

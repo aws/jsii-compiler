@@ -165,6 +165,9 @@ project.package.addField('exports', {
   './bin/jsii': './bin/jsii',
   './package.json': './package.json',
   './common': './lib/common/index.js',
+  './tsconfig.strict.json': './tsconfig.strict.json',
+  './tsconfig.generated.json': './tsconfig.generated.json',
+  './tsconfig.minimal.json': './tsconfig.minimal.json',
 });
 
 // Remove TypeScript devDependency (it's a direct/normal dependency here)
