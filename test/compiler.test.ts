@@ -347,6 +347,51 @@ describe(Compiler, () => {
     });
   });
 
+  describe('package name', () => {
+    test.each([
+      { desc: 'a class', name: '@foo/example.jsii-dot-error', source: 'export class Foo {}' },
+      { desc: 'a dot in the scope', name: '@foo.bar/baz', source: 'export class Foo {}' },
+      {
+        desc: 'a subclass',
+        name: '@foo/example.jsii-dot-error',
+        source: 'export class Base {}\nexport class Derived extends Base {}',
+      },
+      {
+        desc: 'a class that implements an extended interface',
+        name: '@foo/example.jsii-dot-error',
+        source:
+          'export interface IA { readonly a: string; }\nexport interface IB extends IA { readonly b: string; }\n' +
+          "export class Foo implements IB { public readonly a = ''; public readonly b = ''; }",
+      },
+      {
+        desc: 'a class that uses an interface',
+        name: '@foo/example.jsii-dot-error',
+        source:
+          'export interface Props { readonly name: string; }\nexport class Foo { public constructor(_props: Props) {} }',
+      },
+    ])('reports a package name that contains a dot ($desc)', ({ name, source }) => {
+      const result = compileJsiiForTest(source, { captureDiagnostics: true, projectInfo: { name } });
+
+      // Only the package name is reported, not the types that jsii looked up by name.
+      const errors = result.diagnostics
+        .filter(JsiiDiagnostic.isJsiiDiagnostic)
+        .filter((diag) => diag.category === ts.DiagnosticCategory.Error);
+      expect(errors.map((diag) => diag.jsiiCode)).toEqual([9]);
+      expect(ts.flattenDiagnosticMessageText(errors[0].messageText, '\n')).toContain(
+        `${JSON.stringify(name)} contains a "."`,
+      );
+    });
+
+    test('does not report a package name without a dot', () => {
+      const result = compileJsiiForTest('export class Foo {}', {
+        captureDiagnostics: true,
+        projectInfo: { name: '@foo/example-jsii-dot-error' },
+      });
+
+      expect(result.diagnostics.filter(JsiiDiagnostic.isJsiiDiagnostic).map((diag) => diag.jsiiCode)).not.toContain(9);
+    });
+  });
+
   describe('compressed assembly option', () => {
     test('creates a gzipped assembly file', () => {
       const sourceDir = mkdtempSync(join(tmpdir(), 'jsii-tmpdir'));
