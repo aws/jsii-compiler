@@ -277,6 +277,15 @@ export class JsiiDiagnostic implements ts.Diagnostic {
     name: 'metadata/types-outside-outdir',
   });
 
+  public static readonly JSII_0009_PACKAGE_NAME_CONTAINS_DOT = Code.error({
+    code: 9,
+    formatter: (name: string) =>
+      `The package name ${JSON.stringify(name)} contains a ".", but jsii uses "." to separate the package name ` +
+      'from type names, so other jsii packages and other languages cannot find the types of this package. ' +
+      'Use a name without ".".',
+    name: 'metadata/package-name-contains-dot',
+  });
+
   //////////////////////////////////////////////////////////////////////////////
   // 1000 => 1999 -- TYPESCRIPT LANGUAGE RESTRICTIONS
 
