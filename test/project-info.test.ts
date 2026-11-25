@@ -87,16 +87,19 @@ describe('loadProjectInfo', () => {
       true /* compress assembly */,
     ));
 
-  test('loads valid project (UNLICENSED)', () =>
-    _withTestProject(
-      (projectRoot) => {
-        const { projectInfo: info } = loadProjectInfo(projectRoot);
-        expect(info?.license).toBe('UNLICENSED');
-      },
-      (info) => {
-        info.license = 'UNLICENSED';
-      },
-    ));
+  test.each(['UNLICENSED', 'LicenseRef-Proprietary', 'LicenseRef-acme.license-1.0'])(
+    'loads valid project (license %s)',
+    (license) =>
+      _withTestProject(
+        (projectRoot) => {
+          const { projectInfo: info } = loadProjectInfo(projectRoot);
+          expect(info?.license).toBe(license);
+        },
+        (info) => {
+          info.license = license;
+        },
+      ),
+  );
 
   test('loads valid project (using bundleDependencies)', () =>
     _withTestProject(
@@ -143,13 +146,23 @@ describe('loadProjectInfo', () => {
       },
     ));
 
-  test('rejects invalid license', () =>
+  test.each([
+    'Not an SPDX licence ID',
+    'SEE LICENSE IN LICENSE',
+    'UNLICENCED',
+    'unlicensed',
+    'LicenseRef-',
+    'LicenseRef-not valid',
+    'licenseref-Proprietary',
+    'DocumentRef-spdx:LicenseRef-Proprietary',
+  ])('rejects invalid license %j', (license) =>
     _withTestProject(
       (projectRoot) => expect(() => loadProjectInfo(projectRoot)).toThrow(/invalid license identifier/i),
       (info) => {
-        info.license = 'Not an SPDX licence ID';
+        info.license = license;
       },
-    ));
+    ),
+  );
 
   test('rejects incompatible dependency version', () =>
     _withTestProject(
