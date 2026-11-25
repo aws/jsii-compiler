@@ -165,6 +165,9 @@ export class Assembler implements Emitter {
    * @return the result of the assembly emission.
    */
   public emit(): ts.EmitResult {
+    if (this.projectInfo.name.includes('.')) {
+      this._diagnostics.push(JsiiDiagnostic.JSII_0009_PACKAGE_NAME_CONTAINS_DOT.createDetached(this.projectInfo.name));
+    }
     if (!this.projectInfo.description) {
       this._diagnostics.push(JsiiDiagnostic.JSII_0001_PKG_MISSING_DESCRIPTION.createDetached());
     }
@@ -434,11 +437,11 @@ export class Assembler implements Emitter {
       ref = ref.fqn;
     }
 
-    const [assm] = ref.split('.');
     let type;
-    if (assm === this.projectInfo.name) {
+    if (ref.startsWith(`${this.projectInfo.name}.`)) {
       type = this._types.get(ref);
     } else {
+      const [assm] = ref.split('.');
       const assembly = this.projectInfo.dependencyClosure.find((dep) => dep.name === assm);
       type = assembly?.types?.[ref];
 
