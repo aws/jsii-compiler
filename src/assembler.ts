@@ -216,6 +216,8 @@ export class Assembler {
   private currentStability?: spec.Stability;
 
   private readonly types: Record<string, spec.Type> = {};
+  /** Enum member declarations by enum fqn and member name (read by --add-deprecation-warnings). */
+  public readonly enumMemberDeclarations = new Map<string, Map<string, any>>();
   private readonly submodules: Record<string, spec.Submodule> = {};
   private readonly typeFqnBySymbolId = new Map<unknown, string>();
   private readonly exported: RegisteredType[] = [];
@@ -1362,6 +1364,8 @@ export class Assembler {
       }
     }
     this._prefetchDocs(enumMembers);
+    const memberDecls = new Map<string, any>();
+    this.enumMemberDeclarations.set(fqn, memberDecls);
     for (const msym of enumMembers) {
       if (msym.declarations?.[0]?.kind !== SyntaxKind.EnumMember) {
         continue;
@@ -1375,6 +1379,7 @@ export class Assembler {
         member.docs = md;
       }
       members.push(this._withDefaultDocs(member));
+      memberDecls.set(msym.name, msym.declarations[0]);
     }
     jsiiType.members = members;
 

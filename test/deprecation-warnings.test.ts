@@ -14,9 +14,7 @@ beforeEach(() => {
   jest.restoreAllMocks();
 });
 
-// @TODO(ts7): re-enable once --add-deprecation-warnings is implemented on the TypeScript 7 compiler;
-// requesting it currently fails with an explicit error.
-describe.skip('Function generation', () => {
+describe('Function generation', () => {
   test('generates the print function', () => {
     const result = compileJsiiForTest('', undefined /* callback */, {
       addDeprecationWarnings: true,
@@ -490,8 +488,8 @@ class DeprecationError extends Error {
   });
 });
 
-// @TODO(ts7): re-enable once --add-deprecation-warnings is implemented on the TypeScript 7 compiler;
-// requesting it currently fails with an explicit error.
+// @TODO(ts7): re-enable once the TypeScript 7 compiler injects the --add-deprecation-warnings calls into the
+// emitted .js (it writes .warnings.jsii.js, but does not call into it yet).
 describe.skip('cross-assembly validation', () => {
   test.each([
     ['ForeignProps', '{ old: "value" }', 'warn', 'present'],
@@ -565,8 +563,8 @@ describe.skip('cross-assembly validation', () => {
   });
 });
 
-// @TODO(ts7): re-enable once --add-deprecation-warnings is implemented on the TypeScript 7 compiler;
-// requesting it currently fails with an explicit error.
+// @TODO(ts7): re-enable once the TypeScript 7 compiler injects the --add-deprecation-warnings calls into the
+// emitted .js (it writes .warnings.jsii.js, but does not call into it yet).
 describe.skip('Call injections', () => {
   test('does not add warnings by default', () => {
     const result = compileJsiiForTest(
@@ -815,8 +813,8 @@ describe.skip('Call injections', () => {
   });
 });
 
-// @TODO(ts7): re-enable once --add-deprecation-warnings is implemented on the TypeScript 7 compiler;
-// requesting it currently fails with an explicit error.
+// @TODO(ts7): re-enable once the TypeScript 7 compiler injects the --add-deprecation-warnings calls into the
+// emitted .js (it writes .warnings.jsii.js, but does not call into it yet).
 describe.skip('thrown exceptions have the expected stack trace', () => {
   test('constructor', () => {
     const compilation = compileJsiiForTest(

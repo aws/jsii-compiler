@@ -47,6 +47,7 @@ exports[`integration test: @scope/jsii-calc-base 1`] = `
   "license": "Apache-2.0",
   "metadata": {
     "jsii": {
+      "compiledWithDeprecationWarnings": true,
       "pacmak": {
         "hasDefaultInterfaces": false,
       },
@@ -523,6 +524,7 @@ exports[`integration test: @scope/jsii-calc-lib 1`] = `
   "license": "Apache-2.0",
   "metadata": {
     "jsii": {
+      "compiledWithDeprecationWarnings": true,
       "pacmak": {
         "hasDefaultInterfaces": true,
       },
@@ -1643,6 +1645,7 @@ exports[`integration test: jsii-calc 1`] = `
   "license": "Apache-2.0",
   "metadata": {
     "jsii": {
+      "compiledWithDeprecationWarnings": true,
       "pacmak": {
         "hasDefaultInterfaces": true,
       },

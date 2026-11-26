@@ -35,6 +35,9 @@ export interface TypeScriptApi {
   readonly SymbolFlags: any;
   readonly TypeFlags: any;
   readonly SyntaxKind: any;
+  readonly NodeFlags: any;
+  /** The AST node factory (`#typescript/ast/factory`), for code printed by `api.printer`. */
+  readonly factory: any;
   /* eslint-enable @typescript-eslint/naming-convention */
   /** Combines request generators so `api.batch(all(...))` issues them in one round-trip. */
   readonly all: (...generators: any[]) => any;
@@ -102,9 +105,11 @@ export function loadTypeScriptApi(): TypeScriptApi {
   const nativeRequire = nodeCreateRequire(__filename);
   let apiModule: any;
   let astModule: any;
+  let factoryModule: any;
   try {
     apiModule = nativeRequire('#typescript/sync');
     astModule = nativeRequire('#typescript/ast');
+    factoryModule = nativeRequire('#typescript/ast/factory');
   } catch (err) {
     throw new Error(
       `Failed to load the TypeScript 7 programmatic API from "${packageDir}" (typescript ${version}): ${
@@ -118,6 +123,8 @@ export function loadTypeScriptApi(): TypeScriptApi {
     SymbolFlags: apiModule.SymbolFlags,
     TypeFlags: apiModule.TypeFlags,
     SyntaxKind: astModule.SyntaxKind,
+    NodeFlags: astModule.NodeFlags,
+    factory: factoryModule,
     all: apiModule.all,
     packageDir,
     version,
