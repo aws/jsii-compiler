@@ -369,12 +369,23 @@ export class Assembler {
   /**
    * Whether a symbol is hidden from the jsii type model: marked `@internal`,
    * named with a leading underscore, or ignored with `@jsii ignore` on every one
-   * of its declarations (the classic `_isPrivateOrInternal`).
+   * of its declarations (the classic `_isPrivateOrInternal`). Like the classic
+   * check, it reads the directives of a symbol before its `@internal` tag and
+   * name, and not at all for a private member.
    */
   private _isInternal(sym: any): boolean {
-    return (
-      this._jsDocTags(sym).some((t: any) => t.name === 'internal') || sym.name.startsWith('_') || this._isIgnored(sym)
-    );
+    const ignored =
+      this._jsDocTags(sym).some((t: any) => t.name === 'jsii') && !this._isPrivate(sym) && this._isIgnored(sym);
+    return ignored || this._jsDocTags(sym).some((t: any) => t.name === 'internal') || sym.name.startsWith('_');
+  }
+
+  /** Whether a member symbol is `private`, or is named with `#`. */
+  private _isPrivate(sym: any): boolean {
+    if (sym.name.startsWith('#')) {
+      return true;
+    }
+    const decl = sym.declarations?.[0]?.resolve(this.project);
+    return (decl?.modifiers ?? []).some((m: any) => m.kind === this.ts.SyntaxKind.PrivateKeyword);
   }
 
   /**
@@ -1393,7 +1404,8 @@ export class Assembler {
       if (msym.declarations?.[0]?.kind !== SyntaxKind.EnumMember) {
         continue;
       }
-      if (this._isInternal(msym) || this._shouldStrip(msym, `${fqn}#${msym.name}`)) {
+      // The classic assembler does not hide enum members that are `@internal`, `_`-prefixed or `@jsii ignore`d.
+      if (this._shouldStrip(msym, `${fqn}#${msym.name}`)) {
         continue;
       }
       const member: any = { name: msym.name };
