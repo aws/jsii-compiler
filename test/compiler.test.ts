@@ -12,6 +12,7 @@ import { compileJsiiForErrors } from './compiler-helpers';
 import { compile, Lock } from './fixtures';
 import { compileJsiiForTest } from '../src';
 import { Compiler } from '../src/compiler';
+import { DiagnosticCategory } from '../src/diagnostic';
 import { JsiiDiagnostic } from '../src/jsii-diagnostic';
 import { ProjectInfo } from '../src/project-info';
 import { TypeScriptConfigValidationRuleSet } from '../src/tsconfig';
@@ -344,6 +345,49 @@ describe(Compiler, () => {
       const result = compiler.emit();
       expect(result.diagnostics).toEqual([]);
       expect(result.emitSkipped).toBe(false);
+    });
+  });
+
+  describe('package name', () => {
+    test.each([
+      { desc: 'a class', name: '@foo/example.jsii-dot-error', source: 'export class Foo {}' },
+      { desc: 'a dot in the scope', name: '@foo.bar/baz', source: 'export class Foo {}' },
+      {
+        desc: 'a subclass',
+        name: '@foo/example.jsii-dot-error',
+        source: 'export class Base {}\nexport class Derived extends Base {}',
+      },
+      {
+        desc: 'a class that implements an extended interface',
+        name: '@foo/example.jsii-dot-error',
+        source:
+          'export interface IA { readonly a: string; }\nexport interface IB extends IA { readonly b: string; }\n' +
+          "export class Foo implements IB { public readonly a = ''; public readonly b = ''; }",
+      },
+      {
+        desc: 'a class that uses an interface',
+        name: '@foo/example.jsii-dot-error',
+        source:
+          'export interface Props { readonly name: string; }\nexport class Foo { public constructor(_props: Props) {} }',
+      },
+    ])('reports a package name that contains a dot ($desc)', ({ name, source }) => {
+      const result = compileJsiiForTest(source, { captureDiagnostics: true, projectInfo: { name } });
+
+      // Only the package name is reported, not the types that jsii looked up by name.
+      const errors = result.diagnostics
+        .filter(JsiiDiagnostic.isJsiiDiagnostic)
+        .filter((diag) => diag.category === DiagnosticCategory.Error);
+      expect(errors.map((diag) => diag.jsiiCode)).toEqual([9]);
+      expect(String(errors[0].messageText)).toContain(`${JSON.stringify(name)} contains a "."`);
+    });
+
+    test('does not report a package name without a dot', () => {
+      const result = compileJsiiForTest('export class Foo {}', {
+        captureDiagnostics: true,
+        projectInfo: { name: '@foo/example-jsii-dot-error' },
+      });
+
+      expect(result.diagnostics.filter(JsiiDiagnostic.isJsiiDiagnostic).map((diag) => diag.jsiiCode)).not.toContain(9);
     });
   });
 
