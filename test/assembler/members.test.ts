@@ -71,3 +71,21 @@ describe('accessors', () => {
     expect(result.diagnostics.filter((d) => d.category === DiagnosticCategory.Error)).toEqual([]);
   });
 });
+
+describe('JSII5010 / JSII5015 re-declaration of interface members', () => {
+  // See https://github.com/aws/jsii-compiler/issues/2970
+  test('a property that changes its shape is reported as JSII5015', () => {
+    expect(
+      compileForDiagnostics(`
+        export interface IA {
+          readonly foo: string;
+        }
+        export interface IB extends IA {
+          foo: string;
+        }
+      `),
+    ).toEqual([
+      'JSII5015: Interface "testpkg.IB" re-declares member "foo" with a different type or signature. Re-declared members must match the inherited declaration exactly, as C# interfaces cannot narrow inherited members.',
+    ]);
+  });
+});
