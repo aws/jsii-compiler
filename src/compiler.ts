@@ -182,7 +182,7 @@ export class Compiler {
 
   private configureTypeScript(): TypeScriptConfig {
     if (this.userProvidedTypeScriptConfig) {
-      const config = readTypeScriptConfigFile(this.configPath);
+      const config = readTypeScriptConfigFile(this.configPath, this.projectRoot);
 
       // emit a warning if validation is disabled
       const rules = this.options.validateTypeScriptConfig ?? TypeScriptConfigValidationRuleSet.NONE;

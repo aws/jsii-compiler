@@ -57,19 +57,26 @@ function stripJsonComments(text: string): string {
  * `files` / `include` / `exclude` come from the nearest file that sets them,
  * with relative paths rebased onto the directory of the requested file. Path
  * valued `compilerOptions` are made absolute, as TypeScript's own parser does.
+ * A base that cannot be resolved or read is skipped, as the classic compiler did.
+ *
+ * @param baseDir the directory that relative paths and `extends` in the requested
+ *                file are resolved against (default: the directory of the file).
+ *                The compiler passes the project root, as the classic one did, even
+ *                for a config in a subdirectory. Files it extends use their own.
  */
-export function readTypeScriptConfigFile(configPath: string): TypeScriptConfig {
+export function readTypeScriptConfigFile(configPath: string, baseDir?: string): TypeScriptConfig {
   const absolutePath = path.resolve(configPath);
   const seen = new Set<string>();
-  const result = readOne(absolutePath, seen, path.dirname(absolutePath));
+  const rootDir = baseDir ?? path.dirname(absolutePath);
+  const result = readOne(absolutePath, seen, path.dirname(absolutePath), rootDir);
   delete (result as any).extends;
   return {
     ...result,
-    compilerOptions: convertForJson(substituteConfigDir(result.compilerOptions, path.dirname(absolutePath))),
+    compilerOptions: convertForJson(substituteConfigDir(result.compilerOptions, rootDir)),
   };
 }
 
-function readOne(absolutePath: string, seen: Set<string>, targetDir: string): TypeScriptConfig {
+function readOne(absolutePath: string, seen: Set<string>, targetDir: string, baseDir?: string): TypeScriptConfig {
   if (seen.has(absolutePath)) {
     throw new JsiiError(`Circular "extends" in tsconfig: ${absolutePath}`);
   }
@@ -81,14 +88,22 @@ function readOne(absolutePath: string, seen: Set<string>, targetDir: string): Ty
     throw new JsiiError(`Failed to read tsconfig at "${absolutePath}": ${e.message}`);
   }
   const own = parseTsconfigJson(text, absolutePath) ?? {};
-  const ownDir = path.dirname(absolutePath);
+  const ownDir = baseDir ?? path.dirname(absolutePath);
 
   let merged: TypeScriptConfig = { compilerOptions: {} };
   const bases: string[] = own.extends == null ? [] : Array.isArray(own.extends) ? own.extends : [own.extends];
   for (const base of bases) {
-    const resolved = resolveExtends(base, ownDir);
-    const baseConfig = readOne(resolved, new Set(seen), targetDir);
-    merged = mergeConfigs(merged, baseConfig);
+    try {
+      const resolved = resolveExtends(base, ownDir);
+      merged = mergeConfigs(merged, readOne(resolved, new Set(seen), targetDir));
+    } catch (e: any) {
+      // Like TypeScript's parser, which reports a base it cannot resolve, read or
+      // parse (or a circular chain) as a config error that the classic compiler
+      // dropped: carry on without that base.
+      if (!(e instanceof JsiiError)) {
+        throw e;
+      }
+    }
   }
 
   const ownRebased: TypeScriptConfig = {
