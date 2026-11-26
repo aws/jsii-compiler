@@ -139,8 +139,10 @@ export async function runCli(cwd: string, ...args: string[]): Promise<CliResult>
  * `runCli` can wait for it.
  *
  * Usage: `jest.mock('yargs', () => mockYargsToTrackParse());`
+ *
+ * @param options.ignoreConflicts drops `conflicts()` declarations, to let a handler see options yargs would reject.
  */
-export function mockYargsToTrackParse() {
+export function mockYargsToTrackParse(options: { readonly ignoreConflicts?: boolean } = {}) {
   const wrap = (instance: any): any =>
     new Proxy(instance, {
       get(target, property) {
@@ -151,8 +153,26 @@ export function mockYargsToTrackParse() {
         if (typeof value !== 'function') {
           return value;
         }
-        return (...callArgs: unknown[]) => {
-          const result = value.apply(target, callArgs);
+        return (...originalArgs: unknown[]) => {
+          let callArgs = originalArgs;
+          if (property === 'command' && options.ignoreConflicts && typeof callArgs[2] === 'function') {
+            // The builder of a command receives its own yargs instance: make sure that one is wrapped, too.
+            const builder = callArgs[2] as (inner: any) => unknown;
+            callArgs = [...callArgs.slice(0, 2), (inner: any) => builder(wrap(inner)), ...callArgs.slice(3)];
+          }
+          if (property === 'conflicts' && options.ignoreConflicts) {
+            return wrap(target);
+          }
+          let result;
+          try {
+            result = value.apply(target, callArgs);
+          } catch (error) {
+            // A synchronous handler that throws makes parse() throw: record that as a rejected parse.
+            if (property === 'parse') {
+              (globalThis as any).__jsiiCliParse = Promise.reject(error);
+            }
+            throw error;
+          }
           if (property === 'parse') {
             (globalThis as any).__jsiiCliParse = Promise.resolve(result);
             return result;
