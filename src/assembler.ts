@@ -285,6 +285,8 @@ export class Assembler {
    * types that are visited later. Upgrade if the order of diagnostics matters.
    */
   private readonly deferred = new Array<() => void>();
+  /** The JSII5018 diagnostics already reported, by `file:start:name`. */
+  private readonly reservedWordReports = new Set<string>();
 
   public constructor(ts: TypeScriptApi, project: TypeScriptProject, private readonly options: AssemblerOptions) {
     this.ts = ts;
@@ -2873,7 +2875,18 @@ export class Assembler {
   private _warnAboutReservedWords(name: string, decl: any) {
     const reservingLanguages = isReservedName(name);
     if (reservingLanguages) {
-      this._report(JsiiDiagnostic.JSII_5018_RESERVED_WORD, this._nameOrDeclaration(decl), name, reservingLanguages);
+      // A parameter property is visited as a parameter and as a property, at the same node. The classic
+      // compiler dropped the duplicate (identical node and message), so it is reported once here.
+      const node = this._nameOrDeclaration(decl);
+      const location = this._diagnosticLocation(node);
+      const key = location && `${location.file.fileName}:${location.start}:${name}`;
+      if (key != null && this.reservedWordReports.has(key)) {
+        return;
+      }
+      if (key != null) {
+        this.reservedWordReports.add(key);
+      }
+      this._report(JsiiDiagnostic.JSII_5018_RESERVED_WORD, node, name, reservingLanguages);
     }
   }
 
