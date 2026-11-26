@@ -24,9 +24,11 @@ import * as path from 'node:path';
 import * as zlib from 'node:zlib';
 import * as spec from '@jsii/spec';
 
+import * as Case from './case';
 import { findDependencyDirectory } from './common/find-utils';
 import { symbolIdentifier } from './common/symbol-id';
 import { TypeScriptApi, TypeScriptProject } from './compiler-host';
+import { DiagnosticCategory } from './diagnostic';
 import { normalizeConfigPath } from './helpers';
 import { Code, DiagnosticLocation, DiagnosticMessageFormatter, JsiiDiagnostic } from './jsii-diagnostic';
 import * as literate from './literate';
@@ -34,6 +36,7 @@ import { validateTargets, type ProjectInfo } from './project-info';
 import { isReservedName } from './reserved-words';
 import { isAllowedCovariantSubtype } from './type-analysis';
 import { createTypeResolver } from './type-reference';
+import { parentFqn } from './utils';
 import { SHORT_VERSION, VERSION } from './version';
 
 export interface AssemblerOptions {
@@ -269,6 +272,20 @@ export class Assembler {
   // subclasses — so member re-listing must not treat it as an erased base.
   private readonly strippedTypeSymIds = new Set<unknown>();
 
+  /** The export symbol of each submodule, by submodule fqn (classic `_submodules` keys). */
+  private readonly submoduleSymbols = new Map<string, any>();
+  /** The declaration each type and member of the assembly was read from (classic `node-bindings`). */
+  private readonly relatedNodes = new WeakMap<object, any>();
+  /**
+   * Checks that need the whole type model, run in registration order once all
+   * types are visited (classic `_deferUntilTypesAvailable`).
+   *
+   * shortcut: runs in registration order, not in the classic dependency order;
+   * diagnostics can come out in another order when deferred checks depend on
+   * types that are visited later. Upgrade if the order of diagnostics matters.
+   */
+  private readonly deferred = new Array<() => void>();
+
   public constructor(ts: TypeScriptApi, project: TypeScriptProject, private readonly options: AssemblerOptions) {
     this.ts = ts;
     this.project = project;
@@ -314,7 +331,17 @@ export class Assembler {
 
     this._propagateDatatype();
 
-    return this._buildAssembly();
+    for (const check of this.deferred) {
+      check();
+    }
+
+    const assembly = this._buildAssembly();
+    // Classic: the validator runs on the finished assembly, and only when the
+    // assembler itself reported no error.
+    if (!this._diagnostics.some((d) => d.category === DiagnosticCategory.Error)) {
+      this._validateNames(assembly);
+    }
+    return assembly;
   }
 
   // -------------------------------------------------------------------------
@@ -744,12 +771,27 @@ export class Assembler {
           if (kind !== SyntaxKind.SourceFile && this._isIgnored(sym)) {
             continue; // `@jsii ignore` on a namespace hides all of its nested declarations
           }
+          const exportDeclH = e.declarations?.[0];
+          if (
+            kind === SyntaxKind.SourceFile &&
+            exportDeclH?.kind === SyntaxKind.NamespaceExport &&
+            this._dependencyOfPath(declH.path ?? '') == null &&
+            e.name !== Case.camel(e.name) &&
+            e.name !== Case.snake(e.name)
+          ) {
+            this._report(
+              JsiiDiagnostic.JSII_8004_SUBMOULE_NAME_CASING,
+              exportDeclH.resolve(this.project)?.name,
+              e.name,
+            );
+          }
           const subFqn = `${prefix}.${e.name}`;
           const key = `${sym.id}:${subFqn}`;
           if (visitedModules.has(key)) {
             continue;
           }
           visitedModules.add(key);
+          this.submoduleSymbols.set(subFqn, e);
           this.submodules[subFqn] = this._submoduleSpec(e, sym, kind === SyntaxKind.SourceFile);
           const subDir = path.dirname(sym.declarations?.[0]?.path ?? moduleDir);
           collect(this.checker.getExportsOfModule(sym), subFqn, subDir);
@@ -1215,7 +1257,75 @@ export class Assembler {
     } else {
       this._visitClass(sym, decl, jsiiType);
     }
+    this.relatedNodes.set(jsiiType, decl);
+    this._validateSubmoduleNameConflicts(name, fqn, decl);
+    this._validateNoNamespaceInType(sym, decl, fqn);
     this.types[fqn] = jsiiType as spec.Type;
+  }
+
+  /**
+   * A type must not have the name of a submodule declared next to it, in any of
+   * the casings target languages may give the submodule (classic `_visitNode`).
+   * Submodules may be renamed by `.jsiirc.json`; that is not considered.
+   */
+  private _validateSubmoduleNameConflicts(name: string, fqn: string, decl: any): void {
+    const typeFqnPrefix = parentFqn(fqn);
+    for (const [submoduleFqn, submodule] of this.submoduleSymbols) {
+      if (typeFqnPrefix !== parentFqn(submoduleFqn)) {
+        continue;
+      }
+      const candidates = Array.from(
+        new Set([submodule.name, Case.camel(submodule.name), Case.pascal(submodule.name), Case.snake(submodule.name)]),
+      );
+      if (candidates.some((candidate) => candidate === name)) {
+        const submoduleDecl = (submodule.valueDeclaration ?? submodule.declarations?.[0])?.resolve(this.project);
+        this._report(
+          JsiiDiagnostic.JSII_5011_SUBMODULE_NAME_CONFLICT,
+          this._nameOrDeclaration(decl),
+          submodule.name,
+          name,
+          candidates,
+        ).addRelatedInformationIf(
+          this._diagnosticLocation(this._nameOrDeclaration(submoduleDecl)),
+          'This is the conflicting submodule declaration',
+        );
+      }
+    }
+  }
+
+  /**
+   * Everything nested under a type must be a type: a namespace merged into a
+   * type must not declare more namespaces with types in them (classic
+   * `_visitNode`). One error per such namespace that declares types.
+   */
+  private _validateNoNamespaceInType(sym: any, decl: any, fqn: string): void {
+    const { SyntaxKind } = this.ts;
+    if (decl.kind === SyntaxKind.EnumDeclaration) {
+      return;
+    }
+    const typeKinds = [SyntaxKind.ClassDeclaration, SyntaxKind.InterfaceDeclaration, SyntaxKind.EnumDeclaration];
+    const typeNamespace = fqn.slice(this.assemblyName.length + 1);
+    // Classic: one error per type, but the compiler drops duplicates (same node and message), so one per namespace.
+    const reported = new Set<string>();
+    const visit = (nsym: any, namespace: string): void => {
+      for (const [, member0] of nsym.getExports?.() ?? []) {
+        const member = this._resolveAlias(member0);
+        const kind = member.declarations?.[0]?.kind;
+        if (kind === SyntaxKind.ModuleDeclaration) {
+          visit(member, `${namespace}.${member.name}`);
+        } else if (
+          typeKinds.includes(kind) &&
+          namespace !== typeNamespace &&
+          !this._jsDocTags(member).some((t: any) => t.name === 'internal') &&
+          !this._isIgnored(member) &&
+          !reported.has(namespace)
+        ) {
+          reported.add(namespace);
+          this._report(JsiiDiagnostic.JSII_5012_NAMESPACE_IN_TYPE, this._nameOrDeclaration(decl), fqn, namespace);
+        }
+      }
+    };
+    visit(sym, typeNamespace);
   }
 
   private _visitEnum(sym: any, decl: any, fqn: string, jsiiType: any): void {
@@ -1262,6 +1372,10 @@ export class Assembler {
       members.push(this._withDefaultDocs(member));
     }
     jsiiType.members = members;
+
+    if (Case.pascal(sym.name) !== sym.name) {
+      this._report(JsiiDiagnostic.JSII_8000_PASCAL_CASED_TYPE_NAMES, decl.name, sym.name);
+    }
   }
 
   private _visitInterface(sym: any, decl: any, name: string, jsiiType: any): void {
@@ -1290,6 +1404,29 @@ export class Assembler {
       if (!isInterfaceName(name) || hintsStruct) {
         jsiiType.datatype = true;
       }
+    }
+
+    // Classic: checked once the datatype-ness of the bases is known, right away
+    // when there are none.
+    const validateName = () => this._validateInterfaceName(sym, decl, jsiiType);
+    if ((jsiiType.interfaces ?? []).length === 0) {
+      validateName();
+    } else {
+      this.deferred.push(validateName);
+    }
+  }
+
+  /** Behavioral interfaces need an `I` prefix, and all interface names are PascalCased (classic `_visitInterface`). */
+  private _validateInterfaceName(sym: any, decl: any, jsiiType: any): void {
+    const interfaceName = isInterfaceName(jsiiType.name);
+    if (!jsiiType.datatype && !interfaceName) {
+      this._report(JsiiDiagnostic.JSII_8007_BEHAVIORAL_INTERFACE_NAME, this._nameOrDeclaration(decl), jsiiType.name);
+    }
+    // NOTE: We need to be careful with the `I` prefix for behavioral interfaces, as this can mess with PascalCase
+    // transformations, especially with short names such as `IA`, ...
+    const expectedName = interfaceName ? `I${Case.pascal(sym.name.slice(1))}` : Case.pascal(sym.name);
+    if (expectedName !== sym.name) {
+      this._report(JsiiDiagnostic.JSII_8000_PASCAL_CASED_TYPE_NAMES, decl.name, sym.name, expectedName);
     }
   }
 
@@ -1379,6 +1516,9 @@ export class Assembler {
   private _visitClass(sym: any, decl: any, jsiiType: any): void {
     const { SyntaxKind } = this.ts;
     jsiiType.kind = 'class';
+    if (Case.pascal(sym.name) !== sym.name) {
+      this._report(JsiiDiagnostic.JSII_8000_PASCAL_CASED_TYPE_NAMES, this._nameOrDeclaration(decl), sym.name);
+    }
     const mods = decl.modifiers ?? [];
     if (mods.some((x: any) => x.kind === SyntaxKind.AbstractKeyword)) {
       jsiiType.abstract = true;
@@ -1531,6 +1671,8 @@ export class Assembler {
       }
     }
 
+    this._validateInternalMembers(sym, decl, erasedBases, isInterface);
+
     const instanceProps = this.checker.getPropertiesOfType(type);
     const staticTypeForPrefetch = !isInterface ? this.checker.getTypeOfSymbol(sym) : undefined;
     const staticPropsForPrefetch = staticTypeForPrefetch ? this.checker.getPropertiesOfType(staticTypeForPrefetch) : [];
@@ -1605,14 +1747,23 @@ export class Assembler {
         }
         continue;
       }
+      // Classic: the declaring type of a class member is the declaration holding it
+      // (the class owning the constructor for a parameter property); for an interface, the interface.
+      const declaringTypeDecl = isInterface ? decl : owner;
       if ((p.flags & SymbolFlags.Method) !== 0) {
-        const m = this._visitMethod(p, pDecl, false);
+        const m = this._visitMethod(p, pDecl, false, jsiiType, declaringTypeDecl);
+        if (m == null) {
+          continue;
+        }
         if (isInterface) {
           m.abstract = true;
         }
         methods.push(m);
       } else {
-        const pr = this._visitProperty(p, pDecl, false);
+        const pr = this._visitProperty(p, pDecl, false, jsiiType, declaringTypeDecl);
+        if (pr == null) {
+          continue;
+        }
         if (isInterface) {
           pr.abstract = true;
         }
@@ -1652,11 +1803,14 @@ export class Assembler {
         if ((spDecl.modifiers ?? []).some((x: any) => x.kind === SyntaxKind.PrivateKeyword)) {
           continue;
         }
-        if ((sp.flags & SymbolFlags.Method) !== 0) {
-          methods.push(this._visitMethod(sp, spDecl, true));
-        } else {
-          props.push(this._visitProperty(sp, spDecl, true));
+        const member =
+          (sp.flags & SymbolFlags.Method) !== 0
+            ? this._visitMethod(sp, spDecl, true, jsiiType, spDecl.parent)
+            : this._visitProperty(sp, spDecl, true, jsiiType, spDecl.parent);
+        if (member == null) {
+          continue;
         }
+        ((sp.flags & SymbolFlags.Method) !== 0 ? methods : props).push(member);
       }
     }
 
@@ -1665,6 +1819,81 @@ export class Assembler {
     }
     if (methods.length || strippedMethods) {
       jsiiType.methods = methods.sort(compareMembers);
+    }
+  }
+
+  /**
+   * A member left out of the type model for being `@internal` or `_`-prefixed
+   * must be both (classic `_isPrivateOrInternal` with a declaration). Like the
+   * classic assembler, this looks at the members declared by the type and by
+   * its erased bases, overridden ones included: for a class at each member
+   * declaration (a getter and its setter both count), for an interface at each
+   * member of the type and of each erased base interface.
+   */
+  private _validateInternalMembers(sym: any, decl: any, erasedBases: any[], isInterface: boolean): void {
+    const { SyntaxKind } = this.ts;
+    const baseSyms = erasedBases.map((b) => b.getSymbol?.() ?? b.symbol).filter((s) => s != null);
+    if (isInterface) {
+      for (const declaringSym of [sym, ...baseSyms]) {
+        const declaringType = this.checker.getDeclaredTypeOfSymbol(declaringSym);
+        for (const member of declaringType ? this.checker.getPropertiesOfType(declaringType) : []) {
+          const memberDecl = (member.valueDeclaration ?? member.declarations?.[0])?.resolve(this.project);
+          const ownerId =
+            memberDecl?.parent != null
+              ? this.checker.getTypeAtLocation(memberDecl.parent)?.getSymbol?.()?.id
+              : undefined;
+          if (ownerId != null && ownerId === declaringSym.id && this._isInternal(member)) {
+            this._validateInternalMember(member, memberDecl);
+          }
+        }
+      }
+      return;
+    }
+    // Classic: the erased bases of a class are its erased base classes, not the erased interfaces it implements.
+    const erasedClasses = baseSyms.filter((s) => s.declarations?.[0]?.kind === SyntaxKind.ClassDeclaration);
+    const typeDecls: any[] = [sym, ...erasedClasses].flatMap((s) =>
+      (s.declarations ?? []).map((h: any) => h.resolve(this.project)).filter((d: any) => d != null),
+    );
+    for (const typeDecl of [decl, ...typeDecls.filter((d) => d !== decl)]) {
+      if (typeDecl.kind !== SyntaxKind.ClassDeclaration && typeDecl.kind !== SyntaxKind.InterfaceDeclaration) {
+        continue;
+      }
+      for (const memberDecl of typeDecl.members ?? []) {
+        if (
+          memberDecl.name == null ||
+          memberDecl.kind === SyntaxKind.Constructor ||
+          memberDecl.kind === SyntaxKind.IndexSignature
+        ) {
+          continue;
+        }
+        const member = this._symbolAtNodeSafe(memberDecl.name);
+        if (member != null && this._isInternal(member)) {
+          this._validateInternalMember(member, memberDecl);
+        }
+      }
+    }
+  }
+
+  private _validateInternalMember(msym: any, memberDecl: any): void {
+    const { SyntaxKind } = this.ts;
+    const name: string = msym.name;
+    if (TS_INTERNAL_SYMBOL_NAMES.has(name) || this._isIgnored(msym)) {
+      return;
+    }
+    // Private identifiers (`#name`; the TypeScript 7 symbol name is `__#1@#name`) and `private` members.
+    const first = (msym.valueDeclaration ?? msym.declarations?.[0])?.resolve(this.project) ?? memberDecl;
+    if (
+      name.startsWith('#') ||
+      first?.name?.kind === SyntaxKind.PrivateIdentifier ||
+      (first?.modifiers ?? []).some((x: any) => x.kind === SyntaxKind.PrivateKeyword)
+    ) {
+      return;
+    }
+    if (!name.startsWith('_')) {
+      this._report(JsiiDiagnostic.JSII_8005_INTERNAL_UNDERSCORE, this._nameOrDeclaration(memberDecl), name);
+    }
+    if (!this._jsDocTags(msym).some((t: any) => t.name === 'internal')) {
+      this._report(JsiiDiagnostic.JSII_8006_UNDERSCORE_INTERNAL, this._nameOrDeclaration(memberDecl), name);
     }
   }
 
@@ -1725,10 +1954,45 @@ export class Assembler {
     return Object.keys(result).length ? result : undefined;
   }
 
-  private _visitMethod(msym: any, decl: any, isStatic: boolean): any {
+  /**
+   * A member named like its declaring type (classic `_visitMethod` / `_visitProperty`).
+   * @returns `false` when the member has a prohibited name and is left out of the type model.
+   */
+  private _validateMemberName(
+    kind: 'method' | 'property',
+    msym: any,
+    decl: any,
+    jsiiType: any,
+    declaringTypeDecl: any,
+  ): boolean {
+    if (jsiiType.name === Case.pascal(msym.name)) {
+      this._report(
+        JsiiDiagnostic.JSII_5019_MEMBER_TYPE_NAME_CONFLICT,
+        decl.name,
+        kind,
+        msym.name,
+        jsiiType,
+      ).addRelatedInformationIf(
+        this._diagnosticLocation(this._nameOrDeclaration(declaringTypeDecl)),
+        `The declaring ${jsiiType.kind} is introduced here`,
+      );
+    }
+    if (isProhibitedMemberName(msym.name)) {
+      // Classic: the name of a method, the whole declaration of a property.
+      this._report(JsiiDiagnostic.JSII_5016_PROHIBITED_MEMBER_NAME, kind === 'method' ? decl.name : decl, msym.name);
+      return false;
+    }
+    return true;
+  }
+
+  private _visitMethod(msym: any, decl: any, isStatic: boolean, jsiiType: any, declaringTypeDecl: any): any {
     const { SyntaxKind } = this.ts;
     const sig = this.checker.getSignatureFromDeclaration(decl);
+    if (!this._validateMemberName('method', msym, decl, jsiiType, declaringTypeDecl)) {
+      return undefined;
+    }
     const m: any = { locationInModule: this._locationOf(decl), name: msym.name };
+    this.relatedNodes.set(m, decl);
     this._warnAboutReservedWords(msym.name, decl);
     if (isStatic) {
       m.static = true;
@@ -1766,6 +2030,7 @@ export class Assembler {
         m.returns = opt.optional ? { optional: true, type: ret } : { type: ret };
       }
     }
+    this._validatePositionalKeywordConflicts(decl, m.parameters ?? []);
     const d = this._visitMemberDocumentation(msym, decl);
     if (d) {
       m.docs = d;
@@ -1773,8 +2038,55 @@ export class Assembler {
     return this._withDefaultDocs(m);
   }
 
-  private _visitProperty(psym: any, decl: any, isStatic: boolean): any {
+  /**
+   * When the last parameter is a struct, no other parameter may be named like one
+   * of its properties, so that it can be turned into keyword arguments
+   * (classic `_visitMethod`).
+   */
+  private _validatePositionalKeywordConflicts(decl: any, parameters: any[]): void {
+    const lastParamType = parameters[parameters.length - 1]?.type;
+    if (lastParamType == null || !spec.isNamedTypeReference(lastParamType)) {
+      return;
+    }
+    this.deferred.push(() => {
+      const struct = this._dereferenceType(lastParamType.fqn);
+      if (struct == null || !spec.isInterfaceType(struct) || !struct.datatype) {
+        return;
+      }
+      const propNames = new Set<string>();
+      const seen = new Set<string>();
+      const collect = (iface: spec.InterfaceType) => {
+        for (const p of iface.properties ?? []) {
+          propNames.add(p.name);
+        }
+        for (const baseFqn of iface.interfaces ?? []) {
+          const base = this._dereferenceType(baseFqn);
+          if (base != null && spec.isInterfaceType(base) && !seen.has(baseFqn)) {
+            seen.add(baseFqn);
+            collect(base);
+          }
+        }
+      };
+      collect(struct);
+      const paramNames = new Set(parameters.slice(0, parameters.length - 1).map((x) => x.name));
+      for (const badName of propNames) {
+        if (paramNames.has(badName)) {
+          this._report(JsiiDiagnostic.JSII_5017_POSITIONAL_KEYWORD_CONFLICT, decl, badName);
+        }
+      }
+    });
+  }
+
+  /** A type of this assembly or of a dependency, by fqn. */
+  private _dereferenceType(fqn: string): spec.Type | undefined {
+    return this.types[fqn] ?? this.externalTypeByFqn.get(fqn);
+  }
+
+  private _visitProperty(psym: any, decl: any, isStatic: boolean, jsiiType: any, declaringTypeDecl: any): any {
     const { SyntaxKind } = this.ts;
+    if (!this._validateMemberName('property', psym, decl, jsiiType, declaringTypeDecl)) {
+      return undefined;
+    }
     this._warnAboutReservedWords(psym.name, decl);
     const t = this.checker.getTypeOfSymbolAtLocation(psym, decl);
     const opt: { optional?: boolean } = {};
@@ -1783,6 +2095,7 @@ export class Assembler {
       name: psym.name,
       type: this._typeReference(t, opt, decl.type),
     };
+    this.relatedNodes.set(p, decl);
     const mods = decl.modifiers ?? [];
     const hasSetter = psym.declarations?.some((h: any) => h.kind === SyntaxKind.SetAccessor);
     if (
@@ -2493,6 +2806,70 @@ export class Assembler {
     return decl?.name ?? decl;
   }
 
+  /**
+   * The naming conventions the classic validator checked on the finished
+   * assembly, in its order: enum members (JSII8001), then members (JSII8002),
+   * then static constants (JSII8003). Members are all methods, then all
+   * properties, type by type.
+   */
+  private _validateNames(assembly: spec.Assembly): void {
+    const types = Object.values(assembly.types ?? {});
+    const members = [
+      ...types.flatMap((type) =>
+        spec.isClassOrInterfaceType(type) ? (type.methods ?? []).map((member) => ({ member, type })) : [],
+      ),
+      ...types.flatMap((type) =>
+        spec.isClassOrInterfaceType(type)
+          ? (type.properties ?? []).map((member: spec.Property | spec.Method) => ({ member, type }))
+          : [],
+      ),
+    ];
+    const memberNameNode = (member: object) => this._nameOrDeclaration(this.relatedNodes.get(member));
+
+    for (const type of types) {
+      if (!spec.isEnumType(type)) {
+        continue;
+      }
+      const enumDecl = this.relatedNodes.get(type);
+      for (const member of type.members) {
+        if (member.name && !isConstantCase(member.name)) {
+          const memberDecl = (enumDecl?.members ?? []).find(
+            (m: any) => m.name?.kind === this.ts.SyntaxKind.Identifier && m.name.text === member.name,
+          );
+          this._report(
+            JsiiDiagnostic.JSII_8001_ALL_CAPS_ENUM_MEMBERS,
+            memberDecl?.name ?? this._nameOrDeclaration(enumDecl),
+            member.name,
+            type.fqn,
+          );
+        }
+      }
+    }
+
+    for (const { member, type } of members) {
+      if (member.static && (member as spec.Property).const) {
+        continue;
+      }
+      if (member.name && member.name !== Case.camel(member.name)) {
+        this._report(JsiiDiagnostic.JSII_8002_CAMEL_CASED_MEMBERS, memberNameNode(member), member.name, type.fqn);
+      }
+    }
+
+    for (const { member, type } of members) {
+      if (!member.static || !(member as spec.Property).const) {
+        continue;
+      }
+      if (
+        member.name &&
+        !isConstantCase(member.name) &&
+        member.name !== Case.pascal(member.name) &&
+        member.name !== Case.camel(member.name)
+      ) {
+        this._report(JsiiDiagnostic.JSII_8003_STATIC_CONST_CASING, memberNameNode(member), member.name, type.name);
+      }
+    }
+  }
+
   private _warnAboutReservedWords(name: string, decl: any) {
     const reservingLanguages = isReservedName(name);
     if (reservingLanguages) {
@@ -2556,6 +2933,42 @@ export class Assembler {
     };
     return assembly as spec.Assembly;
   }
+}
+
+/** The values of TypeScript's `InternalSymbolName` (classic `isInternalSymbol`). */
+const TS_INTERNAL_SYMBOL_NAMES = new Set([
+  '__call',
+  '__constructor',
+  '__new',
+  '__index',
+  '__export',
+  '__global',
+  '__missing',
+  '__type',
+  '__object',
+  '__jsxAttributes',
+  '__class',
+  '__function',
+  '__computed',
+  '__resolving__',
+  'export=',
+  'default',
+  'this',
+  '__instantiationExpression',
+  '__importAttributes',
+]);
+
+/** Member names that conflict with synthetic declarations in some languages (classic `PROHIBITED_MEMBER_NAMES`). */
+const PROHIBITED_MEMBER_NAMES = ['build', 'equals', 'hashcode'];
+
+/** Port of the classic Assembler's `isProhibitedMemberName`. */
+function isProhibitedMemberName(name: string) {
+  return PROHIBITED_MEMBER_NAMES.includes(name.toLowerCase());
+}
+
+/** Port of the classic validator's `isConstantCase`: only uppercase characters, digits and underscores. */
+function isConstantCase(x: string) {
+  return !/[^A-Z0-9_]/.exec(x);
 }
 
 /** Port of the classic Assembler's `noEmptyDict`. */
