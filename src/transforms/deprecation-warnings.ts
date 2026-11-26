@@ -210,7 +210,9 @@ export class DeprecationWarningsInjector {
       const importPath = importDir.startsWith('..')
         ? unixPath(path.join(importDir, WARNINGSCODE_FILE_NAME))
         : `./${WARNINGSCODE_FILE_NAME}`;
-      insertions.push(requireInsertion(jsText, jsSource, `const ${NAMESPACE} = require("${importPath}");`));
+      insertions.push(
+        ...requireInsertion(jsText, jsSource, tsSource, k, `const ${NAMESPACE} = require("${importPath}");`),
+      );
       return insertions;
     } finally {
       retained.dispose();
@@ -802,27 +804,89 @@ function statementInsertion(jsText: string, jsSource: any, member: any, index: n
 }
 
 /**
- * Where the `require` of the warnings file goes: the first statement of the
- * `.ts` file, which the CommonJS emit puts after "use strict", its helpers and
- * the `exports` set-up.
+ * The edits that add the `require` of the warnings file, laid out like the
+ * TypeScript 6 printer did when the transformer made it the first statement of
+ * the file:
+ *
+ * - it comes after the CommonJS preamble ("use strict", helpers, the
+ *   `__esModule` marker, `exports.x = void 0` and hoisted `exports.f = f`);
+ * - the prologue directives of the `.ts` file are no longer a prologue, so they
+ *   move after it (and a "use strict" is added back at the top);
+ * - comments that the emit put between preamble lines (detached comments at the
+ *   top of the file) move after it too, and comments at the end of the file are
+ *   dropped (their positions are lost with the new statement list).
  */
-function requireInsertion(jsText: string, jsSource: any, statement: string): Insertion {
+function requireInsertion(jsText: string, jsSource: any, tsSource: any, k: any, statement: string): Insertion[] {
   const statements: any[] = jsSource.statements;
+  const isDirective = (s: any) => s?.kind === k.ExpressionStatement && s.expression.kind === k.StringLiteral;
+  const tsDirectives: string[] = [];
+  for (const s of tsSource.statements) {
+    if (!isDirective(s)) {
+      break;
+    }
+    tsDirectives.push(s.getText(tsSource));
+  }
   const isPreamble = (s: any) => {
     const text: string = s.getText(jsSource);
     return (
       text === '"use strict";' ||
       /^var __\w+ = \(this && this\.__\w+\)/.test(text) ||
       text.startsWith('Object.defineProperty(exports, "__esModule"') ||
-      /^exports\.[\w$]+ = (exports\.[\w$]+ = )*void 0;$/.test(text)
+      /^exports\.[\w$]+ = (exports\.[\w$]+ = )*void 0;$/.test(text) ||
+      /^exports\.[\w$]+ = [A-Za-z_$][\w$]*;$/.test(text)
     );
   };
-  const first = statements.findIndex((s) => !isPreamble(s));
-  if (first < 0) {
-    const last = statements[statements.length - 1];
-    return { offset: last?.end ?? 0, text: `\n${statement}` };
+
+  const edits: Insertion[] = [];
+  const moved: string[] = [];
+  const move = (from: number, to: number) => {
+    if (from < to) {
+      moved.push(jsText.slice(from, to).trim());
+      edits.push({ offset: from, length: to - from, text: '' });
+    }
+  };
+  // Comments before the first statement (after a shebang).
+  const fileStart = jsText.startsWith('#!') ? jsText.indexOf('\n') + 1 : 0;
+  move(skipWhitespace(jsText, fileStart), statements[0].getStart(jsSource));
+
+  let last = -1;
+  let directive = 0;
+  let keptUseStrict = false;
+  while (last + 1 < statements.length) {
+    const s = statements[last + 1];
+    const fromSource = isDirective(s) && s.getText(jsSource) === tsDirectives[directive];
+    if (!fromSource && !isPreamble(s)) {
+      break;
+    }
+    last++;
+    if (last > 0) {
+      move(skipWhitespace(jsText, statements[last - 1].end), s.getStart(jsSource));
+    }
+    if (fromSource) {
+      directive++;
+      const start = s.getStart(jsSource);
+      moved.push(s.getText(jsSource));
+      edits.push({ offset: start, length: skipWhitespace(jsText, s.end) - start, text: '' });
+    } else {
+      keptUseStrict ||= s.getText(jsSource) === '"use strict";';
+    }
   }
-  return { offset: skipWhitespace(jsText, statements[first].pos), text: `${statement}\n` };
+  // shortcut: a file with nothing but its preamble has no class to inject into, so `last` is never the last statement.
+  if (!keptUseStrict) {
+    edits.push({ offset: statements[0].getStart(jsSource), text: '"use strict";\n' });
+  }
+
+  const at = last >= 0 ? skipWhitespace(jsText, statements[last].end) : statements[0].getStart(jsSource);
+  edits.push({ offset: at, text: [statement, ...moved].map((line) => `${line}\n`).join('') });
+
+  const end = statements[statements.length - 1].end;
+  const lineEnd = jsText.indexOf('\n', end);
+  const mapComment = jsText.lastIndexOf('\n//# sourceMappingURL=');
+  const tailEnd = mapComment >= lineEnd ? mapComment : jsText.length;
+  if (lineEnd >= 0 && jsText.slice(lineEnd, tailEnd).trim() !== '') {
+    edits.push({ offset: lineEnd, length: tailEnd - lineEnd, text: mapComment >= lineEnd ? '' : '\n' });
+  }
+  return edits;
 }
 
 function indentationAt(text: string, offset: number): string {
