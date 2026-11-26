@@ -295,6 +295,11 @@ export class Assembler {
    * load dependency assemblies, walk module exports, register types, visit each.
    */
   public assemble(): spec.Assembly {
+    if (this.options.projectInfo.name.includes('.')) {
+      this._diagnostics.push(
+        JsiiDiagnostic.JSII_0009_PACKAGE_NAME_CONTAINS_DOT.createDetached(this.options.projectInfo.name),
+      );
+    }
     this._loadDependencyAssemblies();
 
     const entrySf = this.program.getSourceFile(this.entry);

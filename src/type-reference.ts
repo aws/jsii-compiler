@@ -75,10 +75,10 @@ export function resolveType(
   if (typeof typeRef !== 'string') {
     typeRef = typeRef.fqn;
   }
-  const [assm] = typeRef.split('.');
-  if (assembly.name === assm) {
+  if (typeRef.startsWith(`${assembly.name}.`)) {
     return assembly.types?.[typeRef];
   }
+  const [assm] = typeRef.split('.');
   const foreignAssm = dependencyClosure.find((dep) => dep.name === assm);
   return foreignAssm?.types?.[typeRef];
 }
