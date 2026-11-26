@@ -74,12 +74,12 @@ describe('formatRuleSet()', () => {
   test('strict rejects unknown options and surfaces required + allowed values', () => {
     const out = formatRuleSet(TypeScriptConfigValidationRuleSet.STRICT);
     expect(out).toContain('other options: rejected');
-    expect(out).toMatch(/target\s+required; must be one of: es2022, es2023, esnext$/m);
+    expect(out).toMatch(/target\s+required; must be one of: es2022, es2023, esnext; must not be es5/);
   });
 
   test('dedupes identical overlapping constraints', () => {
     const out = formatRuleSet(TypeScriptConfigValidationRuleSet.STRICT);
-    // No field may list the same constraint twice, even when several rules constrain it
+    // alwaysStrict is constrained by two rules that both resolve to "must be true"
     expect(out).not.toContain('must be true; must be true');
     expect(out).toMatch(/alwaysStrict\s+must be true$/m);
   });
