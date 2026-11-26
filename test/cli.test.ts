@@ -1,4 +1,5 @@
 import * as fs from 'node:fs';
+import * as os from 'node:os';
 import * as path from 'node:path';
 import { SPEC_FILE_NAME, SPEC_FILE_NAME_COMPRESSED } from '@jsii/spec';
 
@@ -78,6 +79,18 @@ describe('jsii compile', () => {
     expect(result.exitCode).toBe(-1);
     expect(result.stderr).toContain('Invalid license identifier "Not an SPDX licence ID"');
     expect(result.stderr).not.toContain('at Object');
+  });
+
+  test('reports a missing package.json as a short error, without the help text', async () => {
+    const dir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'jsii-no-package-json-')));
+    projects.push(dir);
+
+    const result = await runCli(dir);
+
+    expect(result.exitCode).toBe(-1);
+    expect(result.stderr).toContain(`Could not find a "package.json" file in ${dir}`);
+    expect(result.stderr).not.toContain('ENOENT');
+    expect(result.stdout + result.stderr).not.toContain('--help');
   });
 
   describe('--fail-on-warnings', () => {
