@@ -647,8 +647,9 @@ export class Assembler {
   // -------------------------------------------------------------------------
 
   private _loadDependencyAssemblies(): void {
-    const pkg = this.options.packageJson;
-    for (const dep of Object.keys(pkg.peerDependencies ?? {})) {
+    // The same set as the classic compiler: `dependencies` (minus bundled ones) and `peerDependencies`.
+    const { dependencies, peerDependencies } = this.options.projectInfo;
+    for (const dep of Object.keys({ ...dependencies, ...peerDependencies })) {
       try {
         // Resolved like the classic compiler (and independently of the package's
         // `exports` map, which may not expose package.json).

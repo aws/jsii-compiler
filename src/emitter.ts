@@ -15,6 +15,8 @@ import * as spec from '@jsii/spec';
 import * as log4js from 'log4js';
 
 import { TypeScriptProject } from './compiler-host';
+import { DeprecationWarningsInjector } from './transforms/deprecation-warnings';
+import { insertIntoEmittedJs } from './transforms/source-map';
 
 const LOG = log4js.getLogger('jsii/emitter');
 
@@ -25,6 +27,8 @@ export interface EmitProjectOptions {
   readonly outDir?: string;
   /** tsc `rootDir` from the jsii config. */
   readonly rootDir?: string;
+  /** Adds the calls into `.warnings.jsii.js` (`--add-deprecation-warnings`). */
+  readonly deprecationWarnings?: DeprecationWarningsInjector;
 }
 
 export interface EmitProjectResult {
@@ -56,7 +60,7 @@ export function emitProject(project: TypeScriptProject, options: EmitProjectOpti
   // via the tsc outDir/rootDir transform, so it is robust to duplicate basenames
   // across modules (common at aws-cdk-lib scale). We also index by basename as a
   // fallback for simple layouts.
-  const classesByJsRel = new Map<string, Array<{ name: string; fqn: string }>>();
+  const classesByJsRel = new Map<string, Array<{ name: string; fqn: string; relSrc: string }>>();
   // Basename fallback index: basename -> the set of jsRel paths that share it.
   // The fallback is only safe when a basename is unambiguous (single jsRel).
   const jsRelsByBasename = new Map<string, Set<string>>();
@@ -68,7 +72,7 @@ export function emitProject(project: TypeScriptProject, options: EmitProjectOpti
     if (!relSrc) {
       continue;
     }
-    const entry = { name: (type as any).name, fqn };
+    const entry = { name: (type as any).name, fqn, relSrc };
     const jsRel = sourceRelToJsRel(relSrc, options.outDir, options.rootDir);
     if (!classesByJsRel.has(jsRel)) {
       classesByJsRel.set(jsRel, []);
@@ -124,8 +128,16 @@ export function emitProject(project: TypeScriptProject, options: EmitProjectOpti
     }
     // Read the server-written JS, inject the rtti snippet, write it back. Only a
     // small fraction of files (those declaring exported classes) are touched.
-    const onDisk = fs.readFileSync(outPath, 'utf8');
-    fs.writeFileSync(outPath, injectRtti(onDisk, rttiSnippet(classesHere, assembly.version)), { encoding: 'utf8' });
+    let js = fs.readFileSync(outPath, 'utf8');
+    if (options.deprecationWarnings) {
+      const tsFile = path.resolve(root, classesHere[0].relSrc);
+      js = insertIntoEmittedJs(
+        outPath,
+        js,
+        options.deprecationWarnings.callInsertions(outPath, js, tsFile, assembly, root),
+      );
+    }
+    fs.writeFileSync(outPath, injectRtti(js, rttiSnippet(classesHere, assembly.version)), { encoding: 'utf8' });
   }
 
   return { emittedFiles };
