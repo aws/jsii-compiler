@@ -514,114 +514,98 @@ export function buildProject(options: BuildProjectOptions): BuildProjectResult {
 
   try {
     logFailure('Compilation', tsDiagnostics);
-    // Surface TypeScript compilation errors BEFORE assembling, with the same
-    // reject-on-error behaviour as the default backend: a program that does not
-    // compile must not produce an assembly.
-    if (tsDiagnostics.some((d) => d.category === DiagnosticCategory.Error)) {
-      return { typeCount: 0, emittedFiles: [], emitSkipped: true, diagnostics: tsDiagnostics };
-    }
+    const tsHasErrors = tsDiagnostics.some((d) => d.category === DiagnosticCategory.Error);
+    const diagnostics: Diagnostic[] = [...tsDiagnostics];
 
+    // Like the classic compiler, assemble and emit even when an earlier stage
+    // failed, so all diagnostics are reported together. The `.jsii` file is
+    // written when the assembler reports no errors, whatever TypeScript reported.
+    let assembly: spec.Assembly | undefined;
+    let jsiiFailed = true;
     if (!project.program.getSourceFile(entry)) {
       logFailure('Type model', undefined);
-      return {
-        typeCount: 0,
-        emittedFiles: [],
-        emitSkipped: true,
-        diagnostics: [...tsDiagnostics, missingEntryDiagnostic(entry, projectInfo, tscRootDir, tscOutDir)],
-      };
-    }
-
-    const assembler = new Assembler(host.ts, project, {
-      packageJson: projectInfo.packageJson,
-      projectInfo,
-      projectRoot,
-      entry,
-      assemblyName: projectInfo.name,
-      defaultStability: projectInfo.stability,
-      stripDeprecated: options.stripDeprecated ?? !!(projectInfo.packageJson as any)['cdk-build']?.stripDeprecated,
-      stripDeprecatedAllowListFile: options.stripDeprecatedAllowListFile,
-      tscRootDir,
-      tscOutDir,
-      readme: loadReadme(projectRoot),
-    });
-
-    let assembly: spec.Assembly;
-    try {
-      assembly = assembler.assemble();
-    } catch (e: any) {
-      // Same contract as the classic compiler: a failure while assembling is
-      // reported as a JSII9997 error diagnostic rather than crashing the build.
-      return {
-        typeCount: 0,
-        emittedFiles: [],
-        emitSkipped: true,
-        diagnostics: [
-          ...tsDiagnostics,
-          ...assembler.diagnostics,
-          JsiiDiagnostic.JSII_9997_UNKNOWN_ERROR.createDetached(e),
-        ],
-      };
-    }
-    const jsiiDiagnostics = assembler.diagnostics;
-    logFailure('Type model', jsiiDiagnostics);
-    if (jsiiDiagnostics.some((d) => d.category === DiagnosticCategory.Error)) {
-      return {
-        typeCount: 0,
-        emittedFiles: [],
-        emitSkipped: true,
-        diagnostics: [...tsDiagnostics, ...jsiiDiagnostics],
-      };
-    }
-
-    if (options.addDeprecationWarnings) {
-      assembly.metadata = {
-        ...assembly.metadata,
-        jsii: { ...(assembly.metadata?.jsii ?? {}), compiledWithDeprecationWarnings: true },
-      };
-      new DeprecationWarningsInjector(host.ts, project, assembler.enumMemberDeclarations).process(
-        assembly,
+      diagnostics.push(missingEntryDiagnostic(entry, projectInfo, tscRootDir, tscOutDir));
+    } else {
+      const assembler = new Assembler(host.ts, project, {
+        packageJson: projectInfo.packageJson,
         projectInfo,
-      );
-    }
+        projectRoot,
+        entry,
+        assemblyName: projectInfo.name,
+        defaultStability: projectInfo.stability,
+        stripDeprecated: options.stripDeprecated ?? !!(projectInfo.packageJson as any)['cdk-build']?.stripDeprecated,
+        stripDeprecatedAllowListFile: options.stripDeprecatedAllowListFile,
+        tscRootDir,
+        tscOutDir,
+        readme: loadReadme(projectRoot),
+      });
 
-    if (process.env.JSII_TS7_TIMING) {
-      LOG.info(`ts doc-cache hits (RPCs avoided): ${assembler.docCacheHits}`);
+      try {
+        assembly = assembler.assemble();
+        const jsiiDiagnostics = assembler.diagnostics;
+        diagnostics.push(...jsiiDiagnostics);
+        logFailure('Type model', jsiiDiagnostics);
+        jsiiFailed = jsiiDiagnostics.some((d) => d.category === DiagnosticCategory.Error);
+
+        if (!jsiiFailed && options.addDeprecationWarnings) {
+          assembly.metadata = {
+            ...assembly.metadata,
+            jsii: { ...(assembly.metadata?.jsii ?? {}), compiledWithDeprecationWarnings: true },
+          };
+          new DeprecationWarningsInjector(host.ts, project, assembler.enumMemberDeclarations).process(
+            assembly,
+            projectInfo,
+          );
+        }
+      } catch (e: any) {
+        // Same contract as the classic compiler: a failure while assembling is
+        // reported as a JSII9997 error diagnostic rather than crashing the build.
+        diagnostics.push(...assembler.diagnostics, JsiiDiagnostic.JSII_9997_UNKNOWN_ERROR.createDetached(e));
+      }
+
+      if (process.env.JSII_TS7_TIMING) {
+        LOG.info(`ts doc-cache hits (RPCs avoided): ${assembler.docCacheHits}`);
+      }
     }
 
     // Write the assembly first (the parity artifact), reusing @jsii/spec's writer
     // so the on-disk format (incl. the compressed file-redirect variant) matches
     // the strada path exactly.
-    writeAssembly(projectRoot, fingerprint(assembly), { compress: options.compressAssembly ?? false });
+    if (assembly != null && !jsiiFailed) {
+      writeAssembly(projectRoot, fingerprint(assembly), { compress: options.compressAssembly ?? false });
+    }
 
-    // Then emit JS/d.ts and inject jsii rtti (post-emit pass). An emit failure
-    // fails the build (emitSkipped + a synthetic diagnostic); the assembly file
-    // is left on disk to aid debugging, but the exit status reflects the error.
+    // Then emit JS/d.ts and inject jsii rtti (post-emit pass). Like the classic
+    // compiler, the emit runs even after jsii errors. An emit failure fails the
+    // build (emitSkipped + a synthetic diagnostic); the assembly file is left on
+    // disk to aid debugging, but the exit status reflects the error.
     let emittedFiles: string[] = [];
+    let emitFailed = false;
     try {
       ({ emittedFiles } = emitProject(project, {
         projectRoot,
-        assembly,
+        assembly: assembly ?? ({ version: projectInfo.version, types: {} } as unknown as spec.Assembly),
         outDir: tscOutDir,
         rootDir: tscRootDir,
       }));
     } catch (err) {
-      LOG.error(`ts backend: emit pipeline failed: ${(err as Error).stack ?? (err as Error).message}`);
-      logFailure('Compilation', undefined);
-      return {
-        assembly,
-        typeCount: Object.keys(assembly.types ?? {}).length,
-        emittedFiles: [],
-        emitSkipped: true,
-        diagnostics: [syntheticErrorDiagnostic(`ts backend: emit pipeline failed: ${(err as Error).message}`)],
-      };
+      emitFailed = true;
+      // With TypeScript errors, `noEmitOnError` skips the emit; those errors are already reported.
+      // shortcut: any emit failure is silent then, even without `noEmitOnError`; tell them apart if one shows up.
+      if (!tsHasErrors) {
+        LOG.error(`ts backend: emit pipeline failed: ${(err as Error).stack ?? (err as Error).message}`);
+        logFailure('Compilation', undefined);
+        diagnostics.push(syntheticErrorDiagnostic(`ts backend: emit pipeline failed: ${(err as Error).message}`));
+      }
     }
 
+    const failed = emitFailed || diagnostics.some((d) => d.category === DiagnosticCategory.Error);
     return {
-      assembly,
-      typeCount: Object.keys(assembly.types ?? {}).length,
-      emittedFiles,
-      emitSkipped: false,
-      diagnostics: [...tsDiagnostics, ...jsiiDiagnostics], // non-error diagnostics (warnings/suggestions) pass through
+      assembly: jsiiFailed ? undefined : assembly,
+      typeCount: failed ? 0 : Object.keys(assembly?.types ?? {}).length,
+      emittedFiles: failed ? [] : emittedFiles,
+      emitSkipped: failed,
+      diagnostics,
     };
   } finally {
     if (process.env.JSII_TS7_TIMING) {
