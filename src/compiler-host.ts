@@ -14,7 +14,7 @@
  *
  * The API is loaded with Node's own `require` rather than a static `import`:
  * the package is ESM, and a test runner's module loader (jest) cannot load ES
- * modules through `require()`, while Node >= 22.12 can.
+ * modules through `require()`, while Node >= 22.13 can without a warning.
  * ---------------------------------------------------------------------------
  */
 import * as nodeModule from 'node:module';
