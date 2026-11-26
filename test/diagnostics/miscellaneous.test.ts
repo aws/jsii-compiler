@@ -97,4 +97,22 @@ describe('JSII9997 miscellaneous/unknown-error', () => {
       }),
     );
   });
+
+  // This documents current behavior, see https://github.com/aws/jsii-compiler/issues/2943
+  test('is reported (with no source location) when a class without a constructor extends a constructor-typed interface value, and other types come first', () => {
+    // The unrelated interface changes the order in which the compiler checks the types.
+    const diagnostics = compileJsiiForDiagnostics(`
+      export interface I { readonly x: string }
+      export interface IOther extends I { readonly y: string }
+      declare const C: { new(): I };
+      export class B extends C {}
+    `);
+
+    expect(diagnostics).toContainEqual(
+      expect.objectContaining({
+        jsiiCode: 9997,
+        messageText: expect.stringContaining('Unknown error: Oh no'),
+      }),
+    );
+  });
 });
