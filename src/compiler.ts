@@ -158,7 +158,8 @@ export class Compiler {
     const hasWarnings = result.diagnostics.some((d) => d.category === DiagnosticCategory.Warning && !isSilenced(d));
     return {
       emitSkipped: result.emitSkipped || (this.options.failOnWarnings === true && hasWarnings),
-      diagnostics: result.diagnostics,
+      // Like the classic compiler: sorted and de-duplicated, TypeScript and jsii diagnostics together.
+      diagnostics: sortAndDeduplicateDiagnostics(result.diagnostics),
       emittedFiles: result.emittedFiles,
     };
   }
@@ -634,6 +635,41 @@ export function toDiagnostic(d: any, readSource: (fileName: string) => string | 
     length: hasRange ? d.end - d.pos : undefined,
     messageText: typeof d.text === 'string' ? d.text : d.messageText ?? d.message ?? String(d),
   };
+}
+
+/** Compare like TypeScript's `compareDiagnostics`: file name, start, length, code, message. */
+function compareDiagnostics(a: Diagnostic, b: Diagnostic): number {
+  return (
+    compareValues(a.file?.fileName, b.file?.fileName) ||
+    compareValues(a.start, b.start) ||
+    compareValues(a.length, b.length) ||
+    compareValues(a.code, b.code) ||
+    compareValues(a.messageText, b.messageText)
+  );
+}
+
+/** Ordinal comparison; `undefined` sorts first. */
+function compareValues<T extends string | number>(a: T | undefined, b: T | undefined): number {
+  if (a === b) {
+    return 0;
+  }
+  if (a === undefined) {
+    return -1;
+  }
+  if (b === undefined) {
+    return 1;
+  }
+  return a < b ? -1 : 1;
+}
+
+/**
+ * Port of `ts.sortAndDeduplicateDiagnostics` (stable sort, then drop adjacent
+ * duplicates, keeping the first). The category is not part of the comparison.
+ * shortcut: no related information or message chains, jsii's `Diagnostic` has neither.
+ */
+export function sortAndDeduplicateDiagnostics(diagnostics: readonly Diagnostic[]): Diagnostic[] {
+  const sorted = [...diagnostics].sort(compareDiagnostics);
+  return sorted.filter((d, i) => i === 0 || compareDiagnostics(sorted[i - 1], d) !== 0);
 }
 
 /** An error diagnostic with no source location. */
