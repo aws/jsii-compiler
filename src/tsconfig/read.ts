@@ -55,14 +55,18 @@ function stripJsonComments(text: string): string {
  * effective configuration in its JSON form (the form the rule-set validator
  * operates on). Options of the extending file win over the extended ones;
  * `files` / `include` / `exclude` come from the nearest file that sets them,
- * with relative paths rebased onto the directory of the requested file.
+ * with relative paths rebased onto the directory of the requested file. Path
+ * valued `compilerOptions` are made absolute, as TypeScript's own parser does.
  */
 export function readTypeScriptConfigFile(configPath: string): TypeScriptConfig {
   const absolutePath = path.resolve(configPath);
   const seen = new Set<string>();
   const result = readOne(absolutePath, seen, path.dirname(absolutePath));
   delete (result as any).extends;
-  return { ...result, compilerOptions: convertForJson(result.compilerOptions) };
+  return {
+    ...result,
+    compilerOptions: convertForJson(substituteConfigDir(result.compilerOptions, path.dirname(absolutePath))),
+  };
 }
 
 function readOne(absolutePath: string, seen: Set<string>, targetDir: string): TypeScriptConfig {
@@ -89,7 +93,7 @@ function readOne(absolutePath: string, seen: Set<string>, targetDir: string): Ty
 
   const ownRebased: TypeScriptConfig = {
     ...own,
-    compilerOptions: rebaseCompilerOptions(own.compilerOptions ?? {}, ownDir, targetDir),
+    compilerOptions: resolveCompilerOptions(own.compilerOptions ?? {}, ownDir),
     ...(own.files ? { files: own.files.map((f: string) => rebase(f, ownDir, targetDir)) } : {}),
     ...(own.include ? { include: own.include.map((f: string) => rebase(f, ownDir, targetDir)) } : {}),
     ...(own.exclude ? { exclude: own.exclude.map((f: string) => rebase(f, ownDir, targetDir)) } : {}),
@@ -108,24 +112,70 @@ function mergeConfigs(base: TypeScriptConfig, override: TypeScriptConfig): TypeS
   };
 }
 
-const PATH_OPTIONS = new Set(['outDir', 'rootDir', 'baseUrl', 'declarationDir', 'tsBuildInfoFile', 'outFile']);
+/**
+ * Options TypeScript treats as file paths (`isFilePath` in its option table):
+ * `parseJsonConfigFileContent` turns them into absolute paths, relative to the
+ * directory of the file that sets them.
+ */
+const PATH_OPTIONS = new Set([
+  'outDir',
+  'rootDir',
+  'baseUrl',
+  'declarationDir',
+  'tsBuildInfoFile',
+  'outFile',
+  'generateTrace',
+  'generateCpuProfile',
+  'project',
+]);
 const PATH_LIST_OPTIONS = new Set(['rootDirs', 'typeRoots']);
 
-function rebaseCompilerOptions(options: CompilerOptionsJson, fromDir: string, toDir: string): CompilerOptionsJson {
-  if (fromDir === toDir) {
-    return { ...options };
-  }
+/** A path starting with this is relative to the tsconfig that gets compiled, not to the file that sets it. */
+const CONFIG_DIR_TEMPLATE = '${configDir}';
+
+/**
+ * Resolves the path-valued options of one tsconfig file, like TypeScript does:
+ * relative paths become absolute (with forward slashes), and `paths` records the
+ * directory it is relative to as `pathsBasePath`.
+ */
+function resolveCompilerOptions(options: CompilerOptionsJson, fromDir: string): CompilerOptionsJson {
   const out: CompilerOptionsJson = {};
   for (const [key, value] of Object.entries(options)) {
     if (PATH_OPTIONS.has(key) && typeof value === 'string') {
-      out[key] = rebase(value, fromDir, toDir);
+      out[key] = resolvePath(value, fromDir);
     } else if (PATH_LIST_OPTIONS.has(key) && Array.isArray(value)) {
-      out[key] = value.map((v) => (typeof v === 'string' ? rebase(v, fromDir, toDir) : v));
+      out[key] = value.map((v) => (typeof v === 'string' ? resolvePath(v, fromDir) : v));
     } else {
       out[key] = value;
     }
   }
+  if (out.paths != null) {
+    out.pathsBasePath = toPosix(fromDir);
+  }
   return out;
+}
+
+function resolvePath(p: string, fromDir: string): string {
+  return p.startsWith(CONFIG_DIR_TEMPLATE) ? p : toPosix(path.resolve(fromDir, p));
+}
+
+/** Replaces `${configDir}` in the path options of the final configuration. */
+function substituteConfigDir(options: CompilerOptionsJson, configDir: string): CompilerOptionsJson {
+  const substitute = (p: string) =>
+    p.startsWith(CONFIG_DIR_TEMPLATE) ? toPosix(path.resolve(configDir, p.replace(CONFIG_DIR_TEMPLATE, './'))) : p;
+  const out: CompilerOptionsJson = { ...options };
+  for (const [key, value] of Object.entries(out)) {
+    if (PATH_OPTIONS.has(key) && typeof value === 'string') {
+      out[key] = substitute(value);
+    } else if (PATH_LIST_OPTIONS.has(key) && Array.isArray(value)) {
+      out[key] = value.map((v) => (typeof v === 'string' ? substitute(v) : v));
+    }
+  }
+  return out;
+}
+
+function toPosix(p: string): string {
+  return p.split(path.sep).join('/');
 }
 
 function rebase(p: string, fromDir: string, toDir: string): string {
