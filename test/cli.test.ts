@@ -321,6 +321,29 @@ describe('jsii compile', () => {
   });
 });
 
+describe('@jsii suppress', () => {
+  const source = (directive: string) => ({
+    'index.ts': `export class Foo {
+      ${directive}
+      public foo(): void {}
+    }`,
+  });
+
+  test('hides the warning it names', async () => {
+    const result = await runCli(project(source('/** @jsii suppress JSII5019 */')));
+
+    expect(result.exitCode).toBeUndefined();
+    expect(result.stdout).not.toContain('JSII5019');
+  });
+
+  test('ignores an identifier that is not a diagnostic, and shows the warning', async () => {
+    const result = await runCli(project(source('/** @jsii suppress not-a-diagnostic */')));
+
+    expect(result.exitCode).toBeUndefined();
+    expect(result.stdout).toContain('JSII5019');
+  });
+});
+
 describe('jsii rules', () => {
   test('prints the rules of every rule set by default', async () => {
     const result = await runCli(process.cwd(), 'rules');
