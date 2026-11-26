@@ -285,6 +285,36 @@ class DeprecationError extends Error {
     `);
   });
 
+  // This documents current behavior, see https://github.com/aws/jsii-compiler/issues/2961
+  // A member that shares its value with another member (written differently, so JSII1004 does not apply) is
+  // dropped from the assembly, so the validator never sees it. This is also why the "collision with
+  // non-deprecated enum member" branch of the transform cannot be reached.
+  test('does not warn for a deprecated enum member whose value is shared with a non-deprecated member', () => {
+    const result = compileJsiiForTest(
+      `
+        export enum State {
+          ON = 1,
+
+          ${DEPRECATED}
+          LEGACY_ON = 0x1,
+
+          ${DEPRECATED}
+          OFF = 2,
+        }
+        `,
+      undefined /* callback */,
+      { addDeprecationWarnings: true },
+    );
+
+    const validator = jsFunction(result, 'testpkg_State', '.warnings.jsii');
+    expect(validator).toContain('print("testpkg.State#OFF", "Use something else")');
+    expect(validator).not.toContain('LEGACY_ON');
+    expect(result.assembly.types!['testpkg.State']).toHaveProperty('members', [
+      { name: 'ON' },
+      { name: 'OFF', docs: { deprecated: 'Use something else', stability: 'deprecated' } },
+    ]);
+  });
+
   test('generates calls for deprecated inherited properties', () => {
     const result = compileJsiiForTest(
       `
