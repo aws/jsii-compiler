@@ -149,6 +149,7 @@ export class Compiler {
       stripDeprecated: this.options.stripDeprecated,
       stripDeprecatedAllowListFile: this.options.stripDeprecatedAllowListFile,
       compressAssembly: this.options.compressAssembly,
+      failOnWarnings: this.options.failOnWarnings,
     });
 
     if (!result.emitSkipped) {
@@ -389,6 +390,8 @@ export interface BuildProjectOptions {
   readonly stripDeprecated?: boolean;
   readonly stripDeprecatedAllowListFile?: string;
   readonly compressAssembly?: boolean;
+  /** Treat warnings as errors when deciding whether to log the "prevented the JSII assembly" error. */
+  readonly failOnWarnings?: boolean;
 }
 
 export interface BuildProjectResult {
@@ -474,7 +477,26 @@ export function buildProject(options: BuildProjectOptions): BuildProjectResult {
 
   const entry = deriveEntry(projectRoot, projectInfo, tscRootDir, tscOutDir);
 
+  // Like the classic compiler, log one error line for the first stage that fails:
+  // TypeScript ("Compilation errors"), then the assembler ("Type model errors"),
+  // then the emit ("Compilation errors"). Warnings count with `failOnWarnings`.
+  let failureLogged = false;
+  const logFailure = (stage: 'Compilation' | 'Type model', diagnostics: readonly Diagnostic[] | undefined) => {
+    const abortable =
+      diagnostics == null ||
+      diagnostics.some(
+        (d) =>
+          d.category === DiagnosticCategory.Error ||
+          (options.failOnWarnings && d.category === DiagnosticCategory.Warning && !isSilenced(d)),
+      );
+    if (!failureLogged && abortable) {
+      failureLogged = true;
+      LOG.error(`${stage} errors prevented the JSII assembly from being created`);
+    }
+  };
+
   try {
+    logFailure('Compilation', tsDiagnostics);
     // Surface TypeScript compilation errors BEFORE assembling, with the same
     // reject-on-error behaviour as the default backend: a program that does not
     // compile must not produce an assembly.
@@ -483,6 +505,7 @@ export function buildProject(options: BuildProjectOptions): BuildProjectResult {
     }
 
     if (!project.program.getSourceFile(entry)) {
+      logFailure('Type model', undefined);
       return {
         typeCount: 0,
         emittedFiles: [],
@@ -523,6 +546,7 @@ export function buildProject(options: BuildProjectOptions): BuildProjectResult {
       };
     }
     const jsiiDiagnostics = assembler.diagnostics;
+    logFailure('Type model', jsiiDiagnostics);
     if (jsiiDiagnostics.some((d) => d.category === DiagnosticCategory.Error)) {
       return {
         typeCount: 0,
@@ -554,6 +578,7 @@ export function buildProject(options: BuildProjectOptions): BuildProjectResult {
       }));
     } catch (err) {
       LOG.error(`ts backend: emit pipeline failed: ${(err as Error).stack ?? (err as Error).message}`);
+      logFailure('Compilation', undefined);
       return {
         assembly,
         typeCount: Object.keys(assembly.types ?? {}).length,
