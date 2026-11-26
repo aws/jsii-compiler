@@ -36,7 +36,8 @@ import * as literate from './literate';
 import { validateTargets, type ProjectInfo } from './project-info';
 import { isReservedName } from './reserved-words';
 import { isAllowedCovariantSubtype } from './type-analysis';
-import { createTypeResolver } from './type-reference';
+import { createTypeResolver, typeReferenceEqual, typeReferenceToString } from './type-reference';
+import { isBehavioralInterfaceType, isDataType, visitTypeReference } from './type-visitor';
 import { parentFqn } from './utils';
 import { SHORT_VERSION, VERSION } from './version';
 import { parseWarningCodes, suppressInline } from './warnings';
@@ -343,6 +344,8 @@ export class Assembler {
     for (const check of this.deferred) {
       check();
     }
+
+    this._validateTypesAgainstPositions();
 
     const assembly = this._buildAssembly();
     // Classic: the validator runs on the finished assembly, and only when the
@@ -824,6 +827,8 @@ export class Assembler {
           this.submodules[subFqn] = this._submoduleSpec(e, sym, kind === SyntaxKind.SourceFile);
           const subDir = path.dirname(sym.declarations?.[0]?.path ?? moduleDir);
           collect(this.checker.getExportsOfModule(sym), subFqn, subDir);
+        } else {
+          this._reportUnsupportedExport(sym, declH);
         }
       }
     };
@@ -952,6 +957,23 @@ export class Assembler {
    * @param moduleSym the resolved module-like symbol
    * @param isModuleFile whether the submodule is a source file (vs an inline namespace)
    */
+  /**
+   * Classic `_visitNode`: an exported declaration that is not a class, interface, enum or namespace (a function, a
+   * variable, a type alias, ...) is not part of the jsii type model (JSII9998).
+   */
+  private _reportUnsupportedExport(sym: any, declH: any): void {
+    const { SyntaxKind } = this.ts;
+    const decl = declH.resolve(this.project);
+    const modifiersOwner = decl?.kind === SyntaxKind.VariableDeclaration ? decl.parent?.parent : decl;
+    if (!(modifiersOwner?.modifiers ?? []).some((m: any) => m.kind === SyntaxKind.ExportKeyword)) {
+      return;
+    }
+    if (this._isIgnored(sym)) {
+      return;
+    }
+    this._report(JsiiDiagnostic.JSII_9998_UNSUPPORTED_NODE, this._nameOrDeclaration(decl), SyntaxKind[decl.kind]);
+  }
+
   private _submoduleSpec(exportSym: any, moduleSym: any, isModuleFile: boolean): spec.Submodule {
     // Namespace exports (`export * as ns`) and inline namespaces carry their own
     // declaration; a plain module file (SourceFile) has no meaningful position.
@@ -1693,6 +1715,8 @@ export class Assembler {
       for (const memberDecl of memberOwner.members ?? []) {
         if (memberDecl.kind === SyntaxKind.SemicolonClassElement) {
           this._report(JsiiDiagnostic.JSII_9996_UNNECESSARY_TOKEN, memberDecl);
+        } else if (memberDecl.kind === SyntaxKind.ClassStaticBlockDeclaration) {
+          this._report(JsiiDiagnostic.JSII_9998_UNSUPPORTED_NODE, memberDecl, SyntaxKind[memberDecl.kind]);
         } else if (memberDecl.kind === SyntaxKind.IndexSignature && !this._isHiddenIndexSignature(sym)) {
           this._report(JsiiDiagnostic.JSII_1999_UNSUPPORTED, memberDecl, {
             what: 'Index signatures',
@@ -1728,7 +1752,13 @@ export class Assembler {
       const sig = this.checker.getSignatureFromDeclaration(effectiveCtor);
       const initializer: any = { locationInModule: this._locationOf(effectiveCtor) };
       if (sig) {
-        const params = sig.getParameters().map((p: any) => this._visitParameter(p));
+        const params = sig.getParameters().map((p: any) => {
+          const param = this._visitParameter(p);
+          if (containsIntersection(param.type)) {
+            this._report(JsiiDiagnostic.JSII_1010_INTERSECTION_NOT_IN_CTOR, p.declarations?.[0]?.resolve(this.project));
+          }
+          return param;
+        });
         if (params.length) {
           initializer.parameters = params;
           if (params.some((p: any) => p.variadic)) {
@@ -2132,19 +2162,13 @@ export class Assembler {
         m.variadic = true;
       }
       const opt: { optional?: boolean } = {};
-      let retType = this.checker.getReturnTypeOfSignature(sig);
-      let retNode = decl.type;
-      // Promise-returning methods: jsii marks them `async` and models the
-      // resolved type (Promise<string> -> string), like strada.
-      if (retType && typeof retType.isTypeReference === 'function' && retType.isTypeReference()) {
-        const tsym = retType.getTarget?.()?.getSymbol?.();
-        if (tsym?.name === 'Promise' && this._isStdlibDecl(tsym)) {
-          m.async = true;
-          retType = this.checker.getTypeArguments(retType)?.[0];
-          retNode = retNode?.typeArguments?.[0];
-        }
+      const retType = this.checker.getReturnTypeOfSignature(sig);
+      // Promise-returning methods: jsii marks them `async`; `_typeReference` models
+      // the resolved type (Promise<string> -> string), like strada.
+      if (retType?.getSymbol?.()?.name === 'Promise') {
+        m.async = true;
       }
-      const ret = this._typeReference(retType, opt, retNode, decl.type ?? decl.name);
+      const ret = this._typeReference(retType, opt, decl.type, decl.type ?? decl.name);
       if (ret) {
         m.returns = opt.optional ? { optional: true, type: ret } : { type: ret };
       }
@@ -2698,13 +2722,48 @@ export class Assembler {
     if (typeof type.isIntersectionType === 'function' && type.isIntersectionType()) {
       return this._intersectionTypeReference(type, declaration);
     }
-    if (this._isArrayType(type)) {
-      const args = type.isTypeReference() ? this.checker.getTypeArguments(type) : [];
-      return {
-        collection: { elementtype: this._typeReference(args[0], undefined, undefined, declaration), kind: 'array' },
-      };
+    if (f & TypeFlags.Never) {
+      this._report(JsiiDiagnostic.JSII_1007_NEVER_TYPE, declaration);
+      return { primitive: 'any' };
     }
     const sym = type.getSymbol();
+    if (!sym) {
+      // Classic: an object type without a symbol is `json`; anything else (`null`, `undefined`) cannot be modeled.
+      if (f & TypeFlags.Object) {
+        return { primitive: 'json' };
+      }
+      if (f & (TypeFlags.ESSymbolLike | TypeFlags.BigIntLike)) {
+        // shortcut: classic used their apparent types (Symbol, BigInt) and reported JSII3001; ported with JSII3001.
+        return { primitive: 'any' };
+      }
+      this._report(JsiiDiagnostic.JSII_1001_TYPE_HAS_NO_SYMBOL, declaration);
+      return { primitive: 'any' };
+    }
+    if (this._isArrayType(type)) {
+      const args = type.isTypeReference() ? this.checker.getTypeArguments(type) : [];
+      if (args.length !== 1) {
+        // An array inside an intersection carries the intersection as an extra `this` type argument.
+        this._report(
+          JsiiDiagnostic.JSII_1003_UNSUPPORTED_TYPE,
+          declaration,
+          `Array references must have exactly one type argument (found ${args.length || 'none'})`,
+        );
+        return { collection: { elementtype: { primitive: 'any' }, kind: 'array' } };
+      }
+      return { collection: { elementtype: this._plainTypeReference(args[0], declaration), kind: 'array' } };
+    }
+    if (sym.name === '__type') {
+      return { collection: { elementtype: this._mapElementType(type, sym, declaration), kind: 'map' } };
+    }
+    if (sym.name === 'Promise') {
+      const args = type.isTypeReference() ? this.checker.getTypeArguments(type) : [];
+      if (args.length !== 1) {
+        this._report(JsiiDiagnostic.JSII_1002_UNSPECIFIED_PROMISE, declaration);
+        return { primitive: 'any' };
+      }
+      const argNode = typeNode?.kind === this.ts.SyntaxKind.TypeReference ? typeNode.typeArguments?.[0] : undefined;
+      return this._plainTypeReference(args[0], declaration, argNode);
+    }
     // Boxed standard-library wrapper types map to primitives (strada's
     // _tryMakePrimitiveType): e.g. `limit?: Number` or `Array<String>`.
     if (sym && this._isStdlibDecl(sym)) {
@@ -2721,13 +2780,11 @@ export class Assembler {
           break;
       }
     }
-    if (sym) {
-      const target = type.isTypeReference() ? type.getTarget() : type;
-      const tsym = target.getSymbol() ?? sym;
-      const fqn = this.typeFqnBySymbolId.get(tsym.id) ?? this._externalFqnOf(tsym);
-      if (fqn) {
-        return { fqn };
-      }
+    const target = type.isTypeReference() ? type.getTarget() : type;
+    const tsym = target.getSymbol() ?? sym;
+    const fqn = this.typeFqnBySymbolId.get(tsym.id) ?? this._externalFqnOf(tsym);
+    if (fqn) {
+      return { fqn };
     }
     const indexInfos = this.checker.getIndexInfosOfType(type);
     if (indexInfos.length) {
@@ -2738,6 +2795,46 @@ export class Assembler {
         },
       };
     }
+    return { primitive: 'any' };
+  }
+
+  /**
+   * Classic `_typeReference`: a type where jsii expects a plain type reference (array and map elements, the type of a
+   * promise), so `undefined` in it is a JSII_3999 error rather than an optional value.
+   */
+  private _plainTypeReference(type: any, declaration: any, typeNode?: any): any {
+    const opt: { optional?: boolean } = {};
+    const ref = this._typeReference(type, opt, typeNode, declaration);
+    if (opt.optional) {
+      this._report(
+        JsiiDiagnostic.JSII_3999_INCOHERENT_TYPE_MODEL,
+        declaration,
+        'Encountered optional value in location where a plain type reference is expected',
+      );
+    }
+    return ref;
+  }
+
+  /**
+   * The element type of an anonymous object type modeled as a map (classic `_mapType`): its string index type, or
+   * the value type of a lone template-literal index signature. Anything else is a JSII_1003 error.
+   */
+  private _mapElementType(type: any, sym: any, declaration: any): any {
+    const { SyntaxKind } = this.ts;
+    const stringIndexType = type.getStringIndexType();
+    if (stringIndexType) {
+      return this._plainTypeReference(stringIndexType, declaration);
+    }
+    const typeDecl = sym.declarations?.[0]?.resolve(this.project);
+    const member =
+      typeDecl?.kind === SyntaxKind.TypeLiteral && typeDecl.members.length === 1 ? typeDecl.members[0] : undefined;
+    if (
+      member?.kind === SyntaxKind.IndexSignature &&
+      member.parameters[0]?.type?.kind === SyntaxKind.TemplateLiteralType
+    ) {
+      return this._plainTypeReference(this.checker.getTypeFromTypeNode(member.type), member.type, member.type);
+    }
+    this._report(JsiiDiagnostic.JSII_1003_UNSUPPORTED_TYPE, declaration, 'Only string-indexed map types are supported');
     return { primitive: 'any' };
   }
 
@@ -2810,7 +2907,8 @@ export class Assembler {
   private _intersectionTypeReference(type: any, declaration?: any): any {
     const refs: any[] = [];
     const seen = new Set<string>();
-    for (const t of type.getTypes()) {
+    // Classic: the apparent type of the intersection, whose members carry the intersection as `this` type argument.
+    for (const t of this.checker.getApparentType(type).getTypes()) {
       const r = this._typeReference(t, undefined, undefined, declaration);
       if (!r) {
         continue;
@@ -2825,7 +2923,163 @@ export class Assembler {
       return refs[0];
     }
     this.usedFeatures.add('intersection-types');
-    return { intersection: { types: refs } };
+    const ref = { intersection: { types: refs } };
+    this._validateIntersectionType(ref, declaration);
+    return ref;
+  }
+
+  /**
+   * Classic `validateIntersectionType`, once all types are known: an intersection may only combine behavioral
+   * interfaces (JSII1008), and members they share must be declared the same way (JSII1011).
+   */
+  private _validateIntersectionType(ref: spec.IntersectionTypeReference, declaration: any): void {
+    this.deferred.push(() => {
+      const elementTypes = ref.intersection.types
+        .filter(spec.isNamedTypeReference)
+        .map((t) => this._dereferenceType(t.fqn))
+        .filter((t): t is spec.Type => t != null);
+      // Classic: nothing is checked when no element is a known named type.
+      if (elementTypes.length === 0) {
+        return;
+      }
+      const resolvedFqns = new Set(elementTypes.map((t) => t.fqn));
+      const unresolved = [...new Set(ref.intersection.types.map(typeReferenceToString))].filter(
+        (x) => !resolvedFqns.has(x),
+      );
+      if (unresolved.length > 0) {
+        this._report(JsiiDiagnostic.JSII_1008_ONLY_INTERFACE_INTERSECTION, declaration, unresolved.join(', '));
+      }
+      const nonBehavioral = elementTypes.filter((t) => !isBehavioralInterfaceType(t));
+      if (nonBehavioral.length > 0) {
+        this._report(
+          JsiiDiagnostic.JSII_1008_ONLY_INTERFACE_INTERSECTION,
+          declaration,
+          nonBehavioral.map((t) => t.fqn).join(', '),
+        );
+      }
+
+      const interfaces = elementTypes.filter(isBehavioralInterfaceType);
+      const allProps = new Set(interfaces.flatMap((int) => [...this._allInterfaceMembers(int, 'properties')]));
+      const allMethods = new Set(interfaces.flatMap((int) => [...this._allInterfaceMembers(int, 'methods')]));
+      for (let i = 1; i < interfaces.length; i++) {
+        const int0 = interfaces[0];
+        const int1 = interfaces[i];
+        for (const prop of allProps) {
+          const diff = comparePropForIntersection(
+            int0.properties?.find((p) => p.name === prop),
+            int1.properties?.find((p) => p.name === prop),
+          );
+          if (diff) {
+            this._report(
+              JsiiDiagnostic.JSII_1011_INTERSECTION_MEMBER_DIFFERENT,
+              declaration,
+              prop,
+              int0.name,
+              diff[0],
+              int1.name,
+              diff[1],
+            );
+          }
+        }
+        for (const meth of allMethods) {
+          const diff = compareMethodForIntersection(
+            int0.methods?.find((m) => m.name === meth),
+            int1.methods?.find((m) => m.name === meth),
+          );
+          if (diff) {
+            this._report(
+              JsiiDiagnostic.JSII_1011_INTERSECTION_MEMBER_DIFFERENT,
+              declaration,
+              meth,
+              int0.name,
+              diff[0],
+              int1.name,
+              diff[1],
+            );
+          }
+        }
+      }
+    });
+  }
+
+  /** The names of the properties or methods of an interface and its base interfaces (classic `allProperties`). */
+  private _allInterfaceMembers(root: spec.InterfaceType, kind: 'properties' | 'methods'): Set<string> {
+    const names = new Set<string>();
+    const recurse = (int: spec.InterfaceType) => {
+      for (const member of int[kind] ?? []) {
+        names.add(member.name);
+      }
+      for (const baseFqn of int.interfaces ?? []) {
+        const base = this._dereferenceType(baseFqn);
+        if (base != null && spec.isInterfaceType(base)) {
+          recurse(base);
+        }
+      }
+    };
+    recurse(root);
+    return names;
+  }
+
+  /**
+   * Classic `validateTypesAgainstPositions`: intersection types may only be used as inputs (JSII1009). Constructor
+   * and method parameters are inputs; properties and method return types are outputs, and so are the properties of
+   * the structs they reference.
+   */
+  private _validateTypesAgainstPositions(): void {
+    const validatedFqns = { in: new Set<string>(), out: new Set<string>() };
+    const validateRefFor = (dir: 'in' | 'out', typeRef: spec.TypeReference, reason: string): void => {
+      visitTypeReference(typeRef, {
+        named: (ref) => {
+          // Named types are only validated once for every direction
+          if (validatedFqns[dir].has(ref.fqn)) {
+            return;
+          }
+          validatedFqns[dir].add(ref.fqn);
+          const type = this._dereferenceType(ref.fqn);
+          if (type != null && isDataType(type)) {
+            for (const prop of type.properties ?? []) {
+              validateRefFor(dir, prop.type, `type of property ${type.name}.${prop.name}, ${reason}`);
+            }
+          }
+        },
+        primitive: () => {},
+        collection: (ref) => validateRefFor(dir, ref.collection.elementtype, reason),
+        union: (ref) => {
+          for (const t of ref.union.types) {
+            validateRefFor(dir, t, reason);
+          }
+        },
+        intersection: (ref) => {
+          if (dir === 'out') {
+            this._diagnostics.push(JsiiDiagnostic.JSII_1009_INTERSECTION_ONLY_INPUT.createDetached(reason));
+          }
+          for (const t of ref.intersection.types) {
+            validateRefFor(dir, t, reason);
+          }
+        },
+      });
+    };
+
+    for (const type of Object.values(this.types)) {
+      if (spec.isClassType(type)) {
+        for (const ctorParam of type.initializer?.parameters ?? []) {
+          validateRefFor('in', ctorParam.type, `a constructor parameter of ${type.name}`);
+        }
+      }
+      if (spec.isClassType(type) || isBehavioralInterfaceType(type)) {
+        for (const property of type.properties ?? []) {
+          validateRefFor('out', property.type, `type of property ${type.name}.${property.name}`);
+        }
+        for (const method of type.methods ?? []) {
+          for (const param of method.parameters ?? []) {
+            validateRefFor('in', param.type, `a parameter of method ${type.name}.${method.name}()`);
+          }
+          if (method.returns) {
+            validateRefFor('out', method.returns.type, `return type of method ${type.name}.${method.name}()`);
+          }
+        }
+      }
+    }
   }
 
   // -------------------------------------------------------------------------
@@ -3155,6 +3409,87 @@ function isConstantCase(x: string) {
 }
 
 /** Port of the classic Assembler's `noEmptyDict`. */
+function containsIntersection(type: spec.TypeReference): boolean {
+  if (spec.isIntersectionTypeReference(type)) {
+    return true;
+  }
+  if (spec.isUnionTypeReference(type)) {
+    return type.union.types.some(containsIntersection);
+  }
+  if (spec.isCollectionTypeReference(type)) {
+    return containsIntersection(type.collection.elementtype);
+  }
+  return false;
+}
+
+function comparePropForIntersection(
+  a: spec.Property | undefined,
+  b: spec.Property | undefined,
+): [string, string] | undefined {
+  if (!a || !b) {
+    return undefined;
+  }
+  if (!typeReferenceEqual(a.type, b.type)) {
+    return [typeReferenceToString(a.type), typeReferenceToString(b.type)];
+  }
+  return (
+    cmpDesc(a.static, b.static, (s) => (s ? 'static' : 'instance member')) ??
+    cmpDesc(a.optional, b.optional, (o) => (o ? 'optional' : 'required')) ??
+    cmpDesc(a.abstract, b.abstract, (s) => (s ? 'abstract' : 'concrete'))
+  );
+}
+
+function compareMethodForIntersection(
+  a: spec.Method | undefined,
+  b: spec.Method | undefined,
+): [string, string] | undefined {
+  if (!a || !b) {
+    return undefined;
+  }
+  if (a.returns && b.returns) {
+    if (!typeReferenceEqual(a.returns.type, b.returns.type)) {
+      return [typeReferenceToString(a.returns.type), typeReferenceToString(b.returns.type)];
+    }
+    const x = cmpDesc(a.returns.optional, b.returns.optional, (o) =>
+      o ? 'return type optional' : 'return type required',
+    );
+    if (x) {
+      return x;
+    }
+  }
+  const paramsA = a.parameters ?? [];
+  const paramsB = b.parameters ?? [];
+  if (paramsA.length !== paramsB.length) {
+    return [`${paramsA.length} parameters`, `${paramsB.length} parameters`];
+  }
+  for (let i = 0; i < paramsA.length; i++) {
+    const p1 = paramsA[i];
+    const p2 = paramsB[i];
+    if (!typeReferenceEqual(p1.type, p2.type)) {
+      return [typeReferenceToString(p1.type), typeReferenceToString(p2.type)];
+    }
+    const x =
+      cmpDesc(p1.optional, p2.optional, (o) => (o ? `parameter ${i + 1} optional` : `parameter ${i + 1} required`)) ??
+      cmpDesc(p1.variadic, p2.variadic, (v) => (v ? `parameter ${i + 1} variadic` : `parameter ${i + 1} not variadic`));
+    if (x) {
+      return x;
+    }
+  }
+  return (
+    cmpDesc(a.abstract, b.abstract, (s) => (s ? 'abstract' : 'concrete')) ??
+    cmpDesc(a.async, b.async, (s) => (s ? 'async' : 'async')) ??
+    cmpDesc(a.protected, b.protected, (p) => (p ? 'protected' : 'public')) ??
+    cmpDesc(a.variadic, b.variadic, (v) => (v ? 'variadic' : 'non-variadic')) ??
+    cmpDesc(a.static, b.static, (s) => (s ? 'static' : 'instance member'))
+  );
+}
+
+function cmpDesc<T>(a: T, b: T, desc: (x: T) => string): [string, string] | undefined {
+  const desc1 = desc(a);
+  const desc2 = desc(b);
+  return desc1 !== desc2 ? [desc1, desc2] : undefined;
+}
+
 function noEmptyDict<T extends Record<string, unknown>>(xs: T): T | undefined {
   return Object.keys(xs).length === 0 ? undefined : xs;
 }

@@ -53,8 +53,6 @@ const NOT_PORTED_YET = new Set([
   'neg.non-optional-after-optional-method.ts',
   'neg.omit.1.ts',
   'neg.omit.2.ts',
-  'neg.omit.3.ts',
-  'neg.omit.4.ts',
   'neg.override-changes-visibility.ts',
   'neg.property-name.3.ts',
   'neg.redeclared-interface-member-method-narrowed.ts',
