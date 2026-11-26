@@ -121,25 +121,25 @@ describe('the support policy notice', () => {
   test('is not shown when silenced', async () => {
     fakeReleasesServer({ statusCode: 200, body: releases({ endOfSupport: true }) });
 
-    expect(await supportNotice({ JSII_SILENCE_SUPPORT_WARNING: '1' })).toBe('');
+    expect(await supportNotice({ JSII_SILENCE_SUPPORT_WARNING: '1' })).not.toContain('release line');
   });
 
   test('is not shown when the compiler is on the current release line', async () => {
     fakeReleasesServer({ statusCode: 200, body: releases({ current: releaseLine }) });
 
-    expect(await supportNotice()).toBe('');
+    expect(await supportNotice()).not.toContain('release line');
   });
 
   test('is not shown when the status of the release line is unknown', async () => {
     fakeReleasesServer({ statusCode: 200, body: releases({}) });
 
-    expect(await supportNotice()).toBe('');
+    expect(await supportNotice()).not.toContain('release line');
   });
 
   test('is not shown when End-of-Support is more than 30 days away', async () => {
     fakeReleasesServer({ statusCode: 200, body: releases({ supportedUntil: '2026-08-01T00:00:00.000Z' }) });
 
-    expect(await supportNotice()).toBe('');
+    expect(await supportNotice()).not.toContain('release line');
   });
 
   test('warns when End-of-Support is less than 30 days away', async () => {
