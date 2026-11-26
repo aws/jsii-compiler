@@ -2,19 +2,10 @@ import * as ts from 'typescript';
 import { sourceToAssemblyHelper } from '../lib';
 import { JsiiDiagnostic } from '../src';
 import { compileJsiiForErrors } from './compiler-helpers';
+import { Directives } from '../src/directives';
 import { formatDiagnostic, stripAnsi } from '../src/utils';
 
-// @TODO(ts7): the `Directives` parser (src/directives.ts) worked on the in-process TypeScript AST, which the
-// TypeScript 7 compiler does not hold. `@jsii ignore` is recognized by the assembler from the JSDoc tags the
-// TypeScript 7 API returns (tested below); the parser-level tests and the directive diagnostics
-// (JSII2000/JSII2999, `@jsii suppress`) are kept here for the port of the validation diagnostics.
-// The module is loaded lazily so that this file type-checks and runs while the parser does not exist.
-function directivesOf(node: ts.Node, onDiagnostic: (diag: JsiiDiagnostic) => void): any {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  return require('../src/directives').Directives.of(node, onDiagnostic);
-}
-
-test.skip('non-directive tags', () => {
+test('non-directive tags', () => {
   // Given
   const sourceFile = ts.createSourceFile(
     'test.ts',
@@ -27,14 +18,14 @@ test.skip('non-directive tags', () => {
   const ctorDecl = classDecl.members[0];
 
   // When
-  const directives = directivesOf(ctorDecl, unexpectedDiagnostic);
+  const directives = Directives.of(ctorDecl, unexpectedDiagnostic);
 
   // Then
   expect(directives.tsInternal).toBeFalsy();
   expect(directives.ignore).toBeFalsy();
 });
 
-describe.skip('@internal', () => {
+describe('@internal', () => {
   test('set on declaration', () => {
     // Given
     const sourceFile = ts.createSourceFile(
@@ -47,7 +38,7 @@ describe.skip('@internal', () => {
     const classDecl = sourceFile.statements[0];
 
     // When
-    const directives = directivesOf(classDecl, unexpectedDiagnostic);
+    const directives = Directives.of(classDecl, unexpectedDiagnostic);
 
     // Then
     expect(directives.tsInternal).toBeTruthy();
@@ -67,7 +58,7 @@ describe.skip('@internal', () => {
     const ctorDecl = classDecl.members[0];
 
     // When
-    const directives = directivesOf(ctorDecl, unexpectedDiagnostic);
+    const directives = Directives.of(ctorDecl, unexpectedDiagnostic);
 
     // Then
     expect(directives.tsInternal).toBeFalsy();
@@ -75,7 +66,7 @@ describe.skip('@internal', () => {
   });
 });
 
-describe.skip('@jsii', () => {
+describe('@jsii', () => {
   test('without content', () => {
     // Given
     const sourceFile = ts.createSourceFile(
@@ -102,7 +93,7 @@ describe.skip('@jsii', () => {
     };
 
     // When
-    const directives = directivesOf(classDecl, onDiagnostic);
+    const directives = Directives.of(classDecl, onDiagnostic);
 
     // Then
     expect(hadDiagnostic).toBeTruthy();
@@ -136,7 +127,7 @@ describe.skip('@jsii', () => {
     };
 
     // When
-    const directives = directivesOf(classDecl, onDiagnostic);
+    const directives = Directives.of(classDecl, onDiagnostic);
 
     // Then
     expect(hadDiagnostic).toBeTruthy();
@@ -176,7 +167,7 @@ describe.skip('@jsii', () => {
     };
 
     // When
-    const directives = directivesOf(classDecl, onDiagnostic);
+    const directives = Directives.of(classDecl, onDiagnostic);
 
     // Then
     expect(hadDiagnostic).toBeTruthy();
@@ -218,7 +209,7 @@ describe.skip('@jsii', () => {
     };
 
     // When
-    const directives = directivesOf(classDecl, onDiagnostic);
+    const directives = Directives.of(classDecl, onDiagnostic);
 
     // Then
     expect(hadDiagnostic).toBeTruthy();
@@ -238,7 +229,7 @@ describe.skip('@jsii', () => {
     const classDecl = sourceFile.statements[0];
 
     // When
-    const directives = directivesOf(classDecl, unexpectedDiagnostic);
+    const directives = Directives.of(classDecl, unexpectedDiagnostic);
 
     // Then
     expect(directives.tsInternal).toBeFalsy();
@@ -262,7 +253,7 @@ describe.skip('@jsii', () => {
     const indexSignature = classDecl.members[1];
 
     // When
-    const directives = directivesOf(indexSignature, unexpectedDiagnostic);
+    const directives = Directives.of(indexSignature, unexpectedDiagnostic);
 
     // Then
     expect(directives.tsInternal).toBeFalsy();
@@ -286,7 +277,7 @@ describe.skip('@jsii', () => {
     const methodDecl = classDecl.members[1];
 
     // When
-    const directives = directivesOf(methodDecl, unexpectedDiagnostic);
+    const directives = Directives.of(methodDecl, unexpectedDiagnostic);
 
     // Then
     expect(directives.suppressions).toEqual(['JSII5019']);
@@ -312,7 +303,7 @@ describe.skip('@jsii', () => {
     const methodDecl = classDecl.members[1];
 
     // When
-    const directives = directivesOf(methodDecl, unexpectedDiagnostic);
+    const directives = Directives.of(methodDecl, unexpectedDiagnostic);
 
     // Then
     expect(directives.suppressions).toEqual(['JSII5018', 'JSII5019']);

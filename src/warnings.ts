@@ -8,6 +8,19 @@ import { Code, JsiiDiagnostic } from './jsii-diagnostic';
 export const silencedWarnings = new Set<number>();
 
 /**
+ * Diagnostics that a `@jsii suppress` directive silences. A diagnostic carries no
+ * syntax tree, so the assembler records them when it reports the diagnostic.
+ */
+const inlineSuppressed = new WeakSet<Diagnostic>();
+
+/**
+ * Marks a diagnostic as suppressed inline, via a `@jsii suppress` directive.
+ */
+export function suppressInline(diagnostic: Diagnostic): void {
+  inlineSuppressed.add(diagnostic);
+}
+
+/**
  * Parse a user-provided warning identifier into numeric JSII codes.
  * Accepts: "JSII5019", "5019", or a diagnostic name / partial name.
  *
@@ -49,5 +62,5 @@ export function isSilenced(diagnostic: Diagnostic): boolean {
   if (!JsiiDiagnostic.isJsiiDiagnostic(diagnostic)) {
     return false;
   }
-  return silencedWarnings.has(diagnostic.jsiiCode);
+  return silencedWarnings.has(diagnostic.jsiiCode) || inlineSuppressed.has(diagnostic);
 }

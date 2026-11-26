@@ -107,9 +107,11 @@ function sourceTextOf(file: DiagnosticSourceFile | undefined, start: number | un
   }
 }
 
-/** `file:line:col`, relative to the project root. */
+/** `file:line:col`, relative to the project root (a file name that is not absolute is kept as is, like TypeScript does). */
 function formatLocation(file: DiagnosticSourceFile, text: string | undefined, start: number | undefined, root: string) {
-  let out = ansi.cyan(path.relative(root, file.fileName) || file.fileName);
+  let out = ansi.cyan(
+    (path.isAbsolute(file.fileName) ? path.relative(root, file.fileName) : file.fileName) || file.fileName,
+  );
   if (text != null && start != null) {
     const { line, character } = getLineAndCharacterOfPosition(text, start);
     out += `:${ansi.yellow(line + 1)}:${ansi.yellow(character + 1)}`;
