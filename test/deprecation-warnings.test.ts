@@ -285,6 +285,27 @@ class DeprecationError extends Error {
     `);
   });
 
+  // This documents current behavior, see https://github.com/aws/jsii-compiler/issues/2949
+  test('fails with JSII9997 for an enum with a deprecated member and a member whose name is a string literal', () => {
+    const result = compileJsiiForTest(
+      `
+        export enum E {
+          ON,
+          ${DEPRECATED}
+          OFF = 1,
+          'B' = 5,
+        }
+      `,
+      { captureDiagnostics: true },
+      { addDeprecationWarnings: true },
+    );
+
+    expect(result.type).toBe('failure');
+    expect(result.diagnostics.map((d) => `${d.messageText}`)).toEqual([
+      expect.stringContaining('Unknown error: Converting circular structure to JSON'),
+    ]);
+  });
+
   // This documents current behavior, see https://github.com/aws/jsii-compiler/issues/2961
   // A member that shares its value with another member (written differently, so JSII1004 does not apply) is
   // dropped from the assembly, so the validator never sees it. This is also why the "collision with
