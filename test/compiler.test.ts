@@ -602,8 +602,7 @@ describe('readonly arrays', () => {
     expect(result.files['index.d.ts']).toMatch(/f\(\):\s*readonly string\[\]/);
   });
 
-  // @TODO(ts7): expects a jsii validation diagnostic (tuple types); re-enable with the port of the validator
-  test.skip('tuple types remain unsupported', () => {
+  test('tuple types remain unsupported', () => {
     expect(
       compileJsiiForErrors(`
         export interface Props {
@@ -613,8 +612,7 @@ describe('readonly arrays', () => {
     ).toContainEqual('Tuple types are not supported in jsii APIs. Consider using arrays instead.');
   });
 
-  // @TODO(ts7): expects a jsii validation diagnostic (tuple types); re-enable with the port of the validator
-  test.skip('readonly tuple types remain unsupported', () => {
+  test('readonly tuple types remain unsupported', () => {
     expect(
       compileJsiiForErrors(`
         export interface Props {

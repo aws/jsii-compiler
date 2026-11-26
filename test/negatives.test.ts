@@ -11,16 +11,13 @@ const SOURCE_DIR = path.join(__dirname, 'negatives');
 // @TODO(ts7): fixtures that expect jsii validation diagnostics which are not ported to the TypeScript 7 assembler
 // yet. The PR that ports a diagnostic removes the fixtures it makes pass from this list; the list ends up empty.
 const NOT_PORTED_YET = new Set([
-  'neg.const-enum.ts',
   'neg.downgrade-to-readonly.ts',
-  'neg.enum-duplicate-values.ts',
   'neg.expose-unexported-type-constructor-param.ts',
   'neg.expose-unexported-type-external.ts',
   'neg.expose-unexported-type-internal-in-namespace.ts',
   'neg.expose-unexported-type-internal.ts',
   'neg.expose-unexported-type-this.ts',
   'neg.extend-struct.ts',
-  'neg.generics.ts',
   'neg.implement-struct.ts',
   'neg.implementation-changes-types.1.ts',
   'neg.implementation-changes-types.2.ts',
@@ -35,7 +32,6 @@ const NOT_PORTED_YET = new Set([
   'neg.implementing-property-changes-optionality.2.ts',
   'neg.implementing-property-changes-optionality.ts',
   'neg.implements-class.ts',
-  'neg.index-signatures.ts',
   'neg.inheritance-changes-types.1.ts',
   'neg.inheritance-changes-types.2.ts',
   'neg.inheritance-changes-types.3.ts',
@@ -64,7 +60,6 @@ const NOT_PORTED_YET = new Set([
   'neg.redeclared-interface-member-method-narrowed.ts',
   'neg.redeclared-interface-member-narrowed.ts',
   'neg.redeclared-interface-member-required.ts',
-  'neg.separate-write-type.ts',
   'neg.static-member-mixing.1.ts',
   'neg.static-member-mixing.2.ts',
   'neg.static-nested-conflict.ts',
@@ -74,7 +69,6 @@ const NOT_PORTED_YET = new Set([
   'neg.struct-hint-on-enum.ts',
   'neg.struct-hint-with-methods.ts',
   'neg.submodules-cannot-share-symbols.ts',
-  'neg.tuple.ts',
 ]);
 
 expect.addSnapshotSerializer({

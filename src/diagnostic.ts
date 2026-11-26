@@ -9,7 +9,6 @@
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import chalk from 'chalk';
 
 export enum DiagnosticCategory {
   Warning = 0,
@@ -61,16 +60,34 @@ function categoryName(category: DiagnosticCategory): string {
   }
 }
 
+// The escape sequences of the classic formatter, which always colors its output (whether or not the
+// output is a terminal). Callers strip them when they need plain text.
+const RED = '\u001b[91m';
+const YELLOW = '\u001b[93m';
+const BLUE = '\u001b[94m';
+const CYAN = '\u001b[96m';
+const GREY = '\u001b[90m';
+const GREEN = '\u001b[92m';
+const GUTTER_STYLE = '\u001b[7m';
+const RESET = '\u001b[0m';
+
+function colored(style: string): (s: string | number) => string {
+  return (s) => `${style}${s}${RESET}`;
+}
+
+const ansi = { cyan: colored(CYAN), grey: colored(GREY), yellow: colored(YELLOW) };
+
 function categoryColor(category: DiagnosticCategory): (s: string) => string {
   switch (category) {
     case DiagnosticCategory.Error:
-      return chalk.red;
+      return colored(RED);
     case DiagnosticCategory.Warning:
-      return chalk.yellow;
+      return colored(YELLOW);
     case DiagnosticCategory.Suggestion:
-      return chalk.green;
+      // The classic formatter refuses suggestions; this is the color `ts.DiagnosticCategory.Suggestion` would use.
+      return colored(GREEN);
     default:
-      return chalk.blue;
+      return colored(BLUE);
   }
 }
 
@@ -92,10 +109,10 @@ function sourceTextOf(file: DiagnosticSourceFile | undefined, start: number | un
 
 /** `file:line:col`, relative to the project root. */
 function formatLocation(file: DiagnosticSourceFile, text: string | undefined, start: number | undefined, root: string) {
-  let out = chalk.cyan(path.relative(root, file.fileName) || file.fileName);
+  let out = ansi.cyan(path.relative(root, file.fileName) || file.fileName);
   if (text != null && start != null) {
     const { line, character } = getLineAndCharacterOfPosition(text, start);
-    out += `:${chalk.yellow(line + 1)}:${chalk.yellow(character + 1)}`;
+    out += `:${ansi.yellow(line + 1)}:${ansi.yellow(character + 1)}`;
   }
   return out;
 }
@@ -121,7 +138,7 @@ function formatCodeSpan(
   if (hasMoreThanFiveLines) {
     gutterWidth = Math.max(ELLIPSIS.length, gutterWidth);
   }
-  const gutter = (label: string) => `${indent}${chalk.black.bgWhite(label.padStart(gutterWidth))} `;
+  const gutter = (label: string) => `${indent}${colored(GUTTER_STYLE)(label.padStart(gutterWidth))} `;
 
   let out = '';
   for (let i = first.line; i <= last.line; i++) {
@@ -132,15 +149,17 @@ function formatCodeSpan(
     }
     const lineContent = (lines[i] ?? '').trimEnd().replace(/\t/g, ' ');
     out += `${gutter(String(i + 1))}${lineContent}\n${gutter('')}`;
+    let squiggle: string;
     if (i === first.line) {
       const end = i === last.line ? last.character : undefined;
-      out += lineContent.slice(0, first.character).replace(/\S/g, ' ');
-      out += color(lineContent.slice(first.character, end).replace(/./g, '~'));
+      squiggle = lineContent.slice(0, first.character).replace(/\S/g, ' ');
+      squiggle += lineContent.slice(first.character, end).replace(/./g, '~');
     } else if (i === last.line) {
-      out += color(lineContent.slice(0, last.character).replace(/./g, '~'));
+      squiggle = lineContent.slice(0, last.character).replace(/./g, '~');
     } else {
-      out += color(lineContent.replace(/./g, '~'));
+      squiggle = lineContent.replace(/./g, '~');
     }
+    out += color(squiggle);
   }
   return out;
 }
@@ -158,7 +177,7 @@ export function formatDiagnosticWithColorAndContext(diagnostic: Diagnostic, proj
   if (diagnostic.file) {
     out += `${formatLocation(diagnostic.file, text, diagnostic.start, projectRoot)} - `;
   }
-  out += `${color(categoryName(diagnostic.category))}${chalk.grey(` TS${diagnostic.code}: `)}${
+  out += `${color(categoryName(diagnostic.category))}${ansi.grey(` TS${diagnostic.code}: `)}${
     diagnostic.messageText
   }\n`;
 
@@ -175,7 +194,7 @@ export function formatDiagnosticWithColorAndContext(diagnostic: Diagnostic, proj
       if (info.file) {
         out += `\n${HALF_INDENT}${formatLocation(info.file, infoText, info.start, projectRoot)}`;
         if (infoText != null && info.start != null) {
-          out += formatCodeSpan(infoText, info.start, info.length ?? 1, INDENT, chalk.cyan);
+          out += formatCodeSpan(infoText, info.start, info.length ?? 1, INDENT, ansi.cyan);
         }
       }
       out += `\n${INDENT}${info.messageText}`;

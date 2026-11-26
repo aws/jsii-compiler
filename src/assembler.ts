@@ -1338,6 +1338,18 @@ export class Assembler {
   private _visitEnum(sym: any, decl: any, fqn: string, jsiiType: any): void {
     const { SyntaxKind } = this.ts;
     jsiiType.kind = 'enum';
+
+    this._assertNoDuplicateEnumValues(decl);
+    const constModifier = (decl.modifiers ?? []).find((mod: any) => mod.kind === SyntaxKind.ConstKeyword);
+    if (constModifier) {
+      this._report(JsiiDiagnostic.JSII_1000_NO_CONST_ENUM, constModifier);
+    }
+    for (const memberDecl of decl.members ?? []) {
+      if (this.checker.getConstantValue(memberDecl) === undefined) {
+        this._report(JsiiDiagnostic.JSII_1012_ONLY_CONST_ENUM_MEMBERS, memberDecl);
+      }
+    }
+
     const members: any[] = [];
     // strada derives enum members from the enum TYPE's union constituents
     // (`type.isUnion() ? type.types : [type]`), not from the declaration. For
@@ -1388,6 +1400,55 @@ export class Assembler {
     }
   }
 
+  /** Classic: JSII_1004 for each initializer text that more than one member of the enum uses. */
+  private _assertNoDuplicateEnumValues(decl: any): void {
+    const sf = decl.getSourceFile();
+    const text = this._sourceTextOf(sf);
+    const textOf = (node: any) => text.slice(node.getStart(sf), node.end);
+    // A plain object, like the classic assembler: integer-like values come first, in numeric order.
+    const membersByValue: Record<string, any[]> = {};
+    for (const member of decl.members ?? []) {
+      if (member.initializer == null) {
+        continue;
+      }
+      const value = textOf(member.initializer);
+      (membersByValue[value] ??= []).push(member);
+    }
+    for (const [value, members] of Object.entries(membersByValue)) {
+      if (members.length < 2) {
+        continue;
+      }
+      const err = this._report(
+        JsiiDiagnostic.JSII_1004_DUPLICATE_ENUM_VALUE,
+        members[0].name,
+        value,
+        members.map((m) => textOf(m.name)),
+      );
+      for (const member of members.slice(1)) {
+        err.addRelatedInformationIf(this._diagnosticLocation(member.name), 'The conflicting declaration is here');
+      }
+    }
+  }
+
+  /** Classic: JSII_1006 for each type parameter of a class or interface declaration. */
+  private _reportTypeParameters(decl: any): void {
+    for (const typeParam of decl.typeParameters ?? []) {
+      this._report(JsiiDiagnostic.JSII_1006_GENERIC_TYPE, typeParam);
+    }
+  }
+
+  /**
+   * Whether the index signature of a type is hidden from jsii (`@internal` or `@jsii ignore`). Like the classic
+   * assembler, this looks up the `__index` symbol of the type being visited (instance first, then static).
+   */
+  private _isHiddenIndexSignature(typeSym: any): boolean {
+    const indexSym = typeSym.getMembers?.()?.get('__index') ?? typeSym.getExports?.()?.get('__index');
+    return (
+      indexSym != null &&
+      (this._jsDocTags(indexSym).some((t: any) => t.name === 'internal') || this._isIgnored(indexSym))
+    );
+  }
+
   private _visitInterface(sym: any, decl: any, name: string, jsiiType: any): void {
     jsiiType.kind = 'interface';
     const type = this.checker.getTypeAtLocation(decl);
@@ -1396,6 +1457,17 @@ export class Assembler {
       const rewrittenByStrip = erasedBases.some((b) => this.strippedTypeSymIds.has((b.getSymbol?.() ?? b.symbol)?.id));
       jsiiType.interfaces = rewrittenByStrip ? [...interfaces].sort() : interfaces;
     }
+
+    this._reportTypeParameters(decl);
+    for (const memberDecl of decl.members ?? []) {
+      if (memberDecl.kind === this.ts.SyntaxKind.IndexSignature && !this._isHiddenIndexSignature(sym)) {
+        this._report(JsiiDiagnostic.JSII_1999_UNSUPPORTED, memberDecl, {
+          what: 'Index signatures',
+          suggestInternal: true,
+        });
+      }
+    }
+
     this._visitMembers(sym, decl, jsiiType, true, erasedBases);
 
     // datatype (struct) — same sequence as the classic Assembler:
@@ -1529,6 +1601,7 @@ export class Assembler {
     if (Case.pascal(sym.name) !== sym.name) {
       this._report(JsiiDiagnostic.JSII_8000_PASCAL_CASED_TYPE_NAMES, this._nameOrDeclaration(decl), sym.name);
     }
+    this._reportTypeParameters(decl);
     const mods = decl.modifiers ?? [];
     if (mods.some((x: any) => x.kind === SyntaxKind.AbstractKeyword)) {
       jsiiType.abstract = true;
@@ -1592,6 +1665,19 @@ export class Assembler {
       }
     };
     collectHeritage(decl);
+    // Classic: the member declarations of the class and of its erased base classes are checked in that order.
+    for (const memberOwner of [decl, ...erasedDecls]) {
+      for (const memberDecl of memberOwner.members ?? []) {
+        if (memberDecl.kind === SyntaxKind.SemicolonClassElement) {
+          this._report(JsiiDiagnostic.JSII_9996_UNNECESSARY_TOKEN, memberDecl);
+        } else if (memberDecl.kind === SyntaxKind.IndexSignature && !this._isHiddenIndexSignature(sym)) {
+          this._report(JsiiDiagnostic.JSII_1999_UNSUPPORTED, memberDecl, {
+            what: 'Index signatures',
+            suggestInternal: true,
+          });
+        }
+      }
+    }
     if (base.value) {
       jsiiType.base = base.value;
     }
@@ -2035,7 +2121,7 @@ export class Assembler {
           retNode = retNode?.typeArguments?.[0];
         }
       }
-      const ret = this._typeReference(retType, opt, retNode);
+      const ret = this._typeReference(retType, opt, retNode, decl.type ?? decl.name);
       if (ret) {
         m.returns = opt.optional ? { optional: true, type: ret } : { type: ret };
       }
@@ -2103,11 +2189,14 @@ export class Assembler {
     const p: any = {
       locationInModule: this._locationOf(decl),
       name: psym.name,
-      type: this._typeReference(t, opt, decl.type),
+      type: this._typeReference(t, opt, decl.type, decl.type ?? decl.name),
     };
     this.relatedNodes.set(p, decl);
     const mods = decl.modifiers ?? [];
     const hasSetter = psym.declarations?.some((h: any) => h.kind === SyntaxKind.SetAccessor);
+    if (decl.kind === SyntaxKind.GetAccessor && hasSetter) {
+      this._checkSeparateWriteType(psym, decl, p.type, opt.optional);
+    }
     if (
       mods.some((x: any) => x.kind === SyntaxKind.ReadonlyKeyword) ||
       (decl.kind === SyntaxKind.GetAccessor && !hasSetter)
@@ -2157,12 +2246,42 @@ export class Assembler {
     return this._withDefaultDocs(p);
   }
 
+  /**
+   * Classic: JSII_1005 when a setter's value type (or optionality) differs from the type of its getter. The setter
+   * type is converted like any other type reference, so it reports its own diagnostics too.
+   */
+  private _checkSeparateWriteType(psym: any, getterDecl: any, getterType: any, getterOptional?: boolean): void {
+    for (const handle of psym.declarations ?? []) {
+      const setterDecl = handle.kind === this.ts.SyntaxKind.SetAccessor ? handle.resolve(this.project) : undefined;
+      const valueTypeNode = setterDecl?.parameters?.[0]?.type;
+      if (valueTypeNode == null) {
+        continue;
+      }
+      const opt: { optional?: boolean } = {};
+      const valueType = this._typeReference(
+        this.checker.getTypeFromTypeNode(valueTypeNode),
+        opt,
+        valueTypeNode,
+        valueTypeNode,
+      );
+      if (
+        getterOptional !== opt.optional ||
+        spec.describeTypeReference(getterType) !== spec.describeTypeReference(valueType)
+      ) {
+        this._report(JsiiDiagnostic.JSII_1005_SEPARATE_WRITE_TYPE, valueTypeNode).addRelatedInformationIf(
+          this._diagnosticLocation(getterDecl.type ?? getterDecl.name),
+          'The getter signature is declared here',
+        );
+      }
+    }
+  }
+
   private _visitParameter(prm: any): any {
     const decl = prm.declarations?.[0]?.resolve(this.project);
     this._warnAboutReservedWords(prm.name, decl);
     const t = decl ? this.checker.getTypeOfSymbolAtLocation(prm, decl) : undefined;
     const opt: { optional?: boolean } = {};
-    const p: any = { name: prm.name, type: this._typeReference(t, opt, decl?.type) };
+    const p: any = { name: prm.name, type: this._typeReference(t, opt, decl?.type, decl?.type ?? decl?.name) };
     if (decl?.dotDotDotToken) {
       p.variadic = true;
       p.type = p.type?.collection?.elementtype ?? p.type;
@@ -2504,7 +2623,12 @@ export class Assembler {
     return isStdlibDeclPath(sym?.declarations?.[0]?.path ?? '');
   }
 
-  private _typeReference(type: any, optionalOut?: { optional?: boolean }, typeNode?: any): any {
+  /**
+   * `typeNode` is the syntax of the type (it gives the union member order);
+   * `declaration` is the node jsii diagnostics about the type point at (the
+   * classic assembler's `declaration`: the type node of the member, or its name).
+   */
+  private _typeReference(type: any, optionalOut?: { optional?: boolean }, typeNode?: any, declaration?: any): any {
     const { TypeFlags } = this.ts;
     if (!type) {
       return { primitive: 'any' };
@@ -2540,15 +2664,22 @@ export class Assembler {
     if (f & TypeFlags.Void) {
       return undefined;
     }
+    if (typeof type.isTupleType === 'function' && type.isTupleType()) {
+      // Classic: a tuple type has no symbol, so it was modeled as `json`.
+      this._report(JsiiDiagnostic.JSII_1999_UNSUPPORTED, declaration, { what: 'Tuple types', alternative: 'arrays' });
+      return { primitive: 'json' };
+    }
     if (type.isUnionType()) {
-      return this._unionTypeReference(type, optionalOut, typeNode);
+      return this._unionTypeReference(type, optionalOut, typeNode, declaration);
     }
     if (typeof type.isIntersectionType === 'function' && type.isIntersectionType()) {
-      return this._intersectionTypeReference(type);
+      return this._intersectionTypeReference(type, declaration);
     }
     if (this._isArrayType(type)) {
       const args = type.isTypeReference() ? this.checker.getTypeArguments(type) : [];
-      return { collection: { elementtype: this._typeReference(args[0]), kind: 'array' } };
+      return {
+        collection: { elementtype: this._typeReference(args[0], undefined, undefined, declaration), kind: 'array' },
+      };
     }
     const sym = type.getSymbol();
     // Boxed standard-library wrapper types map to primitives (strada's
@@ -2577,12 +2708,17 @@ export class Assembler {
     }
     const indexInfos = this.checker.getIndexInfosOfType(type);
     if (indexInfos.length) {
-      return { collection: { elementtype: this._typeReference(indexInfos[0].valueType), kind: 'map' } };
+      return {
+        collection: {
+          elementtype: this._typeReference(indexInfos[0].valueType, undefined, undefined, declaration),
+          kind: 'map',
+        },
+      };
     }
     return { primitive: 'any' };
   }
 
-  private _unionTypeReference(type: any, optionalOut?: { optional?: boolean }, typeNode?: any): any {
+  private _unionTypeReference(type: any, optionalOut?: { optional?: boolean }, typeNode?: any, declaration?: any): any {
     const { TypeFlags } = this.ts;
     const all = type.getTypes();
     const parts = all.filter((t: any) => !(t.flags & (TypeFlags.Undefined | TypeFlags.Null)));
@@ -2617,7 +2753,7 @@ export class Assembler {
           }
           continue;
         }
-        pushFlat(this._typeReference(tt, optionalOut, tn));
+        pushFlat(this._typeReference(tt, optionalOut, tn, declaration));
       }
       if (refs.length === 1) {
         return refs[0];
@@ -2629,7 +2765,7 @@ export class Assembler {
     const refs: any[] = [];
     const seen = new Set<string>();
     for (const p of parts) {
-      const r = this._typeReference(p, optionalOut);
+      const r = this._typeReference(p, optionalOut, undefined, declaration);
       const key = JSON.stringify(r);
       if (r && !seen.has(key)) {
         seen.add(key);
@@ -2648,11 +2784,11 @@ export class Assembler {
    * strada's `type.isIntersection()` branch: each constituent is turned into a
    * type reference, deduplicated.
    */
-  private _intersectionTypeReference(type: any): any {
+  private _intersectionTypeReference(type: any, declaration?: any): any {
     const refs: any[] = [];
     const seen = new Set<string>();
     for (const t of type.getTypes()) {
-      const r = this._typeReference(t);
+      const r = this._typeReference(t, undefined, undefined, declaration);
       if (!r) {
         continue;
       }
