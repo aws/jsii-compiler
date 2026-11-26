@@ -262,6 +262,40 @@ describe('jsii compile', () => {
       expect(result.stderr).toContain('mutually exclusive');
     });
 
+    // https://github.com/aws/jsii-compiler/issues/2983
+    describe('JSII4009 (validation disabled)', () => {
+      const compileWithValidationOff = (...args: string[]) =>
+        runCli(
+          project({ 'tsconfig.dev.json': JSON.stringify(userTsconfig()) }),
+          '--tsconfig',
+          'tsconfig.dev.json',
+          '--validate-tsconfig',
+          'off',
+          ...args,
+        );
+
+      test('is counted as a warning', async () => {
+        const result = await compileWithValidationOff();
+
+        expect(result.exitCode).toBeUndefined();
+        expect(result.stdout).toContain('warning JSII4009');
+        expect(result.stdout).toContain('Warnings: 1');
+      });
+
+      test('fails the build with --fail-on-warnings', async () => {
+        const result = await compileWithValidationOff('--fail-on-warnings');
+
+        expect(result.exitCode).toBe(1);
+      });
+
+      test('is counted as silenced with --silence-warnings', async () => {
+        const result = await compileWithValidationOff('--silence-warnings', 'JSII4009');
+
+        expect(result.stdout).not.toContain('warning JSII4009');
+        expect(result.stdout).toContain('Warnings: 0 (+1 silenced)');
+      });
+    });
+
     test('--validate-tsconfig selects the rule set', async () => {
       const dir = project({ 'tsconfig.dev.json': JSON.stringify(userTsconfig({ strict: false })) });
 
