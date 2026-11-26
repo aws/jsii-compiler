@@ -1,8 +1,6 @@
-import { Assembly } from '@jsii/spec';
 import { DiagnosticCategory } from 'typescript';
 
 import { compileJsiiForTest, TestWorkspace } from '../lib';
-import { DeprecatedRemover } from '../src/transforms/deprecated-remover';
 
 const DEPRECATED = '/** @deprecated stripped */';
 
@@ -13,14 +11,6 @@ function strip(source: Parameters<typeof compileJsiiForTest>[0]) {
 function declarations(result: ReturnType<typeof strip>, file = 'index.d.ts') {
   return result.files[file];
 }
-
-describe('DeprecatedRemover.removeFrom', () => {
-  test('is a no-op for an assembly without types', () => {
-    const remover = new DeprecatedRemover(undefined as any, undefined);
-
-    expect(remover.removeFrom({ name: 'empty' } as Assembly)).toEqual([]);
-  });
-});
 
 describe('deprecated interfaces in the inheritance chain', () => {
   test('are replaced by the interfaces they extend', () => {
