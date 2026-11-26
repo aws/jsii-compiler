@@ -143,6 +143,7 @@ export class Compiler {
       projectInfo: this.options.projectInfo,
       tsconfigFileName: this.configFileName,
       generatedTsconfig: !this.userProvidedTypeScriptConfig,
+      userTsconfig: this.userProvidedTypeScriptConfig ? this.tsconfig : undefined,
       stripDeprecated: this.options.stripDeprecated,
       stripDeprecatedAllowListFile: this.options.stripDeprecatedAllowListFile,
       addDeprecationWarnings: this.options.addDeprecationWarnings,
@@ -402,6 +403,11 @@ export interface BuildProjectOptions {
    * A generated config may be amended with an inferred `rootDir`.
    */
   readonly generatedTsconfig?: boolean;
+  /**
+   * The user-provided tsconfig as jsii read it: `extends` resolved, bases that
+   * cannot be read, parsed or that are circular skipped (like the classic compiler).
+   */
+  readonly userTsconfig?: TypeScriptConfig;
   readonly stripDeprecated?: boolean;
   readonly stripDeprecatedAllowListFile?: string;
   /** Whether to write `.warnings.jsii.js` (`--add-deprecation-warnings`). */
@@ -440,6 +446,36 @@ function deriveEntry(projectRoot: string, projectInfo: ProjectInfo, rootDir?: st
   return path.resolve(projectRoot, mainFile);
 }
 
+/** Whether the config file errors come from an `extends` base: unreadable (TS5083), circular (TS18000) or unparseable. */
+function hasBrokenExtends(program: any, tsconfigPath: string): boolean {
+  const errors: any[] = program.getConfigFileParsingDiagnostics?.() ?? [];
+  return errors.some(
+    (d) =>
+      d.code === 5083 ||
+      d.code === 18000 ||
+      (d.fileName != null && path.resolve(d.fileName) !== path.resolve(tsconfigPath)),
+  );
+}
+
+/**
+ * A tsconfig text without `extends` for a configuration jsii already resolved.
+ * Its path options are absolute; `pathsBasePath` is internal, so `paths` are made
+ * absolute against it instead.
+ */
+function flattenTsconfig(config: TypeScriptConfig): string {
+  const { pathsBasePath, ...compilerOptions } = config.compilerOptions as any;
+  if (compilerOptions.paths != null && compilerOptions.baseUrl == null && pathsBasePath != null) {
+    compilerOptions.paths = Object.fromEntries(
+      Object.entries(compilerOptions.paths as Record<string, string[]>).map(([k, v]) => [
+        k,
+        v.map((p) => path.posix.resolve(pathsBasePath, p)),
+      ]),
+    );
+  }
+  const { extends: _extends, ...rest } = config;
+  return JSON.stringify({ ...rest, compilerOptions });
+}
+
 /** The program reports config paths as absolute paths; record them relative to the project, like the classic compiler. */
 function relativeConfigPath(projectRoot: string, configPath: string | undefined): string | undefined {
   return configPath != null && path.isAbsolute(configPath) ? path.relative(projectRoot, configPath) : configPath;
@@ -474,6 +510,17 @@ export function buildProject(options: BuildProjectOptions): BuildProjectResult {
   let host = CompilerHost.open(options.projectRoot, options.tsconfigFileName);
   let project = host.getProject();
   let tsDiagnostics = collectTsDiagnostics(project.program);
+
+  // The classic compiler built from the options it read itself and never saw the
+  // config file errors of a broken `extends` (missing, unparseable or circular
+  // base). TypeScript 7 reports those and then skips the emit. Build such a project
+  // from the configuration jsii read instead, which skips the broken bases.
+  if (options.userTsconfig != null && hasBrokenExtends(project.program, host.tsconfigPath)) {
+    host.close();
+    host = CompilerHost.open(options.projectRoot, options.tsconfigFileName, flattenTsconfig(options.userTsconfig));
+    project = host.getProject();
+    tsDiagnostics = collectTsDiagnostics(project.program);
+  }
 
   // TypeScript 7 no longer infers `rootDir` from the common directory of the
   // sources when `outDir` is set (TS5011). The classic compiler relied on that
