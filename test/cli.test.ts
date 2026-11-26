@@ -3,7 +3,6 @@ import * as path from 'node:path';
 import { SPEC_FILE_NAME, SPEC_FILE_NAME_COMPRESSED } from '@jsii/spec';
 
 import { makeCliProject, mockYargsToTrackParse, runCli } from './cli-helpers';
-import { silencedWarnings } from '../src/warnings';
 
 jest.mock('yargs', () => mockYargsToTrackParse());
 
@@ -15,7 +14,6 @@ const project = (...args: Parameters<typeof makeCliProject>) => {
 };
 
 afterEach(() => {
-  silencedWarnings.clear();
   for (const dir of projects.splice(0)) {
     fs.rmSync(dir, { force: true, recursive: true });
   }

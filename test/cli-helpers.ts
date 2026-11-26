@@ -62,10 +62,23 @@ export function makeCliProject(files: Record<string, string | null> = {}, pkgJso
  * wait for the (asynchronous) command handlers to complete.
  */
 export async function runCli(cwd: string, ...args: string[]): Promise<CliResult> {
+  return runCliWithEnv({}, cwd, ...args);
+}
+
+/**
+ * Like `runCli`, with changes to the environment variables the CLI sees. The CLI is run with the support policy
+ * information silenced (`JSII_SILENCE_SUPPORT_WARNING=1`), unless `env` says otherwise. A value of `undefined` removes
+ * the variable.
+ */
+export async function runCliWithEnv(
+  env: Record<string, string | undefined>,
+  cwd: string,
+  ...args: string[]
+): Promise<CliResult> {
   const originalArgv = process.argv;
   const originalCwd = process.cwd();
   const originalExitCode = process.exitCode;
-  const originalSilence = process.env.JSII_SILENCE_SUPPORT_WARNING;
+  const originalEnv = { ...process.env };
 
   let stdout = '';
   let stderr = '';
@@ -100,7 +113,13 @@ export async function runCli(cwd: string, ...args: string[]): Promise<CliResult>
 
   try {
     process.argv = ['node', 'jsii', ...args];
-    process.env.JSII_SILENCE_SUPPORT_WARNING = '1';
+    for (const [name, value] of Object.entries({ JSII_SILENCE_SUPPORT_WARNING: '1', ...env })) {
+      if (value === undefined) {
+        delete process.env[name];
+      } else {
+        process.env[name] = value;
+      }
+    }
     process.exitCode = undefined;
     process.chdir(cwd);
 
@@ -126,10 +145,12 @@ export async function runCli(cwd: string, ...args: string[]): Promise<CliResult>
     process.argv = originalArgv;
     process.chdir(originalCwd);
     process.exitCode = originalExitCode;
-    if (originalSilence === undefined) {
-      delete process.env.JSII_SILENCE_SUPPORT_WARNING;
-    } else {
-      process.env.JSII_SILENCE_SUPPORT_WARNING = originalSilence;
+    for (const name of Object.keys({ JSII_SILENCE_SUPPORT_WARNING: '1', ...env })) {
+      if (originalEnv[name] === undefined) {
+        delete process.env[name];
+      } else {
+        process.env[name] = originalEnv[name];
+      }
     }
   }
 }

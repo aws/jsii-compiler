@@ -1,28 +1,33 @@
 import { EventEmitter } from 'node:events';
-import { get } from 'node:https';
+import * as fs from 'node:fs';
 
-import { emitSupportPolicyInformation } from '../src/support';
-import { RELEASE_LINE } from '../src/version';
+import { makeCliProject, mockYargsToTrackParse, runCli, runCliWithEnv } from './cli-helpers';
 
-jest.mock('node:https', () => ({ get: jest.fn() }));
+jest.mock('yargs', () => mockYargsToTrackParse());
+
+// The CLI checks the support policy of the compiler by downloading a document from GitHub. The network is the only
+// thing replaced here: the fake answers like GitHub would, and everything else is the real CLI.
+// (The factory is evaluated for each isolated copy of the CLI, so it hands over to a function that is set per test.)
+jest.mock('node:https', () => ({ get: (...args: unknown[]) => (globalThis as any).__fakeHttpsGet(...args) }));
 
 const RELEASES_URL = 'https://raw.githubusercontent.com/aws/jsii-compiler/main/releases.json';
 
-interface FakeResponse {
-  readonly statusCode: number;
-  readonly statusMessage?: string;
-  readonly body?: string;
-  /** Emitted on the response instead of delivering the body. */
-  readonly error?: Error;
-}
+type FakeResponse =
+  | {
+      readonly statusCode: number;
+      readonly statusMessage?: string;
+      readonly body?: string;
+      /** Emitted on the response instead of delivering the body. */
+      readonly error?: Error;
+    }
+  | { readonly requestEvent: 'abort' | 'timeout' | 'error'; readonly error?: Error };
 
-/**
- * Replaces `https.get` with a fake that answers the releases document request.
- *
- * @param respond what the fake server answers, or an error to be emitted by the request itself.
- */
-function fakeReleasesServer(respond: FakeResponse | { requestEvent: 'abort' | 'timeout' | 'error'; error?: Error }) {
-  return (get as jest.Mock).mockImplementation(((url: URL, callback: (response: EventEmitter) => void) => {
+/** Makes the "download" answer with `respond`. */
+function fakeReleasesServer(respond: FakeResponse) {
+  (globalThis as any).__fakeHttpsGet = (url: URL, callback: (response: EventEmitter) => void) => {
+    if (url.toString() !== RELEASES_URL) {
+      throw new Error(`Unexpected request to ${url}`);
+    }
     const request = Object.assign(new EventEmitter(), {
       end: () => {
         setImmediate(() => {
@@ -44,10 +49,48 @@ function fakeReleasesServer(respond: FakeResponse | { requestEvent: 'abort' | 't
         });
       },
     });
-    expect(url.toString()).toBe(RELEASES_URL);
     return request;
-  }) as unknown as typeof get);
+  };
 }
+
+let projectDir: string;
+let releaseLine: string;
+
+beforeAll(async () => {
+  // The release line of the compiler is the major and minor version of the TypeScript it embeds.
+  const versionProject = makeCliProject();
+  try {
+    const { stdout } = await runCli(versionProject, '--version');
+    releaseLine = /typescript (\d+\.\d+)\./.exec(stdout)![1];
+  } finally {
+    fs.rmSync(versionProject, { force: true, recursive: true });
+  }
+});
+
+beforeEach(() => {
+  projectDir = makeCliProject();
+  // Only the date is faked: the CLI waits with timers.
+  jest.useFakeTimers({
+    now: new Date('2026-06-15T12:00:00.000Z'),
+    doNotFake: [
+      'nextTick',
+      'setImmediate',
+      'clearImmediate',
+      'setTimeout',
+      'clearTimeout',
+      'setInterval',
+      'clearInterval',
+      'queueMicrotask',
+      'performance',
+      'hrtime',
+    ],
+  });
+});
+
+afterEach(() => {
+  jest.useRealTimers();
+  fs.rmSync(projectDir, { force: true, recursive: true });
+});
 
 /** Builds a releases document in which the compiler's own release line is in the given state. */
 function releases(options: { endOfSupport?: boolean; supportedUntil?: string; current?: string }) {
@@ -59,127 +102,98 @@ function releases(options: { endOfSupport?: boolean; supportedUntil?: string; cu
     '97.0': '2026-01-15T00:00:00.000Z',
   };
   if (options.supportedUntil) {
-    maintenance[RELEASE_LINE] = options.supportedUntil;
+    maintenance[releaseLine] = options.supportedUntil;
   }
   return JSON.stringify({
     current: options.current ?? '99.0',
     maintenance,
-    ...(options.endOfSupport ? { endOfSupport: [RELEASE_LINE] } : {}),
+    ...(options.endOfSupport ? { endOfSupport: [releaseLine] } : {}),
   });
 }
 
-describe('emitSupportPolicyInformation', () => {
-  let consoleError: jest.SpyInstance;
+/** Runs the CLI with the support policy check enabled, and returns what it printed to standard error without colors. */
+async function supportNotice(env: Record<string, string | undefined> = {}) {
+  const result = await runCliWithEnv({ JSII_SILENCE_SUPPORT_WARNING: undefined, ...env }, projectDir, '--version');
+  return result.stderr.replace(/\u001b\[[\d;]*m/g, '');
+}
 
-  beforeEach(() => {
-    delete process.env.JSII_SILENCE_SUPPORT_WARNING;
-    delete process.env.JSII_DEBUG;
-    consoleError = jest.spyOn(console, 'error').mockImplementation(() => undefined);
-    jest.useFakeTimers({ now: new Date('2026-06-15T12:00:00.000Z'), doNotFake: ['setImmediate', 'nextTick'] });
+describe('the support policy notice', () => {
+  test('is not shown when silenced', async () => {
+    fakeReleasesServer({ statusCode: 200, body: releases({ endOfSupport: true }) });
+
+    expect(await supportNotice({ JSII_SILENCE_SUPPORT_WARNING: '1' })).toBe('');
   });
 
-  afterEach(() => {
-    jest.useRealTimers();
-    jest.restoreAllMocks();
-    delete process.env.JSII_SILENCE_SUPPORT_WARNING;
-    delete process.env.JSII_DEBUG;
+  test('is not shown when the compiler is on the current release line', async () => {
+    fakeReleasesServer({ statusCode: 200, body: releases({ current: releaseLine }) });
+
+    expect(await supportNotice()).toBe('');
   });
 
-  const printed = () =>
-    consoleError.mock.calls.map(([line]) => String(line).replace(/\u001b\[[\d;]*m/g, '')).join('\n');
-
-  test('does nothing, and does not use the network, when silenced', async () => {
-    process.env.JSII_SILENCE_SUPPORT_WARNING = '1';
-    const httpsGet = fakeReleasesServer({ statusCode: 200, body: releases({ endOfSupport: true }) });
-
-    await emitSupportPolicyInformation();
-
-    expect(httpsGet).not.toHaveBeenCalled();
-    expect(consoleError).not.toHaveBeenCalled();
-  });
-
-  test('does nothing when the compiler is on the current release line', async () => {
-    fakeReleasesServer({ statusCode: 200, body: releases({ current: RELEASE_LINE }) });
-
-    await emitSupportPolicyInformation();
-
-    expect(consoleError).not.toHaveBeenCalled();
-  });
-
-  test('does nothing when the status of the release line is unknown', async () => {
+  test('is not shown when the status of the release line is unknown', async () => {
     fakeReleasesServer({ statusCode: 200, body: releases({}) });
 
-    await emitSupportPolicyInformation();
-
-    expect(consoleError).not.toHaveBeenCalled();
+    expect(await supportNotice()).toBe('');
   });
 
-  test('does nothing when End-of-Support is more than 30 days away', async () => {
+  test('is not shown when End-of-Support is more than 30 days away', async () => {
     fakeReleasesServer({ statusCode: 200, body: releases({ supportedUntil: '2026-08-01T00:00:00.000Z' }) });
 
-    await emitSupportPolicyInformation();
-
-    expect(consoleError).not.toHaveBeenCalled();
+    expect(await supportNotice()).toBe('');
   });
 
   test('warns when End-of-Support is less than 30 days away', async () => {
     fakeReleasesServer({ statusCode: 200, body: releases({ supportedUntil: '2026-07-01T00:00:00.000Z' }) });
 
-    await emitSupportPolicyInformation();
+    const notice = await supportNotice();
 
-    expect(printed()).toContain(
-      `The ${RELEASE_LINE} release line of jsii will reach End-of-Support soon, on 2026-07-01.`,
-    );
-    expect(printed()).toContain('upgrade to the current release line (99.0)');
-    expect(printed()).toContain('Other actively supported release lines include:');
-    expect(printed()).toContain('- 98.0 (planned End-of-Support date: 2999-01-01)');
-    expect(printed()).toContain('- 98.1 (planned End-of-Support date: 2999-06-30)');
-    expect(printed()).not.toContain('97.0');
+    expect(notice).toContain(`The ${releaseLine} release line of jsii will reach End-of-Support soon, on 2026-07-01.`);
+    expect(notice).toContain('upgrade to the current release line (99.0)');
+    expect(notice).toContain('Other actively supported release lines include:');
+    expect(notice).toContain('- 98.0 (planned End-of-Support date: 2999-01-01)');
+    expect(notice).toContain('- 98.1 (planned End-of-Support date: 2999-06-30)');
+    expect(notice).not.toContain('97.0');
   });
 
   test('warns when End-of-Support has passed', async () => {
     fakeReleasesServer({ statusCode: 200, body: releases({ supportedUntil: '2026-06-01T00:00:00.000Z' }) });
 
-    await emitSupportPolicyInformation();
+    const notice = await supportNotice();
 
-    expect(printed()).toContain(`The ${RELEASE_LINE} release line of jsii has reached End-of-Support.`);
-    expect(printed()).toContain('upgrade to the current release line (99.0)');
+    expect(notice).toContain(`The ${releaseLine} release line of jsii has reached End-of-Support.`);
+    expect(notice).toContain('upgrade to the current release line (99.0)');
   });
 
   test('warns when the release line is listed as end-of-support', async () => {
     fakeReleasesServer({ statusCode: 200, body: releases({ endOfSupport: true }) });
 
-    await emitSupportPolicyInformation();
-
-    expect(printed()).toContain(`The ${RELEASE_LINE} release line of jsii has reached End-of-Support.`);
+    expect(await supportNotice()).toContain(`The ${releaseLine} release line of jsii has reached End-of-Support.`);
   });
 
   test('does not list alternatives when no other release line is supported long enough', async () => {
     fakeReleasesServer({
       statusCode: 200,
-      body: JSON.stringify({ current: '99.0', maintenance: {}, endOfSupport: [RELEASE_LINE] }),
+      body: JSON.stringify({ current: '99.0', maintenance: {}, endOfSupport: [releaseLine] }),
     });
 
-    await emitSupportPolicyInformation();
+    const notice = await supportNotice();
 
-    expect(printed()).toContain('has reached End-of-Support');
-    expect(printed()).not.toContain('Other actively supported release lines include:');
+    expect(notice).toContain('has reached End-of-Support');
+    expect(notice).not.toContain('Other actively supported release lines include:');
   });
 
-  test('surrounds the message with a border', async () => {
+  test('is surrounded with a border', async () => {
     fakeReleasesServer({ statusCode: 200, body: releases({ endOfSupport: true }) });
 
-    await emitSupportPolicyInformation();
+    const lines = (await supportNotice()).trimEnd().split('\n');
 
-    const lines = printed().split('\n');
     expect(lines[0]).toMatch(/^!+$/);
     expect(lines[lines.length - 1]).toBe(lines[0]);
     expect(lines.every((line) => line.length === lines[0].length)).toBe(true);
   });
 
   describe('when the releases document cannot be downloaded', () => {
-    // The document that is shipped with the compiler is used instead. Since it does not know about the
-    // release line "99.0", the compiler's own release line is the one that is described there (or not).
+    // The document that is shipped with the compiler is used instead, and the CLI works as usual.
     test.each([
       ['it is not found', { statusCode: 404 }],
       ['the server fails', { statusCode: 500, statusMessage: 'Internal Server Error' }],
@@ -190,26 +204,18 @@ describe('emitSupportPolicyInformation', () => {
     ])('falls back to the built-in document when %s', async (_name, response) => {
       fakeReleasesServer(response);
 
-      await expect(emitSupportPolicyInformation()).resolves.toBeUndefined();
+      const result = await runCliWithEnv({ JSII_SILENCE_SUPPORT_WARNING: undefined }, projectDir, '--version');
+
+      expect(result.stdout).toMatch(/^\d+\.\d+\.\d+ /);
+      expect(result.stderr).not.toContain('Could not download');
     });
 
     test('reports the reason when JSII_DEBUG is set', async () => {
-      process.env.JSII_DEBUG = '1';
       fakeReleasesServer({ statusCode: 500, statusMessage: 'Internal Server Error' });
 
-      await emitSupportPolicyInformation();
-
-      expect(printed()).toContain(
+      expect(await supportNotice({ JSII_DEBUG: '1' })).toContain(
         'Could not download releases.json from GitHub: received error response: HTTP 500 - Internal Server Error',
       );
-    });
-
-    test('is quiet about the reason when JSII_DEBUG is not set', async () => {
-      fakeReleasesServer({ statusCode: 500, statusMessage: 'Internal Server Error' });
-
-      await emitSupportPolicyInformation();
-
-      expect(printed()).not.toContain('Could not download');
     });
   });
 });
