@@ -34,6 +34,18 @@ describe('JSII1011 typescript-restriction/intersection-member-different', () => 
       reasons: ['string | number', 'string | number | boolean'],
     },
     {
+      what: 'an intersection of types',
+      a: 'member(x: IX & IY): void',
+      b: 'member(x: IX & IZ): void',
+      reasons: ['testpkg.IX & testpkg.IY', 'testpkg.IX & testpkg.IZ'],
+    },
+    {
+      what: 'the number of types in an intersection',
+      a: 'member(x: IX & IY): void',
+      b: 'member(x: IX & IY & IZ): void',
+      reasons: ['testpkg.IX & testpkg.IY', 'testpkg.IX & testpkg.IY & testpkg.IZ'],
+    },
+    {
       what: 'a class against a primitive',
       a: 'readonly member: Other',
       b: 'readonly member: string',
@@ -93,6 +105,10 @@ describe('JSII1011 typescript-restriction/intersection-member-different', () => 
     ).toEqual([]);
   });
 
+  test('is not reported for a parameter that is an intersection, declared identically', () => {
+    expect(compileIntersection('member(x: IX & IY): void', 'member(x: IX & IY): void')).toEqual([]);
+  });
+
   test('is not reported for members declared identically', () => {
     expect(compileIntersection('method(x?: string): number', 'method(x?: string): number')).toEqual([]);
   });
@@ -116,6 +132,9 @@ describe('JSII1011 typescript-restriction/intersection-member-different', () => 
 function compileIntersection(membersOfA: string, membersOfB: string): string[] {
   return compileForDiagnostics(`
     export class Other {}
+    export interface IX { readonly x: string }
+    export interface IY { readonly y: string }
+    export interface IZ { readonly z: string }
     export interface IA { ${membersOfA} }
     export interface IB { ${membersOfB} }
     export class Consumer {
