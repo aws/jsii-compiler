@@ -295,6 +295,59 @@ describe('loadProjectInfo', () => {
       });
     });
 
+    test('valid Ruby target configuration is loaded', () => {
+      return _withTestProject(
+        (projectRoot) => {
+          const { projectInfo } = loadProjectInfo(projectRoot);
+          expect(projectInfo.targets.ruby).toEqual({
+            gem: 'my-gem',
+            module: 'MyModule',
+            acronyms: ['AWS'],
+          });
+        },
+        (info) => {
+          info.jsii.targets.ruby = {
+            gem: 'my-gem',
+            module: 'MyModule',
+            acronyms: ['AWS'],
+          };
+        },
+      );
+    });
+
+    test('valid nested Ruby module namespace is loaded', () => {
+      return _withTestProject(
+        (projectRoot) => {
+          const { projectInfo } = loadProjectInfo(projectRoot);
+          expect(projectInfo.targets.ruby?.module).toEqual('My::Nested::Module');
+        },
+        (info) => {
+          info.jsii.targets.ruby = {
+            gem: 'my-gem',
+            module: 'My::Nested::Module',
+          };
+        },
+      );
+    });
+
+    test('invalid Ruby target key is rejected', () => {
+      expectProjectLoadError(/Unknown key in jsii.targets.ruby: invalid/, (proj) => {
+        proj.jsii.targets.ruby = {
+          gem: 'my-gem',
+          invalid: 'value',
+        } as any;
+      });
+    });
+
+    test('invalid Ruby module name is rejected', () => {
+      expectProjectLoadError(/jsii.targets.ruby.module contains non-identifier characters/, (proj) => {
+        proj.jsii.targets.ruby = {
+          gem: 'my-gem',
+          module: 'My-Module',
+        };
+      });
+    });
+
     function expectProjectLoadError(error: RegExp, gremlin: Parameters<typeof _withTestProject>[1]) {
       _withTestProject((root) => expect(() => loadProjectInfo(root)).toThrow(error), gremlin);
     }

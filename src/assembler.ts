@@ -2918,6 +2918,7 @@ export class Assembler implements Emitter {
     const javaPackages: Record<string, string[]> = {};
     const pythonModules: Record<string, string[]> = {};
     const goPackages: Record<string, string[]> = {};
+    const rubyModules: Record<string, string[]> = {};
 
     for (const submodule of this._submodules.values()) {
       const targets = submodule.targets as AssemblyTargets | undefined;
@@ -2934,12 +2935,16 @@ export class Assembler implements Emitter {
       if (targets?.go?.packageName) {
         accumList(goPackages, targets.go.packageName, submodule.fqn);
       }
+      if (targets?.ruby?.module) {
+        accumList(rubyModules, targets.ruby.module, submodule.fqn);
+      }
     }
 
     maybeError('dotnet', dotNetnamespaces);
     maybeError('java', javaPackages);
     maybeError('python', pythonModules);
     maybeError('go', goPackages);
+    maybeError('ruby', rubyModules);
 
     function accumList(set: Record<string, string[]>, key: string, value: string) {
       if (!set[key]) {
