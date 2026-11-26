@@ -71,3 +71,19 @@ describe('accessors', () => {
     expect(result.diagnostics.filter((d) => d.category === DiagnosticCategory.Error)).toEqual([]);
   });
 });
+
+describe('JSII5010 / JSII5015 re-declaration of interface members', () => {
+  // This documents current behavior, see https://github.com/aws/jsii-compiler/issues/2970
+  test('a property that changes its shape is not reported as JSII5015, the validator reports JSII5010 instead', () => {
+    expect(
+      compileForDiagnostics(`
+        export interface IA {
+          readonly foo: string;
+        }
+        export interface IB extends IA {
+          foo: string;
+        }
+      `),
+    ).toEqual(['JSII5010: "testpkg.IB#foo" turns mutable when implementing testpkg.IA. Make it readonly']);
+  });
+});

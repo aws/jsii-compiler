@@ -82,6 +82,30 @@ describe('re-exporting a dependency', () => {
   );
 });
 
+describe('dependency without typings', () => {
+  test('a dependency that TypeScript cannot resolve is ignored', () =>
+    TestWorkspace.withWorkspace((ws) => {
+      ws.addDependency(compileJsiiForTest('export class Foreign {}', { packageJson: { name: 'dependency' } }));
+      // Leave the dependency with an entry point that Node.js finds, but TypeScript does not understand, and no typings.
+      const depDir = ws.dependencyDir('dependency');
+      const packageJson = JSON.parse(fs.readFileSync(path.join(depDir, 'package.json'), 'utf-8'));
+      delete packageJson.types;
+      packageJson.main = 'entry.txt';
+      fs.writeFileSync(path.join(depDir, 'package.json'), JSON.stringify(packageJson));
+      fs.writeFileSync(path.join(depDir, 'entry.txt'), '');
+      fs.rmSync(path.join(depDir, 'index.d.ts'));
+      fs.rmSync(path.join(depDir, 'index.js'));
+
+      const result = compileJsiiForTest('export class Klass {}', {
+        compilationDirectory: ws.rootDirectory,
+        packageJson: DEPENDS_ON_IT,
+      });
+
+      expect(Object.keys(result.assembly.types ?? {})).toEqual(['testpkg.Klass']);
+      expect(result.assembly.dependencyClosure).toEqual({ dependency: { targets: { js: { npm: 'dependency' } } } });
+    }));
+});
+
 function updateAssembly(packageDir: string, update: (assembly: spec.Assembly) => void) {
   const file = path.join(packageDir, spec.SPEC_FILE_NAME);
   const assembly: spec.Assembly = JSON.parse(fs.readFileSync(file, 'utf-8'));
