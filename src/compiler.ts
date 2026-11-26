@@ -430,7 +430,7 @@ export interface BuildProjectResult {
  */
 function deriveEntry(projectRoot: string, projectInfo: ProjectInfo, rootDir?: string, outDir?: string): string {
   const dts: string = projectInfo.types ?? 'index.d.ts';
-  let mainFile = dts.replace(/\.d\.ts(x?)$/, '.ts$1').replace(/\.js$/, '.ts');
+  let mainFile = dts.replace(/\.d\.ts(x?)$/, '.ts$1');
 
   if (outDir != null) {
     // strip the outDir prefix, then prepend rootDir (if any)
@@ -440,13 +440,18 @@ function deriveEntry(projectRoot: string, projectInfo: ProjectInfo, rootDir?: st
   return path.resolve(projectRoot, mainFile);
 }
 
+/** The program reports config paths as absolute paths; record them relative to the project, like the classic compiler. */
+function relativeConfigPath(projectRoot: string, configPath: string | undefined): string | undefined {
+  return configPath != null && path.isAbsolute(configPath) ? path.relative(projectRoot, configPath) : configPath;
+}
+
 /**
  * The diagnostic for an entry point that is not part of the program. When package.json's `types` is outside of tsc's
  * outDir, it can't be re-rooted from there, so report that (with where tsc puts the declarations) instead.
  */
 function missingEntryDiagnostic(entry: string, projectInfo: ProjectInfo, rootDir?: string, outDir?: string) {
   const dts: string = projectInfo.types ?? 'index.d.ts';
-  const mainFile = dts.replace(/\.d\.ts(x?)$/, '.ts$1').replace(/\.js$/, '.ts');
+  const mainFile = dts.replace(/\.d\.ts(x?)$/, '.ts$1');
   if (outDir == null || !isOutsideOfDirectory(path.relative(outDir, mainFile))) {
     return JsiiDiagnostic.JSII_0004_COULD_NOT_FIND_ENTRYPOINT.createDetached(entry);
   }
@@ -469,15 +474,13 @@ export function buildProject(options: BuildProjectOptions): BuildProjectResult {
   let host = CompilerHost.open(options.projectRoot, options.tsconfigFileName);
   let project = host.getProject();
   let tsDiagnostics = collectTsDiagnostics(project.program);
-  let tscRootDir = projectInfo.tsc?.rootDir;
-  const tscOutDir = projectInfo.tsc?.outDir;
 
   // TypeScript 7 no longer infers `rootDir` from the common directory of the
   // sources when `outDir` is set (TS5011). The classic compiler relied on that
   // inference for the output layout and recorded the inferred directory as
   // `metadata.tscRootDir`; do the same for generated configs: infer it from the
   // program's root files, write it into the tsconfig and open the project again.
-  if (options.generatedTsconfig && tscRootDir == null && tsDiagnostics.some((d) => d.code === 5011)) {
+  if (options.generatedTsconfig && projectInfo.tsc?.rootDir == null && tsDiagnostics.some((d) => d.code === 5011)) {
     const inferred = inferRootDir(project.rootFileNames, projectRoot);
     if (inferred != null) {
       const tsconfigPath = path.join(projectRoot, options.tsconfigFileName ?? 'tsconfig.json');
@@ -488,9 +491,22 @@ export function buildProject(options: BuildProjectOptions): BuildProjectResult {
       host = CompilerHost.open(options.projectRoot, options.tsconfigFileName);
       project = host.getProject();
       tsDiagnostics = collectTsDiagnostics(project.program);
-      tscRootDir = inferred;
     }
   }
+
+  // Like the classic compiler, take `outDir` and `rootDir` from the tsconfig the
+  // program uses: as written in `package.json` for a generated tsconfig, from the
+  // program's options for a user-provided one. `rootDir` only counts with an
+  // `outDir`; when it is not set, use the common directory of the sources, as tsc did.
+  const compilerOptions = options.generatedTsconfig
+    ? { outDir: projectInfo.tsc?.outDir, rootDir: projectInfo.tsc?.rootDir }
+    : {
+        outDir: relativeConfigPath(projectRoot, project.program.getCompilerOptions().outDir),
+        rootDir: relativeConfigPath(projectRoot, project.program.getCompilerOptions().rootDir),
+      };
+  const tscOutDir = compilerOptions.outDir;
+  const tscRootDir =
+    tscOutDir != null ? compilerOptions.rootDir ?? inferRootDir(project.rootFileNames, projectRoot) : undefined;
 
   const entry = deriveEntry(projectRoot, projectInfo, tscRootDir, tscOutDir);
 
