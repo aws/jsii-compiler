@@ -1,4 +1,4 @@
-import { javascript, JsonPatch, github, typescript, YamlFile } from 'projen';
+import { javascript, JsonFile, JsonPatch, github, typescript, YamlFile } from 'projen';
 import { YarnNodeLinker } from 'projen/lib/javascript/yarnrc';
 import { BuildWorkflow } from './projenrc/build-workflow';
 import { JsiiCalcFixtures } from './projenrc/fixtures';
@@ -6,6 +6,10 @@ import { ReleaseWorkflow } from './projenrc/release';
 import { PREVIEW_RELEASES, SUPPORT_POLICY, SupportPolicy } from './projenrc/support';
 import { UpdateIntegPackage } from './projenrc/update-integ-package';
 import { UpgradeDependencies } from './projenrc/upgrade-dependencies';
+import { BASE_COMPILER_OPTIONS, convertForJson } from './src/tsconfig/compiler-options';
+import generated from './src/tsconfig/rulesets/generated.public';
+import minimal from './src/tsconfig/rulesets/minimal.public';
+import strict from './src/tsconfig/rulesets/strict.public';
 
 //  See 'projenrc/support.ts' for TypeScript versions we are tracking.
 //  To add a new TypeScript version, follow the complete process documented in:
@@ -148,6 +152,11 @@ project.tryFindObjectFile('projenrc/tsconfig.json')?.patch(
   // projenrc/support.ts needs these files
   JsonPatch.add('/include/-', '../src/support.ts'),
   JsonPatch.add('/include/-', '../src/version.ts'),
+  // the base tsconfigs are generated from the tsconfig rule sets
+  JsonPatch.add('/include/-', '../src/case.ts'),
+  JsonPatch.add('/include/-', '../src/tsconfig/compiler-options.ts'),
+  JsonPatch.add('/include/-', '../src/tsconfig/validator.ts'),
+  JsonPatch.add('/include/-', '../src/tsconfig/rulesets/*.ts'),
 );
 
 // Don't show .gitignore'd files in the VSCode explorer
@@ -169,6 +178,23 @@ project.package.addField('exports', {
   './tsconfig.generated.json': './tsconfig.generated.json',
   './tsconfig.minimal.json': './tsconfig.minimal.json',
 });
+
+// Base tsconfigs for the `extends` option of a user-provided tsconfig, generated from the validation rule sets.
+// Each one sets the options its rule set requires, with the values of the tsconfig jsii generates.
+const generatedCompilerOptions = convertForJson(BASE_COMPILER_OPTIONS);
+for (const [name, ruleSet] of Object.entries({ strict, generated, minimal })) {
+  // The minimal rule set accepts a missing `declaration`, but TypeScript then emits no declarations, which jsii needs.
+  const fields = new Set([...ruleSet.requiredFields, 'declaration']);
+  new JsonFile(project, `tsconfig.${name}.json`, {
+    allowComments: false,
+    editGitignore: false,
+    obj: {
+      compilerOptions: Object.fromEntries(
+        Object.entries(generatedCompilerOptions).filter(([field]) => fields.has(field)),
+      ),
+    },
+  });
+}
 
 // Remove TypeScript devDependency (it's a direct/normal dependency here)
 project.deps.removeDependency('typescript');

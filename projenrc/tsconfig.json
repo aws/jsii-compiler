@@ -9,7 +9,11 @@
     "**/*.ts",
     "../.projenrc.ts",
     "../src/support.ts",
-    "../src/version.ts"
+    "../src/version.ts",
+    "../src/case.ts",
+    "../src/tsconfig/compiler-options.ts",
+    "../src/tsconfig/validator.ts",
+    "../src/tsconfig/rulesets/*.ts"
   ],
   "exclude": [
     "node_modules"
