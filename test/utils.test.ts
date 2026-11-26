@@ -1,9 +1,9 @@
-import { Diagnostic, DiagnosticCategory } from '../src/diagnostic';
+import { DiagnosticCategory } from 'typescript';
 import { JsiiDiagnostic } from '../src/jsii-diagnostic';
 import { parsePerson, parseRepository, formatCompilationSummary } from '../src/utils';
 import { silencedWarnings } from '../src/warnings';
 
-function makeDiag(category: DiagnosticCategory): Diagnostic {
+function makeDiag(category: DiagnosticCategory): import('typescript').Diagnostic {
   return { category, code: 1234, file: undefined, start: undefined, length: undefined, messageText: 'test' };
 }
 
