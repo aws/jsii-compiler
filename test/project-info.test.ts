@@ -358,6 +358,244 @@ describe('loadProjectInfo', () => {
       },
     );
   });
+
+  describe('package.json validation', () => {
+    test.each(['name', 'version', 'author', 'repository', 'main', 'jsii'] as const)(
+      'rejects a missing "%s" attribute',
+      (attribute) =>
+        _withTestProject(
+          (projectRoot) =>
+            expect(() => loadProjectInfo(projectRoot)).toThrow(
+              `The "package.json" file must specify the "${attribute}" attribute`,
+            ),
+          (info) => {
+            delete (info as any)[attribute];
+          },
+        ),
+    );
+
+    test('rejects a missing license', () =>
+      _withTestProject(
+        (projectRoot) => expect(() => loadProjectInfo(projectRoot)).toThrow(/No "license" was specified/),
+        (info) => {
+          delete (info as any).license;
+        },
+      ));
+
+    test('rejects a "repository" without a URL', () =>
+      _withTestProject(
+        (projectRoot) =>
+          expect(() => loadProjectInfo(projectRoot)).toThrow('must specify the "repository.url" attribute'),
+        (info) => {
+          (info as any).repository = { type: 'git' };
+        },
+      ));
+
+    test('rejects an author without a name', () =>
+      _withTestProject(
+        (projectRoot) => expect(() => loadProjectInfo(projectRoot)).toThrow('must specify the "author.name" attribute'),
+        (info) => {
+          (info as any).author = { url: 'https://aws.amazon.com' };
+        },
+      ));
+
+    test('accepts "author" and "repository" in their string forms', () =>
+      _withTestProject(
+        (projectRoot) => {
+          const { projectInfo } = loadProjectInfo(projectRoot);
+          expect(_stripUndefined(projectInfo.author)).toEqual({
+            name: 'Jane Doe',
+            email: 'jane@example.com',
+            url: 'https://example.com',
+            roles: ['author'],
+          });
+          expect(_stripUndefined(projectInfo.repository)).toEqual({
+            type: 'git',
+            url: 'https://github.com/aws/jsii-compiler.git',
+          });
+        },
+        (info) => {
+          (info as any).author = 'Jane Doe <jane@example.com> (https://example.com)';
+          (info as any).repository = 'aws/jsii-compiler';
+        },
+      ));
+
+    test('rejects a malformed "author" string', () =>
+      _withTestProject(
+        (projectRoot) => expect(() => loadProjectInfo(projectRoot)).toThrow(/Invalid stringified "person" value/),
+        (info) => {
+          (info as any).author = '';
+        },
+      ));
+
+    describe('repository type', () => {
+      test('is guessed from the URL scheme when absent', () =>
+        _withTestProject(
+          (projectRoot) => expect(loadProjectInfo(projectRoot).projectInfo.repository?.type).toBe('svn'),
+          (info) => {
+            (info as any).repository = { url: 'svn://example.com/repo' };
+          },
+        ));
+
+      test('is "git" when the URL ends in ".git"', () =>
+        _withTestProject(
+          (projectRoot) => expect(loadProjectInfo(projectRoot).projectInfo.repository?.type).toBe('git'),
+          (info) => {
+            (info as any).repository = { url: 'https://example.com/repo.git' };
+          },
+        ));
+
+      test.each(['http', 'https'])('cannot be guessed from a plain %s URL', (scheme) =>
+        _withTestProject(
+          (projectRoot) =>
+            expect(() => loadProjectInfo(projectRoot)).toThrow(/must specify the "repository.type" attribute/),
+          (info) => {
+            (info as any).repository = { url: `${scheme}://example.com/repo` };
+          },
+        ),
+      );
+    });
+
+    describe('stability', () => {
+      test('is "deprecated" when only "deprecated" is set', () =>
+        _withTestProject(
+          (projectRoot) => expect(loadProjectInfo(projectRoot).projectInfo.stability).toBe('deprecated'),
+          (info) => {
+            (info as any).deprecated = 'use something else';
+          },
+        ));
+
+      test('warns when "deprecated" is set but the stability is not "deprecated"', () => {
+        const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+        _withTestProject(
+          (projectRoot) => expect(loadProjectInfo(projectRoot).projectInfo.stability).toBe('stable'),
+          (info) => {
+            (info as any).deprecated = 'use something else';
+            (info as any).stability = 'stable';
+          },
+        );
+        expect(warn).toHaveBeenCalledWith(expect.stringContaining('Package is deprecated (use something else)'));
+      });
+
+      test('rejects an unknown stability', () =>
+        _withTestProject(
+          (projectRoot) => expect(() => loadProjectInfo(projectRoot)).toThrow(/Invalid stability "rock-solid"/),
+          (info) => {
+            (info as any).stability = 'rock-solid';
+          },
+        ));
+
+      test('is undefined when neither "stability" nor "deprecated" is set', () =>
+        _withTestProject((projectRoot) => expect(loadProjectInfo(projectRoot).projectInfo.stability).toBeUndefined()));
+    });
+
+    describe('jsii.versionFormat', () => {
+      test('rejects an unknown format', () =>
+        _withTestProject(
+          (projectRoot) => expect(() => loadProjectInfo(projectRoot)).toThrow(/Invalid jsii.versionFormat "long"/),
+          (info) => {
+            (info.jsii as any).versionFormat = 'long';
+          },
+        ));
+
+      test('defaults to "full"', () =>
+        _withTestProject((projectRoot) =>
+          expect(loadProjectInfo(projectRoot).projectInfo.jsiiVersionFormat).toBe('full'),
+        ));
+    });
+
+    test('rejects an invalid jsii.validateTsconfig rule set', () =>
+      _withTestProject(
+        (projectRoot) => expect(() => loadProjectInfo(projectRoot)).toThrow(/Invalid validateTsconfig "paranoid"/),
+        (info) => {
+          (info.jsii as any).validateTsconfig = 'paranoid';
+        },
+      ));
+  });
+
+  describe('dependencies', () => {
+    test('rejects a bundled dependency that is also a peer dependency', () =>
+      _withTestProject(
+        (projectRoot) =>
+          expect(() => loadProjectInfo(projectRoot)).toThrow(
+            `The "package.json" file has "${TEST_DEP_ASSEMBLY.name}" in "bundleDependencies", and also in "peerDependencies"`,
+          ),
+        (info) => {
+          info.bundleDependencies = [TEST_DEP_ASSEMBLY.name];
+        },
+      ));
+
+    test('rejects a dependency for which no jsii assembly can be found', () => {
+      jest.spyOn(console, 'error').mockImplementation(() => undefined);
+      _withTestProject(
+        (projectRoot) =>
+          expect(() => loadProjectInfo(projectRoot)).toThrow(/Unable to locate jsii assembly for "not-installed"/),
+        (info) => {
+          info.dependencies['not-installed'] = '^1.0.0';
+        },
+      );
+    });
+
+    describe('local "file:" dependencies', () => {
+      // This documents current behavior, see https://github.com/aws/jsii-compiler/issues/2946
+      test('are found, but fail the version check against the raw "file:" declaration', () =>
+        _withTestProject(
+          (projectRoot) => {
+            const localPackage = path.join(projectRoot, '..', path.basename(projectRoot) + '-local');
+            fs.mkdirSync(localPackage, { recursive: true });
+            try {
+              writeNpmPackageSkeleton(localPackage);
+              fs.writeFileSync(
+                path.join(localPackage, 'package.json'),
+                JSON.stringify({ name: 'jsii-test-local', version: '1.2.3' }),
+              );
+              writeAssembly(localPackage, {
+                ...TEST_DEP_ASSEMBLY,
+                name: 'jsii-test-local',
+                version: '1.2.3',
+                dependencies: undefined,
+              });
+
+              const pkg = JSON.parse(fs.readFileSync(path.join(projectRoot, 'package.json'), 'utf-8'));
+              const reference = `file:../${path.basename(localPackage)}`;
+              pkg.dependencies = { 'jsii-test-local': reference };
+              pkg.peerDependencies = { 'jsii-test-local': reference };
+              fs.writeFileSync(path.join(projectRoot, 'package.json'), JSON.stringify(pkg));
+
+              expect(() => loadProjectInfo(projectRoot)).toThrow(
+                /Declared dependency on version file:\.\.\/.+-local of jsii-test-local, but version 1\.2\.3 was found/,
+              );
+            } finally {
+              fs.rmSync(localPackage, { force: true, recursive: true });
+            }
+          },
+          (info) => {
+            info.dependencies = {};
+            info.peerDependencies = {};
+          },
+        ));
+
+      test('are rejected when the local package has no assembly', () =>
+        _withTestProject(
+          (projectRoot) => {
+            const localPackage = path.join(projectRoot, 'local-without-assembly');
+            fs.mkdirSync(localPackage, { recursive: true });
+            fs.writeFileSync(
+              path.join(localPackage, 'package.json'),
+              JSON.stringify({ name: 'jsii-test-local', version: '1.2.3' }),
+            );
+
+            expect(() => loadProjectInfo(projectRoot)).toThrow(
+              /Expected to find .jsii file in .*local-without-assembly/,
+            );
+          },
+          (info) => {
+            info.dependencies = { 'jsii-test-local': 'file:./local-without-assembly' };
+            info.peerDependencies = {};
+          },
+        ));
+    });
+  });
 });
 
 const TEST_DEP_ASSEMBLY: spec.Assembly = {
