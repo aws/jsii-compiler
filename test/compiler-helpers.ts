@@ -1,12 +1,12 @@
 import { Diagnostic, DiagnosticCategory } from 'typescript';
-import { CompilerOptions } from '../src/compiler';
-import { compileJsiiForTest, TestCompilationOptions } from '../src/helpers';
-import { JsiiDiagnostic } from '../src/jsii-diagnostic';
+import { compileJsiiForTest, JsiiDiagnostic, TestCompilationOptions } from '../src';
+
+type CompilerOptions = NonNullable<Parameters<typeof compileJsiiForTest>[2]>;
 
 export function compileJsiiForErrors<O extends Omit<TestCompilationOptions, 'captureDiagnostics'>>(
   source: string | { 'index.ts': string; [name: string]: string },
   options?: O,
-  compilerOptions?: Omit<CompilerOptions, 'projectInfo' | 'watch'>,
+  compilerOptions?: CompilerOptions,
 ): string[] {
   const r = compileJsiiForTest(source, { ...options, captureDiagnostics: true }, compilerOptions);
   return errors(r.diagnostics);
@@ -23,7 +23,7 @@ export function errors(xs: readonly Diagnostic[]) {
 export function compileJsiiForDiagnostics(
   source: string | { 'index.ts': string; [name: string]: string },
   options?: Omit<TestCompilationOptions, 'captureDiagnostics'>,
-  compilerOptions?: Omit<CompilerOptions, 'projectInfo' | 'watch'>,
+  compilerOptions?: CompilerOptions,
 ): JsiiDiagnostic[] {
   const r = compileJsiiForTest(source, { ...options, captureDiagnostics: true }, compilerOptions);
   return r.diagnostics.filter(JsiiDiagnostic.isJsiiDiagnostic);
