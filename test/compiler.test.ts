@@ -12,6 +12,7 @@ import { compileJsiiForErrors } from './compiler-helpers';
 import { compile, Lock } from './fixtures';
 import { compileJsiiForTest } from '../src';
 import { Compiler } from '../src/compiler';
+import { DiagnosticCategory } from '../src/diagnostic';
 import { JsiiDiagnostic } from '../src/jsii-diagnostic';
 import { ProjectInfo } from '../src/project-info';
 import { TypeScriptConfigValidationRuleSet } from '../src/tsconfig';
@@ -375,11 +376,9 @@ describe(Compiler, () => {
       // Only the package name is reported, not the types that jsii looked up by name.
       const errors = result.diagnostics
         .filter(JsiiDiagnostic.isJsiiDiagnostic)
-        .filter((diag) => diag.category === ts.DiagnosticCategory.Error);
+        .filter((diag) => diag.category === DiagnosticCategory.Error);
       expect(errors.map((diag) => diag.jsiiCode)).toEqual([9]);
-      expect(ts.flattenDiagnosticMessageText(errors[0].messageText, '\n')).toContain(
-        `${JSON.stringify(name)} contains a "."`,
-      );
+      expect(String(errors[0].messageText)).toContain(`${JSON.stringify(name)} contains a "."`);
     });
 
     test('does not report a package name without a dot', () => {
