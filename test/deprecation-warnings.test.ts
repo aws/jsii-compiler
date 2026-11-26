@@ -488,9 +488,7 @@ class DeprecationError extends Error {
   });
 });
 
-// @TODO(ts7): re-enable once the TypeScript 7 compiler injects the --add-deprecation-warnings calls into the
-// emitted .js (it writes .warnings.jsii.js, but does not call into it yet).
-describe.skip('cross-assembly validation', () => {
+describe('cross-assembly validation', () => {
   test.each([
     ['ForeignProps', '{ old: "value" }', 'warn', 'present'],
     ['ForeignProps', '{ old: "value" }', 'fail', 'present'],
@@ -563,9 +561,7 @@ describe.skip('cross-assembly validation', () => {
   });
 });
 
-// @TODO(ts7): re-enable once the TypeScript 7 compiler injects the --add-deprecation-warnings calls into the
-// emitted .js (it writes .warnings.jsii.js, but does not call into it yet).
-describe.skip('Call injections', () => {
+describe('Call injections', () => {
   test('does not add warnings by default', () => {
     const result = compileJsiiForTest(
       `
@@ -619,7 +615,9 @@ describe.skip('Call injections', () => {
     expect(content).not.toContain(`const jsiiDeprecationWarnings = require("${expectedPath}")`);
   }, 60000);
 
-  test('deprecated methods', () => {
+  // @TODO(ts7): this snapshot holds the whole emitted file, including the jsii rtti and the inline source map,
+  // which the TypeScript 7 emit writes differently from TypeScript 6 (with or without deprecation warnings).
+  test.skip('deprecated methods', () => {
     const result = compileJsiiForTest(
       `
     export class Foo {
@@ -655,7 +653,9 @@ describe.skip('Call injections', () => {
     `);
   });
 
-  test('methods with parameters', () => {
+  // @TODO(ts7): this snapshot holds the whole emitted file, including the jsii rtti and the inline source map,
+  // which the TypeScript 7 emit writes differently from TypeScript 6 (with or without deprecation warnings).
+  test.skip('methods with parameters', () => {
     const result = compileJsiiForTest(
       `
         export interface A {readonly x: number;}
@@ -689,7 +689,9 @@ describe.skip('Call injections', () => {
     `);
   }, 60000);
 
-  test('deprecated getters', () => {
+  // @TODO(ts7): this snapshot holds the whole emitted file, including the jsii rtti and the inline source map,
+  // which the TypeScript 7 emit writes differently from TypeScript 6 (with or without deprecation warnings).
+  test.skip('deprecated getters', () => {
     const result = compileJsiiForTest(
       `
     export class Foo {
@@ -727,7 +729,9 @@ describe.skip('Call injections', () => {
     `);
   });
 
-  test('deprecated setters', () => {
+  // @TODO(ts7): this snapshot holds the whole emitted file, including the jsii rtti and the inline source map,
+  // which the TypeScript 7 emit writes differently from TypeScript 6 (with or without deprecation warnings).
+  test.skip('deprecated setters', () => {
     const result = compileJsiiForTest(
       `
     export class Foo {
@@ -776,7 +780,9 @@ describe.skip('Call injections', () => {
     `);
   });
 
-  test('creates a new instance of error when test', () => {
+  // @TODO(ts7): this snapshot holds the whole emitted file, including the jsii rtti and the inline source map,
+  // which the TypeScript 7 emit writes differently from TypeScript 6 (with or without deprecation warnings).
+  test.skip('creates a new instance of error when test', () => {
     const result = compileJsiiForTest(
       `
     ${DEPRECATED}
@@ -813,10 +819,10 @@ describe.skip('Call injections', () => {
   });
 });
 
-// @TODO(ts7): re-enable once the TypeScript 7 compiler injects the --add-deprecation-warnings calls into the
-// emitted .js (it writes .warnings.jsii.js, but does not call into it yet).
-describe.skip('thrown exceptions have the expected stack trace', () => {
-  test('constructor', () => {
+describe('thrown exceptions have the expected stack trace', () => {
+  // @TODO(ts7): the line numbers in this stack trace include the 2 lines of jsii rtti that the classic compiler
+  // emits above the class body; re-enable once the TypeScript 7 emit puts the rtti there too.
+  test.skip('constructor', () => {
     const compilation = compileJsiiForTest(
       `
       /** @deprecated for testing */
@@ -884,7 +890,9 @@ describe.skip('thrown exceptions have the expected stack trace', () => {
     expect(mockWarn).toHaveBeenCalledTimes(1);
   });
 
-  test('getter', () => {
+  // @TODO(ts7): the line numbers in this stack trace include the 2 lines of jsii rtti that the classic compiler
+  // emits above the class body; re-enable once the TypeScript 7 emit puts the rtti there too.
+  test.skip('getter', () => {
     const compilation = compileJsiiForTest(
       `
       export class DeprecatedConstructor {
@@ -925,7 +933,9 @@ describe.skip('thrown exceptions have the expected stack trace', () => {
     }
   });
 
-  test('setter', () => {
+  // @TODO(ts7): the line numbers in this stack trace include the 2 lines of jsii rtti that the classic compiler
+  // emits above the class body; re-enable once the TypeScript 7 emit puts the rtti there too.
+  test.skip('setter', () => {
     const compilation = compileJsiiForTest(
       `
       export class DeprecatedConstructor {
@@ -972,7 +982,9 @@ describe.skip('thrown exceptions have the expected stack trace', () => {
     }
   });
 
-  test('method', () => {
+  // @TODO(ts7): the line numbers in this stack trace include the 2 lines of jsii rtti that the classic compiler
+  // emits above the class body; re-enable once the TypeScript 7 emit puts the rtti there too.
+  test.skip('method', () => {
     const compilation = compileJsiiForTest(
       `
       export class DeprecatedConstructor {

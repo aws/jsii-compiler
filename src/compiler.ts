@@ -48,8 +48,8 @@ export interface CompilerOptions {
   /**
    * Whether to add warnings for deprecated elements.
    *
-   * On the TypeScript 7 backend this writes the `.warnings.jsii.js` module;
-   * the calls into it are not injected into the emitted `.js` yet.
+   * Writes the `.warnings.jsii.js` module and adds calls into it to the
+   * emitted `.js`.
    */
   addDeprecationWarnings?: boolean;
   /**
@@ -522,6 +522,7 @@ export function buildProject(options: BuildProjectOptions): BuildProjectResult {
     // written when the assembler reports no errors, whatever TypeScript reported.
     let assembly: spec.Assembly | undefined;
     let jsiiFailed = true;
+    let deprecationWarnings: DeprecationWarningsInjector | undefined;
     if (!project.program.getSourceFile(entry)) {
       logFailure('Type model', undefined);
       diagnostics.push(missingEntryDiagnostic(entry, projectInfo, tscRootDir, tscOutDir));
@@ -552,10 +553,8 @@ export function buildProject(options: BuildProjectOptions): BuildProjectResult {
             ...assembly.metadata,
             jsii: { ...(assembly.metadata?.jsii ?? {}), compiledWithDeprecationWarnings: true },
           };
-          new DeprecationWarningsInjector(host.ts, project, assembler.enumMemberDeclarations).process(
-            assembly,
-            projectInfo,
-          );
+          deprecationWarnings = new DeprecationWarningsInjector(host.ts, project, assembler.enumMemberDeclarations);
+          deprecationWarnings.process(assembly, projectInfo);
         }
       } catch (e: any) {
         // Same contract as the classic compiler: a failure while assembling is
@@ -587,6 +586,7 @@ export function buildProject(options: BuildProjectOptions): BuildProjectResult {
         assembly: assembly ?? ({ version: projectInfo.version, types: {} } as unknown as spec.Assembly),
         outDir: tscOutDir,
         rootDir: tscRootDir,
+        deprecationWarnings,
       }));
     } catch (err) {
       emitFailed = true;

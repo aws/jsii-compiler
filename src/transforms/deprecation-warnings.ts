@@ -10,9 +10,11 @@
  * the TypeScript 7 printer (`api.printer.printNode`), which lays out code the
  * same way the TypeScript 6 printer did.
  *
- * Not here yet: the calls injected into the emitted `.js` (the classic
- * `Transformer`). TypeScript 7 has no transformer hook, so that becomes a
- * post-emit pass.
+ * The calls into that file (the classic `Transformer`) are added to the
+ * emitted `.js` after emit, because TypeScript 7 has no transformer hook: see
+ * `callInsertions`. The statements are the same; they are printed by the
+ * TypeScript 7 printer and spliced into the emitted text at the place the
+ * TypeScript 6 printer put them, and the source map is shifted to match.
  * ---------------------------------------------------------------------------
  */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return */
@@ -20,12 +22,17 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as spec from '@jsii/spec';
 import { Assembly } from '@jsii/spec';
+import * as log4js from 'log4js';
 
 import { TypeScriptApi, TypeScriptProject } from '../compiler-host';
 import { ProjectInfo } from '../project-info';
+import { Insertion } from './source-map';
+
+const LOG = log4js.getLogger('jsii/deprecation-warnings');
 
 export const WARNINGSCODE_FILE_NAME = '.warnings.jsii.js';
 const WARNING_FUNCTION_NAME = 'print';
+const NAMESPACE = 'jsiiDeprecationWarnings';
 const PARAMETER_NAME = 'p';
 const FOR_LOOP_ITEM_NAME = 'o';
 const VISITED_OBJECTS_SET_NAME = 'visitedObjects';
@@ -43,6 +50,7 @@ export class DeprecationWarningsInjector {
   private readonly f: any;
   private readonly k: any;
   private readonly nodeFlags: any;
+  private classIndex?: Map<string, Map<string, spec.ClassType>>;
   private shouldRenderValidatorCache: Record<string, boolean> = {};
   private validatorCacheSeenSet = new Set<string>();
 
@@ -105,6 +113,222 @@ export class DeprecationWarningsInjector {
     const declarations = [this.project.api.printer.printNode(validators)];
     const content = declarations.concat(WARNINGS_FILE_RUNTIME).join('\n');
     fs.writeFileSync(path.join(projectRoot, WARNINGSCODE_FILE_NAME), content);
+  }
+
+  /**
+   * The calls into `.warnings.jsii.js` to add to one emitted `.js` file, as
+   * text insertions (offsets into `jsText`).
+   *
+   * Each class of the `.ts` file is paired with the class emitted for it: both
+   * files hold the same classes in the same order (only ambient classes are
+   * not emitted), which is checked by name. A class is the jsii type with the
+   * same source file and in-file name (the part of its `symbolId` after `:`),
+   * the key the classic transformer used.
+   *
+   * @param jsFile the emitted `.js` file
+   * @param jsText its text, as written by the emit
+   * @param tsFile the `.ts` file it was emitted from
+   */
+  public callInsertions(
+    jsFile: string,
+    jsText: string,
+    tsFile: string,
+    assembly: Assembly,
+    projectRoot: string,
+  ): Insertion[] {
+    const k = this.k;
+    const typesHere = this.classesOf(assembly, projectRoot).get(normalizeRel(path.relative(projectRoot, tsFile)));
+    const tsSource = this.project.program.getSourceFile(tsFile);
+    if (typesHere == null || tsSource == null) {
+      return [];
+    }
+
+    const retained = this.project.api.createSourceFile(jsFile, jsText);
+    try {
+      const jsSource = retained.sourceFile;
+      const tsClasses = classDeclarations(tsSource, k, true);
+      const jsClasses = classDeclarations(jsSource, k, false);
+      if (
+        tsClasses.length !== jsClasses.length ||
+        tsClasses.some((c, i) => c.node.name?.text !== jsClasses[i].node.name?.text)
+      ) {
+        // shortcut: classes are paired by order and name. A transform that adds or reorders
+        // classes (e.g. ES decorators) breaks that; map through the source map if that ever matters.
+        LOG.warn(`Cannot inject deprecation warnings into ${jsFile}: its classes do not match ${tsFile}`);
+        return [];
+      }
+
+      const pending: Array<{ statement: any; place: (printed: string) => Insertion[] }> = [];
+      for (const [i, { node: tsClass, qualifiedName }] of tsClasses.entries()) {
+        const classType = qualifiedName != null ? typesHere.get(qualifiedName) : undefined;
+        if (classType == null) {
+          continue;
+        }
+        const jsClass = jsClasses[i].node;
+        for (const member of jsClass.members) {
+          if (
+            member.body == null ||
+            ![k.MethodDeclaration, k.GetAccessor, k.SetAccessor, k.Constructor].includes(member.kind)
+          ) {
+            continue;
+          }
+          const name: string | undefined = member.name?.getText(jsSource);
+          const statements = this.statementsForMember(member.kind, name, classType, assembly);
+          if (statements.length === 0) {
+            continue;
+          }
+          const caller =
+            member.kind === k.MethodDeclaration
+              ? this.access(this.f.createKeywordExpression(k.ThisKeyword), name!)
+              : member.kind === k.Constructor
+              ? this.id(tsClass.name.text)
+              : this.access(
+                  this.call(this.access(this.id(NAMESPACE), GET_PROPERTY_DESCRIPTOR), [
+                    this.f.createKeywordExpression(k.ThisKeyword),
+                    this.f.createStringLiteral(name!, 0),
+                  ]),
+                  member.kind === k.GetAccessor ? 'get' : 'set',
+                );
+          const index =
+            member.kind === k.Constructor ? member.body.statements.length - constructorBodyStatements(tsClass, k) : 0;
+          pending.push({
+            statement: this.wrapWithRethrow(statements, caller),
+            place: (printed) => statementInsertion(jsText, jsSource, member, index, printed),
+          });
+        }
+      }
+
+      if (pending.length === 0) {
+        return [];
+      }
+      const printed: string[] = this.project.api.batch(
+        ...pending.map((p) => this.project.api.printer.printNode.gen(p.statement)),
+      );
+      const insertions = pending.flatMap((p, i) => p.place(printed[i]));
+
+      const importDir = path.relative(path.dirname(tsFile), projectRoot);
+      const importPath = importDir.startsWith('..')
+        ? unixPath(path.join(importDir, WARNINGSCODE_FILE_NAME))
+        : `./${WARNINGSCODE_FILE_NAME}`;
+      insertions.push(requireInsertion(jsText, jsSource, `const ${NAMESPACE} = require("${importPath}");`));
+      return insertions;
+    } finally {
+      retained.dispose();
+    }
+  }
+
+  /** Assembly classes by `.ts` file (relative to the project root) and in-file name. */
+  private classesOf(assembly: Assembly, projectRoot: string): Map<string, Map<string, spec.ClassType>> {
+    if (this.classIndex == null) {
+      this.classIndex = new Map();
+      for (const type of Object.values(assembly.types ?? {})) {
+        const file = type.locationInModule?.filename;
+        const inFileName = type.symbolId?.slice(type.symbolId.lastIndexOf(':') + 1);
+        if (!spec.isClassType(type) || file == null || inFileName == null) {
+          continue;
+        }
+        const key = normalizeRel(path.relative(projectRoot, path.resolve(projectRoot, file)));
+        if (!this.classIndex.has(key)) {
+          this.classIndex.set(key, new Map());
+        }
+        this.classIndex.get(key)!.set(inFileName, type);
+      }
+    }
+    return this.classIndex;
+  }
+
+  /** The classic `getStatementsForDeclaration`, keyed by member kind and name. */
+  private statementsForMember(
+    kind: any,
+    name: string | undefined,
+    classType: spec.ClassType,
+    assembly: Assembly,
+  ): any[] {
+    if (kind === this.k.Constructor) {
+      const initializer = classType?.initializer;
+      if (initializer) {
+        return this.getStatements(classType, initializer, assembly);
+      }
+    }
+
+    const methods = classType?.methods ?? [];
+    const method = methods.find((m) => m.name === name);
+    if (method) {
+      return this.getStatements(classType, method, assembly);
+    }
+
+    const properties = classType?.properties ?? [];
+    const property = properties.find((p) => p.name === name);
+    if (property) {
+      return this.createWarningStatementForElement(property, classType);
+    }
+    return [];
+  }
+
+  private getStatements(classType: spec.ClassType, method: spec.Method | spec.Initializer, assembly: Assembly) {
+    const statements = this.createWarningStatementForElement(method, classType);
+    for (const parameter of Object.values(method.parameters ?? {})) {
+      const parameterType =
+        assembly.types && spec.isNamedTypeReference(parameter.type) ? assembly.types[parameter.type.fqn] : undefined;
+
+      if (parameterType) {
+        const functionName = `${NAMESPACE}.${fnName(parameterType.fqn)}`;
+        statements.push(this.f.createExpressionStatement(this.call(this.id(functionName), [this.id(parameter.name)])));
+      }
+    }
+
+    return statements;
+  }
+
+  private createWarningStatementForElement(element: spec.Callable | spec.Property, classType: spec.ClassType): any[] {
+    if (spec.isDeprecated(element)) {
+      const elementName = (element as spec.Method | spec.Property).name;
+      const fqn = elementName ? `${classType.fqn}#${elementName}` : classType.fqn;
+      const message = element.docs?.deprecated ?? classType.docs?.deprecated;
+      return [this.createWarningFunctionCall(fqn, message, undefined, true)];
+    }
+    return [];
+  }
+
+  // We try-then-rethrow exceptions to avoid runtimes displaying an uncanny wall of text if the place
+  // where the error was thrown is webpacked. For example, jest somehow manages to capture the throw
+  // location and renders the source line (which may be the whole file) when bundled.
+  private wrapWithRethrow(statements: any[], caller: any): any {
+    const f = this.f;
+    const k = this.k;
+    return f.createTryStatement(
+      f.createBlock(statements),
+      f.createCatchClause(
+        f.createVariableDeclaration(this.id('error')),
+        f.createBlock([
+          // If this is a DeprecationError, trim its stack trace to surface level before re-throwing,
+          // so we don't carry out possibly confusing frames from injected code. That can be toggled
+          // off by setting JSII_DEBUG=1, so we can also diagnose in-injected code faults.
+          f.createIfStatement(
+            this.binary(
+              this.binary(
+                this.access(this.access(this.id('process'), 'env'), 'JSII_DEBUG'),
+                k.ExclamationEqualsEqualsToken,
+                f.createStringLiteral('1', 0),
+              ),
+              k.AmpersandAmpersandToken,
+              this.binary(
+                this.access(this.id('error'), 'name'),
+                k.EqualsEqualsEqualsToken,
+                f.createStringLiteral(DEPRECATION_ERROR, 0),
+              ),
+            ),
+            f.createBlock([
+              f.createExpressionStatement(
+                this.call(this.access(this.id('Error'), 'captureStackTrace'), [this.id('error'), caller]),
+              ),
+            ]),
+          ),
+          f.createThrowStatement(this.id('error')),
+        ]),
+      ),
+      undefined,
+    );
   }
 
   /**
@@ -383,10 +607,11 @@ export class DeprecationWarningsInjector {
     return f.createBlock([], true);
   }
 
-  private createWarningFunctionCall(fqn: string, message = '', condition?: any): any {
+  private createWarningFunctionCall(fqn: string, message = '', condition?: any, includeNamespace = false): any {
     const f = this.f;
+    const functionName = includeNamespace ? `${NAMESPACE}.${WARNING_FUNCTION_NAME}` : WARNING_FUNCTION_NAME;
     const mainStatement = f.createExpressionStatement(
-      this.call(this.id(WARNING_FUNCTION_NAME), [f.createStringLiteral(fqn, 0), f.createStringLiteral(message, 0)]),
+      this.call(this.id(functionName), [f.createStringLiteral(fqn, 0), f.createStringLiteral(message, 0)]),
     );
 
     return condition ? f.createIfStatement(condition, mainStatement) : mainStatement;
@@ -477,6 +702,170 @@ export class DeprecationWarningsInjector {
   private binary(left: any, operator: any, right: any): any {
     return this.f.createBinaryExpression(undefined, left, undefined, this.f.createToken(operator), right);
   }
+}
+
+/**
+ * The classes of a source file, in source order, without ambient ones (which
+ * are not emitted). With `qualify`, a class directly inside a file or
+ * namespace gets its in-file name (`Namespace.Class`).
+ */
+function classDeclarations(sourceFile: any, k: any, qualify: boolean): Array<{ node: any; qualifiedName?: string }> {
+  const result: Array<{ node: any; qualifiedName?: string }> = [];
+  const isAmbient = (node: any) => (node.modifiers ?? []).some((m: any) => m.kind === k.DeclareKeyword);
+  const visit = (node: any, namespace: string[] | undefined): undefined => {
+    if (node.kind === k.ClassDeclaration || node.kind === k.ClassExpression) {
+      if (!isAmbient(node)) {
+        const name = node.name?.text;
+        result.push({
+          node,
+          qualifiedName: qualify && namespace != null && name != null ? [...namespace, name].join('.') : undefined,
+        });
+        node.forEachChild((child: any) => visit(child, undefined));
+      }
+      return undefined;
+    }
+    if (node.kind === k.ModuleDeclaration) {
+      if (!isAmbient(node) && node.body != null) {
+        visit(node.body, namespace && [...namespace, node.name.text]);
+      }
+      return undefined;
+    }
+    node.forEachChild((child: any) => visit(child, node.kind === k.ModuleBlock ? namespace : undefined));
+    return undefined;
+  };
+  sourceFile.forEachChild((child: any) => visit(child, []));
+  return result;
+}
+
+/**
+ * How many statements of the emitted constructor body come from the `.ts`
+ * constructor body after a leading `super(...)` call. The classic transformer
+ * put its statements before those; the emit adds parameter properties (and
+ * field initializers) before them too.
+ */
+function constructorBodyStatements(tsClass: any, k: any): number {
+  const ctor = tsClass.members.find((m: any) => m.kind === k.Constructor && m.body != null);
+  const statements: any[] = ctor?.body?.statements ?? [];
+  const first = statements[0];
+  const hasSuper =
+    first?.kind === k.ExpressionStatement &&
+    first.expression.kind === k.CallExpression &&
+    first.expression.expression.kind === k.SuperKeyword;
+  // shortcut: erased statements (types declared in the body) are not counted out; no jsii code does that.
+  return statements.length - (hasSuper ? 1 : 0);
+}
+
+/**
+ * Where the printed statement goes in the body of an emitted member: before
+ * the statement at `index`, laid out like the TypeScript printer lays out a
+ * block, on one line (`{ a; b; }`) or one statement per line.
+ *
+ * The TypeScript 6 printer dropped the comments between the last statement of
+ * a block it rewrote and the closing `}` (they belong to the `}` token, whose
+ * position is lost with the new statement list), so they are removed here too.
+ */
+function statementInsertion(jsText: string, jsSource: any, member: any, index: number, printed: string): Insertion[] {
+  const body = member.body;
+  const statements: any[] = body.statements;
+  const open = body.getStart(jsSource);
+  const close = body.end - 1;
+  const memberIndent = indentationAt(jsText, member.getStart(jsSource));
+  const afterPrevious = index === 0 ? open + 1 : statements[index - 1].end;
+  const multiLine = jsText.slice(open, body.end).includes('\n');
+
+  const edits: Insertion[] = [];
+  const last = statements[statements.length - 1];
+  let tailStart = open + 1;
+  if (last != null) {
+    // A comment on the line of the last statement is its trailing comment: kept.
+    const lineEnd = jsText.indexOf('\n', last.end);
+    tailStart = lineEnd >= 0 && lineEnd < close ? lineEnd : close;
+  }
+  if (jsText.slice(tailStart, close).trim() !== '') {
+    edits.push({ offset: tailStart, length: close - tailStart, text: multiLine ? `\n${memberIndent}` : ' ' });
+  }
+
+  if (!multiLine) {
+    edits.push({ offset: afterPrevious, text: ` ${indentLines(printed, memberIndent)}` });
+    return edits;
+  }
+  const indent = `${memberIndent}    `;
+  if (index < statements.length) {
+    edits.push({
+      offset: skipWhitespace(jsText, statements[index].pos),
+      text: `${indentLines(printed, indent)}\n${indent}`,
+    });
+  } else {
+    edits.push({ offset: afterPrevious, text: `\n${indent}${indentLines(printed, indent)}` });
+  }
+  return edits;
+}
+
+/**
+ * Where the `require` of the warnings file goes: the first statement of the
+ * `.ts` file, which the CommonJS emit puts after "use strict", its helpers and
+ * the `exports` set-up.
+ */
+function requireInsertion(jsText: string, jsSource: any, statement: string): Insertion {
+  const statements: any[] = jsSource.statements;
+  const isPreamble = (s: any) => {
+    const text: string = s.getText(jsSource);
+    return (
+      text === '"use strict";' ||
+      /^var __\w+ = \(this && this\.__\w+\)/.test(text) ||
+      text.startsWith('Object.defineProperty(exports, "__esModule"') ||
+      /^exports\.[\w$]+ = (exports\.[\w$]+ = )*void 0;$/.test(text)
+    );
+  };
+  const first = statements.findIndex((s) => !isPreamble(s));
+  if (first < 0) {
+    const last = statements[statements.length - 1];
+    return { offset: last?.end ?? 0, text: `\n${statement}` };
+  }
+  return { offset: skipWhitespace(jsText, statements[first].pos), text: `${statement}\n` };
+}
+
+function indentationAt(text: string, offset: number): string {
+  const lineStart = text.lastIndexOf('\n', offset - 1) + 1;
+  return /^[ \t]*/.exec(text.slice(lineStart))![0];
+}
+
+function indentLines(text: string, indent: string): string {
+  return text
+    .split('\n')
+    .map((line, i) => (i === 0 || line === '' ? line : `${indent}${line}`))
+    .join('\n');
+}
+
+function skipWhitespace(text: string, offset: number): number {
+  while (offset < text.length && /\s/.test(text[offset])) {
+    offset++;
+  }
+  return offset;
+}
+
+function normalizeRel(p: string): string {
+  return p.split(path.sep).join('/');
+}
+
+/**
+ * Force a path to be UNIXy (use `/` as a separator)
+ *
+ * `path.join()` etc. will use the system-dependent path separator (either `/` or `\\`
+ * depending on your platform).
+ *
+ * However, if we actually emit the path-dependent separator to the `.js` files, then
+ * files compiled with jsii on Windows cannot be used on any other platform. That seems
+ * like an unnecessary restriction, especially since a `/` will work fine on Windows,
+ * so make sure to always emit `/`.
+ *
+ * TSC itself always strictly emits `/` (or at least, emits the same what you put in).
+ */
+function unixPath(filePath: string) {
+  if (path.sep === '\\') {
+    return filePath.replace(/\\/g, '/');
+  }
+  return filePath;
 }
 
 function fnName(fqn: string): string {
