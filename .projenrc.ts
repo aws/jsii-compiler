@@ -45,7 +45,7 @@ const project = new typescript.TypeScriptProject({
 
   autoDetectBin: true,
 
-  minNodeVersion: '22.12.0', // Node.js 22 LTS
+  minNodeVersion: '22.13.0', // Node.js 22 LTS
   tsconfig: {
     compilerOptions: {
       // @see https://github.com/microsoft/TypeScript/wiki/Node-Target-Mapping
