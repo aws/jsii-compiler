@@ -20,6 +20,7 @@ import { parseTsconfigJson, readTypeScriptConfigFile } from './tsconfig/read';
 import { TypeScriptConfigValidator } from './tsconfig/tsconfig-validator';
 import { ValidationError } from './tsconfig/validator';
 import * as utils from './utils';
+import { isSilenced } from './warnings';
 
 const LOG = log4js.getLogger('jsii/compiler');
 export const DIAGNOSTICS = 'diagnostics';
@@ -154,7 +155,7 @@ export class Compiler {
       LOG.info(`assembled ${result.typeCount} types, emitted ${result.emittedFiles.length} files`);
     }
 
-    const hasWarnings = result.diagnostics.some((d) => d.category === 0 /* Warning */);
+    const hasWarnings = result.diagnostics.some((d) => d.category === DiagnosticCategory.Warning && !isSilenced(d));
     return {
       emitSkipped: result.emitSkipped || (this.options.failOnWarnings === true && hasWarnings),
       diagnostics: result.diagnostics,

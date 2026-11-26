@@ -12,9 +12,10 @@
  * two can be compared. The `.jsii` it produces was compared field by field
  * with the previous implementation's on aws-cdk-lib and the fixtures.
  *
- * Not produced here (yet): the JSII_xxxx validation diagnostics of the
- * previous validator. TypeScript compilation errors are surfaced and fail the
- * build (see compiler.ts).
+ * Not produced here (yet): most of the JSII_xxxx validation diagnostics of the
+ * previous validator; they are ported one group at a time through `_report`.
+ * TypeScript compilation errors are surfaced and fail the build (see
+ * compiler.ts).
  * ===========================================================================
  */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return */
@@ -27,9 +28,10 @@ import { findDependencyDirectory } from './common/find-utils';
 import { symbolIdentifier } from './common/symbol-id';
 import { TypeScriptApi, TypeScriptProject } from './compiler-host';
 import { normalizeConfigPath } from './helpers';
-import { JsiiDiagnostic } from './jsii-diagnostic';
+import { Code, DiagnosticLocation, DiagnosticMessageFormatter, JsiiDiagnostic } from './jsii-diagnostic';
 import * as literate from './literate';
 import { validateTargets, type ProjectInfo } from './project-info';
+import { isReservedName } from './reserved-words';
 import { isAllowedCovariantSubtype } from './type-analysis';
 import { createTypeResolver } from './type-reference';
 import { SHORT_VERSION, VERSION } from './version';
@@ -1199,6 +1201,7 @@ export class Assembler {
       jsiiType.docs = docs;
     }
     this.currentStability = docs?.stability ?? this.defaultStability;
+    this._warnAboutReservedWords(name, decl);
     this._withDefaultDocs(jsiiType);
     const symbolId = this._symbolIdOf(sym);
     if (symbolId) {
@@ -1726,6 +1729,7 @@ export class Assembler {
     const { SyntaxKind } = this.ts;
     const sig = this.checker.getSignatureFromDeclaration(decl);
     const m: any = { locationInModule: this._locationOf(decl), name: msym.name };
+    this._warnAboutReservedWords(msym.name, decl);
     if (isStatic) {
       m.static = true;
     }
@@ -1771,6 +1775,7 @@ export class Assembler {
 
   private _visitProperty(psym: any, decl: any, isStatic: boolean): any {
     const { SyntaxKind } = this.ts;
+    this._warnAboutReservedWords(psym.name, decl);
     const t = this.checker.getTypeOfSymbolAtLocation(psym, decl);
     const opt: { optional?: boolean } = {};
     const p: any = {
@@ -1831,6 +1836,7 @@ export class Assembler {
 
   private _visitParameter(prm: any): any {
     const decl = prm.declarations?.[0]?.resolve(this.project);
+    this._warnAboutReservedWords(prm.name, decl);
     const t = decl ? this.checker.getTypeOfSymbolAtLocation(prm, decl) : undefined;
     const opt: { optional?: boolean } = {};
     const p: any = { name: prm.name, type: this._typeReference(t, opt, decl?.type) };
@@ -2451,6 +2457,47 @@ export class Assembler {
     const sf = decl.getSourceFile();
     const { line } = sf.getLineAndCharacterOfPosition(decl.getStart(sf));
     return { filename: path.relative(this.root, sf.fileName), line: line + 1 };
+  }
+
+  /**
+   * Report a jsii diagnostic, pointing at `node` (or at no location when
+   * `node` is undefined). Pass the name node where one exists, like the
+   * classic assembler did. Returns the diagnostic so that related information
+   * can be added to it.
+   *
+   * To port a diagnostic: call `this._report(JsiiDiagnostic.JSII_xxxx_NAME, node, ...args)`
+   * where the classic assembler pushed `JsiiDiagnostic.JSII_xxxx_NAME.create(node, ...args)`.
+   */
+  private _report<T extends DiagnosticMessageFormatter>(
+    code: Code<T>,
+    node: any | undefined,
+    ...args: Parameters<T>
+  ): JsiiDiagnostic {
+    const diagnostic = code.create(this._diagnosticLocation(node), ...args);
+    this._diagnostics.push(diagnostic);
+    return diagnostic;
+  }
+
+  /** The source range of `node`, for use as a related-information location. */
+  private _diagnosticLocation(node: any | undefined): DiagnosticLocation | undefined {
+    const sf = node?.getSourceFile?.();
+    if (sf == null) {
+      return undefined;
+    }
+    const start: number = node.getStart(sf);
+    return { file: { fileName: sf.fileName, text: this._sourceTextOf(sf) }, start, length: node.end - start };
+  }
+
+  /** The name node of a declaration, or the declaration itself when it has none. */
+  private _nameOrDeclaration(decl: any): any {
+    return decl?.name ?? decl;
+  }
+
+  private _warnAboutReservedWords(name: string, decl: any) {
+    const reservingLanguages = isReservedName(name);
+    if (reservingLanguages) {
+      this._report(JsiiDiagnostic.JSII_5018_RESERVED_WORD, this._nameOrDeclaration(decl), name, reservingLanguages);
+    }
   }
 
   // -------------------------------------------------------------------------

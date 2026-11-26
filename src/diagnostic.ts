@@ -74,51 +74,113 @@ function categoryColor(category: DiagnosticCategory): (s: string) => string {
   }
 }
 
+const HALF_INDENT = '  ';
+const INDENT = '    ';
+const ELLIPSIS = '...';
+
+/** Reads the text of a diagnostic's file: attached to it, or else from disk. */
+function sourceTextOf(file: DiagnosticSourceFile | undefined, start: number | undefined): string | undefined {
+  if (file?.text != null || file?.fileName == null || start == null) {
+    return file?.text;
+  }
+  try {
+    return fs.readFileSync(file.fileName, 'utf8');
+  } catch {
+    return undefined;
+  }
+}
+
+/** `file:line:col`, relative to the project root. */
+function formatLocation(file: DiagnosticSourceFile, text: string | undefined, start: number | undefined, root: string) {
+  let out = chalk.cyan(path.relative(root, file.fileName) || file.fileName);
+  if (text != null && start != null) {
+    const { line, character } = getLineAndCharacterOfPosition(text, start);
+    out += `:${chalk.yellow(line + 1)}:${chalk.yellow(character + 1)}`;
+  }
+  return out;
+}
+
 /**
- * Renders a diagnostic the way the classic compiler's
- * `formatDiagnosticsWithColorAndContext` does: a `file:line:col - category
- * TSxxxx: message` header followed, when the source is available, by the
- * offending line and a squiggle under the reported range.
+ * The source lines a range covers, each with a squiggle line under it, like
+ * the classic `ts.formatDiagnosticsWithColorAndContext` (leading newline per
+ * line, none at the end; trailing whitespace trimmed, tabs as spaces, more than
+ * 5 lines elided).
+ */
+function formatCodeSpan(
+  text: string,
+  start: number,
+  length: number,
+  indent: string,
+  color: (s: string) => string,
+): string {
+  const first = getLineAndCharacterOfPosition(text, start);
+  const last = getLineAndCharacterOfPosition(text, start + length);
+  const lines = text.split('\n');
+  const hasMoreThanFiveLines = last.line - first.line >= 4;
+  let gutterWidth = String(last.line + 1).length;
+  if (hasMoreThanFiveLines) {
+    gutterWidth = Math.max(ELLIPSIS.length, gutterWidth);
+  }
+  const gutter = (label: string) => `${indent}${chalk.black.bgWhite(label.padStart(gutterWidth))} `;
+
+  let out = '';
+  for (let i = first.line; i <= last.line; i++) {
+    out += '\n';
+    if (hasMoreThanFiveLines && first.line + 1 < i && i < last.line - 1) {
+      out += `${gutter(ELLIPSIS)}\n`;
+      i = last.line - 1;
+    }
+    const lineContent = (lines[i] ?? '').trimEnd().replace(/\t/g, ' ');
+    out += `${gutter(String(i + 1))}${lineContent}\n${gutter('')}`;
+    if (i === first.line) {
+      const end = i === last.line ? last.character : undefined;
+      out += lineContent.slice(0, first.character).replace(/\S/g, ' ');
+      out += color(lineContent.slice(first.character, end).replace(/./g, '~'));
+    } else if (i === last.line) {
+      out += color(lineContent.slice(0, last.character).replace(/./g, '~'));
+    } else {
+      out += color(lineContent.replace(/./g, '~'));
+    }
+  }
+  return out;
+}
+
+/**
+ * Renders a diagnostic the way the classic `formatDiagnosticsWithColorAndContext`
+ * does: a `file:line:col - category TSxxxx: message` header followed, when the
+ * source is available, by the offending lines and a squiggle under the reported
+ * range, and then the related information, if the diagnostic has any.
  */
 export function formatDiagnosticWithColorAndContext(diagnostic: Diagnostic, projectRoot: string): string {
   const color = categoryColor(diagnostic.category);
   let out = '';
-  let text = diagnostic.file?.text;
-  if (text == null && diagnostic.file?.fileName && diagnostic.start != null) {
-    try {
-      text = fs.readFileSync(diagnostic.file.fileName, 'utf8');
-    } catch {
-      text = undefined;
-    }
-  }
+  const text = sourceTextOf(diagnostic.file, diagnostic.start);
   if (diagnostic.file) {
-    const relative = path.relative(projectRoot, diagnostic.file.fileName) || diagnostic.file.fileName;
-    out += chalk.cyan(relative);
-    if (text != null && diagnostic.start != null) {
-      const { line, character } = getLineAndCharacterOfPosition(text, diagnostic.start);
-      out += `:${chalk.yellow(line + 1)}:${chalk.yellow(character + 1)}`;
-    }
-    out += ' - ';
+    out += `${formatLocation(diagnostic.file, text, diagnostic.start, projectRoot)} - `;
   }
   out += `${color(categoryName(diagnostic.category))}${chalk.grey(` TS${diagnostic.code}: `)}${
     diagnostic.messageText
   }\n`;
 
   if (diagnostic.file && text != null && diagnostic.start != null) {
-    const start = getLineAndCharacterOfPosition(text, diagnostic.start);
-    const end = getLineAndCharacterOfPosition(text, diagnostic.start + Math.max(diagnostic.length ?? 1, 1));
-    const lines = text.split(/\r?\n/);
-    const gutterWidth = String(end.line + 1).length;
-    out += '\n';
-    for (let i = start.line; i <= end.line && i < lines.length; i++) {
-      const lineText = lines[i];
-      out += `${chalk.black.bgWhite(String(i + 1).padStart(gutterWidth))} ${lineText}\n`;
-      const from = i === start.line ? start.character : 0;
-      const to = i === end.line ? Math.max(end.character, from + 1) : lineText.length;
-      out += `${chalk.black.bgWhite(' '.repeat(gutterWidth))} ${' '.repeat(from)}${color(
-        '~'.repeat(Math.max(to - from, 1)),
-      )}\n`;
+    out += `${formatCodeSpan(text, diagnostic.start, diagnostic.length ?? 1, '', color)}\n`;
+  }
+
+  // The classic formatter checks for the presence of the array, not for entries
+  // in it, so a diagnostic that has one (jsii's always do) gets an extra newline.
+  const related = (diagnostic as { relatedInformation?: readonly Diagnostic[] }).relatedInformation;
+  if (related) {
+    for (const info of related) {
+      const infoText = sourceTextOf(info.file, info.start);
+      if (info.file) {
+        out += `\n${HALF_INDENT}${formatLocation(info.file, infoText, info.start, projectRoot)}`;
+        if (infoText != null && info.start != null) {
+          out += formatCodeSpan(infoText, info.start, info.length ?? 1, INDENT, chalk.cyan);
+        }
+      }
+      out += `\n${INDENT}${info.messageText}`;
     }
+    out += '\n';
   }
   return out;
 }
