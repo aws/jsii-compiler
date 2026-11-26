@@ -1,4 +1,5 @@
 import { compileJsiiForErrors } from './compiler-helpers';
+import { compileJsiiForTest, TestWorkspace } from '../src';
 
 /**
  * Which types an overriding member may use in place of the type of the member it overrides (JSII5003 for the return
@@ -64,6 +65,41 @@ describe('allowed', () => {
         export class B extends A { public m(): Impl { return new Impl(); } }
       `),
     ).toEqual([]);
+  });
+});
+
+describe('types from a dependency', () => {
+  function overrideWithForeignTypes(subType: string) {
+    return TestWorkspace.withWorkspace((ws) => {
+      ws.addDependency(
+        compileJsiiForTest('export class ForeignBase {} export class ForeignDerived extends ForeignBase {}', {
+          packageJson: { name: 'dependency' },
+        }),
+      );
+      return compileJsiiForErrors(
+        `
+          import { ForeignBase, ForeignDerived } from 'dependency';
+          export class Other {}
+          export class Uses { public readonly derived = new ForeignDerived(); }
+          export class A { public m(): ForeignBase { return new ForeignBase(); } }
+          export class B extends A { public m(): ${subType} { return undefined as any; } }
+        `,
+        {
+          compilationDirectory: ws.rootDirectory,
+          packageJson: { dependencies: { dependency: '*' }, peerDependencies: { dependency: '*' } },
+        },
+      );
+    });
+  }
+
+  test('can be narrowed to a subclass', () => {
+    expect(overrideWithForeignTypes('ForeignDerived')).toEqual([]);
+  });
+
+  test('cannot be changed to an unrelated class', () => {
+    expect(overrideWithForeignTypes('Other')).toEqual([
+      '"testpkg.B#m" changes the return type to "testpkg.Other" when overriding testpkg.A. Change it to "dependency.ForeignBase"',
+    ]);
   });
 });
 
