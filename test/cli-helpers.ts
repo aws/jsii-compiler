@@ -157,13 +157,12 @@ export async function runCliWithEnv(
 
 /**
  * A `yargs` mock factory that forwards everything to the actual `yargs`, but remembers the result of `parse()` so that
- * `runCli` can wait for it.
+ * `runCli` can wait for the (asynchronous) command handler to finish. The CLI does not expose that otherwise, and what
+ * it does is not changed.
  *
  * Usage: `jest.mock('yargs', () => mockYargsToTrackParse());`
- *
- * @param options.ignoreConflicts drops `conflicts()` declarations, to let a handler see options yargs would reject.
  */
-export function mockYargsToTrackParse(options: { readonly ignoreConflicts?: boolean } = {}) {
+export function mockYargsToTrackParse() {
   const wrap = (instance: any): any =>
     new Proxy(instance, {
       get(target, property) {
@@ -174,19 +173,10 @@ export function mockYargsToTrackParse(options: { readonly ignoreConflicts?: bool
         if (typeof value !== 'function') {
           return value;
         }
-        return (...originalArgs: unknown[]) => {
-          let callArgs = originalArgs;
-          if (property === 'command' && options.ignoreConflicts && typeof callArgs[2] === 'function') {
-            // The builder of a command receives its own yargs instance: make sure that one is wrapped, too.
-            const builder = callArgs[2] as (inner: any) => unknown;
-            callArgs = [...callArgs.slice(0, 2), (inner: any) => builder(wrap(inner)), ...callArgs.slice(3)];
-          }
-          if (property === 'conflicts' && options.ignoreConflicts) {
-            return wrap(target);
-          }
+        return (...args: unknown[]) => {
           let result;
           try {
-            result = value.apply(target, callArgs);
+            result = value.apply(target, args);
           } catch (error) {
             // A synchronous handler that throws makes parse() throw: record that as a rejected parse.
             if (property === 'parse') {
