@@ -68,6 +68,94 @@ describe('allowed', () => {
   });
 });
 
+describe('allowed, with other differences', () => {
+  test('overriding an optional return value with a required one of the same type', () => {
+    expect(
+      compileJsiiForErrors(`
+        export class Sup {}
+        export class A { public m(): Sup | undefined { return undefined; } }
+        export class B extends A { public m(): Sup { return new Sup(); } }
+      `),
+    ).toEqual([]);
+  });
+
+  test('overriding an interface with a class that implements it directly', () => {
+    expect(
+      compileJsiiForErrors(`
+        export interface IBase {}
+        export class Impl implements IBase {}
+        export class A { public m(): IBase { return new Impl(); } }
+        export class B extends A { public m(): Impl { return new Impl(); } }
+      `),
+    ).toEqual([]);
+  });
+
+  test('overriding an interface with an interface that extends it through another interface', () => {
+    expect(
+      compileJsiiForErrors(`
+        export interface IA {}
+        export interface IB extends IA {}
+        export interface IC extends IB {}
+        export class Impl implements IC {}
+        export class A { public m(): IA { return new Impl(); } }
+        export class B extends A { public m(): IC { return new Impl(); } }
+      `),
+    ).toEqual([]);
+  });
+});
+
+describe('not allowed, although TypeScript allows it (it compares the shape of types)', () => {
+  test('a required property in place of an optional one', () => {
+    expect(
+      compileJsiiForErrors(`
+        export class Sup {}
+        export class A { public readonly p?: Sup; }
+        export class B extends A { public readonly p: Sup = new Sup(); }
+      `),
+    ).toEqual(['"testpkg.B#p" turns required when overriding testpkg.A. Make it optional']);
+  });
+
+  test('an interface that does not extend the interface it is compared to', () => {
+    expect(
+      compileJsiiForErrors(`
+        export interface IA {}
+        export interface IB {}
+        export class A { public m(): IA { return undefined as any; } }
+        export class B extends A { public m(): IB { return undefined as any; } }
+      `),
+    ).toEqual([
+      '"testpkg.B#m" changes the return type to "testpkg.IB" when overriding testpkg.A. Change it to "testpkg.IA"',
+    ]);
+  });
+
+  test('an interface instead of a class', () => {
+    expect(
+      compileJsiiForErrors(`
+        export class Klass {}
+        export interface IKlass {}
+        export class A { public m(): Klass { return undefined as any; } }
+        export class B extends A { public m(): IKlass { return undefined as any; } }
+      `),
+    ).toEqual([
+      '"testpkg.B#m" changes the return type to "testpkg.IKlass" when overriding testpkg.A. Change it to "testpkg.Klass"',
+    ]);
+  });
+
+  test('a class that implements an interface that does not extend the interface it is compared to', () => {
+    expect(
+      compileJsiiForErrors(`
+        export interface IA {}
+        export interface IB {}
+        export class Impl implements IB {}
+        export class A { public m(): IA { return undefined as any; } }
+        export class B extends A { public m(): Impl { return undefined as any; } }
+      `),
+    ).toEqual([
+      '"testpkg.B#m" changes the return type to "testpkg.Impl" when overriding testpkg.A. Change it to "testpkg.IA"',
+    ]);
+  });
+});
+
 describe('types from a dependency', () => {
   function overrideWithForeignTypes(subType: string) {
     return TestWorkspace.withWorkspace((ws) => {
