@@ -47,6 +47,32 @@ export function enumAsKebab(enumData: Record<string, string | number>): string[]
     .map(Case.kebab);
 }
 
+/**
+ * Convert the internal lib strings to what a user would write in tsconfig.json
+ * @param input The input libs array
+ * @returns The humanized version lib array
+ */
+export function convertLibForJson(input: string[]): string[] {
+  return input.map((lib) => lib.slice(4, lib.length - 5));
+}
+
+/**
+ * Map the "compiler API version" of the new line setting (the numeric value of
+ * the classic `ts.NewLineKind`) to the "tsconfig.json version".
+ *
+ * @param newLine the compiler form of the new line configuration
+ *
+ * @return the equivalent value to put in tsconfig.json
+ */
+export function convertNewLineForJson(newLine: 0 | 1): string {
+  switch (newLine) {
+    case 0: // ts.NewLineKind.CarriageReturnLineFeed
+      return 'crlf';
+    case 1: // ts.NewLineKind.LineFeed
+      return 'lf';
+  }
+}
+
 /** Options whose string values TypeScript matches case-insensitively. */
 const CASE_INSENSITIVE_OPTIONS = [
   'target',

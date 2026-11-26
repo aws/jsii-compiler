@@ -9,7 +9,7 @@ import * as log4js from 'log4js';
 import { Assembler } from './assembler';
 import { findDependencyDirectory } from './common/find-utils';
 import { CompilerHost } from './compiler-host';
-import { Diagnostic, DiagnosticCategory } from './diagnostic';
+import { Diagnostic, DiagnosticCategory, flattenDiagnosticMessageText } from './diagnostic';
 import { emitProject } from './emitter';
 import { JsiiDiagnostic } from './jsii-diagnostic';
 import * as literate from './literate';
@@ -681,7 +681,7 @@ function compareDiagnostics(a: Diagnostic, b: Diagnostic): number {
     compareValues(a.start, b.start) ||
     compareValues(a.length, b.length) ||
     compareValues(a.code, b.code) ||
-    compareValues(a.messageText, b.messageText)
+    compareValues(flattenDiagnosticMessageText(a.messageText), flattenDiagnosticMessageText(b.messageText))
   );
 }
 
@@ -702,7 +702,8 @@ function compareValues<T extends string | number>(a: T | undefined, b: T | undef
 /**
  * Port of `ts.sortAndDeduplicateDiagnostics` (stable sort, then drop adjacent
  * duplicates, keeping the first). The category is not part of the comparison.
- * shortcut: no related information or message chains, jsii's `Diagnostic` has neither.
+ * shortcut: no related information, and message chains are compared by their
+ * flattened text; upgrade if jsii starts producing chains.
  */
 export function sortAndDeduplicateDiagnostics(diagnostics: readonly Diagnostic[]): Diagnostic[] {
   const sorted = [...diagnostics].sort(compareDiagnostics);

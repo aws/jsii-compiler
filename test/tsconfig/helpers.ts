@@ -1,8 +1,14 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import fc from 'fast-check';
+import * as ts from 'typescript';
 import { TypeScriptConfig } from '../../src/tsconfig';
-import type { CompilerOptionsJson } from '../../src/tsconfig';
+import {
+  convertLibForJson,
+  convertNewLineForJson,
+  enumAsKebab,
+  enumAsLower,
+} from '../../src/tsconfig/compiler-options';
 import { RuleSet, RuleType } from '../../src/tsconfig/validator';
 
 /**
@@ -60,11 +66,11 @@ export function fcTsconfig(
     /**
      * Explicitly define some arbitraries for compilerOptions
      */
-    compilerArbs?: RecordModel<CompilerOptionsJson>;
+    compilerArbs?: RecordModel<Partial<ts.CompilerOptions>>;
     /**
      * Explicitly define some arbitraries for watchOptions
      */
-    watchArbs?: RecordModel<{ [option: string]: unknown }>;
+    watchArbs?: RecordModel<Partial<ts.WatchOptions>>;
     /**
      * Include typeAcquisition
      * @default false
@@ -77,7 +83,7 @@ export function fcTsconfig(
     references?: boolean;
   } = {},
 ): fc.Arbitrary<TypeScriptConfig> {
-  const compilerOptionsModel: RecordModel<CompilerOptionsJson> = {
+  const compilerOptionsModel: RecordModel<Required<ts.CompilerOptions>> = {
     allowImportingTsExtensions: fc.boolean(),
     allowJs: fc.boolean(),
     allowArbitraryExtensions: fc.boolean(),
@@ -106,38 +112,23 @@ export function fcTsconfig(
     forceConsistentCasingInFileNames: fc.boolean(),
     ignoreDeprecations: fc.string(),
     importHelpers: fc.boolean(),
-    importsNotUsedAsValues: fc.constantFrom('remove', 'preserve', 'error'),
+    importsNotUsedAsValues: fc.constantFrom(...(enumAsLower(ts.ImportsNotUsedAsValues) as any)),
     inlineSourceMap: fc.boolean(),
     inlineSources: fc.boolean(),
     isolatedModules: fc.boolean(),
-    jsx: fc.constantFrom('preserve', 'react-native', 'react', 'react-jsx', 'react-jsxdev'),
+    jsx: fc.constantFrom(...(enumAsKebab(ts.JsxEmit) as any)),
     keyofStringsOnly: fc.boolean(),
-    lib: fc.uniqueArray(fc.constantFrom(...TS_LIBS)),
+    lib: fc.uniqueArray(fc.constantFrom(...convertLibForJson(TS_LIBS))),
     locale: fc.string(),
     mapRoot: fc.string(),
     maxNodeModuleJsDepth: fc.nat(),
-    module: fc.constantFrom(
-      'commonjs',
-      'amd',
-      'umd',
-      'system',
-      'es2015',
-      'es2020',
-      'es2022',
-      'esnext',
-      'node16',
-      'node18',
-      'node20',
-      'nodenext',
-      'preserve',
-    ),
-    moduleResolution: fc.constantFrom('classic', 'node10', 'node16', 'nodenext', 'bundler'), // remove deprecated value
+    module: fc.constantFrom(...(enumAsLower(ts.ModuleKind) as any)),
+    moduleResolution: fc.constantFrom(...(enumAsLower(ts.ModuleResolutionKind).filter((r) => r !== 'nodejs') as any)), // remove deprecated value
     moduleSuffixes: fc.array(fc.string()),
-    moduleDetection: fc.constantFrom('legacy', 'auto', 'force'),
+    moduleDetection: fc.constantFrom(...(enumAsLower(ts.ModuleDetectionKind) as any)),
     newLine: fc.constantFrom(
       // Newline has a special conversion
-      'crlf',
-      'lf',
+      ...([ts.NewLineKind.CarriageReturnLineFeed, ts.NewLineKind.LineFeed].map(convertNewLineForJson) as any),
     ),
     noEmit: fc.boolean(),
     noEmitHelpers: fc.boolean(),
@@ -189,20 +180,7 @@ export function fcTsconfig(
     stripInternal: fc.boolean(),
     suppressExcessPropertyErrors: fc.boolean(),
     suppressImplicitAnyIndexErrors: fc.boolean(),
-    target: fc.constantFrom(
-      'es5',
-      'es2015',
-      'es2016',
-      'es2017',
-      'es2018',
-      'es2019',
-      'es2020',
-      'es2021',
-      'es2022',
-      'es2023',
-      'es2024',
-      'esnext',
-    ),
+    target: fc.constantFrom(...(enumAsLower(ts.ScriptTarget).filter((t) => t !== 'json') as any)), // json target is not supported
     traceResolution: fc.boolean(),
     useUnknownInCatchVariables: fc.boolean(),
     resolveJsonModule: fc.boolean(),
@@ -226,22 +204,10 @@ export function fcTsconfig(
   // prevent required options from being dropped
   const requiredKeys = findRequiredKeysFromRuleSet(options.compilerRuleSet) ?? [];
 
-  const watchOptionsModel: RecordModel<{ [option: string]: unknown }> = {
-    watchFile: fc.constantFrom(
-      'fixedpollinginterval',
-      'prioritypollinginterval',
-      'dynamicprioritypolling',
-      'fixedchunksizepolling',
-      'usefsevents',
-      'usefseventsonparentdirectory',
-    ),
-    watchDirectory: fc.constantFrom(
-      'usefsevents',
-      'fixedpollinginterval',
-      'dynamicprioritypolling',
-      'fixedchunksizepolling',
-    ),
-    fallbackPolling: fc.constantFrom('fixedinterval', 'priorityinterval', 'dynamicpriority', 'fixedchunksize'),
+  const watchOptionsModel: RecordModel<Required<ts.WatchOptions>> = {
+    watchFile: fc.constantFrom(...(enumAsLower(ts.WatchFileKind) as any)),
+    watchDirectory: fc.constantFrom(...(enumAsLower(ts.WatchDirectoryKind) as any)),
+    fallbackPolling: fc.constantFrom(...(enumAsLower(ts.PollingWatchKind) as any)),
     synchronousWatchDirectory: fc.boolean(),
     excludeDirectories: fc.array(fc.string()),
     excludeFiles: fc.array(fc.string()),
@@ -397,26 +363,9 @@ function filterModelKeys<T>(arbs: RecordModel<T>, keepOnly?: string[]): RecordMo
 }
 
 function tsLibs(): string[] {
-  // TypeScript 7 ships the `lib.<name>.d.ts` files next to the native compiler, in the
-  // platform-specific package (a dependency of the TypeScript package, so it is found in
-  // the TypeScript package's own node_modules or in the nearest enclosing one); their
-  // names are the valid `lib` entries.
-  const tsDir = path.dirname(require.resolve('#typescript/package.json'));
-  const platformPackage = path.join('@typescript', `typescript-${process.platform}-${process.arch}`, 'lib');
-  const candidates = [path.join(tsDir, 'node_modules', platformPackage)];
-  for (let dir = path.dirname(tsDir); dir !== path.dirname(dir); dir = path.dirname(dir)) {
-    if (path.basename(dir) === 'node_modules') {
-      candidates.push(path.join(dir, platformPackage));
-    }
-  }
-  const libDir = candidates.find((candidate) => fs.existsSync(candidate));
-  if (libDir == null) {
-    throw new Error(`Unable to locate the TypeScript lib directory (looked in ${candidates.join(', ')})`);
-  }
-  return fs
-    .readdirSync(libDir)
-    .filter((f) => /^lib\..+\.d\.ts$/.test(f) && f !== 'lib.d.ts')
-    .map((f) => f.slice('lib.'.length, f.length - '.d.ts'.length));
+  const libdir = path.dirname(require.resolve('typescript'));
+  const allFiles = fs.readdirSync(libdir);
+  return allFiles.filter((file) => file.startsWith('lib.') && file.endsWith('.d.ts') && file !== 'lib.d.ts');
 }
 
 const TS_LIBS = tsLibs();

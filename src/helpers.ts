@@ -26,6 +26,15 @@ export type MultipleSourceFiles = {
 };
 
 /**
+ * A diagnostic as returned by the helpers. Same as `Diagnostic`, except `file`
+ * is typed loosely so results stay assignable to the classic `ts.Diagnostic`
+ * that callers of these helpers used before TypeScript 7.
+ */
+export interface HelperDiagnostic extends Diagnostic {
+  readonly file: any;
+}
+
+/**
  * Assembly features supported by this compiler
  */
 export const ASSEMBLY_FEATURES_SUPPORTED: spec.JsiiFeature[] = [
@@ -89,7 +98,7 @@ export interface HelperCompilationResult {
   /**
    * Diagnostics that occurred during compilation
    */
-  readonly diagnostics: readonly Diagnostic[];
+  readonly diagnostics: readonly HelperDiagnostic[];
 }
 
 export interface HelperCompilationFailure {
@@ -100,7 +109,7 @@ export interface HelperCompilationFailure {
    *
    * Contains at least one error.
    */
-  readonly diagnostics: readonly Diagnostic[];
+  readonly diagnostics: readonly HelperDiagnostic[];
 }
 
 /**

@@ -24,14 +24,51 @@ export interface DiagnosticSourceFile {
   readonly text?: string;
 }
 
+/**
+ * A chain of nested messages, shaped like the classic `ts.DiagnosticMessageChain`.
+ */
+export interface DiagnosticMessageChain {
+  readonly messageText: string;
+  readonly category: DiagnosticCategory;
+  readonly code: number;
+  readonly next?: DiagnosticMessageChain[];
+}
+
+/**
+ * The properties are shaped like the classic `ts.Diagnostic` (`file`, `start`
+ * and `length` are present but may be `undefined`; `messageText` may be a
+ * chain), so a `ts.Diagnostic` can be passed wherever a jsii `Diagnostic` is
+ * expected.
+ */
 export interface Diagnostic {
   readonly category: DiagnosticCategory;
   readonly code: number;
-  readonly messageText: string;
-  readonly file?: DiagnosticSourceFile;
+  readonly messageText: string | DiagnosticMessageChain;
+  readonly file: DiagnosticSourceFile | undefined;
   /** Start offset (UTF-16 code units) within `file`. */
-  readonly start?: number;
-  readonly length?: number;
+  readonly start: number | undefined;
+  readonly length: number | undefined;
+}
+
+/**
+ * Renders a message chain as text, the way the classic
+ * `ts.flattenDiagnosticMessageText` does: each nested message on its own line,
+ * indented by two spaces per level.
+ */
+export function flattenDiagnosticMessageText(
+  messageText: string | DiagnosticMessageChain,
+  newLine = '\n',
+  indent = 0,
+): string {
+  if (typeof messageText === 'string') {
+    return messageText;
+  }
+  let result = indent > 0 ? `${newLine}${'  '.repeat(indent)}` : '';
+  result += messageText.messageText;
+  for (const next of messageText.next ?? []) {
+    result += flattenDiagnosticMessageText(next, newLine, indent + 1);
+  }
+  return result;
 }
 
 /** Converts an offset into a 0-based line/character pair. */
@@ -177,9 +214,9 @@ export function formatDiagnosticWithColorAndContext(diagnostic: Diagnostic, proj
   if (diagnostic.file) {
     out += `${formatLocation(diagnostic.file, text, diagnostic.start, projectRoot)} - `;
   }
-  out += `${color(categoryName(diagnostic.category))}${ansi.grey(` TS${diagnostic.code}: `)}${
-    diagnostic.messageText
-  }\n`;
+  out += `${color(categoryName(diagnostic.category))}${ansi.grey(
+    ` TS${diagnostic.code}: `,
+  )}${flattenDiagnosticMessageText(diagnostic.messageText)}\n`;
 
   if (diagnostic.file && text != null && diagnostic.start != null) {
     out += `${formatCodeSpan(text, diagnostic.start, diagnostic.length ?? 1, '', color)}\n`;
@@ -197,7 +234,7 @@ export function formatDiagnosticWithColorAndContext(diagnostic: Diagnostic, proj
           out += formatCodeSpan(infoText, info.start, info.length ?? 1, INDENT, ansi.cyan);
         }
       }
-      out += `\n${INDENT}${info.messageText}`;
+      out += `\n${INDENT}${flattenDiagnosticMessageText(info.messageText)}`;
     }
     out += '\n';
   }
