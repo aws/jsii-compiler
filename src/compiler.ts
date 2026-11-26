@@ -14,6 +14,7 @@ import { emitProject } from './emitter';
 import { JsiiDiagnostic } from './jsii-diagnostic';
 import * as literate from './literate';
 import { ProjectInfo } from './project-info';
+import { DeprecationWarningsInjector, WARNINGSCODE_FILE_NAME } from './transforms/deprecation-warnings';
 import { TypeScriptConfig, TypeScriptConfigValidationRuleSet } from './tsconfig';
 import { BASE_COMPILER_OPTIONS } from './tsconfig/compiler-options';
 import { parseTsconfigJson, readTypeScriptConfigFile } from './tsconfig/read';
@@ -47,9 +48,8 @@ export interface CompilerOptions {
   /**
    * Whether to add warnings for deprecated elements.
    *
-   * Not implemented on the TypeScript 7 backend yet; requesting it fails with
-   * an explicit error instead of silently producing an assembly without the
-   * `.warnings.jsii.js` module.
+   * On the TypeScript 7 backend this writes the `.warnings.jsii.js` module;
+   * the calls into it are not injected into the emitted `.js` yet.
    */
   addDeprecationWarnings?: boolean;
   /**
@@ -131,9 +131,6 @@ export class Compiler {
     if (this.options.watch) {
       throw new utils.JsiiError('--watch is not supported by the TypeScript 7 based compiler', true);
     }
-    if (this.options.addDeprecationWarnings) {
-      throw new utils.JsiiError('--add-deprecation-warnings is not supported by the TypeScript 7 based compiler yet');
-    }
     if (files.length > 0 && this.userProvidedTypeScriptConfig) {
       throw new utils.JsiiError('Explicit source files cannot be combined with a user-provided tsconfig');
     }
@@ -148,6 +145,7 @@ export class Compiler {
       generatedTsconfig: !this.userProvidedTypeScriptConfig,
       stripDeprecated: this.options.stripDeprecated,
       stripDeprecatedAllowListFile: this.options.stripDeprecatedAllowListFile,
+      addDeprecationWarnings: this.options.addDeprecationWarnings,
       compressAssembly: this.options.compressAssembly,
     });
 
@@ -155,11 +153,28 @@ export class Compiler {
       LOG.info(`assembled ${result.typeCount} types, emitted ${result.emittedFiles.length} files`);
     }
 
-    const hasWarnings = result.diagnostics.some((d) => d.category === DiagnosticCategory.Warning && !isSilenced(d));
+    // Some extra validation on the config.
+    // Make sure that { "./.warnings.jsii.js": "./.warnings.jsii.js" } is in the set of
+    // exports, if they are specified.
+    const diagnostics: Diagnostic[] = [...result.diagnostics];
+    let missingWarningsExport = false;
+    if (this.options.addDeprecationWarnings && this.options.projectInfo.exports !== undefined) {
+      const expected = `./${WARNINGSCODE_FILE_NAME}`;
+      const warningsExport = Object.entries(this.options.projectInfo.exports).filter(
+        ([k, v]) => k === expected && v === expected,
+      );
+
+      if (warningsExport.length === 0) {
+        missingWarningsExport = true;
+        diagnostics.push(JsiiDiagnostic.JSII_0007_MISSING_WARNINGS_EXPORT.createDetached());
+      }
+    }
+
+    const hasWarnings = diagnostics.some((d) => d.category === DiagnosticCategory.Warning && !isSilenced(d));
     return {
-      emitSkipped: result.emitSkipped || (this.options.failOnWarnings === true && hasWarnings),
+      emitSkipped: result.emitSkipped || missingWarningsExport || (this.options.failOnWarnings === true && hasWarnings),
       // Like the classic compiler: sorted and de-duplicated, TypeScript and jsii diagnostics together.
-      diagnostics: sortAndDeduplicateDiagnostics(result.diagnostics),
+      diagnostics: sortAndDeduplicateDiagnostics(diagnostics),
       emittedFiles: result.emittedFiles,
     };
   }
@@ -388,6 +403,8 @@ export interface BuildProjectOptions {
   readonly generatedTsconfig?: boolean;
   readonly stripDeprecated?: boolean;
   readonly stripDeprecatedAllowListFile?: string;
+  /** Whether to write `.warnings.jsii.js` (`--add-deprecation-warnings`). */
+  readonly addDeprecationWarnings?: boolean;
   readonly compressAssembly?: boolean;
 }
 
@@ -530,6 +547,17 @@ export function buildProject(options: BuildProjectOptions): BuildProjectResult {
         emitSkipped: true,
         diagnostics: [...tsDiagnostics, ...jsiiDiagnostics],
       };
+    }
+
+    if (options.addDeprecationWarnings) {
+      assembly.metadata = {
+        ...assembly.metadata,
+        jsii: { ...(assembly.metadata?.jsii ?? {}), compiledWithDeprecationWarnings: true },
+      };
+      new DeprecationWarningsInjector(host.ts, project, assembler.enumMemberDeclarations).process(
+        assembly,
+        projectInfo,
+      );
     }
 
     if (process.env.JSII_TS7_TIMING) {
