@@ -90,11 +90,11 @@ describe('emitSupportPolicyInformation', () => {
 
   test('does nothing, and does not use the network, when silenced', async () => {
     process.env.JSII_SILENCE_SUPPORT_WARNING = '1';
-    const get = fakeReleasesServer({ statusCode: 200, body: releases({ endOfSupport: true }) });
+    const httpsGet = fakeReleasesServer({ statusCode: 200, body: releases({ endOfSupport: true }) });
 
     await emitSupportPolicyInformation();
 
-    expect(get).not.toHaveBeenCalled();
+    expect(httpsGet).not.toHaveBeenCalled();
     expect(consoleError).not.toHaveBeenCalled();
   });
 
