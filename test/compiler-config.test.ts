@@ -174,6 +174,44 @@ describe('Compiler project references', () => {
       expect(compileWithDependencies(ws, { 'no-tsconfig': '*' }).references).toEqual([]);
     }));
 
+  describe('ignores bundled dependencies that are not jsii packages, when they', () => {
+    /** Compiles a package that bundles `name`, which has no jsii assembly, and returns its generated tsconfig. */
+    function compileWithBundled(ws: TestWorkspace, name: string) {
+      compileJsiiForTest(
+        SOURCE,
+        {
+          compilationDirectory: ws.rootDirectory,
+          packageJson: { dependencies: { [name]: '*' }, bundleDependencies: [name] } as any,
+        },
+        { projectReferences: true },
+      );
+      return JSON.parse(readFileSync(join(ws.rootDirectory, 'tsconfig.json'), 'utf-8'));
+    }
+
+    test('are Node.js built-in modules', () =>
+      TestWorkspace.withWorkspace((ws) => {
+        expect(compileWithBundled(ws, 'punycode').references).toEqual([]);
+      }));
+
+    test('are not installed', () =>
+      TestWorkspace.withWorkspace((ws) => {
+        expect(compileWithBundled(ws, 'not-installed').references).toEqual([]);
+      }));
+
+    test('do not export their entry point', () =>
+      TestWorkspace.withWorkspace((ws) => {
+        const dir = join(ws.rootDirectory, 'node_modules', 'hidden');
+        mkdirSync(dir, { recursive: true });
+        writeFileSync(
+          join(dir, 'package.json'),
+          JSON.stringify({ name: 'hidden', version: '1.0.0', exports: { './package.json': './package.json' } }),
+        );
+        writeFileSync(join(dir, 'index.js'), '');
+
+        expect(compileWithBundled(ws, 'hidden').references).toEqual([]);
+      }));
+  });
+
   test('fails when the package.json that matches the dependency cannot be found', () =>
     TestWorkspace.withWorkspace((ws) => {
       const peerDir = installPeer(ws, 'renamed', { compilerOptions: { composite: true } }, 'packages/renamed');
