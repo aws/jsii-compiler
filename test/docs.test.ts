@@ -1,7 +1,7 @@
 import * as spec from '@jsii/spec';
 import { Stability } from '@jsii/spec';
 
-import { sourceToAssemblyHelper as compile } from '../lib';
+import { compileJsiiForTest, sourceToAssemblyHelper as compile } from '../lib';
 
 jest.setTimeout(60_000);
 
@@ -503,4 +503,199 @@ test('renders {@link} labels in @deprecated and @see as {@link target | label}',
   const docs = assembly.types!['testpkg.Probe'].docs!;
   expect(docs.deprecated).toBe('use {@link Foo | the replacement} instead');
   expect(docs.see).toBe('{@link https://x.dev | see label}');
+});
+
+// ----------------------------------------------------------------------
+test('keeps the label of a {@link} that is never closed', () => {
+  const assembly = compile(`
+    /**
+     * See {@link Foo | label
+     * which continues without closing.
+     */
+    export class Foo {
+    }
+  `);
+
+  // TypeScript closes the link at the line break, the remaining text is left as is
+  expect(assembly.types!['testpkg.Foo'].docs!.summary).toMatch(
+    /^See \{@link Foo \| label\}\s+\* which continues without closing\.$/,
+  );
+});
+
+// ----------------------------------------------------------------------
+test('renders {@link} in docs of a property declared through a constructor parameter', () => {
+  const assembly = compile(`
+    export class Foo {
+      /**
+       * Creates a Foo.
+       *
+       * @param value the {@link Foo | value} to wrap
+       */
+      public constructor(public readonly value: string) {}
+    }
+  `);
+
+  const classType = assembly.types!['testpkg.Foo'] as spec.ClassType;
+  expect(classType.properties!.find((p) => p.name === 'value')!.docs).toEqual({
+    summary: 'the {@link Foo | value} to wrap.',
+  });
+});
+
+// ----------------------------------------------------------------------
+describe('@stability', () => {
+  test.each([
+    ['stable', Stability.Stable],
+    ['experimental', Stability.Experimental],
+    ['external', Stability.External],
+    ['deprecated', Stability.Deprecated],
+  ])('@stability %s', (value, expected) => {
+    const assembly = compile(`
+      /**
+       * @stability ${value}
+       */
+      export class Foo {
+      }
+    `);
+
+    expect(assembly.types!['testpkg.Foo'].docs!.stability).toBe(expected);
+  });
+
+  test('@deprecated can be combined with @stability deprecated', () => {
+    const assembly = compile(`
+      /**
+       * @stability deprecated
+       * @deprecated Use something else
+       */
+      export class Foo {
+      }
+    `);
+
+    expect(assembly.types!['testpkg.Foo'].docs).toEqual({
+      stability: Stability.Deprecated,
+      deprecated: 'Use something else',
+    });
+  });
+});
+
+// ----------------------------------------------------------------------
+describe('documentation errors (JSII7999)', () => {
+  function documentationErrors(source: string): string[] {
+    const { diagnostics } = compileJsiiForTest(source, { captureDiagnostics: true });
+    return diagnostics.filter((d) => (d as { jsiiCode?: number }).jsiiCode === 7999).map((d) => `${d.messageText}`);
+  }
+
+  test('unrecognized @stability value', () => {
+    expect(
+      documentationErrors(`
+        /** @stability banana */
+        export class Foo {}
+      `),
+    ).toEqual(["Unrecognized @stability: 'banana'"]);
+  });
+
+  test.each([
+    ['@stability stable', '@experimental'],
+    ['@stability experimental', '@stable'],
+    ['@experimental', '@stable'],
+  ])('%s combined with %s', (first, second) => {
+    expect(
+      documentationErrors(`
+        /**
+         * ${first}
+         * ${second}
+         */
+        export class Foo {}
+      `),
+    ).toEqual(['Use only one of @stability, @experimental or @stable']);
+  });
+
+  test('@deprecated combined with another @stability', () => {
+    expect(
+      documentationErrors(`
+        /**
+         * @stability stable
+         * @deprecated Use something else
+         */
+        export class Foo {}
+      `),
+    ).toEqual(["@deprecated tag requires '@stability deprecated' or no @stability at all."]);
+  });
+
+  test('@deprecated without a reason', () => {
+    expect(
+      documentationErrors(`
+        /** @deprecated */
+        export class Foo {}
+      `),
+    ).toEqual(['@deprecated tag needs a reason and/or suggested alternatives.']);
+  });
+
+  test('@example with code block fences', () => {
+    expect(
+      documentationErrors(`
+        /**
+         * @example
+         * \`\`\`ts
+         * new Foo();
+         * \`\`\`
+         */
+        export class Foo {}
+      `),
+    ).toEqual(['@example must be code only, no code block fences allowed.']);
+  });
+
+  test('valid documentation does not produce errors', () => {
+    expect(
+      documentationErrors(`
+        /**
+         * Hello.
+         *
+         * @stability experimental
+         * @example new Foo();
+         */
+        export class Foo {}
+      `),
+    ).toEqual([]);
+  });
+});
+
+// ----------------------------------------------------------------------
+describe('@example followed by an unrecognized tag', () => {
+  // This documents current behavior, see https://github.com/aws/jsii-compiler/issues/2950
+  // The unrecognized tag is absorbed back into the example, but its text is rendered as "[object Object]"
+  // and the code that follows it is lost.
+  test('renders the tag text as "[object Object]"', () => {
+    const assembly = compile(`
+      /**
+       * Summary.
+       *
+       * @example
+       * const x = 1;
+       * @decorator
+       * class Foo {}
+       */
+      export class Foo {
+      }
+    `);
+
+    expect(assembly.types!['testpkg.Foo'].docs!.example).toBe('const x = 1;@decorator[object Object]');
+  });
+
+  test('a recognized tag after the example ends the example', () => {
+    const assembly = compile(`
+      /**
+       * Summary.
+       *
+       * @example
+       * const x = 1;
+       * @stable
+       */
+      export class Foo {
+      }
+    `);
+
+    const docs = assembly.types!['testpkg.Foo'].docs!;
+    expect(docs.example).toBe('const x = 1;');
+    expect(docs.stability).toBe(Stability.Stable);
+  });
 });
