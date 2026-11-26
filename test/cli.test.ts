@@ -366,6 +366,21 @@ describe('jsii validate-tsconfig', () => {
     expect(result.stderr).toContain('Failed to read tsconfig at');
   });
 
+  // https://github.com/aws/jsii-compiler/issues/2987
+  test.each([
+    [{ target: 'es5' }, 'target: Expected value not to be "es5", got: "es5"'],
+    [{ module: 'amd' }, 'module: Expected value not to be one of ["amd","umd","systemjs","none"], got: "amd"'],
+    [{ noEmit: true }, 'noEmit: Expected value not to be true, got: true'],
+    [{ downlevelIteration: true }, 'downlevelIteration: Expected value to be absent, got true'],
+  ])('describes the violation of %j the way the rule reads', async (overrides, violation) => {
+    const dir = project({ 'tsconfig.json': JSON.stringify(userTsconfig(overrides)) });
+
+    const result = await runCli(dir, 'validate-tsconfig');
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stdout).toContain(violation);
+  });
+
   test('works without a package.json', async () => {
     const dir = project({ 'package.json': null, 'tsconfig.json': JSON.stringify(userTsconfig()) });
 
