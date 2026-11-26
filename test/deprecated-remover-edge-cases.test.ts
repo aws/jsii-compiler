@@ -273,3 +273,68 @@ describe('leftover usage of deprecated types', () => {
     expect(diagnostics).toEqual([]);
   });
 });
+
+describe('a class merged with an interface', () => {
+  // This documents current behavior, see https://github.com/aws/jsii-compiler/issues/3012
+  test.each([
+    [
+      'a deprecated base class of the class',
+      `
+        ${DEPRECATED}
+        export class Base {}
+        export class Klass extends Base {}
+        export interface Klass { readonly extra: string }
+      `,
+    ],
+    [
+      'a deprecated base class that is replaced by its own base class',
+      `
+        export class Root {}
+        ${DEPRECATED}
+        export class Base extends Root {}
+        export class Klass extends Base {}
+        export interface Klass { readonly extra: string }
+      `,
+    ],
+    [
+      'a deprecated class that the interface extends',
+      `
+        ${DEPRECATED}
+        export class Base {}
+        export class Klass {}
+        export interface Klass extends Base {}
+      `,
+    ],
+  ])('fails when it has %s', (_, source) => {
+    expect(() => strip(source)).toThrow('Expected a ClassDeclaration, found a InterfaceDeclaration');
+  });
+});
+
+describe('leftover usage of deprecated types, together with deprecation warnings', () => {
+  const source = `
+    ${DEPRECATED}
+    export interface IOld { readonly a: string }
+    export interface Props { readonly old: IOld }
+  `;
+
+  test('is reported with the type it uses when only --strip-deprecated is used', () => {
+    const result = compileJsiiForTest(source, { captureDiagnostics: true }, { stripDeprecated: true });
+
+    expect(result.diagnostics.map((d) => `${d.messageText}`)).toContain(
+      'Property has @deprecated type testpkg.IOld, and it is erased by --strip-deprecated.',
+    );
+  });
+
+  // This documents current behavior, see https://github.com/aws/jsii-compiler/issues/3013
+  test('is reported as an internal error when --add-deprecation-warnings is used as well', () => {
+    const result = compileJsiiForTest(
+      source,
+      { captureDiagnostics: true },
+      { stripDeprecated: true, addDeprecationWarnings: true },
+    );
+
+    expect(result.diagnostics.map((d) => `${d.messageText}`)).toEqual([
+      expect.stringContaining('Unknown error: Could not find type in same assembly: testpkg.IOld'),
+    ]);
+  });
+});
