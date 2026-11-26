@@ -29,6 +29,7 @@ import { findDependencyDirectory } from './common/find-utils';
 import { symbolIdentifier } from './common/symbol-id';
 import { TypeScriptApi, TypeScriptProject } from './compiler-host';
 import { DiagnosticCategory } from './diagnostic';
+import { Directives } from './directives';
 import { normalizeConfigPath } from './helpers';
 import { Code, DiagnosticLocation, DiagnosticMessageFormatter, JsiiDiagnostic } from './jsii-diagnostic';
 import * as literate from './literate';
@@ -38,6 +39,7 @@ import { isAllowedCovariantSubtype } from './type-analysis';
 import { createTypeResolver } from './type-reference';
 import { parentFqn } from './utils';
 import { SHORT_VERSION, VERSION } from './version';
+import { parseWarningCodes, suppressInline } from './warnings';
 
 export interface AssemblerOptions {
   /** package.json contents of the package being assembled. */
@@ -367,42 +369,62 @@ export class Assembler {
   /**
    * Whether a symbol is hidden from the jsii type model: marked `@internal`,
    * named with a leading underscore, or ignored with `@jsii ignore` on every one
-   * of its declarations (the classic `_isPrivateOrInternal`).
+   * of its declarations (the classic `_isPrivateOrInternal`). Like the classic
+   * check, it reads the directives of a symbol before its `@internal` tag and
+   * name, and not at all for a private member.
    */
   private _isInternal(sym: any): boolean {
-    return (
-      this._jsDocTags(sym).some((t: any) => t.name === 'internal') || sym.name.startsWith('_') || this._isIgnored(sym)
-    );
+    const ignored =
+      this._jsDocTags(sym).some((t: any) => t.name === 'jsii') && !this._isPrivate(sym) && this._isIgnored(sym);
+    return ignored || this._jsDocTags(sym).some((t: any) => t.name === 'internal') || sym.name.startsWith('_');
+  }
+
+  /** Whether a member symbol is `private`, or is named with `#`. */
+  private _isPrivate(sym: any): boolean {
+    if (sym.name.startsWith('#')) {
+      return true;
+    }
+    const decl = sym.declarations?.[0]?.resolve(this.project);
+    return (decl?.modifiers ?? []).some((m: any) => m.kind === this.ts.SyntaxKind.PrivateKeyword);
   }
 
   /**
    * Whether every declaration of the symbol carries the `@jsii ignore` directive.
    * All declarations must be ignored so that a partially-ignored merged
    * declaration stays a visible part of the public API, as in the classic
-   * compiler. The tags of a symbol are aggregated over its declarations, so a
-   * merged declaration is checked per declaration on the raw JSDoc text.
+   * compiler. Parsing the directives of a declaration reports JSII2000 and
+   * JSII2999. The tags of a symbol are aggregated over its declarations, so
+   * declarations are only resolved when the symbol has a `@jsii` tag at all.
    */
   private _isIgnored(sym: any): boolean {
     const decls: any[] = sym.declarations ?? [];
-    if (decls.length === 0 || !this._jsDocTags(sym).some((t: any) => isIgnoreDirective(t))) {
+    if (decls.length === 0 || !this._jsDocTags(sym).some((t: any) => t.name === 'jsii')) {
       return false;
     }
-    if (decls.length === 1) {
-      return true;
-    }
-    return decls.every((handle) => {
-      const block = this._leadingJsDocBlock(handle.resolve(this.project));
-      return block != null && this._jsDocLines(block).some((line) => /^@jsii\s+ignore(\s|$)/.test(line));
-    });
+    return decls.every((handle) => this._directivesOf(handle.resolve(this.project)).ignore != null);
+  }
 
-    /** `@jsii ignore` (a `@jsii` tag whose directive text, on any of its lines, is `ignore`). */
-    function isIgnoreDirective(tag: any): boolean {
-      if (tag.name !== 'jsii') {
-        return false;
+  private _directivesOf(node: any): Directives {
+    return Directives.of(node, (diag) => this._diagnostics.push(diag));
+  }
+
+  /**
+   * Whether a `@jsii suppress` directive on the node, or on one of its
+   * ancestors, suppresses the warning with this code.
+   */
+  private _isSuppressed(node: any, jsiiCode: number): boolean {
+    for (let current = node; current != null; current = current.parent) {
+      for (const code of this._directivesOf(current).suppressions) {
+        try {
+          if (parseWarningCodes(code).includes(jsiiCode)) {
+            return true;
+          }
+        } catch {
+          // Unknown code: ignore
+        }
       }
-      const text: string = typeof tag.text === 'string' ? tag.text : (tag.text ?? []).map((p: any) => p.text).join('');
-      return text.split(/[\n,]/).some((part) => part.trim().split(/\s+/)[0] === 'ignore');
     }
+    return false;
   }
 
   private _isDeprecated(sym: any): boolean {
@@ -1382,7 +1404,8 @@ export class Assembler {
       if (msym.declarations?.[0]?.kind !== SyntaxKind.EnumMember) {
         continue;
       }
-      if (this._isInternal(msym) || this._shouldStrip(msym, `${fqn}#${msym.name}`)) {
+      // The classic assembler does not hide enum members that are `@internal`, `_`-prefixed or `@jsii ignore`d.
+      if (this._shouldStrip(msym, `${fqn}#${msym.name}`)) {
         continue;
       }
       const member: any = { name: msym.name };
@@ -2933,6 +2956,9 @@ export class Assembler {
     ...args: Parameters<T>
   ): JsiiDiagnostic {
     const diagnostic = code.create(this._diagnosticLocation(node), ...args);
+    if (diagnostic.category === DiagnosticCategory.Warning && this._isSuppressed(node, diagnostic.jsiiCode)) {
+      suppressInline(diagnostic);
+    }
     this._diagnostics.push(diagnostic);
     return diagnostic;
   }
