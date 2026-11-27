@@ -168,25 +168,30 @@ project.vscode!.extensions.addRecommendations('dbaeumer.vscode-eslint');
 project.vscode!.settings.addSetting('editor.codeActionsOnSave', { 'source.fixAll.eslint': 'explicit' });
 project.vscode!.settings.addSetting('eslint.validate', ['typescript']);
 
+// Base tsconfigs for the `extends` option of a user-provided tsconfig, generated from the validation rule sets.
+const baseTsconfigs = { strict, generated, minimal };
+
 // Exports map...
 project.package.addField('exports', {
   '.': `./${project.package.entrypoint}`,
   './bin/jsii': './bin/jsii',
   './package.json': './package.json',
   './common': './lib/common/index.js',
-  './tsconfig.strict.json': './tsconfig.strict.json',
-  './tsconfig.generated.json': './tsconfig.generated.json',
-  './tsconfig.minimal.json': './tsconfig.minimal.json',
+  ...Object.fromEntries(
+    Object.keys(baseTsconfigs).map((name) => [`./tsconfig.${name}.json`, `./tsconfig.${name}.json`]),
+  ),
 });
 
-// Base tsconfigs for the `extends` option of a user-provided tsconfig, generated from the validation rule sets.
-// Each one sets the options its rule set requires, with the values of the tsconfig jsii generates.
+// Each base tsconfig sets the options its rule set requires, with the values of the tsconfig jsii generates.
 const generatedCompilerOptions = convertForJson(BASE_COMPILER_OPTIONS);
-for (const [name, ruleSet] of Object.entries({ strict, generated, minimal })) {
+for (const [name, ruleSet] of Object.entries(baseTsconfigs)) {
   // The minimal rule set accepts a missing `declaration`, but TypeScript then emits no declarations, which jsii needs.
   const fields = new Set([...ruleSet.requiredFields, 'declaration']);
+  const missing = [...fields].filter((field) => !(field in generatedCompilerOptions));
+  if (missing.length > 0) {
+    throw new Error(`tsconfig.${name}.json: no generated value for required option(s) ${missing.join(', ')}`);
+  }
   new JsonFile(project, `tsconfig.${name}.json`, {
-    allowComments: false,
     editGitignore: false,
     obj: {
       compilerOptions: Object.fromEntries(
