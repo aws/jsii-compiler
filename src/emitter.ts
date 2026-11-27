@@ -177,6 +177,8 @@ function addToEmittedJs(
     if (classes == null) {
       LOG.warn(`ts backend: the classes of ${jsFile} do not match ${tsFile}; rtti appended, no deprecation warnings`);
       const js = options.deprecationWarnings ? withRewrittenBodies(ts, project, jsFile, jsText) : jsText;
+      // @TODO(NEXT): fallback rtti form, different from the static member main emits; it only hides a pairing miss.
+      // After 7.1's first release: make this the only rtti form, or fail the build instead of warning.
       return injectRtti(js, rttiSnippet(classesHere, options.assembly.version));
     }
     const file: EmittedFile = { jsFile, jsText, jsSource, tsFile, tsSource, k: ts.SyntaxKind, classes };

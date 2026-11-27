@@ -138,6 +138,8 @@ export function formatCompilationSummary(
     }
   }
 
+  // @TODO(NEXT): with --fail-on-warnings and only warnings this says "Failed with errors" next to `Errors: 0`
+  // (aws/jsii-compiler#2981). After 7.1's first release: say "Failed because of warnings" when errors === 0.
   const status = emitSkipped ? '❌ Failed with errors' : warnings > 0 ? '✨ Successful with warnings' : '✨ Successful';
 
   const parts = [`Errors: ${errors}`, `Warnings: ${warnings}${silenced > 0 ? ` (+${silenced} silenced)` : ''}`];

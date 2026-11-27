@@ -185,6 +185,9 @@ export class Compiler {
 
   private configureTypeScript(): TypeScriptConfig {
     if (this.userProvidedTypeScriptConfig) {
+      // @TODO(NEXT): paths and `extends` of a --tsconfig in a subdirectory resolve against the project root, not the
+      // file's own directory as tsc does (aws/jsii-compiler#2991). After 7.1's first release: drop the
+      // `projectRoot` argument.
       const config = readTypeScriptConfigFile(this.configPath, this.projectRoot);
 
       // emit a warning if validation is disabled
@@ -453,6 +456,9 @@ function deriveEntry(projectRoot: string, projectInfo: ProjectInfo, rootDir?: st
  * or errors in the base file) and compiler options TypeScript rejects (unknown
  * TS5023/TS5025, wrong type TS5024, bad value TS6046, command line only TS6266).
  */
+// @TODO(NEXT): TS7 reports these tsconfig errors like tsc does; jsii hides them to match TS6-based main, which never
+// saw them (aws/jsii-compiler#2982, #2991, #3029). After 7.1's first release: report the program's config file
+// diagnostics and drop this set, `hasSkippedConfigErrors` and `flattenTsconfig`.
 const SKIPPED_CONFIG_ERRORS = new Set([5083, 18000, 5023, 5024, 5025, 6046, 6266]);
 
 function hasSkippedConfigErrors(program: any, tsconfigPath: string): boolean {
@@ -553,6 +559,9 @@ export function buildProject(options: BuildProjectOptions): BuildProjectResult {
   // program uses: as written in `package.json` for a generated tsconfig, from the
   // program's options for a user-provided one. `rootDir` only counts with an
   // `outDir`; when it is not set, use the common directory of the sources, as tsc did.
+  // @TODO(NEXT): generated-config dirs stay as written in package.json (`./build`, `.`) because main records them so
+  // in `metadata.tscOutDir`/`tscRootDir`; a user tsconfig gives normalized ones (`build`, ``). After 7.1's first
+  // release: normalize both (changes the assembly fingerprint).
   const compilerOptions = options.generatedTsconfig
     ? { outDir: projectInfo.tsc?.outDir, rootDir: projectInfo.tsc?.rootDir }
     : {
@@ -565,6 +574,8 @@ export function buildProject(options: BuildProjectOptions): BuildProjectResult {
 
   const entry = deriveEntry(projectRoot, projectInfo, tscRootDir, tscOutDir);
 
+  // @TODO(NEXT): TS5074 is a main bug (lost `configFilePath`); TS7 and tsc build this config fine
+  // (aws/jsii-compiler#3025). After 7.1's first release: delete this block.
   // The classic compiler handed a user tsconfig's options to TypeScript without the
   // file they came from, so TypeScript rejected `incremental` without a
   // `tsBuildInfoFile` (TS5074, an options error that also stops the emit).
@@ -585,6 +596,8 @@ export function buildProject(options: BuildProjectOptions): BuildProjectResult {
   // TypeScript ("Compilation errors"), then the assembler ("Type model errors"),
   // then the emit ("Compilation errors"). Warnings count with `failOnWarnings`.
   let failureLogged = false;
+  // @TODO(NEXT): with --fail-on-warnings, assembler warnings log "Type model errors" though there are none
+  // (aws/jsii-compiler#2981). After 7.1's first release: log a warnings-specific line when no error is present.
   const logFailure = (stage: 'Compilation' | 'Type model', diagnostics: readonly Diagnostic[] | undefined) => {
     const abortable =
       diagnostics == null ||
@@ -659,6 +672,9 @@ export function buildProject(options: BuildProjectOptions): BuildProjectResult {
     // Write the assembly first (the parity artifact), reusing @jsii/spec's writer
     // so the on-disk format (incl. the compressed file-redirect variant) matches
     // the strada path exactly.
+    // @TODO(NEXT): `.jsii` is written even when TypeScript reported errors, while the log says "Compilation errors
+    // prevented the JSII assembly from being created" (aws/jsii-compiler#2980). After 7.1's first release: also
+    // require `!tsHasErrors`.
     if (assembly != null && !jsiiFailed) {
       writeAssembly(projectRoot, fingerprint(assembly), { compress: options.compressAssembly ?? false });
     }
