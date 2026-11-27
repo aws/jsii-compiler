@@ -308,6 +308,8 @@ export class Assembler {
     if (!this._diagnostics.some((d) => d.category === DiagnosticCategory.Error)) {
       this._validateNames(assembly);
       this._validateTypeReferences(assembly);
+      this._validateStaticMembersAndNestedTypes(assembly);
+      this._validateAbstractClassesImplementAllProperties(assembly);
     }
     return assembly;
   }
@@ -2634,6 +2636,10 @@ export class Assembler {
   private _visitMethod(msym: any, decl: any, isStatic: boolean, jsiiType: any, declaringTypeDecl: any): any {
     const { SyntaxKind } = this.ts;
     const sig = this.checker.getSignatureFromDeclaration(decl);
+    if (!sig) {
+      this._report(JsiiDiagnostic.JSII_9004_UNABLE_TO_COMPUTE_SIGNATURE, decl, msym.name, jsiiType);
+      return undefined;
+    }
     if (!this._validateMemberName('method', msym, decl, jsiiType, declaringTypeDecl)) {
       return undefined;
     }
@@ -3874,6 +3880,93 @@ export class Assembler {
    * then static constants (JSII8003). Members are all methods, then all
    * properties, type by type.
    */
+  /**
+   * Classic validator: a static member and a nested type of a type may not have the same PascalCased name (JSII5020),
+   * as Go uses that name for both.
+   */
+  private _validateStaticMembersAndNestedTypes(assembly: spec.Assembly): void {
+    for (const nestedType of Object.values(assembly.types ?? {})) {
+      if (nestedType.namespace == null) {
+        continue;
+      }
+      const nestingType = assembly.types![`${assembly.name}.${nestedType.namespace}`];
+      if (nestingType == null) {
+        continue;
+      }
+      const nestedTypeName = Case.pascal(nestedType.name);
+      const members: Array<spec.Property | spec.Method | spec.EnumMember> = spec.isClassOrInterfaceType(nestingType)
+        ? [
+            ...(nestingType.methods ?? []).filter((m) => m.static),
+            ...(nestingType.properties ?? []).filter((p) => p.static),
+          ]
+        : nestingType.members;
+      for (const member of members) {
+        const name = spec.isClassOrInterfaceType(nestingType) ? Case.pascal(member.name) : member.name;
+        if (name !== nestedTypeName) {
+          continue;
+        }
+        const node = spec.isClassOrInterfaceType(nestingType)
+          ? this.relatedNodes.get(member)
+          : (this.relatedNodes.get(nestingType)?.members ?? []).find((m: any) => m.name?.text === member.name);
+        this._report(
+          JsiiDiagnostic.JSII_5020_STATIC_MEMBER_CONFLICTS_WITH_NESTED_TYPE,
+          node,
+          nestingType,
+          member,
+          nestedType,
+        ).addRelatedInformationIf(
+          this._diagnosticLocation(this.relatedNodes.get(nestedType)),
+          'This is the conflicting nested type declaration',
+        );
+      }
+    }
+  }
+
+  /**
+   * Classic validator: an abstract class declares every optional property of the interfaces it implements, at least
+   * as `abstract` (JSII5021); TypeScript already requires the others.
+   */
+  private _validateAbstractClassesImplementAllProperties(assembly: spec.Assembly): void {
+    for (const type of Object.values(assembly.types ?? {})) {
+      if (!spec.isClassType(type) || !type.abstract) {
+        continue;
+      }
+      const classProps = new Set<string>();
+      for (let t: spec.Type | undefined = type; t != null && spec.isClassType(t); ) {
+        for (const prop of t.properties ?? []) {
+          classProps.add(prop.name);
+        }
+        t = t.base != null ? this._dereferenceType(t.base) : undefined;
+      }
+      const check = (interfaceFqn: string) => {
+        const intf = this._dereferenceType(interfaceFqn);
+        if (intf == null || !spec.isInterfaceType(intf)) {
+          return;
+        }
+        for (const prop of intf.properties ?? []) {
+          if (prop.optional && !classProps.has(prop.name)) {
+            this._report(
+              JsiiDiagnostic.JSII_5021_ABSTRACT_CLASS_MISSING_PROP_IMPL,
+              this.relatedNodes.get(type),
+              intf,
+              type,
+              prop.name,
+            ).addRelatedInformationIf(
+              this._diagnosticLocation(this.relatedNodes.get(prop)),
+              'The implemented declaration is here.',
+            );
+          }
+        }
+        for (const extFqn of intf.interfaces ?? []) {
+          check(extFqn);
+        }
+      };
+      for (const implFqn of type.interfaces ?? []) {
+        check(implFqn);
+      }
+    }
+  }
+
   private _validateNames(assembly: spec.Assembly): void {
     const types = Object.values(assembly.types ?? {});
     const members = [
