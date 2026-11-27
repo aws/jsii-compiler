@@ -1548,11 +1548,22 @@ export class Assembler {
   private _visitInterface(sym: any, decl: any, name: string, jsiiType: any): void {
     jsiiType.kind = 'interface';
     const type = this.checker.getTypeAtLocation(decl);
-    const { interfaces, erasedBases } = this._processBaseInterfaces(type.getBaseTypes());
+    const baseTypes = type.getBaseTypes();
+    const { interfaces, erasedBases } = this._processBaseInterfaces(baseTypes);
     if (interfaces.length) {
       const rewrittenByStrip = erasedBases.some((b) => this.strippedTypeSymIds.has((b.getSymbol?.() ?? b.symbol)?.id));
       jsiiType.interfaces = rewrittenByStrip ? [...interfaces].sort() : interfaces;
     }
+
+    const heritageNodes = (decl.heritageClauses ?? []).flatMap((h: any) => h.types);
+    if (
+      heritageNodes.length !== (baseTypes ?? []).length ||
+      (baseTypes ?? []).some((t: any) => !this._isValidSupertypeSymbol(t.getSymbol?.()))
+    ) {
+      // Only when a base can be invalid: the check asks TypeScript for the type of each heritage clause.
+      this._validateHeritageClauses(decl, () => undefined);
+    }
+    this._verifySupertypes(jsiiType);
 
     this._reportTypeParameters(decl);
     for (const memberDecl of decl.members ?? []) {
@@ -1728,6 +1739,19 @@ export class Assembler {
           }
           continue;
         }
+        // Classic: a base that is neither hidden (internal, unexported, an anonymous type) nor a named type is not
+        // erased: it is reported (JSII3005, e.g. `extends Array<string>`) and left out.
+        if (s != null && !s.name.startsWith('__') && !this._isInternal(s) && !this._isOwnSourceDecl(s)) {
+          const ref = this._typeReference(iface);
+          if (!spec.isNamedTypeReference(ref)) {
+            this._report(
+              JsiiDiagnostic.JSII_3005_TYPE_USED_AS_INTERFACE,
+              s.valueDeclaration?.resolve?.(this.project) ?? s.declarations?.[0]?.resolve(this.project),
+              ref,
+            );
+            continue;
+          }
+        }
         // Not an exported/foreign type: erase it and descend into its own bases,
         // so its public ancestors surface and its members get re-listed here.
         // Guard against heritage cycles / repeated visits (RPC-cost + safety).
@@ -1746,6 +1770,90 @@ export class Assembler {
     };
     process(baseTypes);
     return { interfaces, erasedBases };
+  }
+
+  /** The type reference of a class's base class type (classic: from `getBaseTypes`, not the heritage expression). */
+  private _baseClassReference(classDecl: any): any {
+    const baseType = this.checker.getTypeAtLocation(classDecl)?.getBaseTypes?.()?.[0];
+    return baseType ? this._typeReference(baseType) : undefined;
+  }
+
+  /** Whether a symbol is declared in the project's own sources (not in the standard library or a dependency). */
+  private _isOwnSourceDecl(sym: any): boolean {
+    const declPath: string = sym.declarations?.[0]?.path ?? '';
+    return !this._isStdlibDecl(sym) && this._dependencyOfPath(declPath) == null && !declPath.includes('/node_modules/');
+  }
+
+  /** Whether all declarations of a supertype's symbol are classes, interfaces or modules (classic). */
+  private _isValidSupertypeSymbol(sym: any): boolean {
+    const { SyntaxKind } = this.ts;
+    const valid = [SyntaxKind.ClassDeclaration, SyntaxKind.InterfaceDeclaration, SyntaxKind.ModuleDeclaration];
+    return sym != null && (sym.declarations ?? []).every((d: any) => valid.includes(d.kind));
+  }
+
+  /**
+   * Classic `_validateHeritageClauses`: the types a class or interface extends or implements must be classes or
+   * interfaces (JSII3004). `symbolHint` gives a symbol already known for a heritage type; TypeScript is asked for the
+   * type only when that symbol is missing or invalid.
+   */
+  private _validateHeritageClauses(decl: any, symbolHint: (node: any) => any): void {
+    const { SyntaxKind } = this.ts;
+    for (const clause of decl.heritageClauses ?? []) {
+      for (const node of clause.types) {
+        if (this._isValidSupertypeSymbol(symbolHint(node))) {
+          continue;
+        }
+        const parentSym = this.checker.getTypeAtLocation(node)?.getSymbol?.();
+        if (parentSym == null || this._isValidSupertypeSymbol(parentSym)) {
+          // No symbol: an error type, TypeScript already reported the code.
+          continue;
+        }
+        const valid = [SyntaxKind.ClassDeclaration, SyntaxKind.InterfaceDeclaration, SyntaxKind.ModuleDeclaration];
+        const badHandle = (parentSym.declarations ?? []).find((d: any) => !valid.includes(d.kind));
+        const clauseType = clause.token === SyntaxKind.ExtendsKeyword ? 'extends' : 'implements';
+        this._report(
+          JsiiDiagnostic.JSII_3004_INVALID_SUPERTYPE,
+          node,
+          clauseType,
+          SyntaxKind[badHandle.kind],
+        ).addRelatedInformationIf(
+          this._diagnosticLocation(badHandle.resolve(this.project)),
+          'The invalid super type is declared here.',
+        );
+      }
+    }
+  }
+
+  /**
+   * Classic, once all types are known: the base class of a class is a class (JSII3006), the interfaces of a class or
+   * interface are interfaces (JSII3005), and a class does not implement a struct (JSII3007).
+   */
+  private _verifySupertypes(jsiiType: spec.ClassType | spec.InterfaceType): void {
+    const declOf = (t: spec.Type) => this.relatedNodes.get(this.types[t.fqn]);
+    this.deferred.push(() => {
+      if (spec.isClassType(jsiiType) && jsiiType.base != null) {
+        const base = this._dereferenceType(jsiiType.base);
+        if (base != null && !spec.isClassType(base)) {
+          this._report(JsiiDiagnostic.JSII_3006_TYPE_USED_AS_CLASS, declOf(base), { fqn: base.fqn });
+        }
+      }
+      for (const fqn of jsiiType.interfaces ?? []) {
+        const iface = this._dereferenceType(fqn);
+        if (iface == null) {
+          continue;
+        }
+        if (!spec.isInterfaceType(iface)) {
+          this._report(JsiiDiagnostic.JSII_3005_TYPE_USED_AS_INTERFACE, declOf(iface), { fqn });
+        } else if (spec.isClassType(jsiiType) && iface.datatype) {
+          this._report(
+            JsiiDiagnostic.JSII_3007_ILLEGAL_STRUCT_EXTENSION,
+            this.relatedNodes.get(jsiiType),
+            jsiiType,
+            iface,
+          );
+        }
+      }
+    });
   }
 
   private _visitClass(sym: any, decl: any, jsiiType: any): void {
@@ -1772,19 +1880,44 @@ export class Assembler {
     // stripped interface was replaced by its super interfaces, or a stripped base
     // class contributed its interfaces.
     let interfacesRewrittenByStrip = false;
+    // The symbols of the class's own heritage clauses, for _validateHeritageClauses.
+    const ownHeritageSymbols = new Map<any, any>();
+    let unnamedBaseRef: any;
     const collectHeritage = (classDecl: any): void => {
       const deferredBases: any[] = [];
       for (const h of classDecl.heritageClauses ?? []) {
         const isExt = h.token === SyntaxKind.ExtendsKeyword && classDecl.kind !== SyntaxKind.InterfaceDeclaration;
         for (const t of h.types) {
           const s = this._heritageBaseSymbol(t);
+          if (classDecl === decl) {
+            ownHeritageSymbols.set(t, s);
+          }
           if (!s) {
+            if (classDecl === decl && isExt && !this.checker.getTypeAtLocation(t)?.isErrorType?.()) {
+              // Classic: a base class without a symbol (`extends make()`) cannot be named.
+              this._report(JsiiDiagnostic.JSII_3004_INVALID_SUPERTYPE, t, 'extends', 'unnamed base type');
+            }
             continue;
           }
           const fqnRef = this.typeFqnBySymbolId.get(s.id) ?? this._externalFqnOf(s);
           if (isExt) {
             if (fqnRef) {
               base.value ??= fqnRef;
+            } else if (
+              classDecl === decl &&
+              !s.name.startsWith('__') &&
+              !this._isInternal(s) &&
+              !this._isOwnSourceDecl(s) &&
+              (unnamedBaseRef ??= this._baseClassReference(decl)) != null &&
+              !spec.isNamedTypeReference(unnamedBaseRef)
+            ) {
+              // Classic: a base class that is neither hidden nor a named type (`extends Array<string>`) is reported
+              // and left out, not erased.
+              this._report(
+                JsiiDiagnostic.JSII_3006_TYPE_USED_AS_CLASS,
+                (s.valueDeclaration ?? s.declarations?.[0])?.resolve(this.project),
+                unnamedBaseRef,
+              );
             } else {
               const d0 = s.declarations?.[0]?.resolve(this.project);
               if (d0 && (d0.kind === SyntaxKind.ClassDeclaration || d0.kind === SyntaxKind.InterfaceDeclaration)) {
@@ -1818,6 +1951,8 @@ export class Assembler {
       }
     };
     collectHeritage(decl);
+    this._validateHeritageClauses(decl, (t) => ownHeritageSymbols.get(t));
+    this._verifySupertypes(jsiiType);
     // Classic: the member declarations of the class and of its erased base classes are checked in that order.
     for (const memberOwner of [decl, ...erasedDecls]) {
       for (const memberDecl of memberOwner.members ?? []) {
