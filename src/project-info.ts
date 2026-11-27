@@ -598,9 +598,13 @@ function _validateLicense(id: string | undefined): string {
   if (id === 'UNLICENSED') {
     return id;
   }
+  // SPDX's form for a license that has no SPDX identifier
+  if (/^LicenseRef-[A-Za-z0-9.-]+$/.test(id)) {
+    return id;
+  }
   if (!spdx.has(id)) {
     throw new JsiiError(
-      `Invalid license identifier "${id}", see valid license identifiers at https://spdx.org/licenses/`,
+      `Invalid license identifier "${id}": use an SPDX license identifier (see https://spdx.org/licenses/), "UNLICENSED" or "LicenseRef-<idstring>"`,
     );
   }
   return id;
