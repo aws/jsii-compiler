@@ -8,8 +8,7 @@
   "include": [
     "**/*.ts",
     "../.projenrc.ts",
-    "../src/support.ts",
-    "../src/version.ts",
+    "../src/support-types.ts",
     "../src/case.ts",
     "../src/tsconfig/compiler-options.ts",
     "../src/tsconfig/validator.ts",

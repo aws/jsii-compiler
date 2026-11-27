@@ -1,5 +1,4 @@
 import { javascript, JsonFile, JsonPatch, github, typescript, YamlFile } from 'projen';
-import { YarnNodeLinker } from 'projen/lib/javascript/yarnrc';
 import { BuildWorkflow } from './projenrc/build-workflow';
 import { JsiiCalcFixtures } from './projenrc/fixtures';
 import { ReleaseWorkflow } from './projenrc/release';
@@ -18,23 +17,23 @@ import strict from './src/tsconfig/rulesets/strict.public';
 const workflowNodeVersion = 'lts/*';
 
 const project = new typescript.TypeScriptProject({
+  name: 'jsii',
+  license: 'Apache-2.0',
+  authorName: 'Amazon Web Services',
+  authorUrl: 'https://aws.amazon.com',
+  homepage: 'https://aws.github.io/jsii',
+  repository: 'https://github.com/aws/jsii-compiler.git',
+
   projenrcTs: true,
+  runner: typescript.TypeScriptRunner.tsx({ typeCheck: true }),
 
   packageManager: javascript.NodePackageManager.YARN_BERRY,
   yarnBerryOptions: {
+    version: '4.18.1',
     yarnRcOptions: {
-      nodeLinker: YarnNodeLinker.NODE_MODULES,
+      nodeLinker: javascript.YarnNodeLinker.NODE_MODULES,
     },
   },
-
-  name: 'jsii',
-  license: 'Apache-2.0',
-
-  authorName: 'Amazon Web Services',
-  authorUrl: 'https://aws.amazon.com',
-
-  homepage: 'https://aws.github.io/jsii',
-  repository: 'https://github.com/aws/jsii-compiler.git',
 
   pullRequestTemplateContents: [
     '',
@@ -150,8 +149,7 @@ project.tsconfig?.file?.patch(
 );
 project.tryFindObjectFile('projenrc/tsconfig.json')?.patch(
   // projenrc/support.ts needs these files
-  JsonPatch.add('/include/-', '../src/support.ts'),
-  JsonPatch.add('/include/-', '../src/version.ts'),
+  JsonPatch.add('/include/-', '../src/support-types.ts'),
   // the base tsconfigs are generated from the tsconfig rule sets
   JsonPatch.add('/include/-', '../src/case.ts'),
   JsonPatch.add('/include/-', '../src/tsconfig/compiler-options.ts'),
@@ -220,6 +218,7 @@ if (project.jest?.config) {
 // Add fixtures & other exemptions to npmignore
 project.npmignore?.addPatterns(
   '/.*',
+  '/AGENTS.md',
   '/CODE_OF_CONDUCT.md',
   '/CONTRIBUTING.md',
   '/build-tools/',
@@ -261,7 +260,7 @@ project.addDevDeps(
   'glob',
 );
 
-project.preCompileTask.exec('ts-node build-tools/code-gen.ts', {
+project.preCompileTask.exec('tsx build-tools/code-gen.ts', {
   name: 'code-gen',
 });
 project.gitignore.addPatterns('/src/version.ts', '/jsii-outdir/', '/test/negatives/.*');

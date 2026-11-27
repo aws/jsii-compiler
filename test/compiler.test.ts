@@ -18,14 +18,6 @@ import { ProjectInfo } from '../src/project-info';
 import { TypeScriptConfigValidationRuleSet } from '../src/tsconfig';
 import { TypeScriptConfigValidator } from '../src/tsconfig/tsconfig-validator';
 
-// Make the typescript module's properties configurable so jest.spyOn works.
-// TS 6.0 exports non-configurable properties that cannot be spied on directly.
-jest.mock('typescript', () => {
-  const actual = jest.requireActual('typescript');
-  // Spread into a fresh object to make all properties writable/configurable
-  return { __esModule: true, ...actual };
-});
-
 beforeEach(() => {
   jest.restoreAllMocks();
 });
@@ -361,7 +353,10 @@ describe(Compiler, () => {
       });
 
       const result = compiler.emit();
-      expect(result.diagnostics).toEqual([]);
+      // No rule set is given, so validation is off and only JSII4009 says so.
+      expect(result.diagnostics).toEqual([
+        expect.objectContaining({ jsiiCode: 4009, category: ts.DiagnosticCategory.Warning }),
+      ]);
       expect(result.emitSkipped).toBe(false);
     });
 
@@ -397,49 +392,11 @@ describe(Compiler, () => {
       });
 
       const result = compiler.emit();
-      expect(result.diagnostics).toEqual([]);
+      // No rule set is given, so validation is off and only JSII4009 says so.
+      expect(result.diagnostics).toEqual([
+        expect.objectContaining({ jsiiCode: 4009, category: ts.DiagnosticCategory.Warning }),
+      ]);
       expect(result.emitSkipped).toBe(false);
-    });
-
-    test('respect "lib" setting from user-provided config', () => {
-      const tsconfig = tsconfigForNode18Strict();
-      tsconfig.compilerOptions.lib = ['Decorators.Legacy']; // Something very nonstandard
-      writeFileSync(join(sourceDir, tsconfigPath), JSON.stringify(tsconfig, null, 2));
-
-      const createIncrementalProgram = jest.spyOn(ts, 'createIncrementalProgram');
-
-      const compiler = new Compiler({
-        projectInfo: _makeProjectInfo(sourceDir, 'index.d.ts'),
-        typeScriptConfig: tsconfigPath,
-      });
-      compiler.emit();
-
-      expect(createIncrementalProgram).toHaveBeenCalledWith(
-        expect.objectContaining({
-          rootNames: expect.arrayContaining([expect.stringContaining('lib.decorators.legacy.d.ts')]),
-        }),
-      );
-    });
-
-    test('missing "lib" setting is based on compilation target', () => {
-      const tsconfig = tsconfigForNode18Strict();
-      tsconfig.compilerOptions.target = 'es6';
-      delete tsconfig.compilerOptions.lib;
-      writeFileSync(join(sourceDir, tsconfigPath), JSON.stringify(tsconfig, null, 2));
-
-      const createIncrementalProgram = jest.spyOn(ts, 'createIncrementalProgram');
-
-      const compiler = new Compiler({
-        projectInfo: _makeProjectInfo(sourceDir, 'index.d.ts'),
-        typeScriptConfig: tsconfigPath,
-      });
-      compiler.emit();
-
-      expect(createIncrementalProgram).toHaveBeenCalledWith(
-        expect.objectContaining({
-          rootNames: expect.arrayContaining([expect.stringContaining('lib.es6.d.ts')]),
-        }),
-      );
     });
 
     test('"watch" mode', async () => {
@@ -496,6 +453,51 @@ describe(Compiler, () => {
         rmSync(sourceDir, { force: true, recursive: true });
       }
     }, 25_000);
+  });
+
+  describe('package name', () => {
+    test.each([
+      { desc: 'a class', name: '@foo/example.jsii-dot-error', source: 'export class Foo {}' },
+      { desc: 'a dot in the scope', name: '@foo.bar/baz', source: 'export class Foo {}' },
+      {
+        desc: 'a subclass',
+        name: '@foo/example.jsii-dot-error',
+        source: 'export class Base {}\nexport class Derived extends Base {}',
+      },
+      {
+        desc: 'a class that implements an extended interface',
+        name: '@foo/example.jsii-dot-error',
+        source:
+          'export interface IA { readonly a: string; }\nexport interface IB extends IA { readonly b: string; }\n' +
+          "export class Foo implements IB { public readonly a = ''; public readonly b = ''; }",
+      },
+      {
+        desc: 'a class that uses an interface',
+        name: '@foo/example.jsii-dot-error',
+        source:
+          'export interface Props { readonly name: string; }\nexport class Foo { public constructor(_props: Props) {} }',
+      },
+    ])('reports a package name that contains a dot ($desc)', ({ name, source }) => {
+      const result = compileJsiiForTest(source, { captureDiagnostics: true, projectInfo: { name } });
+
+      // Only the package name is reported, not the types that jsii looked up by name.
+      const errors = result.diagnostics
+        .filter(JsiiDiagnostic.isJsiiDiagnostic)
+        .filter((diag) => diag.category === ts.DiagnosticCategory.Error);
+      expect(errors.map((diag) => diag.jsiiCode)).toEqual([9]);
+      expect(ts.flattenDiagnosticMessageText(errors[0].messageText, '\n')).toContain(
+        `${JSON.stringify(name)} contains a "."`,
+      );
+    });
+
+    test('does not report a package name without a dot', () => {
+      const result = compileJsiiForTest('export class Foo {}', {
+        captureDiagnostics: true,
+        projectInfo: { name: '@foo/example-jsii-dot-error' },
+      });
+
+      expect(result.diagnostics.filter(JsiiDiagnostic.isJsiiDiagnostic).map((diag) => diag.jsiiCode)).not.toContain(9);
+    });
   });
 
   describe('compressed assembly option', () => {

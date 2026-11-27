@@ -9,6 +9,7 @@ import * as ts from 'typescript';
 import { findDependencyDirectory } from './common/find-utils';
 import { ASSEMBLY_FEATURES_SUPPORTED } from './helpers';
 import { JsiiDiagnostic } from './jsii-diagnostic';
+import { JAVA_RESERVED } from './reserved-words';
 import { TypeScriptConfigValidationRuleSet } from './tsconfig';
 import { JsiiError, parsePerson, parseRepository } from './utils';
 
@@ -171,6 +172,9 @@ export interface ProjectInfoResult {
 
 export function loadProjectInfo(projectRoot: string): ProjectInfoResult {
   const packageJsonPath = path.join(projectRoot, 'package.json');
+  if (!fs.existsSync(packageJsonPath)) {
+    throw new JsiiError(`Could not find a "package.json" file in ${projectRoot}`);
+  }
   const pkg: PackageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
 
   const diagnostics: ts.Diagnostic[] = [];
@@ -368,6 +372,13 @@ export function validateTargets(targets: AssemblyTargets | undefined): AssemblyT
   ) {
     if (!targets.java.package.split('.').every(isIdentifier)) {
       throw new JsiiError(`jsii.targets.java.package contains non-identifier characters: ${targets.java.package}`);
+    }
+    // JLS 6.1: a package name component that is a Java keyword, or that starts with a digit, is not a valid identifier.
+    const invalid = targets.java.package.split('.').find((x) => JAVA_RESERVED.has(x) || /^\d/.test(x));
+    if (invalid != null) {
+      throw new JsiiError(
+        `jsii.targets.java.package contains a component that is not a valid Java identifier ("${invalid}"): ${targets.java.package}`,
+      );
     }
   }
 

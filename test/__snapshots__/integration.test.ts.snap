@@ -2677,10 +2677,10 @@ that the value set is of the expected type and throw otherwise.",
                 "union": {
                   "types": [
                     {
-                      "primitive": "string",
+                      "primitive": "number",
                     },
                     {
-                      "primitive": "number",
+                      "primitive": "string",
                     },
                     {
                       "fqn": "@scope/jsii-calc-lib.Number",
@@ -2705,16 +2705,16 @@ that the value set is of the expected type and throw otherwise.",
             "union": {
               "types": [
                 {
-                  "primitive": "string",
-                },
-                {
                   "primitive": "number",
                 },
                 {
-                  "fqn": "jsii-calc.Multiply",
+                  "primitive": "string",
                 },
                 {
                   "fqn": "@scope/jsii-calc-lib.Number",
+                },
+                {
+                  "fqn": "jsii-calc.Multiply",
                 },
               ],
             },
@@ -4595,7 +4595,7 @@ I will repeat this example again, but in an",
                               ],
                             },
                           },
-                          "kind": "map",
+                          "kind": "array",
                         },
                       },
                       {
@@ -4612,7 +4612,7 @@ I will repeat this example again, but in an",
                               ],
                             },
                           },
-                          "kind": "array",
+                          "kind": "map",
                         },
                       },
                     ],
@@ -4659,7 +4659,7 @@ I will repeat this example again, but in an",
                             ],
                           },
                         },
-                        "kind": "map",
+                        "kind": "array",
                       },
                     },
                     {
@@ -4676,7 +4676,7 @@ I will repeat this example again, but in an",
                             ],
                           },
                         },
-                        "kind": "array",
+                        "kind": "map",
                       },
                     },
                   ],
@@ -16877,10 +16877,10 @@ like.",
             "union": {
               "types": [
                 {
-                  "primitive": "string",
+                  "primitive": "number",
                 },
                 {
-                  "primitive": "number",
+                  "primitive": "string",
                 },
                 {
                   "fqn": "jsii-calc.AllTypes",
@@ -16905,10 +16905,10 @@ like.",
             "union": {
               "types": [
                 {
-                  "primitive": "string",
+                  "primitive": "number",
                 },
                 {
-                  "primitive": "number",
+                  "primitive": "string",
                 },
               ],
             },

@@ -24,7 +24,7 @@ import { DeprecatedRemover } from './transforms/deprecated-remover';
 import { DeprecationWarningsInjector } from './transforms/deprecation-warnings';
 import { RuntimeTypeInfoInjector } from './transforms/runtime-info';
 import { combinedTransformers } from './transforms/utils';
-import { typeReferenceEqual, typeReferenceToString } from './type-reference';
+import { compareUnionMembers, typeReferenceEqual, typeReferenceToString } from './type-reference';
 import { TypeTracker } from './type-tracker';
 import { isBehavioralInterfaceType, visitType, visitTypeReference } from './type-visitor';
 import { JsiiError, parentFqn } from './utils';
@@ -165,6 +165,9 @@ export class Assembler implements Emitter {
    * @return the result of the assembly emission.
    */
   public emit(): ts.EmitResult {
+    if (this.projectInfo.name.includes('.')) {
+      this._diagnostics.push(JsiiDiagnostic.JSII_0009_PACKAGE_NAME_CONTAINS_DOT.createDetached(this.projectInfo.name));
+    }
     if (!this.projectInfo.description) {
       this._diagnostics.push(JsiiDiagnostic.JSII_0001_PKG_MISSING_DESCRIPTION.createDetached());
     }
@@ -434,11 +437,11 @@ export class Assembler implements Emitter {
       ref = ref.fqn;
     }
 
-    const [assm] = ref.split('.');
     let type;
-    if (assm === this.projectInfo.name) {
+    if (ref.startsWith(`${this.projectInfo.name}.`)) {
       type = this._types.get(ref);
     } else {
+      const [assm] = ref.split('.');
       const assembly = this.projectInfo.dependencyClosure.find((dep) => dep.name === assm);
       type = assembly?.types?.[ref];
 
@@ -2511,6 +2514,11 @@ export class Assembler implements Emitter {
         types.push(resolvedType);
       }
 
+      // The checker lists union members in the order it created the types, which no other compiler can reproduce.
+      if (field === 'union') {
+        types.sort(compareUnionMembers);
+      }
+
       const returnedType: spec.UnionTypeReference | spec.IntersectionTypeReference = {
         [field]: { types },
       } as any;
@@ -3223,7 +3231,9 @@ function isIdenticalRedeclaration(
   member: spec.Property | spec.Method,
   baseMember: spec.Property | spec.Method,
 ): boolean {
-  if (spec.isMethod(member) && spec.isMethod(baseMember)) {
+  // Not `spec.isMethod`: it only tells methods from initializers and is true
+  // for properties too.
+  if (!spec.isProperty(member) && !spec.isProperty(baseMember)) {
     const params = member.parameters ?? [];
     const baseParams = baseMember.parameters ?? [];
     return (
@@ -3240,7 +3250,7 @@ function isIdenticalRedeclaration(
     );
   }
 
-  if (!spec.isMethod(member) && !spec.isMethod(baseMember)) {
+  if (spec.isProperty(member) && spec.isProperty(baseMember)) {
     return (
       !!member.static === !!baseMember.static &&
       !!member.optional === !!baseMember.optional &&

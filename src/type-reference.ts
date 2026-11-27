@@ -25,6 +25,27 @@ export function typeReferenceToString(x: spec.TypeReference): string {
 }
 
 /**
+ * Compare type references for the order of union members: primitives first, then named types, collections and
+ * intersections, each group in the order of `typeReferenceToString` (plain code unit order, so it does not depend
+ * on the locale).
+ */
+export function compareUnionMembers(a: spec.TypeReference, b: spec.TypeReference): number {
+  const rank = (x: spec.TypeReference) =>
+    spec.isPrimitiveTypeReference(x)
+      ? 0
+      : spec.isNamedTypeReference(x)
+      ? 1
+      : spec.isCollectionTypeReference(x)
+      ? 2
+      : spec.isIntersectionTypeReference(x)
+      ? 3
+      : 4;
+  const sa = typeReferenceToString(a);
+  const sb = typeReferenceToString(b);
+  return rank(a) - rank(b) || (sa < sb ? -1 : sa > sb ? 1 : 0);
+}
+
+/**
  * Return whether the given type references are equal
  */
 export function typeReferenceEqual(a: spec.TypeReference, b: spec.TypeReference): boolean {
