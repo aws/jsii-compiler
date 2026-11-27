@@ -82,42 +82,101 @@ function applyInsertions(text: string, descending: readonly Insertion[]): string
 /**
  * Replace the `mappings` of a source map JSON text, leaving the rest of the
  * text as it is.
+ *
+ * Only the lines the edits touch are decoded and encoded again; the others are
+ * copied. The segments of the other lines are relative to the ones before them,
+ * which an edit that keeps every segment does not change. When an edit removes
+ * segments, the lines after it are decoded and encoded again up to the first
+ * segment that points to a source (the next ones are relative to that one).
  */
 function updateMapJson(json: string, text: string, descending: readonly Insertion[]): string {
-  const mappings: string = JSON.parse(json).mappings;
+  const mappings = mappingsOf(json);
   const lineStarts = lineStartsOf(text);
-  const lines = decodeMappings(mappings);
+  const raw = mappings.split(';');
 
   // Edits are applied from the last to the first, so the position of each
   // edit is still valid (in original coordinates) when it is applied.
-  for (const ins of descending) {
-    const from = positionOf(lineStarts, ins.offset);
-    const to = positionOf(lineStarts, ins.offset + (ins.length ?? 0));
-    if (from.line >= lines.length) {
-      continue;
-    }
-    const inserted = ins.text.split('\n');
-    const addedLines = inserted.length - 1;
-    const lastLength = inserted[inserted.length - 1].length;
+  const edits = descending
+    .map((ins) => ({
+      ins,
+      from: positionOf(lineStarts, ins.offset),
+      to: positionOf(lineStarts, ins.offset + (ins.length ?? 0)),
+    }))
+    .filter((edit) => edit.from.line < raw.length);
 
-    const keep = lines[from.line].filter((seg) => seg[0] < from.column);
-    const rest = (lines[to.line] ?? [])
-      .filter((seg) => seg[0] >= to.column)
-      .map((seg) => [seg[0] - to.column + (addedLines === 0 ? from.column + lastLength : lastLength), ...seg.slice(1)]);
-    const replaced: Segment[][] =
-      addedLines === 0 ? [[...keep, ...rest]] : [keep, ...Array.from({ length: addedLines - 1 }, () => []), rest];
-    lines.splice(from.line, to.line - from.line + 1, ...replaced);
+  // The lines that are edited together: edits that share a line go together.
+  const groups: Array<{ first: number; last: number; edits: typeof edits }> = [];
+  for (const edit of [...edits].reverse()) {
+    const group = groups[groups.length - 1];
+    if (group != null && edit.from.line <= group.last) {
+      group.last = Math.max(group.last, edit.to.line);
+      group.edits.unshift(edit);
+    } else {
+      groups.push({ first: edit.from.line, last: edit.to.line, edits: [edit] });
+    }
   }
 
-  return json.replace(`"mappings":${JSON.stringify(mappings)}`, `"mappings":${JSON.stringify(encodeMappings(lines))}`);
+  // The lines are decoded from zero (not from the lines before them): what `shift` tracks is how far the state of
+  // the output is from the state of the input after the segments that were removed, 0 when there were none.
+  let shift = [0, 0, 0, 0, 0];
+  const output: string[] = [];
+  let line = 0;
+  const recode = (lines: readonly string[], change?: (decoded: Segment[][]) => Segment[][]) => {
+    const decoded = [0, 0, 0, 0, 0];
+    const written = [...shift];
+    const segments = decodeMappings(lines, decoded);
+    output.push(...encodeMappings(change != null ? change(segments) : segments, written));
+    shift = written.map((v, i) => v - decoded[i]);
+  };
+  while (line < raw.length) {
+    const group = groups[0];
+    if (group != null && group.first === line) {
+      groups.shift();
+      const end = Math.min(group.last, raw.length - 1);
+      recode(raw.slice(line, end + 1), (lines) => {
+        for (const { ins, from, to } of group.edits) {
+          const inserted = ins.text.split('\n');
+          const addedLines = inserted.length - 1;
+          const lastLength = inserted[inserted.length - 1].length;
+
+          const fromLine = from.line - group.first;
+          const toLine = to.line - group.first;
+          const keep = lines[fromLine].filter((seg) => seg[0] < from.column);
+          const rest = (lines[toLine] ?? [])
+            .filter((seg) => seg[0] >= to.column)
+            .map((seg) => [
+              seg[0] - to.column + (addedLines === 0 ? from.column + lastLength : lastLength),
+              ...seg.slice(1),
+            ]);
+          const replaced: Segment[][] =
+            addedLines === 0 ? [[...keep, ...rest]] : [keep, ...Array.from({ length: addedLines - 1 }, () => []), rest];
+          lines.splice(fromLine, toLine - fromLine + 1, ...replaced);
+        }
+        return lines;
+      });
+      line = end + 1;
+    } else if (shift.some((v) => v !== 0)) {
+      recode([raw[line++]]);
+    } else {
+      const next = group?.first ?? raw.length;
+      output.push(...raw.slice(line, next));
+      line = next;
+    }
+  }
+  return json.replace(`"mappings":${JSON.stringify(mappings)}`, `"mappings":${JSON.stringify(output.join(';'))}`);
+}
+
+/** The `mappings` of a source map JSON text. */
+function mappingsOf(json: string): string {
+  // The map of a file with its sources inlined is mostly the text of the sources: do not parse that.
+  const found = /"mappings":"([A-Za-z0-9+/,;]*)"/.exec(json);
+  return found != null ? found[1] : JSON.parse(json).mappings;
 }
 
 function lineStartsOf(text: string): number[] {
   const starts = [0];
-  for (let i = 0; i < text.length; i++) {
-    if (text[i] === '\n') {
-      starts.push(i + 1);
-    }
+  for (let i = text.indexOf('\n'); i >= 0; i = text.indexOf('\n', i + 1)) {
+    starts.push(i + 1);
   }
   return starts;
 }
@@ -144,9 +203,11 @@ const BASE64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/
 /** The value of each base64 digit, by character code (-1 for other characters, as `BASE64.indexOf` gives). */
 const BASE64_VALUES = Array.from({ length: 128 }, (_, code) => BASE64.indexOf(String.fromCharCode(code)));
 
-function decodeMappings(mappings: string): Segment[][] {
-  const state = [0, 0, 0, 0, 0];
-  return mappings.split(';').map((line) => {
+/**
+ * Decode lines of `mappings`. `state` is where the first of them starts and where it is after the last one.
+ */
+function decodeMappings(lines: readonly string[], state: number[]): Segment[][] {
+  return lines.map((line) => {
     state[0] = 0;
     if (line === '') {
       return [];
@@ -158,24 +219,22 @@ function decodeMappings(mappings: string): Segment[][] {
   });
 }
 
-function encodeMappings(lines: readonly Segment[][]): string {
-  const state = [0, 0, 0, 0, 0];
-  return lines
-    .map((line) => {
-      state[0] = 0;
-      return line
-        .map((segment) =>
-          segment
-            .map((v, i) => {
-              const delta = v - state[i];
-              state[i] = v;
-              return encodeVlq(delta);
-            })
-            .join(''),
-        )
-        .join(',');
-    })
-    .join(';');
+/** Encode lines of `mappings`, from the `state` before the first, to the `state` after the last. */
+function encodeMappings(lines: readonly Segment[][], state: number[]): string[] {
+  return lines.map((line) => {
+    state[0] = 0;
+    return line
+      .map((segment) =>
+        segment
+          .map((v, i) => {
+            const delta = v - state[i];
+            state[i] = v;
+            return encodeVlq(delta);
+          })
+          .join(''),
+      )
+      .join(',');
+  });
 }
 
 function decodeVlq(segment: string): number[] {
