@@ -89,16 +89,14 @@ describe('jsii compile', () => {
     expect(result.stdout + result.stderr).not.toContain('--help');
   });
 
-  // @TODO(ts7): the TypeScript 7 compiler does not report JSII0003 (missing README) yet
-  test.skip('prints diagnostic codes with four digits', async () => {
+  test('prints diagnostic codes with four digits', async () => {
     const result = await runCli(project({ 'README.md': null }));
 
     expect(result.stdout).toContain('warning JSII0003: There is no "README.md" file.');
   });
 
   describe('--fail-on-warnings', () => {
-    // @TODO(ts7): the TypeScript 7 compiler does not report JSII0003 (missing README) yet
-    test.skip('treats warnings as errors', async () => {
+    test('treats warnings as errors', async () => {
       const dir = project({ 'README.md': null });
 
       const result = await runCli(dir, '--fail-on-warnings');
@@ -107,8 +105,7 @@ describe('jsii compile', () => {
       expect(result.stdout).toContain('There is no "README.md" file');
     });
 
-    // @TODO(ts7): the TypeScript 7 compiler does not report JSII0003 (missing README) yet
-    test.skip('is not enabled by default', async () => {
+    test('is not enabled by default', async () => {
       const dir = project({ 'README.md': null });
 
       const result = await runCli(dir);
@@ -119,8 +116,7 @@ describe('jsii compile', () => {
   });
 
   describe('--silence-warnings', () => {
-    // @TODO(ts7): the TypeScript 7 compiler does not report JSII0003 (missing README) yet (some rows may pass; the table is skipped as a whole)
-    test.skip.each([
+    test.each([
       ['a JSII code', 'JSII3'],
       ['a number', '3'],
       ['a diagnostic name', 'missing-readme'],
@@ -146,8 +142,7 @@ describe('jsii compile', () => {
     });
   });
 
-  // @TODO(ts7): the TypeScript 7 compiler does not report JSII0003 (missing README) yet
-  test.skip('applies the diagnostics categories configured in package.json', async () => {
+  test('applies the diagnostics categories configured in package.json', async () => {
     const dir = project(
       { 'README.md': null },
       { jsii: { targets: {}, diagnostics: { 'metadata/missing-readme': 'error' } } },
@@ -345,8 +340,7 @@ describe('jsii compile', () => {
     // only when the output is at its most verbose.
     // This documents current behavior, see https://github.com/aws/jsii-compiler/issues/3002
     // Showing a suggestion makes the compiler crash.
-    // @TODO(ts7): the TypeScript 7 compiler does not report the package metadata suggestions (JSII0001/JSII0002) yet
-    test.skip('shows suggestions only at the highest levels of verbosity, where they make the CLI crash', async () => {
+    test('shows suggestions only at the highest levels of verbosity, where they make the CLI crash', async () => {
       const quiet = await runCli(project({}, { description: undefined }));
       const verbose = await runCli(project({}, { description: undefined }), '-vvv');
 
@@ -522,8 +516,7 @@ describe('current behavior that is reported as an issue', () => {
   });
 
   // https://github.com/aws/jsii-compiler/issues/2981
-  // @TODO(ts7): the TypeScript 7 compiler does not report JSII0003 (missing README) yet
-  test.skip('--fail-on-warnings with only warnings reports errors', async () => {
+  test('--fail-on-warnings with only warnings reports errors', async () => {
     const result = await run(project({ 'README.md': null }), '--fail-on-warnings');
 
     expect(result.exitCode).toBe(1);
