@@ -1,4 +1,5 @@
 import { compileForDiagnostics } from './helpers';
+import { compileJsiiForTest } from '../../src';
 
 describe('JSII3005 type-model/type-used-as-interface', () => {
   test('is reported when an interface extends a collection type', () => {
@@ -50,5 +51,19 @@ describe('unresolvable heritage clauses', () => {
       ),
       "TS2304: Cannot find name 'Unknown'.",
     ]);
+  });
+});
+
+describe('a class merged with an interface', () => {
+  test('keeps the base class of the class, and ignores a class that the interface extends', () => {
+    const result = compileJsiiForTest(`
+      export class A {}
+      export class B {}
+      export class K extends A {}
+      export interface K extends B {}
+    `);
+
+    expect(result.assembly.types!['testpkg.K']).toMatchObject({ kind: 'class', base: 'testpkg.A' });
+    expect(result.assembly.types!['testpkg.K']).not.toHaveProperty('interfaces');
   });
 });
