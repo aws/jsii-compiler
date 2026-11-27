@@ -510,7 +510,6 @@ export function buildProject(options: BuildProjectOptions): BuildProjectResult {
   let project = host.getProject();
   // The program's own diagnostics (options and config): the type check is the slow part (see `check` below).
   let tsDiagnostics = collectTsDiagnostics(project.program, CONFIG_DIAGNOSTICS);
-  let tsconfigText: string | undefined;
 
   // TypeScript 7 no longer infers `rootDir` from the common directory of the
   // sources when `outDir` is set (TS5011). The classic compiler relied on that
@@ -525,7 +524,6 @@ export function buildProject(options: BuildProjectOptions): BuildProjectResult {
       tsconfig.compilerOptions = { ...tsconfig.compilerOptions, rootDir: inferred };
       fs.writeFileSync(tsconfigPath, JSON.stringify(tsconfig, null, 2), 'utf8');
       host.close();
-      tsconfigText = undefined;
       host = CompilerHost.open(options.projectRoot, options.tsconfigFileName);
       project = host.getProject();
       tsDiagnostics = collectTsDiagnostics(project.program, CONFIG_DIAGNOSTICS);
@@ -571,7 +569,6 @@ export function buildProject(options: BuildProjectOptions): BuildProjectResult {
           packageDir: host.ts.packageDir,
           projectRoot,
           tsconfigPath: host.tsconfigPath,
-          tsconfigText,
           errorCategory: DiagnosticCategory.Error,
           categories: Object.values(DiagnosticCategory).filter((c): c is number => typeof c === 'number'),
           noEmitOnError: !!programOptions.noEmitOnError,
