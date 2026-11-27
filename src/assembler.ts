@@ -182,6 +182,8 @@ export class Assembler {
   private readonly _docCommentCache = new Map<string, any>();
   private readonly _sourceTextCache = new Map<string, string>();
   private readonly _typeOfSymbolAtCache = new Map<string, any>();
+  private readonly _signatureCache = new Map<string, any>();
+  private readonly _returnTypeCache = new Map<unknown, any>();
   private _docCacheHits = 0;
 
   /** Number of doc-read cache hits (RPCs avoided). Exposed for perf reporting. */
@@ -740,6 +742,54 @@ export class Assembler {
     }
     for (const [i, t] of todo.entries()) {
       this._typeOfSymbolAtCache.set(t.key, results[i]);
+    }
+  }
+
+  /**
+   * Read what `_visitMethod` and `_visitParameter` ask for each method declared by the type (its signature, return
+   * type, parameters and their types) in a few batches, instead of several round trips per method. The values are
+   * the ones the single calls return.
+   */
+  private _prefetchMethods(members: readonly any[], typeDecl: any): void {
+    const { SymbolFlags } = this.ts;
+    const { checker, project } = this;
+    const decls: any[] = [];
+    for (const m of members) {
+      if ((m.flags & SymbolFlags.Method) === 0) {
+        continue;
+      }
+      for (const handle of m.declarations ?? []) {
+        const decl = handle.resolve(project);
+        if (decl?.parent === typeDecl && !this._signatureCache.has(decl.id)) {
+          decls.push(decl);
+        }
+      }
+    }
+    if (decls.length < 2) {
+      return;
+    }
+    const signatures = this._signatureCache;
+    const returnTypes = this._returnTypeCache;
+    const types = this._typeOfSymbolAtCache;
+    function* readMethod(decl: any): Generator<any, void, any> {
+      const sig = yield* checker.getSignatureFromDeclaration.gen(decl);
+      signatures.set(decl.id, sig);
+      if (sig == null) {
+        return;
+      }
+      returnTypes.set(sig.id, yield* checker.getReturnTypeOfSignature.gen(sig));
+      for (const prm of yield* sig.getParameters.gen()) {
+        const node = prm.declarations?.[0] != null ? yield* prm.declarations[0].resolve.gen(project) : undefined;
+        if (node != null) {
+          types.set(`${prm.id}|${node.id}`, yield* checker.getTypeOfSymbolAtLocation.gen(prm, node));
+        }
+      }
+    }
+    try {
+      project.api.batch(...decls.map(readMethod));
+    } catch {
+      // shortcut: what was read before the failure stays cached (it is what the single calls return); the rest is
+      // read on its own, as before.
     }
   }
 
@@ -2386,6 +2436,7 @@ export class Assembler {
     // One RPC for all member docs of this type (instance + static).
     this._prefetchDocs([...instanceProps, ...staticPropsForPrefetch]);
     this._prefetchPropertyTypes([...instanceProps, ...staticPropsForPrefetch], decl);
+    this._prefetchMethods([...instanceProps, ...staticPropsForPrefetch], decl);
     this._validateInternalMembers(sym, decl, erasedBases, isInterface, instanceProps, staticPropsForPrefetch);
 
     // Constructor parameter properties are only listed for the EFFECTIVE
@@ -2717,7 +2768,9 @@ export class Assembler {
 
   private _visitMethod(msym: any, decl: any, isStatic: boolean, jsiiType: any, declaringTypeDecl: any): any {
     const { SyntaxKind } = this.ts;
-    const sig = this.checker.getSignatureFromDeclaration(decl);
+    const sig = this._signatureCache.has(decl.id)
+      ? this._signatureCache.get(decl.id)
+      : this.checker.getSignatureFromDeclaration(decl);
     if (!sig) {
       this._report(JsiiDiagnostic.JSII_9004_UNABLE_TO_COMPUTE_SIGNATURE, decl, msym.name, jsiiType);
       return undefined;
@@ -2748,7 +2801,9 @@ export class Assembler {
       }
       this._verifyConsecutiveOptionals(decl, m.parameters);
       const opt: { optional?: boolean } = {};
-      const retType = this.checker.getReturnTypeOfSignature(sig);
+      const retType = this._returnTypeCache.has(sig.id)
+        ? this._returnTypeCache.get(sig.id)
+        : this.checker.getReturnTypeOfSignature(sig);
       // Promise-returning methods: jsii marks them `async`; `_typeReference` models
       // the resolved type (Promise<string> -> string), like strada.
       if (retType?.getSymbol?.()?.name === 'Promise') {
@@ -2924,7 +2979,7 @@ export class Assembler {
   private _visitParameter(prm: any): any {
     const decl = prm.declarations?.[0]?.resolve(this.project);
     this._warnAboutReservedWords(prm.name, decl);
-    const t = decl ? this.checker.getTypeOfSymbolAtLocation(prm, decl) : undefined;
+    const t = decl ? this._typeOfSymbolAt(prm, decl) : undefined;
     const opt: { optional?: boolean } = {};
     this.typeUse = 'parameter type';
     const p: any = { name: prm.name, type: this._typeReference(t, opt, decl?.type, decl?.type ?? decl?.name) };
