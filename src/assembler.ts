@@ -345,7 +345,13 @@ export class Assembler {
         create: (code, node, ...args) => this._createDiagnostic(code, node, ...args),
         location: (node) => this._diagnosticLocation(node),
       });
-      this._diagnostics.push(...validator.emit().diagnostics);
+      const validation = validator.emit();
+      this._diagnostics.push(...validation.diagnostics);
+      // Classic: the features the validator detected are added to the assembly's.
+      for (const feature of validation.usedFeatures ?? []) {
+        this.usedFeatures.add(feature);
+      }
+      assembly.usedFeatures = this.usedFeatures.size > 0 ? Array.from(this.usedFeatures).sort() : undefined;
     }
     return assembly;
   }

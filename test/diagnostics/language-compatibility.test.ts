@@ -1,8 +1,7 @@
 import { compileJsiiForDiagnostics } from '../compiler-helpers';
 
 describe('JSII5005 language-compatibility/override-changes-param-count', () => {
-  // @TODO(ts7): expects a jsii validation diagnostic (override checks, JSII5005/JSII5007); re-enable with the port of the validator
-  test.skip('is reported when an override adds a parameter', () => {
+  test('is reported when an override adds a parameter', () => {
     const diagnostics = compileJsiiForDiagnostics(`
       export class Base {
         public method(a: string) {
@@ -27,8 +26,7 @@ describe('JSII5005 language-compatibility/override-changes-param-count', () => {
 });
 
 describe('JSII5007 language-compatibility/override-changes-variadic', () => {
-  // @TODO(ts7): expects a jsii validation diagnostic (override checks, JSII5005/JSII5007); re-enable with the port of the validator
-  test.skip('is reported when an override stops being variadic', () => {
+  test('is reported when an override stops being variadic', () => {
     const diagnostics = compileJsiiForDiagnostics(`
       export class Base {
         public method(...items: string[]) {

@@ -9,12 +9,15 @@
  * TypeScript 7 process nothing.
  */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return */
+import assert from 'node:assert';
 import * as spec from '@jsii/spec';
+import deepEqual from 'fast-deep-equal';
 
 import * as Case from './case';
 import { DiagnosticCategory } from './diagnostic';
 import { Code, DiagnosticLocation, DiagnosticMessageFormatter, JsiiDiagnostic } from './jsii-diagnostic';
 import { ProjectInfo } from './project-info';
+import { isAllowedCovariantSubtype } from './type-analysis';
 import { createTypeResolver } from './type-reference';
 
 export interface ValidationResult {
@@ -85,14 +88,14 @@ export type ValidationFunction = (
 ) => void;
 
 function _defaultValidations(): ValidationFunction[] {
-  // The classic order. Not ported yet: _inheritanceDoesNotChangeContracts (JSII5002 to JSII5010) after
-  // _allTypeReferencesAreValid.
+  // The classic order.
   return [
     _enumMembersMustUserUpperSnakeCase,
     _memberNamesMustUseCamelCase,
     _staticConstantNamesMustUseUpperSnakeCase,
     _memberNamesMustNotLookLikeJavaGettersOrSetters,
     _allTypeReferencesAreValid,
+    _inheritanceDoesNotChangeContracts,
     _staticMembersAndNestedTypesMustNotSharePascalCaseName,
     _abstractClassesMustImplementAllProperties,
   ];
@@ -272,6 +275,428 @@ function _defaultValidations(): ValidationFunction[] {
         report(validator, diagnostic, JsiiDiagnostic.JSII_9000_UNKNOWN_MODULE, node, assm);
       } else if (!(fqn in (dependency.types ?? {}))) {
         report(validator, diagnostic, JsiiDiagnostic.JSII_9001_TYPE_NOT_FOUND, node, { fqn });
+      }
+    }
+  }
+
+  function _inheritanceDoesNotChangeContracts(
+    validator: Validator,
+    assembly: spec.Assembly,
+    diagnostic: DiagnosticEmitter,
+    useFeature: FeatureTracker,
+  ) {
+    const _dereference = createTypeResolver(assembly, validator.projectInfo.dependencyClosure);
+    const { bindings } = validator;
+    const SyntaxKind = bindings.syntaxKind;
+    // The related nodes of the members `_allImplementations` borrows from base classes (classic `setRelatedNode`).
+    const borrowedNodes = new WeakMap<object, any>();
+    const nodeOf = (element: object) => borrowedNodes.get(element) ?? bindings.nodeOf(element);
+    // The classic assembler bound each parameter to its declaration, which is the method's parameter at that index.
+    const paramNodeOf = (method: spec.Method, index: number) =>
+      bindings.nodeOf(method.parameters![index]) ?? nodeOf(method)?.parameters?.[index];
+    const visibilityModifier = (node: any) =>
+      (node?.modifiers ?? []).find(
+        (mod: any) => mod.kind === SyntaxKind.PublicKeyword || mod.kind === SyntaxKind.ProtectedKeyword,
+      );
+    // The `?` of a property signature is its `postfixToken` in the TypeScript 7 AST.
+    const questionToken = (node: any) =>
+      node?.questionToken ?? (node?.postfixToken?.kind === SyntaxKind.QuestionToken ? node.postfixToken : undefined);
+    const related = (diag: JsiiDiagnostic, node: any) =>
+      diag.maybeAddRelatedInformation(bindings.location(node), 'The implemented declaration is here.');
+
+    for (const type of _allTypes(assembly)) {
+      if (spec.isClassType(type)) {
+        for (const method of type.methods ?? []) {
+          _validateMethodOverride(method, type);
+        }
+        for (const property of type.properties ?? []) {
+          _validatePropertyOverride(property, type);
+        }
+      }
+      if (spec.isClassOrInterfaceType(type) && (type.interfaces?.length ?? 0) > 0) {
+        for (const method of _allImplementations(type, (t) => t.methods)) {
+          _validateMethodImplementation(method, type);
+        }
+        for (const property of _allImplementations(type, (t) => t.properties)) {
+          _validatePropertyImplementation(property, type);
+        }
+      }
+    }
+
+    /**
+     * Lists all "implementations" from the given type, using the provided
+     * implementation getter. Note that abstract members may be part of the
+     * result (in particular, if `type` is an interface type, or if it's an
+     * abstract class with unimplemented members) -- I just couldn't come up
+     * with a name that actually describes this.
+     *
+     * @param type   the type which implemented members are needed.
+     * @param getter the getter to obtain methods or properties from the type.
+     *
+     * @returns a list of members (possibly empty, always defined)
+     */
+    function _allImplementations<T extends spec.Property | spec.Method>(
+      type: spec.ClassType | spec.InterfaceType,
+      getter: (type: spec.ClassType | spec.InterfaceType) => T[] | undefined,
+    ): T[] {
+      const result = new Array<T>();
+      const known = new Set<string>();
+
+      for (const member of getter(type) ?? []) {
+        result.push(member);
+        known.add(member.name);
+      }
+
+      if (spec.isClassType(type) && type.base) {
+        // We have a parent class, collect their concrete members, too (recursively)...
+        const base = _dereference(type.base);
+        assert(base != null && spec.isClassType(base));
+        for (const member of _allImplementations(base, getter)) {
+          if (known.has(member.name)) {
+            continue;
+          }
+          // The member is copied, so that its `overrides` property won't be
+          // altered, since this member is "borrowed" from a parent type. We
+          // only check it, but should not record `overrides` relationships to
+          // it as those could be invalid per the parent type (i.e: the parent
+          // member may not be able to implement an interface, if that type does
+          // not actually declare implementing that).
+          const memberCopy = { ...member };
+          // Forward the related node if there's one, so diagnostics are bound.
+          const node = nodeOf(member);
+          if (node != null) {
+            borrowedNodes.set(memberCopy, node);
+          }
+
+          result.push(memberCopy);
+          known.add(member.name);
+        }
+      }
+
+      return result;
+    }
+
+    function _validateMethodOverride(method: spec.Method, type: spec.ClassType): boolean {
+      if (!type.base) {
+        return false;
+      }
+      const baseType = _dereference(type.base) as spec.ClassType;
+      if (!baseType) {
+        return false;
+      }
+      const overridden = (baseType.methods ?? []).find((m) => m.name === method.name);
+      if (!overridden) {
+        return _validateMethodOverride(method, baseType);
+      }
+      _assertSignaturesMatch(overridden, method, `${type.fqn}#${method.name}`, `overriding ${baseType.fqn}`, {
+        allowReturnTypeCovariance: true,
+      });
+      method.overrides = baseType.fqn;
+      return true;
+    }
+
+    function _validatePropertyOverride(property: spec.Property, type: spec.ClassType): boolean {
+      if (!type.base) {
+        return false;
+      }
+      const baseType = _dereference(type.base) as spec.ClassType;
+      if (!baseType) {
+        return false;
+      }
+      const overridden = (baseType.properties ?? []).find((p) => p.name === property.name);
+      if (!overridden) {
+        return _validatePropertyOverride(property, baseType);
+      }
+      _assertPropertiesMatch(overridden, property, `${type.fqn}#${property.name}`, `overriding ${baseType.fqn}`, {
+        allowCovariance: true,
+      });
+      property.overrides = baseType.fqn;
+      return true;
+    }
+
+    function _validateMethodImplementation(method: spec.Method, type: spec.ClassType | spec.InterfaceType): boolean {
+      if (!type.interfaces) {
+        // Abstract classes may not directly implement all members, need to check their supertypes...
+        if (spec.isClassType(type) && type.base && type.abstract) {
+          return _validateMethodImplementation(method, _dereference(type.base) as spec.ClassType);
+        }
+        return false;
+      }
+      for (const iface of type.interfaces) {
+        const ifaceType = _dereference(iface) as spec.InterfaceType;
+        const implemented = (ifaceType.methods ?? []).find((m) => m.name === method.name);
+        if (implemented) {
+          _assertSignaturesMatch(implemented, method, `${type.fqn}#${method.name}`, `implementing ${ifaceType.fqn}`, {
+            allowReturnTypeCovariance: false,
+          });
+          // We won't replace a previous overrides declaration from a method override, as those have
+          // higher precedence than an initial implementation.
+          method.overrides = method.overrides ?? iface;
+          return true;
+        }
+        if (_validateMethodImplementation(method, ifaceType)) {
+          return true;
+        }
+      }
+      return false;
+    }
+
+    function _validatePropertyImplementation(
+      property: spec.Property,
+      type: spec.ClassType | spec.InterfaceType,
+    ): boolean {
+      if (!type.interfaces) {
+        // Abstract classes may not directly implement all members, need to check their supertypes...
+        if (spec.isClassType(type) && type.base && type.abstract) {
+          return _validatePropertyImplementation(property, _dereference(type.base) as spec.ClassType);
+        }
+        return false;
+      }
+      for (const iface of type.interfaces) {
+        const ifaceType = _dereference(iface) as spec.InterfaceType;
+        const implemented = (ifaceType.properties ?? []).find((p) => p.name === property.name);
+        if (implemented) {
+          _assertPropertiesMatch(
+            implemented,
+            property,
+            `${type.fqn}#${property.name}`,
+            `implementing ${ifaceType.fqn}`,
+            { allowCovariance: false },
+          );
+          // We won't replace a previous overrides declaration from a property override, as those
+          // have higher precedence than an initial implementation.
+          property.overrides = property.overrides ?? ifaceType.fqn;
+          return true;
+        }
+        if (_validatePropertyImplementation(property, ifaceType)) {
+          return true;
+        }
+      }
+      return false;
+    }
+
+    function _assertSignaturesMatch(
+      expected: spec.Method,
+      actual: spec.Method,
+      label: string,
+      action: string,
+      opts: {
+        allowReturnTypeCovariance: boolean;
+      },
+    ) {
+      const actualNode = nodeOf(actual);
+      const expectedNode = nodeOf(expected);
+
+      if (!!expected.protected !== !!actual.protected) {
+        const expVisibility = expected.protected ? 'protected' : 'public';
+        const actVisibility = actual.protected ? 'protected' : 'public';
+        related(
+          report(
+            validator,
+            diagnostic,
+            JsiiDiagnostic.JSII_5002_OVERRIDE_CHANGES_VISIBILITY,
+            visibilityModifier(actualNode) ?? declarationName(actualNode),
+            label,
+            action,
+            actVisibility,
+            expVisibility,
+          ),
+          visibilityModifier(expectedNode) ?? declarationName(expectedNode),
+        );
+      }
+
+      // Types must generally be the same, but can be covariant sometimes
+      if (!deepEqual(actual.returns, expected.returns)) {
+        const actualReturnType = actual.returns?.type;
+        const expectedReturnType = expected.returns?.type;
+
+        if (
+          // return type covariance is allowed
+          opts.allowReturnTypeCovariance &&
+          // static members can never change
+          !actual.static &&
+          // this is a valid covariant return type (actual is more specific than expected)
+          isAllowedCovariantSubtype(actualReturnType, expectedReturnType, _dereference)
+        ) {
+          useFeature('class-covariant-overrides');
+        } else {
+          const expType = spec.describeTypeReference(expectedReturnType);
+          const actType = spec.describeTypeReference(actualReturnType);
+          related(
+            report(
+              validator,
+              diagnostic,
+              JsiiDiagnostic.JSII_5003_OVERRIDE_CHANGES_RETURN_TYPE,
+              actualNode?.type ?? declarationName(actualNode),
+              label,
+              action,
+              actType,
+              expType,
+            ),
+            expectedNode?.type ?? declarationName(expectedNode),
+          );
+        }
+      }
+      const expectedParams = expected.parameters ?? [];
+      const actualParams = actual.parameters ?? [];
+      if (expectedParams.length !== actualParams.length) {
+        related(
+          report(
+            validator,
+            diagnostic,
+            JsiiDiagnostic.JSII_5005_OVERRIDE_CHANGES_PARAM_COUNT,
+            declarationName(actualNode),
+            label,
+            action,
+            actualParams.length,
+            expectedParams.length,
+          ),
+          declarationName(expectedNode),
+        );
+        return;
+      }
+      for (let i = 0; i < expectedParams.length; i++) {
+        const expParam = expectedParams[i];
+        const actParam = actualParams[i];
+        const actParamNode = paramNodeOf(actual, i);
+        const expParamNode = paramNodeOf(expected, i);
+        if (!deepEqual(expParam.type, actParam.type)) {
+          related(
+            report(
+              validator,
+              diagnostic,
+              JsiiDiagnostic.JSII_5006_OVERRIDE_CHANGES_PARAM_TYPE,
+              actParamNode?.type ?? declarationName(actParamNode),
+              label,
+              action,
+              actParam,
+              expParam,
+            ),
+            expParamNode?.type ?? declarationName(expParamNode),
+          );
+        }
+        // Not-ing those to force the values to a strictly boolean context (they're optional, undefined means false)
+        if (expParam.variadic !== actParam.variadic) {
+          related(
+            report(
+              validator,
+              diagnostic,
+              JsiiDiagnostic.JSII_5007_OVERRIDE_CHANGES_VARIADIC,
+              actParamNode?.dotDotDotToken ?? declarationName(actParamNode),
+              label,
+              action,
+              actParam.variadic,
+              expParam.variadic,
+            ),
+            expParamNode?.dotDotDotToken ?? declarationName(expParamNode),
+          );
+        }
+        if (expParam.optional !== actParam.optional) {
+          related(
+            report(
+              validator,
+              diagnostic,
+              JsiiDiagnostic.JSII_5008_OVERRIDE_CHANGES_PARAM_OPTIONAL,
+              questionToken(actParamNode) ?? actParamNode?.type ?? declarationName(actParamNode),
+              label,
+              action,
+              actParam,
+              expParam,
+            ),
+            questionToken(expParamNode) ?? expParamNode?.type ?? declarationName(expParamNode),
+          );
+        }
+      }
+    }
+
+    function _assertPropertiesMatch(
+      expected: spec.Property,
+      actual: spec.Property,
+      label: string,
+      action: string,
+      opts: {
+        allowCovariance: boolean;
+      },
+    ) {
+      const actualNode = nodeOf(actual);
+      const expectedNode = nodeOf(expected);
+      if (!!expected.protected !== !!actual.protected) {
+        const expVisibility = expected.protected ? 'protected' : 'public';
+        const actVisibility = actual.protected ? 'protected' : 'public';
+        related(
+          report(
+            validator,
+            diagnostic,
+            JsiiDiagnostic.JSII_5002_OVERRIDE_CHANGES_VISIBILITY,
+            visibilityModifier(actualNode) ?? declarationName(actualNode),
+            label,
+            action,
+            actVisibility,
+            expVisibility,
+          ),
+          visibilityModifier(expectedNode) ?? declarationName(expectedNode),
+        );
+      }
+
+      // Types must generally be the same, but can be covariant sometimes
+      if (!deepEqual(actual.type, expected.type)) {
+        if (
+          // return type covariance is allowed
+          opts.allowCovariance &&
+          // static members can never change
+          !actual.static &&
+          // immutable properties may change in some case, as long as they are covariant
+          actual.immutable &&
+          isAllowedCovariantSubtype(actual.type, expected.type, _dereference)
+        ) {
+          useFeature('class-covariant-overrides');
+        } else {
+          related(
+            report(
+              validator,
+              diagnostic,
+              JsiiDiagnostic.JSII_5004_OVERRIDE_CHANGES_PROP_TYPE,
+              actualNode?.type ?? declarationName(actualNode),
+              label,
+              action,
+              actual.type,
+              expected.type,
+            ),
+            expectedNode?.type ?? declarationName(expectedNode),
+          );
+        }
+      }
+      if (expected.immutable !== actual.immutable) {
+        const readonlyModifier = (node: any) =>
+          (node?.modifiers ?? []).find((mod: any) => mod.kind === SyntaxKind.ReadonlyKeyword);
+        related(
+          report(
+            validator,
+            diagnostic,
+            JsiiDiagnostic.JSII_5010_OVERRIDE_CHANGES_MUTABILITY,
+            readonlyModifier(actualNode) ?? declarationName(actualNode),
+            label,
+            action,
+            actual.immutable,
+            expected.immutable,
+          ),
+          readonlyModifier(expectedNode) ?? declarationName(expectedNode),
+        );
+      }
+      if (expected.optional !== actual.optional) {
+        related(
+          report(
+            validator,
+            diagnostic,
+            JsiiDiagnostic.JSII_5009_OVERRIDE_CHANGES_PROP_OPTIONAL,
+            questionToken(actualNode) ?? actualNode?.type ?? declarationName(actualNode),
+            label,
+            action,
+            actual.optional,
+            expected.optional,
+          ),
+          questionToken(expectedNode) ?? expectedNode?.type ?? declarationName(expectedNode),
+        );
       }
     }
   }
