@@ -465,6 +465,16 @@ describe('jsii validate-tsconfig', () => {
     expect(result.stderr).toContain('Failed to read tsconfig at');
   });
 
+  // TypeScript 7: TypeScript's errors for the tsconfig are reported, like tsc (main: ignored; see TYPESCRIPT-7.md)
+  test('fails with the TypeScript errors of the configuration', async () => {
+    const dir = project({ 'tsconfig.json': JSON.stringify(userTsconfig({ notAnOption: true })) });
+
+    const result = await runCli(dir, 'validate-tsconfig');
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stdout).toContain("error TS5023: Unknown compiler option 'notAnOption'.");
+  });
+
   // https://github.com/aws/jsii-compiler/issues/2987
   test.each([
     [{ target: 'es5' }, 'target: Expected value to be one of ["es2022","es2023","esnext"], got: "es5"'],
@@ -563,11 +573,12 @@ describe('current behavior that is reported as an issue', () => {
     });
 
     // https://github.com/aws/jsii-compiler/issues/2991
-    // @TODO(ts7): the TypeScript 7 compiler reads the base of a tsconfig in a subdirectory differently from main
-    test.skip('is resolved against the project root when compiling, so the base is not read', async () => {
+    // TypeScript 7: resolved against its own directory, like tsc (main: against the project root; see TYPESCRIPT-7.md)
+    test('is resolved against its own directory when compiling, so the base is read', async () => {
       const result = await run(project(files()), '--tsconfig', 'sub/tsconfig.json', '--validate-tsconfig', 'strict');
 
-      expect(result.exitCode).toBeUndefined();
+      expect(result.exitCode).toBe(-1);
+      expect(result.stdout).toContain('baseUrl: Unexpected field');
     });
 
     // https://github.com/aws/jsii-compiler/issues/2991
@@ -579,12 +590,14 @@ describe('current behavior that is reported as an issue', () => {
     });
 
     // https://github.com/aws/jsii-compiler/issues/2991
-    test('passes the validation when the base does not exist', async () => {
+    // TypeScript 7: the build fails with TypeScript's error, like tsc (main: passes; see TYPESCRIPT-7.md)
+    test('fails the build when the base does not exist', async () => {
       const dir = project({ 'tsconfig.json': JSON.stringify({ extends: './nope.json', ...userTsconfig() }) });
 
       const result = await run(dir, '--tsconfig', 'tsconfig.json', '--validate-tsconfig', 'strict');
 
-      expect(result.exitCode).toBeUndefined();
+      expect(result.exitCode).toBe(1);
+      expect(result.stdout).toContain('error TS5083: Cannot read file');
     });
   });
 });
