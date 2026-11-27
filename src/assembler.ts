@@ -333,7 +333,7 @@ export class Assembler {
       throw new Error(`ts: entrypoint not found: ${this.entry}`);
     }
     const moduleSymbol = this.checker.getSymbolAtLocation(entrySf);
-    const moduleExports = this.checker.getExportsOfModule(moduleSymbol);
+    const moduleExports = this._exportsOfModule(moduleSymbol);
 
     this._registerModuleExports(moduleExports);
 
@@ -767,13 +767,53 @@ export class Assembler {
   // module walk + type registration (strada: _registerNamespaces / _visitNode)
   // -------------------------------------------------------------------------
 
+  /**
+   * The exports of a module in the order of the classic `getExportsOfModule`: the module's own exports first, then
+   * the names that its `export * from` declarations add, depth first. The TypeScript 7 checker lists the `export *`
+   * names first; jsii visits types (and so orders `assembly.types` and the deprecation validators) in this order.
+   */
+  private _exportsOfModule(moduleSym: any): any[] {
+    const exports: any[] = this.checker.getExportsOfModule(moduleSym);
+    const rank = new Map<string, number>();
+    const visited = new Set<unknown>();
+    const visit = (sym: any): void => {
+      if (sym == null || visited.has(sym.id)) {
+        return;
+      }
+      visited.add(sym.id);
+      const stars: any[] = [];
+      for (const [name, own] of sym.getExports?.() ?? []) {
+        if (name === '__export') {
+          stars.push(own);
+        } else if (!rank.has(name)) {
+          rank.set(name, rank.size);
+        }
+      }
+      for (const star of stars) {
+        for (const handle of star.declarations ?? []) {
+          const specifier = handle.resolve(this.project)?.moduleSpecifier;
+          visit(specifier && this.checker.getSymbolAtLocation(specifier));
+        }
+      }
+    };
+    visit(moduleSym);
+    // Names not found by the walk keep their relative order, after the others.
+    const rankOf = (e: any) => rank.get(e.name) ?? rank.size;
+    return exports
+      .map((e, index) => ({ e, index }))
+      .sort((a, b) => rankOf(a.e) - rankOf(b.e) || a.index - b.index)
+      .map(({ e }) => e);
+  }
+
   private _registerModuleExports(moduleExports: any[]): void {
     const { SyntaxKind, SymbolFlags } = this.ts;
     const candidates = new Map<
       unknown,
-      Array<{ name: string; prefix: string; moduleDir: string; sym: any; aliasDeclH?: any }>
+      Array<{ name: string; prefix: string; moduleDir: string; sym: any; aliasDeclH?: any; seq: number }>
     >();
     const visitedModules = new Set<string>();
+    // The order in which exports are seen: the classic assembler visited (and registered) types in this order.
+    let seq = 0;
 
     const collect = (mExports: any[], prefix: string, moduleDir: string): void => {
       for (const e of mExports) {
@@ -797,7 +837,7 @@ export class Assembler {
           // (strada's ExportSpecifier resolution lands on an ImportSpecifier,
           // which no _visitNode branch handles — silently dropped).
           const aliasDeclH = (e.flags & SymbolFlags.Alias) !== 0 ? e.declarations?.[0] : undefined;
-          candidates.get(sym.id)!.push({ name: e.name, prefix, moduleDir, sym, aliasDeclH });
+          candidates.get(sym.id)!.push({ name: e.name, prefix, moduleDir, sym, aliasDeclH, seq: seq++ });
         } else if (
           kind === SyntaxKind.SourceFile ||
           (sym.flags & SymbolFlags.ValueModule) !== 0 ||
@@ -829,7 +869,7 @@ export class Assembler {
           this.submoduleSymbols.set(subFqn, e);
           this.submodules[subFqn] = this._submoduleSpec(e, sym, kind === SyntaxKind.SourceFile);
           const subDir = path.dirname(sym.declarations?.[0]?.path ?? moduleDir);
-          collect(this.checker.getExportsOfModule(sym), subFqn, subDir);
+          collect(this._exportsOfModule(sym), subFqn, subDir);
         } else {
           this._reportUnsupportedExport(sym, declH);
         }
@@ -845,7 +885,7 @@ export class Assembler {
     // re-export, e.g. aws_docdb re-exporting aws_rds.CaCertificate) gets a full
     // duplicate type entry under each such fqn — strada emits one entry per
     // namespace visit.
-    const registrations: Array<{ sym: any; name: string; fqn: string }> = [];
+    const registrations: Array<{ sym: any; name: string; fqn: string; seq: number }> = [];
     for (const [, cands] of candidates) {
       let best = cands[0];
       let bestLen = -1;
@@ -859,7 +899,7 @@ export class Assembler {
         }
       }
       const bestFqn = `${best.prefix}.${best.name}`;
-      registrations.push({ sym: best.sym, name: best.name, fqn: bestFqn });
+      registrations.push({ sym: best.sym, name: best.name, fqn: bestFqn, seq: best.seq });
       const extraFqns = new Set<string>([bestFqn]);
       for (const c of cands) {
         const fqn = `${c.prefix}.${c.name}`;
@@ -888,15 +928,27 @@ export class Assembler {
           continue;
         }
         extraFqns.add(fqn);
-        registrations.push({ sym: c.sym, name: c.name, fqn });
+        registrations.push({ sym: c.sym, name: c.name, fqn, seq: c.seq });
       }
     }
     // Batch-prefetch docs for all candidate type symbols (used by the
     // isInternal/shouldStrip checks inside _registerType).
     this._prefetchDocs(registrations.map((r) => r.sym));
+    // Register canonical fqns first (references resolve to the first registration of a symbol), then visit the
+    // types in the order their exports were seen; nested types stay right after their parent.
+    const seqOf = new Map<unknown, number>();
     for (const r of registrations) {
+      const start = this.exported.length;
       this._registerType(r.sym, r.name, r.fqn);
+      for (const entry of this.exported.slice(start)) {
+        seqOf.set(entry, r.seq);
+      }
     }
+    const visitOrder = this.exported
+      .map((entry, index) => ({ entry, index }))
+      .sort((x, y) => (seqOf.get(x.entry) ?? 0) - (seqOf.get(y.entry) ?? 0) || x.index - y.index)
+      .map(({ entry }) => entry);
+    this.exported.splice(0, this.exported.length, ...visitOrder);
   }
 
   private _registerType(sym: any, name: string, fqn: string): void {
@@ -3310,7 +3362,6 @@ export class Assembler {
     }
   }
 
-<<<<<<< HEAD
   private _warnAboutReservedWords(name: string, decl: any) {
     const reservingLanguages = isReservedName(name);
     if (reservingLanguages) {
@@ -3326,135 +3377,6 @@ export class Assembler {
         this.reservedWordReports.add(key);
       }
       this._report(JsiiDiagnostic.JSII_5018_RESERVED_WORD, node, name, reservingLanguages);
-=======
-/**
- * Deferred processing that needs to happen in a second, ordered pass
- */
-interface DeferredRecord {
-  /**
-   * The FQN of the type the action will be executed on
-   */
-  fqn: string;
-
-  /**
-   * Dependency FQNs of the types that need to be processed before analysis.
-   *
-   * All deferred analysis actions for the types listed here must be complete
-   * before this analysis action can run.
-   */
-  dependedFqns: string[];
-
-  /**
-   * Callback representing the action to run.
-   */
-  cb: () => void;
-}
-
-/**
- * Return the last element from a list
- */
-function last<T>(xs: T[]): T | undefined {
-  return xs.length > 0 ? xs[xs.length - 1] : undefined;
-}
-
-/**
- * Apply a function to a value if it's not equal to undefined
- */
-function apply<T, U>(x: T | undefined, fn: (x: T) => U | undefined): U | undefined {
-  return x !== undefined ? fn(x) : undefined;
-}
-
-/**
- * Whether `member` re-declares `baseMember` with exactly the same shape, so
- * that only its documentation differs. Such re-declarations can be represented
- * in all target languages (C# needs the `new` modifier).
- */
-function isIdenticalRedeclaration(
-  member: spec.Property | spec.Method,
-  baseMember: spec.Property | spec.Method,
-): boolean {
-  // Not `spec.isMethod`: it only tells methods from initializers and is true
-  // for properties too.
-  if (!spec.isProperty(member) && !spec.isProperty(baseMember)) {
-    const params = member.parameters ?? [];
-    const baseParams = baseMember.parameters ?? [];
-    return (
-      !!member.static === !!baseMember.static &&
-      !!member.async === !!baseMember.async &&
-      deepEqual(member.returns, baseMember.returns) &&
-      params.length === baseParams.length &&
-      params.every(
-        (param, i) =>
-          deepEqual(param.type, baseParams[i].type) &&
-          !!param.optional === !!baseParams[i].optional &&
-          !!param.variadic === !!baseParams[i].variadic,
-      )
-    );
-  }
-
-  if (spec.isProperty(member) && spec.isProperty(baseMember)) {
-    return (
-      !!member.static === !!baseMember.static &&
-      !!member.optional === !!baseMember.optional &&
-      !!member.immutable === !!baseMember.immutable &&
-      deepEqual(member.type, baseMember.type)
-    );
-  }
-
-  return false;
-}
-
-function typeMembers(jsiiType: spec.InterfaceType | spec.ClassType): {
-  [key: string]: spec.Property | spec.Method;
-} {
-  const ret: { [key: string]: spec.Property | spec.Method } = {};
-
-  for (const prop of jsiiType.properties ?? []) {
-    ret[prop.name] = prop;
-  }
-
-  for (const method of jsiiType.methods ?? []) {
-    ret[method.name ?? ''] = method;
-  }
-
-  return ret;
-}
-
-/**
- * Whether or not the given name is conventionally an interface name
- *
- * It's an interface name if it starts with I and has another capital
- * (so we don't mark IonicColumnProps as an interface).
- */
-function isInterfaceName(name: string) {
-  return name.length >= 2 && name.startsWith('I') && name.charAt(1).toUpperCase() === name.charAt(1);
-}
-
-function getConstructor(type: ts.Type): ts.Symbol | undefined {
-  return type.symbol.members?.get(ts.InternalSymbolName.Constructor);
-}
-
-function cmpDesc<T>(a: T, b: T, desc: (x: T) => string): [string, string] | undefined {
-  const desc1 = desc(a);
-  const desc2 = desc(b);
-  return desc1 !== desc2 ? [desc1, desc2] : undefined;
-}
-
-function noEmptyDict<T>(xs: Record<string, T> | undefined): Record<string, T> | undefined {
-  if (xs == null || Object.keys(xs).length === 0) {
-    return undefined;
-  }
-  return xs;
-}
-
-function toDependencyClosure(assemblies: readonly spec.Assembly[]): {
-  [name: string]: spec.DependencyConfiguration;
-} {
-  const result: { [name: string]: spec.DependencyConfiguration } = {};
-  for (const assembly of assemblies) {
-    if (!assembly.targets) {
-      continue;
->>>>>>> 073c97a (fix: compare re-declared interface properties as properties (#2998))
     }
   }
 
