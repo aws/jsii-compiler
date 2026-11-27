@@ -9,6 +9,7 @@ import * as ts from 'typescript';
 import { loadProjectInfo, PackageJson } from '../../../src/project-info';
 import { TypeScriptConfigValidationRuleSet } from '../../../src/tsconfig';
 import { VERSION } from '../../../src/version';
+import { captureOutput } from '../../output-helpers';
 
 const BASE_PROJECT = {
   name: 'jsii-test',
@@ -138,15 +139,18 @@ describe('loadProjectInfo', () => {
         ));
 
       test('warns when "deprecated" is set but the stability is not "deprecated"', () => {
-        const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
-        _withTestProject(
-          (projectRoot) => expect(loadProjectInfo(projectRoot).projectInfo.stability).toBe('stable'),
-          (info) => {
-            (info as any).deprecated = 'use something else';
-            (info as any).stability = 'stable';
-          },
+        const { output } = captureOutput(
+          () =>
+            _withTestProject(
+              (projectRoot) => expect(loadProjectInfo(projectRoot).projectInfo.stability).toBe('stable'),
+              (info) => {
+                (info as any).deprecated = 'use something else';
+                (info as any).stability = 'stable';
+              },
+            ),
+          'warn',
         );
-        expect(warn).toHaveBeenCalledWith(expect.stringContaining('Package is deprecated (use something else)'));
+        expect(output).toContain('Package is deprecated (use something else)');
       });
 
       test('rejects an unknown stability', () =>
@@ -198,7 +202,6 @@ describe('loadProjectInfo', () => {
       ));
 
     test('rejects a dependency for which no jsii assembly can be found', () => {
-      jest.spyOn(console, 'error').mockImplementation(() => undefined);
       _withTestProject(
         (projectRoot) =>
           expect(() => loadProjectInfo(projectRoot)).toThrow(/Unable to locate jsii assembly for "not-installed"/),

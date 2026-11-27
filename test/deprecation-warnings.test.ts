@@ -6,6 +6,7 @@ import * as path from 'node:path';
 import * as vm from 'node:vm';
 
 import { compile, Lock } from './fixtures';
+import { OutputCapture } from './output-helpers';
 import { compileJsiiForTest, HelperCompilationResult, TestWorkspace } from '../lib';
 
 const DEPRECATED = '/** @deprecated Use something else */';
@@ -608,7 +609,7 @@ describe('cross-assembly validation', () => {
         fs.writeFileSync(warningsFile, 'module.exports = {};');
       }
       const requireDependency = createRequire(path.join(ws.rootDirectory, 'index.js'));
-      const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+      const capture = new OutputCapture('warn');
       const previousMode = process.env.JSII_DEPRECATED;
       process.env.JSII_DEPRECATED = mode;
       try {
@@ -618,15 +619,13 @@ describe('cross-assembly validation', () => {
         } else {
           expect(run).not.toThrow();
           if (mode === 'warn' && warnings === 'present' && value !== 'undefined') {
-            expect(warn).toHaveBeenCalledWith(
-              '[WARNING]',
-              expect.stringContaining('foreign.ForeignProps#old is deprecated'),
-            );
+            expect(capture.output).toContain('[WARNING] foreign.ForeignProps#old is deprecated');
           } else {
-            expect(warn).not.toHaveBeenCalled();
+            expect(capture.output).toBe('');
           }
         }
       } finally {
+        capture.stop();
         if (previousMode === undefined) {
           delete process.env.JSII_DEPRECATED;
         } else {
@@ -943,15 +942,16 @@ describe('thrown exceptions have the expected stack trace', () => {
       { addDeprecationWarnings: true },
     );
 
-    const mockWarn = jest.fn();
+    const printed = new Array<string>();
 
     runJsiiCode(compilation, 'warn', {
       console: {
-        warn: mockWarn,
+        warn: (...args: unknown[]) => printed.push(args.join(' ')),
       },
     });
 
-    expect(mockWarn).toHaveBeenCalledTimes(1);
+    // The deprecated constructor is called twice, and reported once.
+    expect(printed).toEqual([expect.stringContaining('DeprecatedConstructor is deprecated')]);
   });
 
   test('getter', () => {
