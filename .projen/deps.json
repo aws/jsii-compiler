@@ -183,10 +183,6 @@
       "type": "runtime"
     },
     {
-      "name": "sort-json",
-      "type": "runtime"
-    },
-    {
       "name": "spdx-license-list",
       "type": "runtime"
     },

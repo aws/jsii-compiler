@@ -224,7 +224,6 @@ project.addDeps(
   'log4js',
   'semver',
   'semver-intersect',
-  'sort-json',
   'spdx-license-list',
   '@typescript/native@npm:typescript@7.1.0-beta',
   'yargs',
