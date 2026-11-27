@@ -6,6 +6,13 @@ import { BackgroundCheck } from '../../../src/background-check';
 import { resolveTypeScript7PackageDir } from '../../../src/compiler-host';
 import { DiagnosticCategory } from '../../../src/diagnostic';
 
+// Under jest the worker runs the compiled `lib/background-check.js`, not the source: fail here when it is missing
+// (the worker is then skipped silently). Build first.
+// shortcut: a stale build is not detected (the build only rewrites a file whose content changed, so its date says little).
+test('the compiled worker is there', () => {
+  expect(fs.existsSync(path.resolve(__dirname, '../../../lib/background-check.js'))).toBe(true);
+});
+
 let projectRoot: string;
 
 beforeEach(() => {
