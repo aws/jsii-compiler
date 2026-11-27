@@ -537,17 +537,16 @@ describe('current behavior that is reported as an issue', () => {
     expect(result.stdout).not.toContain('TS18003');
   });
 
-  describe('violations of the tsconfig validation', () => {
-    const violations = async (overrides: Record<string, unknown>) => {
-      const dir = project({ 'tsconfig.dev.json': JSON.stringify(userTsconfig(overrides)) });
-      return (await run(dir, 'validate-tsconfig', 'tsconfig.dev.json')).stdout;
-    };
-
+  describe('tsconfig validation with "paths"', () => {
     // https://github.com/aws/jsii-compiler/issues/2992
-    test('reject "paths" because of an option that TypeScript adds', async () => {
-      expect(await violations({ paths: { '@x/*': ['lib/*'] } })).toContain(
-        'pathsBasePath: Unexpected field, got: pathsBasePath',
-      );
+    test('allows "paths" without failing on internal "pathsBasePath"', async () => {
+      const dir = project({ 'tsconfig.dev.json': JSON.stringify(userTsconfig({ paths: { '@x/*': ['./lib/*'] } })) });
+
+      const validateResult = await run(dir, 'validate-tsconfig', 'tsconfig.dev.json');
+      expect(validateResult.exitCode).toBeUndefined();
+
+      const compileResult = await run(dir, '--tsconfig', 'tsconfig.dev.json', '--validate-tsconfig', 'strict');
+      expect(compileResult.exitCode).toBeUndefined();
     });
   });
 
