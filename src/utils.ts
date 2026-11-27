@@ -88,7 +88,10 @@ export function _formatDiagnostic(diagnostic: Diagnostic, projectRoot: string) {
   }
 
   // This is our own diagnostics, so we'll format appropriately (replacing TS#### with JSII####).
-  const formatted = message.replace(` TS${JSII_DIAGNOSTICS_CODE}: `, ` JSII${diagnostic.jsiiCode}: `);
+  const formatted = message.replace(
+    ` TS${JSII_DIAGNOSTICS_CODE}: `,
+    ` JSII${String(diagnostic.jsiiCode).padStart(4, '0')}: `,
+  );
   const diagName = Code.lookup(diagnostic.jsiiCode)?.name;
   if (diagName) {
     // Insert the diagnostic name after the message text on the first line
