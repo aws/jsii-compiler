@@ -1012,7 +1012,10 @@ export class Assembler {
         return;
       }
     }
-    if (this._isInternal(sym)) {
+    // Classic: types marked @internal (or @jsii ignore) are skipped. A type that only has an underscored name is
+    // still visited (and reported as JSII8000), but it is hidden: references to it do not resolve to it.
+    const hiddenByName = sym.name.startsWith('_');
+    if (this._jsDocTags(sym).some((t: any) => t.name === 'internal') || this._isIgnored(sym)) {
       return;
     }
     if (this._shouldStrip(sym, fqn)) {
@@ -1034,7 +1037,7 @@ export class Assembler {
     if (!decl) {
       return;
     }
-    if (isFirst) {
+    if (isFirst && !hiddenByName) {
       this.typeFqnBySymbolId.set(sym.id, fqn);
     }
     this.exported.push({ name, sym, decl, fqn });
