@@ -933,11 +933,22 @@ export class Assembler {
     }
     // Batch-prefetch docs for all candidate type symbols (used by the
     // isInternal/shouldStrip checks inside _registerType).
-    registrations.sort((a, b) => a.seq - b.seq);
     this._prefetchDocs(registrations.map((r) => r.sym));
+    // Register canonical fqns first (references resolve to the first registration of a symbol), then visit the
+    // types in the order their exports were seen; nested types stay right after their parent.
+    const seqOf = new Map<unknown, number>();
     for (const r of registrations) {
+      const start = this.exported.length;
       this._registerType(r.sym, r.name, r.fqn);
+      for (const entry of this.exported.slice(start)) {
+        seqOf.set(entry, r.seq);
+      }
     }
+    const visitOrder = this.exported
+      .map((entry, index) => ({ entry, index }))
+      .sort((x, y) => (seqOf.get(x.entry) ?? 0) - (seqOf.get(y.entry) ?? 0) || x.index - y.index)
+      .map(({ entry }) => entry);
+    this.exported.splice(0, this.exported.length, ...visitOrder);
   }
 
   private _registerType(sym: any, name: string, fqn: string): void {
