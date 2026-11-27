@@ -15,6 +15,7 @@ const workflowNodeVersion = 'lts/*';
 
 const project = new typescript.TypeScriptProject({
   projenrcTs: true,
+  runner: typescript.TypeScriptRunner.tsx({ typeCheck: true }),
 
   packageManager: javascript.NodePackageManager.YARN_BERRY,
   yarnBerryOptions: {
@@ -146,8 +147,7 @@ project.tsconfig?.file?.patch(
 );
 project.tryFindObjectFile('projenrc/tsconfig.json')?.patch(
   // projenrc/support.ts needs these files
-  JsonPatch.add('/include/-', '../src/support.ts'),
-  JsonPatch.add('/include/-', '../src/version.ts'),
+  JsonPatch.add('/include/-', '../src/support-types.ts'),
 );
 
 // Don't show .gitignore'd files in the VSCode explorer
@@ -228,7 +228,7 @@ project.addDevDeps(
   'glob',
 );
 
-project.preCompileTask.exec('ts-node build-tools/code-gen.ts', {
+project.preCompileTask.exec('tsx build-tools/code-gen.ts', {
   name: 'code-gen',
 });
 project.gitignore.addPatterns('/src/version.ts', '/jsii-outdir/', '/test/negatives/.*');

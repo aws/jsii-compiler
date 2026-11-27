@@ -51,7 +51,7 @@ jobs:
         env:
           RELEASE_TAG: ${{ github.ref_name }}
           GITHUB_TOKEN: ${{ github.token }}
-        run: yarn ts-node projenrc/publish-target.ts "$RELEASE_TAG"
+        run: yarn tsx projenrc/publish-target.ts "$RELEASE_TAG"
       - name: Federate to AWS
         id: federate_to_aws
         if: fromJSON(steps.publish-target.outputs.github-release)
