@@ -25,3 +25,15 @@ ourselves.
 
 **Who is affected:** projects that rely on incremental rebuilds. Every build is a full build, so a rebuild is not faster.
 Nothing else changes, and clean scripts or `.gitignore` entries for the file do no harm.
+
+## Emitted source maps differ
+
+**What differs:** the inline source map in every emitted `.js` file comes from the TypeScript 7 emitter. It has no
+`"sourceRoot":""` entry, and its `mappings` differ slightly (for example, `export` is mapped onto `class`). The code
+itself and the `.d.ts` files are the same.
+
+**Why it cannot match:** the mappings are written by the TypeScript printer. Producing the TypeScript 6.0 mappings would
+need the TypeScript 6.0 printer.
+
+**Who is affected:** nobody at runtime. Debuggers and stack-trace tools read both maps. Only tools that compare the
+bytes of the source maps see a difference.
