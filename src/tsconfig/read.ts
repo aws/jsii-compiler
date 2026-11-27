@@ -99,6 +99,8 @@ function readOne(absolutePath: string, seen: Set<string>, targetDir: string, bas
       const resolved = resolveExtends(base, ownDir);
       merged = mergeConfigs(merged, readOne(resolved, new Set(seen), targetDir));
     } catch (e: any) {
+      // @TODO(NEXT): a missing, unparseable or circular base is skipped silently; tsc and TS7 fail with TS5083 / TS18000
+      // (aws/jsii-compiler#2991, #2982). After 7.1's first release: report it (JSII4000 or the TS diagnostic) instead.
       // Like TypeScript's parser, which reports a base it cannot resolve, read or
       // parse (or a circular chain) as a config error that the classic compiler
       // dropped: carry on without that base.
@@ -110,6 +112,9 @@ function readOne(absolutePath: string, seen: Set<string>, targetDir: string, bas
 
   const ownRebased: TypeScriptConfig = {
     ...own,
+    // @TODO(NEXT): unknown options and bad values vanish before validation, so typos pass `strict` and bad values
+    // show as `got: undefined` (aws/jsii-compiler#3029). After 7.1's first release: validate the raw options and
+    // drop `dropRejectedOptions`.
     compilerOptions: resolveCompilerOptions(dropRejectedOptions(own.compilerOptions ?? {}), ownDir),
     ...(own.files ? { files: own.files.map((f: string) => rebase(f, ownDir, targetDir)) } : {}),
     ...(own.include ? { include: own.include.map((f: string) => rebase(f, ownDir, targetDir)) } : {}),
@@ -166,6 +171,8 @@ function resolveCompilerOptions(options: CompilerOptionsJson, fromDir: string): 
       out[key] = value;
     }
   }
+  // @TODO(NEXT): `pathsBasePath` is internal to TypeScript but ends up in the config the rule sets see, so `strict`
+  // fails on `paths` (aws/jsii-compiler#2992). After 7.1's first release: keep it out of the validated options.
   if (out.paths != null) {
     out.pathsBasePath = toPosix(fromDir);
   }

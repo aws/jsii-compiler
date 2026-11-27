@@ -3,6 +3,9 @@ import { Match, RuleSet } from '../validator';
 // A rule set for deprecated compilerOptions that should not be used with jsii.
 // These options are deprecated in TypeScript 6.0 and will be removed in TypeScript 7.0.
 // This is an internal rule set, that may be used by other rule sets.
+// @TODO(NEXT): TypeScript 7 rejects all of these options itself, so the rules are redundant on 7.1; they stay
+// for main's `jsii rules` and JSII4000 text.
+// After 7.1's first release: remove this rule set and its use in strict.public.ts.
 const deprecatedOptions = new RuleSet();
 deprecatedOptions.shouldPass('prepend', Match.MISSING);
 deprecatedOptions.shouldPass('downlevelIteration', Match.MISSING);

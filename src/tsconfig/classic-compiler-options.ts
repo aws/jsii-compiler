@@ -12,6 +12,8 @@
  * Produced from `require('typescript').optionDeclarations` (`name`, `type`, `element.type`, `isCommandLineOnly`).
  */
 
+// @TODO(NEXT): this file pins TypeScript 6.0.3's option table only to copy main (aws/jsii-compiler#3029); TS7 knows
+// other options. After 7.1's first release: delete it and let TS7's own parse errors speak.
 /** A value type: a primitive, the accepted values of an enum, a list of either, or none (command line only). */
 export type ClassicOptionType =
   | 'commandLineOnly'

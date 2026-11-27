@@ -15,6 +15,9 @@
 import { dropCommentsBeforeClose, EmittedFile, indentationAt } from './emitted-js';
 import { Insertion } from './source-map';
 
+// @TODO(NEXT): the rtti form (a `static [JSII_RTTI_SYMBOL_1]` member spliced into the emitted text) copies TS6's
+// transformer output, and needs text surgery because TS7 has no transformers. After 7.1's first release: settle on
+// one form (e.g. the `Object.defineProperty` statements of `rttiSnippet`) and drop the splicing.
 const RTTI_SYMBOL_NAME = 'JSII_RTTI_SYMBOL';
 
 /**

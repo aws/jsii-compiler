@@ -413,6 +413,8 @@ export class Assembler {
    * trailing space in `{@link Foo }` comes from. The TypeScript 7 checker renders
    * links as plain text, so the raw JSDoc block is consulted when it has links.
    */
+  // @TODO(NEXT): this re-renders `{@link}` like TS6's language service, trailing space in `{@link Foo }` included;
+  // TS7 renders links as plain text. After 7.1's first release: use TS7's rendering and drop the raw-JSDoc pass.
   private _docCommentWithClassicLinks(sym: any): any {
     const comment = this._docComment(sym);
     if (typeof comment !== 'string' || comment === '') {
@@ -716,6 +718,8 @@ export class Assembler {
    * the names that its `export * from` declarations add, depth first. The TypeScript 7 checker lists the `export *`
    * names first; jsii visits types (and so orders `assembly.types` and the deprecation validators) in this order.
    */
+  // @TODO(NEXT): this re-sorts TS7's export order to TS6's only so `assembly.types` (and the fingerprint) match main.
+  // After 7.1's first release: use `checker.getExportsOfModule` order as is.
   private _exportsOfModule(moduleSym: any): any[] {
     const exports: any[] = this.checker.getExportsOfModule(moduleSym);
     const rank = new Map<string, number>();

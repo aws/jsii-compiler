@@ -134,6 +134,8 @@ export function statementInsertion(
  * TypeScript 6 printer then lost the comments before the closing `}` of each
  * such body (aws/jsii-compiler#3001). The edits that remove the same comments.
  */
+// @TODO(NEXT): this deletes user comments only because TS6's printer lost them (aws/jsii-compiler#3001); TS7's
+// emit keeps them. After 7.1's first release: delete this function and its call in the emitter.
 export function rewrittenBodyEdits(jsText: string, jsSource: any, k: any): Insertion[] {
   const edits: Insertion[] = [];
   const kinds = [k.MethodDeclaration, k.GetAccessor, k.SetAccessor, k.Constructor];
