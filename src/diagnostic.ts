@@ -121,7 +121,9 @@ function categoryColor(category: DiagnosticCategory): (s: string) => string {
     case DiagnosticCategory.Warning:
       return colored(YELLOW);
     case DiagnosticCategory.Suggestion:
-      // The classic formatter refuses suggestions; this is the color `ts.DiagnosticCategory.Suggestion` would use.
+      // The classic formatter refuses suggestions: main fails with "Debug Failure" when -vvv prints one
+      // (aws/jsii-compiler#3002). The TypeScript 7 compiler deliberately does not copy that crash and prints the
+      // suggestion, in the color `ts.DiagnosticCategory.Suggestion` would use.
       return colored(GREEN);
     default:
       return colored(BLUE);

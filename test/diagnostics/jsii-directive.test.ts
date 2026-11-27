@@ -4,8 +4,7 @@ import { compileJsiiForDiagnostics } from '../compiler-helpers';
 describe('JSII2100 jsii-directive/struct-on-non-interface', () => {
   // This documents current behavior, see https://github.com/aws/jsii-compiler/issues/2942
   // The diagnostic is registered but nothing emits it: `@struct` on a class is reported as JSII7001 instead.
-  // @TODO(ts7): expects a jsii validation diagnostic (JSII7001 for @struct on a class); re-enable with the port of the validator
-  test.skip('is registered, but is not emitted for "@struct" on a class (JSII7001 is)', () => {
+  test('is registered, but is not emitted for "@struct" on a class (JSII7001 is)', () => {
     expect(Code.lookup('jsii-directive/struct-on-non-interface')).toBe(Code.lookup(2100));
 
     const codes = compileJsiiForDiagnostics(`

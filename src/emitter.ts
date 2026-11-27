@@ -36,6 +36,8 @@ export interface EmitProjectOptions {
    * still emitted, and the classic compiler gave them rtti too.
    */
   readonly strippedClasses?: readonly spec.ClassType[];
+  /** The result of `program.emit()` when it already ran (see `BackgroundCheck`). */
+  readonly emitResult?: { emitSkipped?: boolean; emittedFiles?: string[]; diagnostics: readonly any[] };
 }
 
 export interface EmitProjectResult {
@@ -105,7 +107,7 @@ export function emitProject(
   // Whole-project emit (see the function docblock for why this is one RPC).
   // `program.emit()` writes to the host filesystem and returns
   // { emitSkipped, diagnostics, emittedFiles } with absolute file names.
-  const result = program.emit();
+  const result = options.emitResult ?? program.emit();
   if (result?.emitSkipped) {
     const reasons = (result.diagnostics ?? []).map((d: any) => d.text ?? d.messageText ?? String(d)).slice(0, 5);
     throw new Error(`TypeScript emit was skipped${reasons.length ? `: ${reasons.join('; ')}` : ''}`);

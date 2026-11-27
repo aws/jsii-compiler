@@ -40,6 +40,7 @@ import { isAllowedCovariantSubtype } from './type-analysis';
 import { compareUnionMembers, createTypeResolver, typeReferenceEqual, typeReferenceToString } from './type-reference';
 import { isBehavioralInterfaceType, isDataType, visitTypeReference } from './type-visitor';
 import { parentFqn } from './utils';
+import { Validator } from './validator';
 import { SHORT_VERSION, VERSION } from './version';
 import { parseWarningCodes, suppressInline } from './warnings';
 
@@ -182,6 +183,8 @@ export class Assembler {
   private readonly _docCommentCache = new Map<string, any>();
   private readonly _sourceTextCache = new Map<string, string>();
   private readonly _typeOfSymbolAtCache = new Map<string, any>();
+  private readonly _signatureCache = new Map<string, any>();
+  private readonly _returnTypeCache = new Map<unknown, any>();
   private _docCacheHits = 0;
 
   /** Number of doc-read cache hits (RPCs avoided). Exposed for perf reporting. */
@@ -282,6 +285,16 @@ export class Assembler {
     if (this.assemblyName.includes('.')) {
       this._diagnostics.push(JsiiDiagnostic.JSII_0009_PACKAGE_NAME_CONTAINS_DOT.createDetached(this.assemblyName));
     }
+    // The package metadata checks of the classic `Assembler.emit`, in its order.
+    if (!this.options.projectInfo.description) {
+      this._diagnostics.push(JsiiDiagnostic.JSII_0001_PKG_MISSING_DESCRIPTION.createDetached());
+    }
+    if (!this.options.projectInfo.homepage) {
+      this._diagnostics.push(JsiiDiagnostic.JSII_0002_PKG_MISSING_HOMEPAGE.createDetached());
+    }
+    if (this.options.readme == null) {
+      this._diagnostics.push(JsiiDiagnostic.JSII_0003_MISSING_README.createDetached());
+    }
     this._loadDependencyAssemblies();
 
     const entrySf = this.program.getSourceFile(this.entry);
@@ -309,81 +322,15 @@ export class Assembler {
     // Classic: the validator runs on the finished assembly, and only when the
     // assembler itself reported no error.
     if (!this._diagnostics.some((d) => d.category === DiagnosticCategory.Error)) {
-      this._validateNames(assembly);
-      this._validateTypeReferences(assembly);
-      this._validateStaticMembersAndNestedTypes(assembly);
-      this._validateAbstractClassesImplementAllProperties(assembly);
+      const validator = new Validator(this.options.projectInfo, assembly, {
+        nodeOf: (element) => this.relatedNodes.get(element),
+        syntaxKind: this.ts.SyntaxKind,
+        create: (code, node, ...args) => this._createDiagnostic(code, node, ...args),
+        location: (node) => this._diagnosticLocation(node),
+      });
+      this._diagnostics.push(...validator.emit().diagnostics);
     }
     return assembly;
-  }
-
-  /**
-   * Classic validator `_allTypeReferencesAreValid`: every named type the assembly refers to exists, in this assembly
-   * (JSII3000) or in a dependency (JSII9000, JSII9001).
-   */
-  private _validateTypeReferences(assembly: spec.Assembly): void {
-    const { SyntaxKind } = this.ts;
-    const refs: Array<{ fqn: string; node: any }> = [];
-    const collect = (type: spec.TypeReference | undefined, node: any): void => {
-      if (type == null) {
-        return;
-      }
-      if (spec.isNamedTypeReference(type)) {
-        refs.push({ fqn: type.fqn, node });
-      } else if (spec.isCollectionTypeReference(type)) {
-        collect(type.collection.elementtype, node);
-      } else if (spec.isUnionTypeReference(type)) {
-        for (const t of type.union.types) {
-          collect(t, node);
-        }
-      }
-    };
-    const types = Object.values(assembly.types ?? {}).filter(spec.isClassOrInterfaceType);
-    for (const type of types) {
-      const decl = this.relatedNodes.get(type);
-      const clause = (token: number) => (decl?.heritageClauses ?? []).find((hc: any) => hc.token === token);
-      if (spec.isClassType(type)) {
-        if (type.base) {
-          refs.push({ fqn: type.base, node: clause(SyntaxKind.ExtendsKeyword)?.types[0] });
-        }
-        for (const param of type.initializer?.parameters ?? []) {
-          collect(param.type, this.relatedNodes.get(param)?.type);
-        }
-      }
-      for (const iface of type.interfaces ?? []) {
-        // As in main: the clause looked up is the other kind's (`implements` for an interface).
-        const token = spec.isInterfaceType(type) ? SyntaxKind.ImplementsKeyword : SyntaxKind.ExtendsKeyword;
-        refs.push({ fqn: iface, node: clause(token) });
-      }
-    }
-    for (const type of types) {
-      for (const prop of type.properties ?? []) {
-        collect(prop.type, this.relatedNodes.get(prop)?.type);
-      }
-    }
-    for (const type of types) {
-      for (const method of type.methods ?? []) {
-        collect(method.returns?.type, this.relatedNodes.get(method)?.type);
-        for (const param of method.parameters ?? []) {
-          collect(param.type, this.relatedNodes.get(param)?.type);
-        }
-      }
-    }
-    for (const { fqn, node } of refs) {
-      const [assm] = fqn.split('.');
-      if (assm === assembly.name) {
-        if (!(fqn in (assembly.types ?? {}))) {
-          this._report(JsiiDiagnostic.JSII_3000_EXPORTED_API_USES_HIDDEN_TYPE, node, fqn);
-        }
-        continue;
-      }
-      const dependency = this.options.projectInfo.dependencyClosure.find((dep) => dep.name === assm);
-      if (dependency == null) {
-        this._report(JsiiDiagnostic.JSII_9000_UNKNOWN_MODULE, node, assm);
-      } else if (!(fqn in (dependency.types ?? {}))) {
-        this._report(JsiiDiagnostic.JSII_9001_TYPE_NOT_FOUND, node, { fqn });
-      }
-    }
   }
 
   // -------------------------------------------------------------------------
@@ -740,6 +687,54 @@ export class Assembler {
     }
     for (const [i, t] of todo.entries()) {
       this._typeOfSymbolAtCache.set(t.key, results[i]);
+    }
+  }
+
+  /**
+   * Read what `_visitMethod` and `_visitParameter` ask for each method declared by the type (its signature, return
+   * type, parameters and their types) in a few batches, instead of several round trips per method. The values are
+   * the ones the single calls return.
+   */
+  private _prefetchMethods(members: readonly any[], typeDecl: any): void {
+    const { SymbolFlags } = this.ts;
+    const { checker, project } = this;
+    const decls: any[] = [];
+    for (const m of members) {
+      if ((m.flags & SymbolFlags.Method) === 0) {
+        continue;
+      }
+      for (const handle of m.declarations ?? []) {
+        const decl = handle.resolve(project);
+        if (decl?.parent === typeDecl && !this._signatureCache.has(decl.id)) {
+          decls.push(decl);
+        }
+      }
+    }
+    if (decls.length < 2) {
+      return;
+    }
+    const signatures = this._signatureCache;
+    const returnTypes = this._returnTypeCache;
+    const types = this._typeOfSymbolAtCache;
+    function* readMethod(decl: any): Generator<any, void, any> {
+      const sig = yield* checker.getSignatureFromDeclaration.gen(decl);
+      signatures.set(decl.id, sig);
+      if (sig == null) {
+        return;
+      }
+      returnTypes.set(sig.id, yield* checker.getReturnTypeOfSignature.gen(sig));
+      for (const prm of yield* sig.getParameters.gen()) {
+        const node = prm.declarations?.[0] != null ? yield* prm.declarations[0].resolve.gen(project) : undefined;
+        if (node != null) {
+          types.set(`${prm.id}|${node.id}`, yield* checker.getTypeOfSymbolAtLocation.gen(prm, node));
+        }
+      }
+    }
+    try {
+      project.api.batch(...decls.map(readMethod));
+    } catch {
+      // shortcut: what was read before the failure stays cached (it is what the single calls return); the rest is
+      // read on its own, as before.
     }
   }
 
@@ -1791,10 +1786,30 @@ export class Assembler {
     //   3. extending a non-datatype interface clears it (applied as a fixpoint
     //      post-pass in assemble(), mirroring _deferUntilTypesAvailable).
     // The classic path then validates all-readonly (JSII3008) and struct bases (JSII3007), see _validateInterfaceName.
+    const hintsStruct = this._jsDocTags(sym).some((t: any) => t.name === 'struct');
     if ((jsiiType.methods ?? []).length === 0) {
-      const hintsStruct = this._jsDocTags(sym).some((t: any) => t.name === 'struct');
       if (!isInterfaceName(name) || hintsStruct) {
         jsiiType.datatype = true;
+      }
+    } else if (hintsStruct) {
+      // Classic: the hint cannot make an interface with methods a struct (JSII7001).
+      let diag = this._report(
+        JsiiDiagnostic.JSII_7001_ILLEGAL_HINT,
+        this._jsDocTagNode(decl, 'struct'),
+        'struct',
+        'interfaces with only readonly properties',
+      ).addRelatedInformationIf(
+        this._diagnosticLocation(this._nameOrDeclaration(decl)),
+        'The annotated declartion is here',
+      );
+      for (const method of jsiiType.methods ?? []) {
+        const methodDecl = this.relatedNodes.get(method);
+        if (methodDecl != null) {
+          diag = diag.addRelatedInformationIf(
+            this._diagnosticLocation(this._nameOrDeclaration(methodDecl)),
+            'A method is declared here',
+          );
+        }
       }
     }
 
@@ -1936,7 +1951,11 @@ export class Assembler {
     const process = (types: any[]): void => {
       for (const iface of types) {
         const s = iface.getSymbol?.() ?? iface.symbol;
-        const fqn = s && (this.typeFqnBySymbolId.get(s.id) ?? this._externalFqnOf(s));
+        const ownFqn = s && this.typeFqnBySymbolId.get(s.id);
+        const fqn = ownFqn ?? (s && this._externalFqnOf(s));
+        if (fqn && !ownFqn) {
+          this._checkPeerDependency(fqn, () => this._valueDeclarationOf(s));
+        }
         if (fqn) {
           if (!seen.has(fqn)) {
             seen.add(fqn);
@@ -2050,6 +2069,7 @@ export class Assembler {
   private _verifySupertypes(jsiiType: spec.ClassType | spec.InterfaceType): void {
     const declOf = (t: spec.Type) => this.relatedNodes.get(this.types[t.fqn]);
     this.deferred.push(() => {
+      this._checkSupertypePeerDependencies(jsiiType);
       if (spec.isClassType(jsiiType) && jsiiType.base != null) {
         const base = this._dereferenceType(jsiiType.base);
         if (base == null && this.unregisteredBaseDecls.has(jsiiType.fqn)) {
@@ -2091,6 +2111,44 @@ export class Assembler {
         }
       }
     });
+  }
+
+  /**
+   * JSII0005 for the supertypes the classic assembler looked up: the base classes of a class, up the chain, and the
+   * direct interfaces of a class or interface, at its declaration; and, for an interface, the interfaces of those
+   * bases, up the chain, with no location.
+   */
+  private _checkSupertypePeerDependencies(jsiiType: spec.ClassType | spec.InterfaceType): void {
+    const decl = () => this.relatedNodes.get(jsiiType);
+    if (spec.isClassType(jsiiType)) {
+      const seen = new Set<string>();
+      for (let fqn = jsiiType.base; fqn != null && !seen.has(fqn); ) {
+        seen.add(fqn);
+        this._checkPeerDependency(fqn, decl);
+        const base = this._dereferenceType(fqn);
+        fqn = base != null && spec.isClassType(base) ? base.base : undefined;
+      }
+    }
+    for (const fqn of jsiiType.interfaces ?? []) {
+      this._checkPeerDependency(fqn, decl);
+    }
+    if (spec.isInterfaceType(jsiiType)) {
+      const seen = new Set<string>();
+      const ancestors = (fqns: readonly string[] | undefined): void => {
+        for (const fqn of fqns ?? []) {
+          const base = this._dereferenceType(fqn);
+          if (base == null || !spec.isInterfaceType(base) || seen.has(fqn)) {
+            continue;
+          }
+          seen.add(fqn);
+          for (const ancestor of base.interfaces ?? []) {
+            this._checkPeerDependency(ancestor);
+          }
+          ancestors(base.interfaces);
+        }
+      };
+      ancestors(jsiiType.interfaces);
+    }
   }
 
   private _visitClass(sym: any, decl: any, jsiiType: any): void {
@@ -2136,7 +2194,11 @@ export class Assembler {
             }
             continue;
           }
-          const fqnRef = this.typeFqnBySymbolId.get(s.id) ?? this._externalFqnOf(s);
+          const ownFqnRef = this.typeFqnBySymbolId.get(s.id);
+          const fqnRef = ownFqnRef ?? this._externalFqnOf(s);
+          if (fqnRef && !ownFqnRef) {
+            this._checkPeerDependency(fqnRef, () => this._valueDeclarationOf(s));
+          }
           if (isExt) {
             if (fqnRef) {
               base.value ??= fqnRef;
@@ -2386,6 +2448,7 @@ export class Assembler {
     // One RPC for all member docs of this type (instance + static).
     this._prefetchDocs([...instanceProps, ...staticPropsForPrefetch]);
     this._prefetchPropertyTypes([...instanceProps, ...staticPropsForPrefetch], decl);
+    this._prefetchMethods([...instanceProps, ...staticPropsForPrefetch], decl);
     this._validateInternalMembers(sym, decl, erasedBases, isInterface, instanceProps, staticPropsForPrefetch);
 
     // Constructor parameter properties are only listed for the EFFECTIVE
@@ -2659,7 +2722,7 @@ export class Assembler {
           if (!prop) {
             continue;
           }
-          const docs = this._visitDocumentation(prop);
+          const docs = this._visitDocumentation(prop, false);
           if (docs?.summary != null || docs?.remarks != null) {
             return docs;
           }
@@ -2717,7 +2780,9 @@ export class Assembler {
 
   private _visitMethod(msym: any, decl: any, isStatic: boolean, jsiiType: any, declaringTypeDecl: any): any {
     const { SyntaxKind } = this.ts;
-    const sig = this.checker.getSignatureFromDeclaration(decl);
+    const sig = this._signatureCache.has(decl.id)
+      ? this._signatureCache.get(decl.id)
+      : this.checker.getSignatureFromDeclaration(decl);
     if (!sig) {
       this._report(JsiiDiagnostic.JSII_9004_UNABLE_TO_COMPUTE_SIGNATURE, decl, msym.name, jsiiType);
       return undefined;
@@ -2747,8 +2812,11 @@ export class Assembler {
         m.variadic = true;
       }
       this._verifyConsecutiveOptionals(decl, m.parameters);
+      this._validateReferencedDocParams(msym, decl, m);
       const opt: { optional?: boolean } = {};
-      const retType = this.checker.getReturnTypeOfSignature(sig);
+      const retType = this._returnTypeCache.has(sig.id)
+        ? this._returnTypeCache.get(sig.id)
+        : this.checker.getReturnTypeOfSignature(sig);
       // Promise-returning methods: jsii marks them `async`; `_typeReference` models
       // the resolved type (Promise<string> -> string), like strada.
       if (retType?.getSymbol?.()?.name === 'Promise') {
@@ -2779,6 +2847,7 @@ export class Assembler {
       return;
     }
     this.deferred.push(() => {
+      this._checkPeerDependency(lastParamType.fqn, () => this.relatedNodes.get(parameters[parameters.length - 1]));
       const struct = this._dereferenceType(lastParamType.fqn);
       if (struct == null) {
         // Classic: the type of the last parameter is looked up "used in syntax".
@@ -2799,6 +2868,7 @@ export class Assembler {
           propNames.add(p.name);
         }
         for (const baseFqn of iface.interfaces ?? []) {
+          this._checkPeerDependency(baseFqn);
           const base = this._dereferenceType(baseFqn);
           if (base != null && spec.isInterfaceType(base) && !seen.has(baseFqn)) {
             seen.add(baseFqn);
@@ -2814,6 +2884,29 @@ export class Assembler {
         }
       }
     });
+  }
+
+  /**
+   * The classic `_dereference` check: a type of a dependency that the public API uses must come from a peer
+   * dependency (JSII0005). The classic assembler made it each time it looked such a type up, at the node of that
+   * look-up (`nodeOf`; none means no location). Duplicates collapse when the diagnostics are de-duplicated.
+   */
+  private _checkPeerDependency(fqn: string, nodeOf?: () => any): void {
+    const [assm] = fqn.split('.');
+    const { projectInfo } = this.options;
+    if (
+      assm === this.assemblyName ||
+      assm in projectInfo.peerDependencies ||
+      !projectInfo.dependencyClosure.some((dep) => dep.name === assm)
+    ) {
+      return;
+    }
+    this._report(JsiiDiagnostic.JSII_0005_MISSING_PEER_DEPENDENCY, nodeOf?.(), assm, fqn);
+  }
+
+  /** The value declaration of a symbol (a class or an enum has one, an interface does not). */
+  private _valueDeclarationOf(sym: any): any {
+    return sym.valueDeclaration?.resolve?.(this.project);
   }
 
   /** A type of this assembly or of a dependency, by fqn. */
@@ -2924,7 +3017,7 @@ export class Assembler {
   private _visitParameter(prm: any): any {
     const decl = prm.declarations?.[0]?.resolve(this.project);
     this._warnAboutReservedWords(prm.name, decl);
-    const t = decl ? this.checker.getTypeOfSymbolAtLocation(prm, decl) : undefined;
+    const t = decl ? this._typeOfSymbolAt(prm, decl) : undefined;
     const opt: { optional?: boolean } = {};
     this.typeUse = 'parameter type';
     const p: any = { name: prm.name, type: this._typeReference(t, opt, decl?.type, decl?.type ?? decl?.name) };
@@ -2950,6 +3043,10 @@ export class Assembler {
     // the parameter declaration (common for documented parameter properties)
     // and the `@param` tag of the owning function's JSDoc; when both exist
     // they are concatenated (inline first), as strada's output shows.
+    if (decl != null && this._leadingJsDocBlock(decl)?.includes('@')) {
+      // Classic: a parameter's own doc tags are checked too (JSII7999, JSII7001); only read when it has a tag.
+      this._visitDocumentation(prm);
+    }
     const inline = this._inlineJsDocText(decl);
     const tagText = this._paramDocComment(prm, decl);
     let comments = inline != null && tagText != null ? `${inline}\n${tagText}` : inline ?? tagText;
@@ -3284,13 +3381,16 @@ export class Assembler {
     if (f & TypeFlags.EnumLike) {
       const s = type.getSymbol();
       const parent = s?.getParent();
-      const fqn =
-        s &&
-        (this.typeFqnBySymbolId.get(s.id) ??
-          this._externalFqnOf(s) ??
-          (parent && (this.typeFqnBySymbolId.get(parent.id) ?? this._externalFqnOf(parent))));
-      if (fqn) {
-        return { fqn };
+      for (const enumSym of s ? [s, parent] : []) {
+        const ownFqn = enumSym && this.typeFqnBySymbolId.get(enumSym.id);
+        if (ownFqn) {
+          return { fqn: ownFqn };
+        }
+        const externalFqn = enumSym && this._externalFqnOf(enumSym);
+        if (externalFqn) {
+          this._checkPeerDependency(externalFqn, () => this._valueDeclarationOf(enumSym));
+          return { fqn: externalFqn };
+        }
       }
     }
     if (f & TypeFlags.NonPrimitive) {
@@ -3395,9 +3495,14 @@ export class Assembler {
     }
     const target = type.isTypeReference() ? type.getTarget() : type;
     const tsym = target.getSymbol() ?? sym;
-    const fqn = this.typeFqnBySymbolId.get(tsym.id) ?? this._externalFqnOf(tsym);
-    if (fqn) {
-      return { fqn };
+    const ownFqn = this.typeFqnBySymbolId.get(tsym.id);
+    if (ownFqn) {
+      return { fqn: ownFqn };
+    }
+    const externalFqn = this._externalFqnOf(tsym);
+    if (externalFqn) {
+      this._checkPeerDependency(externalFqn, () => this._valueDeclarationOf(tsym));
+      return { fqn: externalFqn };
     }
     if ((tsym.flags & this.ts.SymbolFlags.TypeParameter) === 0) {
       return { fqn: this._unregisteredTypeFqn(type, tsym, declaration) };
@@ -3764,6 +3869,7 @@ export class Assembler {
             return;
           }
           validatedFqns[dir].add(ref.fqn);
+          this._checkPeerDependency(ref.fqn);
           const type = this._dereferenceType(ref.fqn);
           if (type != null && isDataType(type)) {
             for (const prop of type.properties ?? []) {
@@ -3815,7 +3921,56 @@ export class Assembler {
   // documentation (strada: _visitDocumentation)
   // -------------------------------------------------------------------------
 
-  private _visitDocumentation(sym: any): any | undefined {
+  /**
+   * Classic `_validateReferencedDocParams`: every `@param` of a method's docs names one of its parameters (JSII7000).
+   */
+  private _validateReferencedDocParams(msym: any, decl: any, method: spec.Method): void {
+    const actualNames = new Set((method.parameters ?? []).map((p) => p.name));
+    for (const tag of this._jsDocTags(msym)) {
+      if (tag.name !== 'param') {
+        continue;
+      }
+      const text: string = typeof tag.text === 'string' ? tag.text : (tag.text ?? []).map((p: any) => p.text).join('');
+      const param = text.split(' ')[0];
+      if (!actualNames.has(param)) {
+        this._report(JsiiDiagnostic.JSII_7000_NON_EXISTENT_PARAMETER, decl, method, param);
+      }
+    }
+  }
+
+  /**
+   * The JSDoc tag `@<name>` of a declaration, as a node for a diagnostic: from its `@` to the next tag or the end of
+   * the comment, like TypeScript's tag nodes (classic `_findHint`). Read from the source text; no request.
+   */
+  private _jsDocTagNode(decl: any, name: string): any {
+    const sf = decl?.getSourceFile?.();
+    if (sf == null) {
+      return undefined;
+    }
+    const text = this._sourceTextOf(sf);
+    const leading = text.slice(decl.pos, decl.getStart(sf));
+    const blockStart = leading.lastIndexOf('/**');
+    const blockEnd = blockStart < 0 ? -1 : leading.indexOf('*/', blockStart);
+    if (blockStart < 0 || blockEnd < 0) {
+      return undefined;
+    }
+    const block = leading.slice(blockStart, blockEnd);
+    const m = new RegExp(`(^/\\*\\*|\\n)[\\s*]*(@${name})(?![\\w-])`).exec(block);
+    if (m == null) {
+      return undefined;
+    }
+    const start = m.index + m[0].length - m[2].length;
+    const next = /\n[\s*]*@/.exec(block.slice(start));
+    const end = next != null ? start + next.index + next[0].length - 1 : block.length;
+    const offset = decl.pos + blockStart;
+    return { getSourceFile: () => sf, getStart: () => offset + start, end: offset + end };
+  }
+
+  /**
+   * `diagnose`: report the problems of the docs (JSII7999, JSII7001), which is wanted for the symbol being visited
+   * but not when its docs are only read for documentation inheritance.
+   */
+  private _visitDocumentation(sym: any, diagnose = true): any | undefined {
     const summaryRaw = this._docCommentWithClassicLinks(sym);
     const docs: any = {};
     if (summaryRaw) {
@@ -3866,7 +4021,22 @@ export class Assembler {
       }
     };
 
-    eatTag('struct'); // a type-system hint, consumed by the datatype detection, not documentation
+    const docDiagnostics = new Array<string>();
+    if (eatTag('struct') !== undefined && diagnose) {
+      // a type-system hint, consumed by the datatype detection, not documentation; only valid on interfaces
+      const decl = (sym.valueDeclaration ?? sym.declarations?.[0])?.resolve(this.project);
+      if (decl != null && decl.kind !== this.ts.SyntaxKind.InterfaceDeclaration) {
+        this._report(
+          JsiiDiagnostic.JSII_7001_ILLEGAL_HINT,
+          this._jsDocTagNode(decl, 'struct'),
+          'struct',
+          'interfaces with only readonly properties',
+        ).addRelatedInformationIf(
+          this._diagnosticLocation(this._nameOrDeclaration(decl)),
+          'The annotated declaration is here',
+        );
+      }
+    }
     setIfDefined('default', eatTag('default', 'defaultValue'));
     const deprecated = eatTag('deprecated');
     setIfDefined('deprecated', deprecated);
@@ -3876,10 +4046,20 @@ export class Assembler {
     if (eatTag('subclassable') !== undefined) {
       docs.subclassable = true;
     }
-    setIfDefined('stability', eatTag('stability'));
+    const stability = eatTag('stability');
+    if (stability !== undefined) {
+      if (['stable', 'experimental', 'external', 'deprecated'].includes(stability)) {
+        docs.stability = stability;
+      } else {
+        docDiagnostics.push(`Unrecognized @stability: '${stability}'`);
+      }
+    }
     // @experimental and @stable are shorthands for the matching @stability
     const experimental = eatTag('experimental') !== undefined;
     const stable = eatTag('stable') !== undefined;
+    if ([docs.stability !== undefined, experimental, stable].filter((x) => x).length > 1) {
+      docDiagnostics.push('Use only one of @stability, @experimental or @stable');
+    }
     if (experimental) {
       docs.stability = 'experimental';
     }
@@ -3887,7 +4067,22 @@ export class Assembler {
       docs.stability = 'stable';
     }
     if (deprecated !== undefined) {
+      if (docs.stability !== undefined && docs.stability !== 'deprecated') {
+        docDiagnostics.push("@deprecated tag requires '@stability deprecated' or no @stability at all.");
+      }
       docs.stability = 'deprecated';
+    }
+    if (docs.example?.includes('```')) {
+      docDiagnostics.push('@example must be code only, no code block fences allowed.');
+    }
+    if (deprecated?.trim() === '') {
+      docDiagnostics.push('@deprecated tag needs a reason and/or suggested alternatives.');
+    }
+    if (diagnose && docDiagnostics.length > 0) {
+      const decl = (sym.valueDeclaration ?? sym.declarations?.[0])?.resolve(this.project);
+      for (const message of docDiagnostics) {
+        this._report(JsiiDiagnostic.JSII_7999_DOCUMENTATION_ERROR, decl, message);
+      }
     }
     if (tagValues.size > 0) {
       docs.custom = {};
@@ -3938,11 +4133,21 @@ export class Assembler {
     node: any | undefined,
     ...args: Parameters<T>
   ): JsiiDiagnostic {
+    const diagnostic = this._createDiagnostic(code, node, ...args);
+    this._diagnostics.push(diagnostic);
+    return diagnostic;
+  }
+
+  /** The diagnostic `_report` reports, with inline suppressions applied, without reporting it. */
+  private _createDiagnostic<T extends DiagnosticMessageFormatter>(
+    code: Code<T>,
+    node: any | undefined,
+    ...args: Parameters<T>
+  ): JsiiDiagnostic {
     const diagnostic = code.create(this._diagnosticLocation(node), ...args);
     if (diagnostic.category === DiagnosticCategory.Warning && this._isSuppressed(node, diagnostic.jsiiCode)) {
       suppressInline(diagnostic);
     }
-    this._diagnostics.push(diagnostic);
     return diagnostic;
   }
 
@@ -3959,157 +4164,6 @@ export class Assembler {
   /** The name node of a declaration, or the declaration itself when it has none. */
   private _nameOrDeclaration(decl: any): any {
     return decl?.name ?? decl;
-  }
-
-  /**
-   * The naming conventions the classic validator checked on the finished
-   * assembly, in its order: enum members (JSII8001), then members (JSII8002),
-   * then static constants (JSII8003). Members are all methods, then all
-   * properties, type by type.
-   */
-  /**
-   * Classic validator: a static member and a nested type of a type may not have the same PascalCased name (JSII5020),
-   * as Go uses that name for both.
-   */
-  private _validateStaticMembersAndNestedTypes(assembly: spec.Assembly): void {
-    for (const nestedType of Object.values(assembly.types ?? {})) {
-      if (nestedType.namespace == null) {
-        continue;
-      }
-      const nestingType = assembly.types![`${assembly.name}.${nestedType.namespace}`];
-      if (nestingType == null) {
-        continue;
-      }
-      const nestedTypeName = Case.pascal(nestedType.name);
-      const members: Array<spec.Property | spec.Method | spec.EnumMember> = spec.isClassOrInterfaceType(nestingType)
-        ? [
-            ...(nestingType.methods ?? []).filter((m) => m.static),
-            ...(nestingType.properties ?? []).filter((p) => p.static),
-          ]
-        : nestingType.members;
-      for (const member of members) {
-        const name = spec.isClassOrInterfaceType(nestingType) ? Case.pascal(member.name) : member.name;
-        if (name !== nestedTypeName) {
-          continue;
-        }
-        const node = spec.isClassOrInterfaceType(nestingType)
-          ? this.relatedNodes.get(member)
-          : (this.relatedNodes.get(nestingType)?.members ?? []).find((m: any) => m.name?.text === member.name);
-        this._report(
-          JsiiDiagnostic.JSII_5020_STATIC_MEMBER_CONFLICTS_WITH_NESTED_TYPE,
-          node,
-          nestingType,
-          member,
-          nestedType,
-        ).addRelatedInformationIf(
-          this._diagnosticLocation(this.relatedNodes.get(nestedType)),
-          'This is the conflicting nested type declaration',
-        );
-      }
-    }
-  }
-
-  /**
-   * Classic validator: an abstract class declares every optional property of the interfaces it implements, at least
-   * as `abstract` (JSII5021); TypeScript already requires the others.
-   */
-  private _validateAbstractClassesImplementAllProperties(assembly: spec.Assembly): void {
-    for (const type of Object.values(assembly.types ?? {})) {
-      if (!spec.isClassType(type) || !type.abstract) {
-        continue;
-      }
-      const classProps = new Set<string>();
-      for (let t: spec.Type | undefined = type; t != null && spec.isClassType(t); ) {
-        for (const prop of t.properties ?? []) {
-          classProps.add(prop.name);
-        }
-        t = t.base != null ? this._dereferenceType(t.base) : undefined;
-      }
-      const check = (interfaceFqn: string) => {
-        const intf = this._dereferenceType(interfaceFqn);
-        if (intf == null || !spec.isInterfaceType(intf)) {
-          return;
-        }
-        for (const prop of intf.properties ?? []) {
-          if (prop.optional && !classProps.has(prop.name)) {
-            this._report(
-              JsiiDiagnostic.JSII_5021_ABSTRACT_CLASS_MISSING_PROP_IMPL,
-              this.relatedNodes.get(type),
-              intf,
-              type,
-              prop.name,
-            ).addRelatedInformationIf(
-              this._diagnosticLocation(this.relatedNodes.get(prop)),
-              'The implemented declaration is here.',
-            );
-          }
-        }
-        for (const extFqn of intf.interfaces ?? []) {
-          check(extFqn);
-        }
-      };
-      for (const implFqn of type.interfaces ?? []) {
-        check(implFqn);
-      }
-    }
-  }
-
-  private _validateNames(assembly: spec.Assembly): void {
-    const types = Object.values(assembly.types ?? {});
-    const members = [
-      ...types.flatMap((type) =>
-        spec.isClassOrInterfaceType(type) ? (type.methods ?? []).map((member) => ({ member, type })) : [],
-      ),
-      ...types.flatMap((type) =>
-        spec.isClassOrInterfaceType(type)
-          ? (type.properties ?? []).map((member: spec.Property | spec.Method) => ({ member, type }))
-          : [],
-      ),
-    ];
-    const memberNameNode = (member: object) => this._nameOrDeclaration(this.relatedNodes.get(member));
-
-    for (const type of types) {
-      if (!spec.isEnumType(type)) {
-        continue;
-      }
-      const enumDecl = this.relatedNodes.get(type);
-      for (const member of type.members) {
-        if (member.name && !isConstantCase(member.name)) {
-          const memberDecl = (enumDecl?.members ?? []).find(
-            (m: any) => m.name?.kind === this.ts.SyntaxKind.Identifier && m.name.text === member.name,
-          );
-          this._report(
-            JsiiDiagnostic.JSII_8001_ALL_CAPS_ENUM_MEMBERS,
-            memberDecl?.name ?? this._nameOrDeclaration(enumDecl),
-            member.name,
-            type.fqn,
-          );
-        }
-      }
-    }
-
-    for (const { member, type } of members) {
-      if (member.static && (member as spec.Property).const) {
-        continue;
-      }
-      if (member.name && member.name !== Case.camel(member.name)) {
-        this._report(JsiiDiagnostic.JSII_8002_CAMEL_CASED_MEMBERS, memberNameNode(member), member.name, type.fqn);
-      }
-    }
-
-    for (const { member, type } of members) {
-      if (!member.static || !(member as spec.Property).const) {
-        continue;
-      }
-      if (
-        member.name &&
-        !isConstantCase(member.name) &&
-        member.name !== Case.pascal(member.name) &&
-        member.name !== Case.camel(member.name)
-      ) {
-        this._report(JsiiDiagnostic.JSII_8003_STATIC_CONST_CASING, memberNameNode(member), member.name, type.name);
-      }
-    }
   }
 
   private _warnAboutReservedWords(name: string, decl: any) {
@@ -4217,11 +4271,6 @@ const PROHIBITED_MEMBER_NAMES = ['build', 'equals', 'hashcode'];
 /** Port of the classic Assembler's `isProhibitedMemberName`. */
 function isProhibitedMemberName(name: string) {
   return PROHIBITED_MEMBER_NAMES.includes(name.toLowerCase());
-}
-
-/** Port of the classic validator's `isConstantCase`: only uppercase characters, digits and underscores. */
-function isConstantCase(x: string) {
-  return !/[^A-Z0-9_]/.exec(x);
 }
 
 /** Port of the classic Assembler's `noEmptyDict`. */
