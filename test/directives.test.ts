@@ -403,8 +403,7 @@ describe('@jsii ignore', () => {
     expect(names).not.toContain('hidden');
   });
 
-  // @TODO(ts7): expects a jsii validation diagnostic (JSII3xxx); re-enable with the port of the validator
-  test.skip('an ignored type is effectively private and cannot be exposed on the public API', () => {
+  test('an ignored type is effectively private and cannot be exposed on the public API', () => {
     const errors = compileJsiiForErrors(`
       /** @jsii ignore */
       export interface Hidden {

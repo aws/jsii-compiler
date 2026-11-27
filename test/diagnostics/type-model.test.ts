@@ -5,8 +5,7 @@ import { TestWorkspace, compileJsiiForTest } from '../../src/helpers';
 import { compileJsiiForDiagnostics } from '../compiler-helpers';
 
 describe('JSII3002 type-model/unexported-foreign-type', () => {
-  // @TODO(ts7): expects a jsii validation diagnostic (JSII3002/JSII3006); re-enable with the port of the validator
-  test.skip('is reported when a type from a dependency is not part of its assembly', () =>
+  test('is reported when a type from a dependency is not part of its assembly', () =>
     TestWorkspace.withWorkspace((ws) => {
       ws.addDependency(compileJsiiForTest('export class Exported {}', { packageJson: { name: 'dependency' } }));
 
