@@ -95,6 +95,8 @@ export interface EmitResult {
 export class Compiler {
   private readonly userProvidedTypeScriptConfig: boolean;
   private readonly tsconfig: TypeScriptConfig;
+  /** Diagnostics about the TypeScript configuration, reported with those of every build. */
+  private readonly configDiagnostics: Diagnostic[] = [];
   private readonly configPath: string;
   private readonly projectRoot: string;
 
@@ -158,7 +160,7 @@ export class Compiler {
     // Some extra validation on the config.
     // Make sure that { "./.warnings.jsii.js": "./.warnings.jsii.js" } is in the set of
     // exports, if they are specified.
-    const diagnostics: Diagnostic[] = [...result.diagnostics];
+    const diagnostics: Diagnostic[] = [...result.diagnostics, ...this.configDiagnostics];
     let missingWarningsExport = false;
     if (this.options.addDeprecationWarnings && this.options.projectInfo.exports !== undefined) {
       const expected = `./${WARNINGSCODE_FILE_NAME}`;
@@ -188,9 +190,8 @@ export class Compiler {
       // emit a warning if validation is disabled
       const rules = this.options.validateTypeScriptConfig ?? TypeScriptConfigValidationRuleSet.NONE;
       if (rules === TypeScriptConfigValidationRuleSet.NONE) {
-        utils.logDiagnostic(
+        this.configDiagnostics.push(
           JsiiDiagnostic.JSII_4009_DISABLED_TSCONFIG_VALIDATION.create(undefined, this.configPath),
-          this.projectRoot,
         );
       }
 
