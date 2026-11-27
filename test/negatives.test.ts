@@ -60,7 +60,6 @@ const NOT_PORTED_YET = new Set([
   'neg.struct-hint-on-class.ts',
   'neg.struct-hint-on-enum.ts',
   'neg.struct-hint-with-methods.ts',
-  'neg.submodules-cannot-share-symbols.ts',
 ]);
 
 expect.addSnapshotSerializer({
