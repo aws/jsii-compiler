@@ -279,7 +279,7 @@ export class Assembler {
     const moduleSymbol = this.checker.getSymbolAtLocation(entrySf);
     const moduleExports = this._exportsOfModule(moduleSymbol);
 
-    this._registerModuleExports(moduleExports);
+    this._registerModuleExports(moduleExports, moduleSymbol.declarations?.[0]?.path);
 
     for (const { name, sym, decl, fqn } of this.exported) {
       this._visitNode(name, sym, decl, fqn);
@@ -721,6 +721,9 @@ export class Assembler {
   // @TODO(NEXT): this re-sorts TS7's export order to TS6's only so `assembly.types` (and the fingerprint) match main.
   // After 7.1's first release: use `checker.getExportsOfModule` order as is.
   private _exportsOfModule(moduleSym: any): any[] {
+    // @TODO(NEXT): this walk only reproduces the TypeScript 6 order so that `assembly.types` and the validators in
+    // `.warnings.jsii.js` come out as on main; the order has no meaning of its own. After 7.1's first release, use
+    // `checker.getExportsOfModule` as is and drop this method (outputs that follow the type order change once).
     const exports: any[] = this.checker.getExportsOfModule(moduleSym);
     const rank = new Map<string, number>();
     const visited = new Set<unknown>();
@@ -753,17 +756,25 @@ export class Assembler {
       .map(({ e }) => e);
   }
 
-  private _registerModuleExports(moduleExports: any[]): void {
+  private _registerModuleExports(moduleExports: any[], entryPath?: string): void {
     const { SyntaxKind, SymbolFlags } = this.ts;
     const candidates = new Map<
       unknown,
-      Array<{ name: string; prefix: string; moduleDir: string; sym: any; aliasDeclH?: any; seq: number }>
+      Array<{
+        name: string;
+        prefix: string;
+        moduleDir: string;
+        moduleFile?: string;
+        sym: any;
+        aliasDeclH?: any;
+        seq: number;
+      }>
     >();
     const visitedModules = new Set<string>();
     // The order in which exports are seen: the classic assembler visited (and registered) types in this order.
     let seq = 0;
 
-    const collect = (mExports: any[], prefix: string, moduleDir: string): void => {
+    const collect = (mExports: any[], prefix: string, moduleDir: string, moduleFile?: string): void => {
       for (const e of mExports) {
         const sym = this._resolveAlias(e);
         const declH = sym.declarations?.[0];
@@ -785,7 +796,7 @@ export class Assembler {
           // (strada's ExportSpecifier resolution lands on an ImportSpecifier,
           // which no _visitNode branch handles — silently dropped).
           const aliasDeclH = (e.flags & SymbolFlags.Alias) !== 0 ? e.declarations?.[0] : undefined;
-          candidates.get(sym.id)!.push({ name: e.name, prefix, moduleDir, sym, aliasDeclH, seq: seq++ });
+          candidates.get(sym.id)!.push({ name: e.name, prefix, moduleDir, moduleFile, sym, aliasDeclH, seq: seq++ });
         } else if (
           kind === SyntaxKind.SourceFile ||
           (sym.flags & SymbolFlags.ValueModule) !== 0 ||
@@ -817,13 +828,14 @@ export class Assembler {
           this.submoduleSymbols.set(subFqn, e);
           this.submodules[subFqn] = this._submoduleSpec(e, sym, kind === SyntaxKind.SourceFile);
           const subDir = path.dirname(sym.declarations?.[0]?.path ?? moduleDir);
-          collect(this._exportsOfModule(sym), subFqn, subDir);
+          const subFile = kind === SyntaxKind.SourceFile ? sym.declarations?.[0]?.path : undefined;
+          collect(this._exportsOfModule(sym), subFqn, subDir, subFile);
         } else {
           this._reportUnsupportedExport(sym, declH);
         }
       }
     };
-    collect(moduleExports, this.assemblyName, path.dirname(this.entry));
+    collect(moduleExports, this.assemblyName, path.dirname(this.entry), entryPath);
     this._validateSubmoduleConfigs();
 
     // FQN attribution: the *canonical* home of a type is the shortest module
@@ -846,37 +858,43 @@ export class Assembler {
           best = c;
         }
       }
-      const bestFqn = `${best.prefix}.${best.name}`;
-      registrations.push({ sym: best.sym, name: best.name, fqn: bestFqn, seq: best.seq });
+      // Classic: a file that is itself a (sub)module (`export * as ns from './file'`) gives its types that
+      // module's fqn, even when another module in the same directory exports them as well.
+      best = cands.find((c) => c.moduleFile != null && c.moduleFile === c.sym.declarations?.[0]?.path) ?? best;
+      // Classic: a type is named after its declaration, also when it is exported under another name
+      // (`export { X as Y }` gives `X`).
+      // @TODO(NEXT): the package does not export `X` then, so bindings cannot load it
+      // (https://github.com/aws/jsii-compiler/issues/3033). After 7.1's first release, name the entry after the
+      // export (`best.name`, `c.name`) or report renamed re-exports as an error.
+      const name = best.sym.name;
+      const bestFqn = `${best.prefix}.${name}`;
+      registrations.push({ sym: best.sym, name, fqn: bestFqn, seq: best.seq });
       const extraFqns = new Set<string>([bestFqn]);
       for (const c of cands) {
-        const fqn = `${c.prefix}.${c.name}`;
+        const fqn = `${c.prefix}.${name}`;
         if (extraFqns.has(fqn)) {
           continue;
         }
-        // Only FOREIGN re-exports (candidate module dir does NOT contain the
-        // declaration, e.g. aws_docdb re-exporting a type declared in aws-rds/)
-        // produce a duplicate entry. Candidates from ancestor dirs (the package
-        // root re-exporting a submodule's type) collapse into the canonical fqn.
-        const declPath = c.sym.declarations?.[0]?.path ?? '';
-        const dir = c.moduleDir.endsWith('/') ? c.moduleDir : c.moduleDir + '/';
-        if (declPath.startsWith(dir)) {
-          continue;
-        }
-        // strada only emits the duplicate for `export { X } from '...'` — the
-        // alias declaration must be an ExportSpecifier whose ExportDeclaration
-        // carries a module specifier. Aliases that go through a local import
-        // (`import { X } ...; export { X };`) are dropped by strada's visitor.
-        if (!c.aliasDeclH || c.aliasDeclH.kind !== SyntaxKind.ExportSpecifier) {
-          continue;
-        }
-        const aliasDecl = c.aliasDeclH.resolve(this.project);
-        const exportDeclNode = aliasDecl?.parent?.parent;
-        if (exportDeclNode?.moduleSpecifier == null) {
-          continue;
+        // strada visits every export of every module, so each module that exports the type (directly, through
+        // `export *` or through `export { X } from '...'`) gets an entry of its own. Aliases that go through a
+        // local import (`import { X } ...; export { X };`) are dropped by strada's visitor: their ExportSpecifier
+        // resolves to an ImportSpecifier, which no _visitNode branch handles.
+        // @TODO(NEXT): copies of one class under several fqns share one runtime class, which carries only one of
+        // the fqns, and re-exporting through a local import drops the entry for no reason. After 7.1's first
+        // release, keep one entry per type at its canonical fqn and treat every re-export (with or without a
+        // module specifier) the same way.
+        if (c.aliasDeclH != null) {
+          if (c.aliasDeclH.kind !== SyntaxKind.ExportSpecifier) {
+            continue;
+          }
+          const aliasDecl = c.aliasDeclH.resolve(this.project);
+          const exportDeclNode = aliasDecl?.parent?.parent;
+          if (exportDeclNode?.moduleSpecifier == null) {
+            continue;
+          }
         }
         extraFqns.add(fqn);
-        registrations.push({ sym: c.sym, name: c.name, fqn, seq: c.seq });
+        registrations.push({ sym: c.sym, name, fqn, seq: c.seq });
       }
     }
     // Batch-prefetch docs for all candidate type symbols (used by the
@@ -905,7 +923,7 @@ export class Assembler {
     if (!isFirst) {
       // Already registered under its canonical fqn. A *different* fqn means a
       // cross-submodule re-export: emit a duplicate entry under that fqn too
-      // (nested-export recursion runs only for the canonical registration).
+      // (its nested types get entries under that fqn as well).
       if (this.typeFqnBySymbolId.get(sym.id) === fqn || this.exported.some((e) => e.fqn === fqn)) {
         return;
       }
@@ -936,11 +954,8 @@ export class Assembler {
       this.typeFqnBySymbolId.set(sym.id, fqn);
     }
     this.exported.push({ name, sym, decl, fqn });
-    if (!isFirst) {
-      return;
-    }
 
-    // nested exported types (namespaces on a class/interface)
+    // nested exported types (namespaces on a class/interface), under every fqn of the type, like strada
     const nested = sym.getExports?.();
     if (nested && nested.size) {
       for (const [, nsym0] of nested) {
