@@ -2,15 +2,16 @@ import { compileForDiagnostics } from './helpers';
 
 describe('JSII3005 type-model/type-used-as-interface', () => {
   test('is reported when an interface extends a collection type', () => {
+    // The order in which the two are reported is not specified.
     expect(
       compileForDiagnostics(`
         export interface IStrings extends Array<string> {
           readonly extra: string;
         }
-      `),
+      `).sort(),
     ).toEqual([
-      'JSII3005: Type "array<string>" cannot be used as an interface',
       'JSII3004: Illegal extends clause for an exported API: VariableDeclaration',
+      'JSII3005: Type "array<string>" cannot be used as an interface',
     ]);
   });
 
