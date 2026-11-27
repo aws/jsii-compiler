@@ -116,3 +116,26 @@ describe('JSII9997 miscellaneous/unknown-error', () => {
     );
   });
 });
+
+describe('JSII8006 code-style/underscored-members-must-be-internal', () => {
+  // This documents current behavior, see https://github.com/aws/jsii-compiler/issues/2971
+  // TypeScript does not attach a comment to a declaration when the comment starts on a line with code before it.
+  test('is reported for a member marked @internal by a comment that follows code on the same line', () => {
+    const diagnostics = compileJsiiForDiagnostics(`
+      export class X { /** @internal */ public _ok = 1; }
+
+      export class Y {
+        public a = 1; /** @internal */ public _b = 2;
+      }
+
+      export class Z {
+        /** @internal */ public _c = 1;
+      }
+    `);
+
+    expect(diagnostics.filter((d) => d.jsiiCode === 8006).map((d) => d.messageText)).toEqual([
+      'Members with a name starting with "_" (e.g: "_ok") must be marked @internal',
+      'Members with a name starting with "_" (e.g: "_b") must be marked @internal',
+    ]);
+  });
+});

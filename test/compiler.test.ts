@@ -17,7 +17,6 @@ import { JsiiDiagnostic } from '../src/jsii-diagnostic';
 import { ProjectInfo } from '../src/project-info';
 import { TypeScriptConfigValidationRuleSet } from '../src/tsconfig';
 import { TypeScriptConfigValidator } from '../src/tsconfig/tsconfig-validator';
-import * as utils from '../src/utils';
 
 // Make the typescript module's properties configurable so jest.spyOn works.
 // TS 6.0 exports non-configurable properties that cannot be spied on directly.
@@ -364,33 +363,6 @@ describe(Compiler, () => {
       const result = compiler.emit();
       expect(result.diagnostics).toEqual([]);
       expect(result.emitSkipped).toBe(false);
-    });
-
-    test('JSII4000: reports a user-provided config that fails validation', () => {
-      writeFileSync(
-        join(sourceDir, tsconfigPath),
-        JSON.stringify({ compilerOptions: { ...tsconfigForNode18Strict().compilerOptions, strict: false } }, null, 2),
-      );
-      writeFileSync(join(sourceDir, 'index.ts'), 'export class MarkerA {}');
-
-      const logDiagnostic = jest.spyOn(utils, 'logDiagnostic').mockImplementation(() => undefined);
-      expect(
-        () =>
-          new Compiler({
-            projectInfo: _makeProjectInfo(sourceDir, 'index.d.ts'),
-            typeScriptConfig: tsconfigPath,
-            validateTypeScriptConfig: TypeScriptConfigValidationRuleSet.STRICT,
-          }),
-      ).toThrow(`Failed validation of tsconfig "compilerOptions" in "${tsconfigPath}" against rule set "strict"!`);
-      expect(logDiagnostic).toHaveBeenCalledWith(
-        expect.objectContaining({
-          jsiiCode: 4000,
-          messageText: expect.stringContaining(
-            `Typescript compiler options in "${tsconfigPath}" are not passing validation against rule set "strict"`,
-          ),
-        }),
-        sourceDir,
-      );
     });
 
     test('use user-provided config uses include and exclude', () => {

@@ -1,7 +1,7 @@
 import * as ts from 'typescript';
 import { DiagnosticCategory } from 'typescript';
 
-import { Code, configureCategories, JsiiDiagnostic } from '../src/jsii-diagnostic';
+import { Code, configureCategories, JsiiDiagnostic } from '../src';
 
 describe('jsii diagnostics', () => {
   describe('configureCategories', () => {
@@ -113,30 +113,52 @@ describe('jsii diagnostics', () => {
     });
 
     describe('registration of duplicates', () => {
-      const byCode: Map<number, Code> = (Code as any).byCode;
-      const byName: Map<string, Code> = (Code as any).byName;
-      const originalByCode = Code.lookup(1)!;
-      const originalByName = Code.lookup('metadata/package-json-missing-homepage')!;
-
-      afterEach(() => {
-        byCode.set(1, originalByCode);
-        byName.set('metadata/package-json-missing-homepage', originalByName);
-      });
-
       // This documents current behavior, see https://github.com/aws/jsii-compiler/issues/2947
       // The constructor checks `code in Code.byCode` (a Map), which is never true, so duplicates are silently accepted
       // and replace the previously registered diagnostic.
       test('a duplicate code or name is accepted and replaces the previous registration', () => {
-        const duplicate = Code.error({ code: 1, name: 'metadata/package-json-missing-homepage', formatter: () => 'x' });
+        const first = Code.error({ code: 987001, name: 'test-only/duplicate', formatter: () => 'first' });
+        const duplicate = Code.error({ code: 987001, name: 'test-only/duplicate', formatter: () => 'second' });
 
-        expect(Code.lookup(1)).toBe(duplicate);
-        expect(Code.lookup('metadata/package-json-missing-homepage')).toBe(duplicate);
+        expect(duplicate).not.toBe(first);
+        expect(Code.lookup(987001)).toBe(duplicate);
+        expect(Code.lookup('test-only/duplicate')).toBe(duplicate);
+      });
+
+      // This documents current behavior, see https://github.com/aws/jsii-compiler/issues/2947
+      // The name is looked up with `in` on a Map, so only the names of properties of the Map are rejected.
+      test('a name that is a property of the registry is rejected', () => {
+        expect(() => Code.error({ code: 987002, name: 'size', formatter: () => 'x' })).toThrow(
+          'Attempted to create two instances of Code with name size',
+        );
       });
     });
   });
 
   describe('JsiiDiagnostic', () => {
     const detached = () => JsiiDiagnostic.JSII_0001_PKG_MISSING_DESCRIPTION.createDetached();
+
+    describe('format', () => {
+      // Removes the colors, which are only added when the output is a terminal
+      const plain = (text: string) => text.replace(/\u001b\[[\d;]*m/g, '');
+
+      test('shows the code and the name of the diagnostic', () => {
+        const formatted = plain(JsiiDiagnostic.JSII_0003_MISSING_README.createDetached().format(process.cwd()));
+
+        expect(formatted).toContain('JSII3: There is no "README.md" file.');
+        expect(formatted).toContain('[metadata/missing-readme]');
+      });
+
+      test('does not show a name for a code that is not registered', () => {
+        const unregistered = JsiiDiagnostic.JSII_0003_MISSING_README.createDetached();
+        (unregistered as { jsiiCode: number }).jsiiCode = 99999;
+
+        const formatted = plain(unregistered.format(process.cwd()));
+
+        expect(formatted).toContain('JSII99999:');
+        expect(formatted).not.toContain('[');
+      });
+    });
 
     test('can be recognized with isJsiiDiagnostic', () => {
       expect(JsiiDiagnostic.isJsiiDiagnostic(detached())).toBe(true);

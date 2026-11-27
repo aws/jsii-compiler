@@ -1,7 +1,6 @@
 import * as fs from 'node:fs';
 
-import { compileJsiiForTest, normalizeConfigPath, sourceToAssemblyHelper, TestWorkspace } from '../src/helpers';
-import { JsiiError } from '../src/utils';
+import { compileJsiiForTest, normalizeConfigPath, sourceToAssemblyHelper, TestWorkspace } from '../src';
 
 describe('sourceToAssemblyHelper', () => {
   test('returns the assembly of the compiled source', () => {
@@ -30,9 +29,7 @@ describe('compileJsiiForTest', () => {
   test('logs errors to the console and throws when diagnostics are not captured', () => {
     const consoleError = jest.spyOn(console, 'error').mockImplementation(() => undefined);
     try {
-      expect(() => compileJsiiForTest('export class Klass extends Missing {}')).toThrow(
-        new JsiiError('There were compiler errors'),
-      );
+      expect(() => compileJsiiForTest('export class Klass extends Missing {}')).toThrow('There were compiler errors');
       expect(consoleError).toHaveBeenCalledWith(expect.stringContaining("Cannot find name 'Missing'"));
     } finally {
       consoleError.mockRestore();
