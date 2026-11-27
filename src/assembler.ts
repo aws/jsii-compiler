@@ -2892,6 +2892,10 @@ export class Assembler {
     // the parameter declaration (common for documented parameter properties)
     // and the `@param` tag of the owning function's JSDoc; when both exist
     // they are concatenated (inline first), as strada's output shows.
+    if (decl != null && this._leadingJsDocBlock(decl)?.includes('@')) {
+      // Classic: a parameter's own doc tags are checked too (JSII7999, JSII7001); only read when it has a tag.
+      this._visitDocumentation(prm);
+    }
     const inline = this._inlineJsDocText(decl);
     const tagText = this._paramDocComment(prm, decl);
     let comments = inline != null && tagText != null ? `${inline}\n${tagText}` : inline ?? tagText;
