@@ -132,10 +132,6 @@
       "type": "build"
     },
     {
-      "name": "ts-node",
-      "type": "build"
-    },
-    {
       "name": "tsx",
       "type": "build"
     },

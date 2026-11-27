@@ -17,7 +17,7 @@ export class UpdateIntegPackage {
 
     project.addTask('test:benchmark:update-aws-cdk-lib-snapshot', {
       description: 'Updates the fixtures/.tarballs/aws-cdk-lib.tgz file with a fresh snapshot.',
-      exec: 'ts-node projenrc/update-integ-package.ts',
+      exec: 'tsx projenrc/update-integ-package.ts',
       receiveArgs: true,
     });
   }

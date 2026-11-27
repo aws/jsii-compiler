@@ -8,8 +8,7 @@
   "include": [
     "**/*.ts",
     "../.projenrc.ts",
-    "../src/support.ts",
-    "../src/version.ts"
+    "../src/support-types.ts"
   ],
   "exclude": [
     "node_modules"

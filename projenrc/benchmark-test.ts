@@ -15,7 +15,7 @@ export class BenchmarkTest {
   ) {
     project.addTask('test:benchmark', {
       description: 'Executes the benchmark test',
-      exec: 'ts-node ./projenrc/benchmark-test.ts',
+      exec: 'tsx ./projenrc/benchmark-test.ts',
       receiveArgs: true,
     });
 
