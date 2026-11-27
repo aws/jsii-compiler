@@ -484,13 +484,12 @@ function deriveEntry(projectRoot: string, projectInfo: ProjectInfo, rootDir?: st
 /**
  * Config file errors for parts of the tsconfig that jsii skips when it reads it, like
  * the classic compiler: a broken `extends` base (unreadable TS5083, circular TS18000,
- * or errors in the base file) and compiler options TypeScript rejects (unknown
- * TS5023/TS5025, wrong type TS5024, bad value TS6046, command line only TS6266).
+ * or errors in the base file).
  */
 // @TODO(NEXT): TS7 reports these tsconfig errors like tsc does; jsii hides them to match TS6-based main, which never
-// saw them (aws/jsii-compiler#2982, #2991, #3029). After 7.1's first release: report the program's config file
+// saw them (aws/jsii-compiler#2982, #2991). After 7.1's first release: report the program's config file
 // diagnostics and drop this set, `hasSkippedConfigErrors` and `flattenTsconfig`.
-const SKIPPED_CONFIG_ERRORS = new Set([5083, 18000, 5023, 5024, 5025, 6046, 6266]);
+const SKIPPED_CONFIG_ERRORS = new Set([5083, 18000]);
 
 function hasSkippedConfigErrors(program: any, tsconfigPath: string): boolean {
   const errors: any[] = program.getConfigFileParsingDiagnostics?.() ?? [];
@@ -559,9 +558,8 @@ export function buildProject(options: BuildProjectOptions): BuildProjectResult {
 
   // The classic compiler built from the options it read itself and never saw the
   // config file errors of a broken `extends` (missing, unparseable or circular
-  // base) or of options TypeScript rejects. TypeScript 7 reports those and then
-  // skips the emit. Build such a project from the configuration jsii read instead,
-  // which skips the broken bases and the rejected options.
+  // base). TypeScript 7 reports those and then skips the emit. Build such a
+  // project from the configuration jsii read instead, which skips the broken bases.
   if (options.userTsconfig != null && hasSkippedConfigErrors(project.program, host.tsconfigPath)) {
     host.close();
     tsconfigText = flattenTsconfig(options.userTsconfig);
