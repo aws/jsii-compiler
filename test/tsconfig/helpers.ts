@@ -199,7 +199,7 @@ export function fcTsconfig(
   };
 
   // limit to only allowed keys
-  const allowedKeys = options.compilerRuleSet?.allowedFields ?? [];
+  const allowedKeys = options.compilerRuleSet?.allowedFields;
 
   // prevent required options from being dropped
   const requiredKeys = findRequiredKeysFromRuleSet(options.compilerRuleSet) ?? [];
