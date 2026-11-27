@@ -34,6 +34,8 @@
   "devDependencies": {
     "@actions/core": "^3",
     "@actions/github": "^9",
+    "@swc/core": "^1.16.22",
+    "@swc/jest": "^0.2.39",
     "@types/clone": "^2.1.4",
     "@types/deep-equal": "^1.0.4",
     "@types/glob": "^8.1.0",
@@ -62,7 +64,6 @@
     "prettier": "^2.8.8",
     "projen": "^0.105.8",
     "tar": "^7.5.23",
-    "ts-jest": "^29.4.15",
     "tsx": "^4.23.15"
   },
   "dependencies": {
