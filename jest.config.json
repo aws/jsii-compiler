@@ -7,14 +7,15 @@
     "json"
   ],
   "collectCoverageFrom": [
-    "src/**/*.ts"
+    "src/**/*.ts",
+    "lib/**/*.js"
   ],
   "coverageThreshold": {
     "global": {
-      "statements": 95,
-      "lines": 95,
-      "functions": 96.5,
-      "branches": 92.5
+      "statements": 98.4,
+      "lines": 98.4,
+      "functions": 94.5,
+      "branches": 95.8
     }
   },
   "watchPathIgnorePatterns": [

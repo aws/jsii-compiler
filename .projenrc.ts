@@ -86,10 +86,11 @@ const project = new typescript.TypeScriptProject({
     configFilePath: 'jest.config.json',
     jestConfig: {
       moduleFileExtensions: ['ts', 'tsx', 'js', 'json'],
-      // Count every file in src/, including the ones no test loads.
-      collectCoverageFrom: ['src/**/*.ts'],
+      // Count every file in src/, including the ones no test loads. Some tests load the compiled lib/ instead of
+      // src/; lib/ must stay listed so jest maps that coverage back to src/ through the source maps.
+      collectCoverageFrom: ['src/**/*.ts', 'lib/**/*.js'],
       // Set a little below the measured values (v8 provider), so a real drop fails the tests.
-      coverageThreshold: { statements: 95, lines: 95, functions: 96.5, branches: 92.5 },
+      coverageThreshold: { statements: 98.4, lines: 98.4, functions: 94.5, branches: 95.8 },
       watchPathIgnorePatterns: [
         // NB: Those are regexes...
         '<rootDir>/fixtures/\\..*',
