@@ -36,7 +36,7 @@ import * as literate from './literate';
 import { validateTargets, type ProjectInfo } from './project-info';
 import { isReservedName } from './reserved-words';
 import { isAllowedCovariantSubtype } from './type-analysis';
-import { createTypeResolver, typeReferenceEqual, typeReferenceToString } from './type-reference';
+import { compareUnionMembers, createTypeResolver, typeReferenceEqual, typeReferenceToString } from './type-reference';
 import { isBehavioralInterfaceType, isDataType, visitTypeReference } from './type-visitor';
 import { parentFqn } from './utils';
 import { SHORT_VERSION, VERSION } from './version';
@@ -146,58 +146,6 @@ function renderTagLinks(text: string): string {
 }
 
 /**
- * Orders the constituents of a union the way the classic compiler emitted them.
- *
- * The classic assembler kept the checker's own order, in which the constituents
- * are sorted by type id, i.e. by the order the types were created in. That order
- * is not observable through the TypeScript 7 API, so it is approximated: the
- * intrinsic primitives first (any, string, number, boolean), then named types in
- * declaration order (program file order, then position in the file; types of
- * dependencies before own types), then collections in their declared order, and
- * nested unions ranked by their first constituent.
- */
-function sortUnionLikeClassic(
-  refs: readonly spec.TypeReference[],
-  rankOfFqn: (fqn: string) => number,
-): spec.TypeReference[] {
-  const rank = (ref: spec.TypeReference): number => {
-    if (spec.isPrimitiveTypeReference(ref)) {
-      const order = [
-        spec.PrimitiveType.Any,
-        spec.PrimitiveType.String,
-        spec.PrimitiveType.Number,
-        spec.PrimitiveType.Boolean,
-        spec.PrimitiveType.Date,
-        spec.PrimitiveType.Json,
-      ].indexOf(ref.primitive);
-      return order < 0 ? 10 : order;
-    }
-    if (spec.isNamedTypeReference(ref)) {
-      return rankOfFqn(ref.fqn);
-    }
-    if (spec.isCollectionTypeReference(ref)) {
-      // Arrays of primitives are instantiated early (the standard library uses
-      // them, after the primitives themselves); maps and other collections when
-      // first referenced, i.e. after the named types of the union. The relative
-      // order of the late collections is kept.
-      const element = ref.collection.elementtype;
-      if (ref.collection.kind === spec.CollectionKind.Array && spec.isPrimitiveTypeReference(element)) {
-        return 50 + rank(element);
-      }
-      return Number.MAX_SAFE_INTEGER / 2;
-    }
-    if (spec.isUnionTypeReference(ref)) {
-      return Math.min(...ref.union.types.map(rank));
-    }
-    return Number.MAX_SAFE_INTEGER;
-  };
-  return refs
-    .map((ref, index) => ({ ref, index, rank: rank(ref) }))
-    .sort((l, r) => l.rank - r.rank || l.index - r.index)
-    .map(({ ref }) => ref);
-}
-
-/**
  * Member ordering of the classic assembler (`_sortMembers`): static members
  * first, then immutable, then required, then lexicographical by name.
  */
@@ -251,10 +199,6 @@ export class Assembler {
 
   /** FQNs of classes without their own constructor, whose initializer is the base type's. */
   private readonly inheritsInitializer = new Set<string>();
-
-  /** Declaration rank of each own type FQN, for ordering union constituents (see _declarationRank). */
-  private readonly declarationRanks = new Map<string, number>();
-  private programFileIndex?: Map<string, number>;
 
   // external dependency assemblies (peerDependencies): name -> Set(type names)
   private readonly externalDeps = new Map<string, Set<string>>();
@@ -988,7 +932,6 @@ export class Assembler {
       this.typeFqnBySymbolId.set(sym.id, fqn);
     }
     this.exported.push({ name, sym, decl, fqn });
-    this._registerDeclarationRank(fqn, sym);
     if (!isFirst) {
       return;
     }
@@ -1294,32 +1237,6 @@ export class Assembler {
         return base != null && sameProperty(p, base);
       })
     );
-  }
-
-  /**
-   * Declaration rank of a type FQN for union ordering: own types by (program file
-   * order, position in file); types of dependencies before them, by name.
-   */
-  private _declarationRank(fqn: string): number {
-    const own = this.declarationRanks.get(fqn);
-    if (own != null) {
-      return own;
-    }
-    if (this.externalTypeByFqn.has(fqn)) {
-      const foreign = [...this.externalTypeByFqn.keys()].sort();
-      return 1000 + foreign.indexOf(fqn);
-    }
-    return Number.MAX_SAFE_INTEGER;
-  }
-
-  private _registerDeclarationRank(fqn: string, sym: any): void {
-    if (this.programFileIndex == null) {
-      const files: string[] = this.project.program.getSourceFileNames();
-      this.programFileIndex = new Map(files.map((f, i) => [f, i]));
-    }
-    const d0 = sym.declarations?.[0];
-    const file = (d0?.path != null ? this.programFileIndex.get(d0.path) : undefined) ?? this.programFileIndex.size;
-    this.declarationRanks.set(fqn, 1_000_000 + file * 1_000_000 + (d0?.index ?? 0));
   }
 
   /**
@@ -2945,7 +2862,7 @@ export class Assembler {
         return refs[0];
       }
       if (refs.length > 1) {
-        return { union: { types: sortUnionLikeClassic(refs, (fqn) => this._declarationRank(fqn)) } };
+        return { union: { types: refs.sort(compareUnionMembers) } };
       }
     }
     const refs: any[] = [];
@@ -2961,7 +2878,7 @@ export class Assembler {
     if (refs.length === 1) {
       return refs[0];
     }
-    return { union: { types: sortUnionLikeClassic(refs, (fqn) => this._declarationRank(fqn)) } };
+    return { union: { types: refs.sort(compareUnionMembers) } };
   }
 
   /**
