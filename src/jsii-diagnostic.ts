@@ -915,7 +915,7 @@ export class JsiiDiagnostic implements Diagnostic {
   public addRelatedInformation(location: DiagnosticLocation, message: JsiiDiagnostic['messageText']): this {
     // Don't relate info into the TypeScript standard library (TypeScript 7 ships it in
     // `@typescript/typescript-<platform>/lib`)
-    if (!/[\\/]typescript(-[^\\/]+)?[\\/]lib[\\/]lib\..+\.d\.ts$/.test(location.file.fileName)) {
+    if (!isTypeScriptLibFile(location.file.fileName)) {
       this.relatedInformation.push(JsiiDiagnostic.JSII_9999_RELATED_INFO.create(location, message));
     }
     // Clearing out #formatted, as this would no longer be the correct string.
@@ -998,4 +998,47 @@ function diagnosticCode(str: string): string | number {
     throw new Error(`Invalid diagnostic code ${str}. A number must follow code that starts with 'JSII'`);
   }
   return str;
+}
+
+const LIB_MARKER = '/lib/lib.';
+const DTS_SUFFIX = '.d.ts';
+
+/**
+ * Whether `fileName` is a file of the TypeScript standard library: TypeScript 6's
+ * `.../typescript/lib/lib.<name>.d.ts` or TypeScript 7's `.../typescript-<platform>/lib/lib.<name>.d.ts`, with
+ * either separator. This is the same set of names as
+ * `/[\\/]typescript(-[^\\/]+)?[\\/]lib[\\/]lib\..+\.d\.ts$/`, checked in linear time (that regex is
+ * polynomial on long names): a `/lib/lib.` whose directory is `typescript` or `typescript-<something>`, at least
+ * one character before the `.d.ts` suffix, and no line terminator in between.
+ *
+ * @internal
+ */
+export function isTypeScriptLibFile(fileName: string): boolean {
+  if (!fileName.endsWith(DTS_SUFFIX)) {
+    return false;
+  }
+  const normalized = fileName.replace(/\\/g, '/');
+  const suffixStart = normalized.length - DTS_SUFFIX.length;
+  // A marker before the last line terminator leaves one in its tail, so markers are tried from the end. The
+  // directory names checked below lie between markers, so each character is read a bounded number of times.
+  const lastLineTerminator = Math.max(
+    ...['\n', '\r', '\u2028', '\u2029'].map((terminator) => normalized.lastIndexOf(terminator)),
+  );
+  let from = suffixStart - 1 - LIB_MARKER.length;
+  while (from > 0) {
+    const start = normalized.lastIndexOf(LIB_MARKER, from);
+    if (start <= 0 || start + LIB_MARKER.length <= lastLineTerminator) {
+      return false;
+    }
+    const separator = normalized.lastIndexOf('/', start - 1);
+    const directory = normalized.slice(separator + 1, start);
+    if (
+      separator >= 0 &&
+      (directory === 'typescript' || (directory.startsWith('typescript-') && directory.length > 'typescript-'.length))
+    ) {
+      return true;
+    }
+    from = start - 1;
+  }
+  return false;
 }
