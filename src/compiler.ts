@@ -564,6 +564,22 @@ export function buildProject(options: BuildProjectOptions): BuildProjectResult {
 
   const entry = deriveEntry(projectRoot, projectInfo, tscRootDir, tscOutDir);
 
+  // The classic compiler handed a user tsconfig's options to TypeScript without the
+  // file they came from, so TypeScript rejected `incremental` without a
+  // `tsBuildInfoFile` (TS5074, an options error that also stops the emit).
+  const programOptions = project.program.getCompilerOptions();
+  if (!options.generatedTsconfig && programOptions.incremental && programOptions.tsBuildInfoFile == null) {
+    tsDiagnostics = [
+      ...tsDiagnostics,
+      {
+        ...syntheticErrorDiagnostic(
+          "Option '--incremental' can only be specified using tsconfig, emitting to single file or when option '--tsBuildInfoFile' is specified.",
+        ),
+        code: 5074,
+      },
+    ];
+  }
+
   // Like the classic compiler, log one error line for the first stage that fails:
   // TypeScript ("Compilation errors"), then the assembler ("Type model errors"),
   // then the emit ("Compilation errors"). Warnings count with `failOnWarnings`.
@@ -653,6 +669,10 @@ export function buildProject(options: BuildProjectOptions): BuildProjectResult {
     let emittedFiles: string[] = [];
     let emitFailed = false;
     try {
+      if (tsHasErrors && programOptions.noEmitOnError) {
+        // Errors TypeScript 7 does not know about (above) must stop the emit too.
+        throw new Error('TypeScript emit was skipped');
+      }
       ({ emittedFiles } = emitProject(host.ts, project, {
         projectRoot,
         assembly: assembly ?? ({ version: projectInfo.version, types: {} } as unknown as spec.Assembly),
