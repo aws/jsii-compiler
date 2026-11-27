@@ -6,6 +6,7 @@ import * as path from 'node:path';
 import * as vm from 'node:vm';
 
 import { compile, Lock } from './fixtures';
+import { OutputCapture } from './output-helpers';
 import { compileJsiiForTest, HelperCompilationResult, TestWorkspace } from '../lib';
 
 const DEPRECATED = '/** @deprecated Use something else */';
@@ -608,7 +609,7 @@ describe('cross-assembly validation', () => {
         fs.writeFileSync(warningsFile, 'module.exports = {};');
       }
       const requireDependency = createRequire(path.join(ws.rootDirectory, 'index.js'));
-      const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+      const capture = new OutputCapture('warn');
       const previousMode = process.env.JSII_DEPRECATED;
       process.env.JSII_DEPRECATED = mode;
       try {
@@ -618,15 +619,13 @@ describe('cross-assembly validation', () => {
         } else {
           expect(run).not.toThrow();
           if (mode === 'warn' && warnings === 'present' && value !== 'undefined') {
-            expect(warn).toHaveBeenCalledWith(
-              '[WARNING]',
-              expect.stringContaining('foreign.ForeignProps#old is deprecated'),
-            );
+            expect(capture.output).toContain('[WARNING] foreign.ForeignProps#old is deprecated');
           } else {
-            expect(warn).not.toHaveBeenCalled();
+            expect(capture.output).toBe('');
           }
         }
       } finally {
+        capture.stop();
         if (previousMode === undefined) {
           delete process.env.JSII_DEPRECATED;
         } else {
@@ -703,7 +702,7 @@ describe('Call injections', () => {
       { addDeprecationWarnings: true },
     );
 
-    expect(jsFile(result)).toMatchInlineSnapshot(`
+    expect(withoutSourceMap(jsFile(result))).toMatchInlineSnapshot(`
       ""use strict";
       Object.defineProperty(exports, "__esModule", { value: true });
       exports.Foo = void 0;
@@ -722,8 +721,7 @@ describe('Call injections', () => {
               throw error;
           } }
       }
-      exports.Foo = Foo;
-      //# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiaW5kZXguanMiLCJzb3VyY2VSb290IjoiIiwic291cmNlcyI6WyJpbmRleC50cyJdLCJuYW1lcyI6W10sIm1hcHBpbmdzIjoiOzs7OztBQUNJLE1BQWEsR0FBRzs7SUFDZCxxQ0FBcUM7SUFDOUIsR0FBRzs7Ozs7Ozs7T0FBSTs7QUFGaEIsa0JBR0MiLCJzb3VyY2VzQ29udGVudCI6WyJcbiAgICBleHBvcnQgY2xhc3MgRm9vIHtcbiAgICAgIC8qKiBAZGVwcmVjYXRlZCBVc2Ugc29tZXRoaW5nIGVsc2UgKi9cbiAgICAgIHB1YmxpYyBiYXIoKXt9XG4gICAgfVxuICAiXX0="
+      exports.Foo = Foo;"
     `);
   });
 
@@ -738,7 +736,7 @@ describe('Call injections', () => {
       { addDeprecationWarnings: true },
     );
 
-    expect(jsFile(result)).toMatchInlineSnapshot(`
+    expect(withoutSourceMap(jsFile(result))).toMatchInlineSnapshot(`
       ""use strict";
       Object.defineProperty(exports, "__esModule", { value: true });
       exports.Foo = void 0;
@@ -756,8 +754,7 @@ describe('Call injections', () => {
               throw error;
           } return a.x + b; }
       }
-      exports.Foo = Foo;
-      //# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiaW5kZXguanMiLCJzb3VyY2VSb290IjoiIiwic291cmNlcyI6WyJpbmRleC50cyJdLCJuYW1lcyI6W10sIm1hcHBpbmdzIjoiOzs7OztBQUVTLE1BQWEsR0FBRzs7SUFDUixHQUFHLENBQUMsQ0FBSSxFQUFFLENBQVM7Ozs7Ozs7O01BQUUsT0FBTyxDQUFDLENBQUMsQ0FBQyxHQUFHLENBQUMsQ0FBQyxFQUFDOztBQUQ3QyxrQkFFQyIsInNvdXJjZXNDb250ZW50IjpbIlxuICAgICAgICBleHBvcnQgaW50ZXJmYWNlIEEge3JlYWRvbmx5IHg6IG51bWJlcjt9XG4gICAgICAgICBleHBvcnQgY2xhc3MgRm9vIHtcbiAgICAgICAgICBwdWJsaWMgYmFyKGE6IEEsIGI6IG51bWJlcil7cmV0dXJuIGEueCArIGI7fVxuICAgICAgICAgfSJdfQ=="
+      exports.Foo = Foo;"
     `);
   }, 60000);
 
@@ -774,7 +771,7 @@ describe('Call injections', () => {
       { addDeprecationWarnings: true },
     );
 
-    expect(jsFile(result)).toMatchInlineSnapshot(`
+    expect(withoutSourceMap(jsFile(result))).toMatchInlineSnapshot(`
       ""use strict";
       Object.defineProperty(exports, "__esModule", { value: true });
       exports.Foo = void 0;
@@ -794,8 +791,7 @@ describe('Call injections', () => {
               throw error;
           } return this._x; }
       }
-      exports.Foo = Foo;
-      //# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiaW5kZXguanMiLCJzb3VyY2VSb290IjoiIiwic291cmNlcyI6WyJpbmRleC50cyJdLCJuYW1lcyI6W10sIm1hcHBpbmdzIjoiOzs7OztBQUNJLE1BQWEsR0FBRzs7SUFDTixFQUFFLEdBQUcsQ0FBQyxDQUFDO0lBQ2YscUNBQXFDO0lBQ3JDLElBQVcsQ0FBQzs7Ozs7Ozs7TUFBRyxPQUFPLElBQUksQ0FBQyxFQUFFLENBQUEsRUFBQzs7QUFIaEMsa0JBSUMiLCJzb3VyY2VzQ29udGVudCI6WyJcbiAgICBleHBvcnQgY2xhc3MgRm9vIHtcbiAgICAgIHByaXZhdGUgX3ggPSAwO1xuICAgICAgLyoqIEBkZXByZWNhdGVkIFVzZSBzb21ldGhpbmcgZWxzZSAqL1xuICAgICAgcHVibGljIGdldCB4KCl7cmV0dXJuIHRoaXMuX3h9XG4gICAgfVxuICAiXX0="
+      exports.Foo = Foo;"
     `);
   });
 
@@ -814,7 +810,7 @@ describe('Call injections', () => {
       { addDeprecationWarnings: true },
     );
 
-    expect(jsFile(result)).toMatchInlineSnapshot(`
+    expect(withoutSourceMap(jsFile(result))).toMatchInlineSnapshot(`
       ""use strict";
       Object.defineProperty(exports, "__esModule", { value: true });
       exports.Foo = void 0;
@@ -843,8 +839,7 @@ describe('Call injections', () => {
               throw error;
           } this._x = _x; }
       }
-      exports.Foo = Foo;
-      //# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiaW5kZXguanMiLCJzb3VyY2VSb290IjoiIiwic291cmNlcyI6WyJpbmRleC50cyJdLCJuYW1lcyI6W10sIm1hcHBpbmdzIjoiOzs7OztBQUNJLE1BQWEsR0FBRzs7SUFDTixFQUFFLEdBQUcsQ0FBQyxDQUFDO0lBQ2YsSUFBVyxDQUFDOzs7Ozs7OztNQUFHLE9BQU8sSUFBSSxDQUFDLEVBQUUsQ0FBQSxFQUFDO0lBRTlCLHFDQUFxQztJQUNyQyxJQUFXLENBQUMsQ0FBQyxFQUFVOzs7Ozs7OztNQUFHLElBQUksQ0FBQyxFQUFFLEdBQUcsRUFBRSxDQUFDLEVBQUM7O0FBTDFDLGtCQU1DIiwic291cmNlc0NvbnRlbnQiOlsiXG4gICAgZXhwb3J0IGNsYXNzIEZvbyB7XG4gICAgICBwcml2YXRlIF94ID0gMDtcbiAgICAgIHB1YmxpYyBnZXQgeCgpe3JldHVybiB0aGlzLl94fVxuXG4gICAgICAvKiogQGRlcHJlY2F0ZWQgVXNlIHNvbWV0aGluZyBlbHNlICovXG4gICAgICBwdWJsaWMgc2V0IHgoX3g6IG51bWJlcikge3RoaXMuX3ggPSBfeDt9XG4gICAgfVxuICAiXX0="
+      exports.Foo = Foo;"
     `);
   });
 
@@ -860,7 +855,7 @@ describe('Call injections', () => {
       { addDeprecationWarnings: true },
     );
 
-    expect(jsFile(result)).toMatchInlineSnapshot(`
+    expect(withoutSourceMap(jsFile(result))).toMatchInlineSnapshot(`
       ""use strict";
       Object.defineProperty(exports, "__esModule", { value: true });
       exports.Foo = void 0;
@@ -879,8 +874,7 @@ describe('Call injections', () => {
               throw error;
           } }
       }
-      exports.Foo = Foo;
-      //# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiaW5kZXguanMiLCJzb3VyY2VSb290IjoiIiwic291cmNlcyI6WyJpbmRleC50cyJdLCJuYW1lcyI6W10sIm1hcHBpbmdzIjoiOzs7OztBQUNJLHFDQUFxQztBQUNyQyxNQUFhLEdBQUc7O0lBQ2Q7Ozs7OzJDQURXLEdBQUc7OztPQUNDOztBQURqQixrQkFFQyIsInNvdXJjZXNDb250ZW50IjpbIlxuICAgIC8qKiBAZGVwcmVjYXRlZCBVc2Ugc29tZXRoaW5nIGVsc2UgKi9cbiAgICBleHBvcnQgY2xhc3MgRm9vIHtcbiAgICAgIGNvbnN0cnVjdG9yKCl7fVxuICAgIH1cbiAgIl19"
+      exports.Foo = Foo;"
     `);
   });
 });
@@ -943,15 +937,16 @@ describe('thrown exceptions have the expected stack trace', () => {
       { addDeprecationWarnings: true },
     );
 
-    const mockWarn = jest.fn();
+    const printed = new Array<string>();
 
     runJsiiCode(compilation, 'warn', {
       console: {
-        warn: mockWarn,
+        warn: (...args: unknown[]) => printed.push(args.join(' ')),
       },
     });
 
-    expect(mockWarn).toHaveBeenCalledTimes(1);
+    // The deprecated constructor is called twice, and reported once.
+    expect(printed).toEqual([expect.stringContaining('DeprecatedConstructor is deprecated')]);
   });
 
   test('getter', () => {
@@ -1092,6 +1087,11 @@ function jsFile(result: HelperCompilationResult, baseName = 'index'): string {
   }
 
   return file[1];
+}
+
+/** Drops the trailing inline source map, which these tests do not care about. */
+function withoutSourceMap(js: string): string {
+  return js.replace(/\n\/\/# sourceMappingURL=.*$/, '');
 }
 
 function jsFunction(result: HelperCompilationResult, functionName: string, baseName = 'index'): string {

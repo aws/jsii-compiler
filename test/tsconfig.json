@@ -9,10 +9,11 @@
   },
   "include": [
     "**/*.ts",
+    "../src/**/*.ts",
     "build-tools/**/*.ts"
   ],
   "exclude": [
     "node_modules",
-    "test/negatives/**/*.ts"
+    "negatives/**/*.ts"
   ]
 }

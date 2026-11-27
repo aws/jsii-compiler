@@ -50,6 +50,39 @@ describe('rule sets', () => {
   });
 });
 
+describe('ruleset: minimal', () => {
+  test('rejects a config without declaration', () => {
+    const validator = new TypeScriptConfigValidator(TypeScriptConfigValidationRuleSet.MINIMAL);
+    expect(() => validator.validate({ compilerOptions: {} })).toThrow(
+      'declaration: Expected value true, got: undefined',
+    );
+  });
+
+  test('accepts declaration', () => {
+    const validator = new TypeScriptConfigValidator(TypeScriptConfigValidationRuleSet.MINIMAL);
+    validator.validate({ compilerOptions: { declaration: true } });
+  });
+
+  test('accepts composite without declaration', () => {
+    const validator = new TypeScriptConfigValidator(TypeScriptConfigValidationRuleSet.MINIMAL);
+    validator.validate({ compilerOptions: { composite: true } });
+  });
+
+  test('rejects composite: false without declaration', () => {
+    const validator = new TypeScriptConfigValidator(TypeScriptConfigValidationRuleSet.MINIMAL);
+    expect(() => validator.validate({ compilerOptions: { composite: false } })).toThrow(
+      'declaration: Expected value true, got: undefined',
+    );
+  });
+
+  test('rejects declaration: false even with composite', () => {
+    const validator = new TypeScriptConfigValidator(TypeScriptConfigValidationRuleSet.MINIMAL);
+    expect(() => validator.validate({ compilerOptions: { composite: true, declaration: false } })).toThrow(
+      'declaration: Expected value not to be false, got: false',
+    );
+  });
+});
+
 describe('ruleset: strict', () => {
   test('can set outDir', () => {
     const validator = new TypeScriptConfigValidator(TypeScriptConfigValidationRuleSet.STRICT);
@@ -86,5 +119,25 @@ describe('ruleset: strict', () => {
         typeRoots: ['./node_modules/@types'],
       },
     });
+  });
+
+  test('rejects composite without declaration', () => {
+    const validator = new TypeScriptConfigValidator(TypeScriptConfigValidationRuleSet.STRICT);
+    expect(() =>
+      validator.validate({
+        compilerOptions: {
+          composite: true,
+
+          // minimal stuff to pass test, except declaration
+          strict: true,
+          target: 'es2023' as any,
+          lib: ['es2023'],
+          module: 'node16' as any,
+          esModuleInterop: true,
+          skipLibCheck: true,
+          noEmitOnError: true,
+        },
+      }),
+    ).toThrow(/^Data is invalid:\ndeclaration: Expected value true, got: undefined$/);
   });
 });

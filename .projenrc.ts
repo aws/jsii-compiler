@@ -1,11 +1,14 @@
-import { javascript, JsonPatch, github, typescript, YamlFile } from 'projen';
-import { YarnNodeLinker } from 'projen/lib/javascript/yarnrc';
+import { javascript, JsonFile, JsonPatch, github, typescript, YamlFile } from 'projen';
 import { BuildWorkflow } from './projenrc/build-workflow';
 import { JsiiCalcFixtures } from './projenrc/fixtures';
 import { ReleaseWorkflow } from './projenrc/release';
 import { PREVIEW_RELEASES, SUPPORT_POLICY, SupportPolicy } from './projenrc/support';
 import { UpdateIntegPackage } from './projenrc/update-integ-package';
 import { UpgradeDependencies } from './projenrc/upgrade-dependencies';
+import { BASE_COMPILER_OPTIONS, convertForJson } from './src/tsconfig/compiler-options';
+import generated from './src/tsconfig/rulesets/generated.public';
+import minimal from './src/tsconfig/rulesets/minimal.public';
+import strict from './src/tsconfig/rulesets/strict.public';
 
 //  See 'projenrc/support.ts' for TypeScript versions we are tracking.
 //  To add a new TypeScript version, follow the complete process documented in:
@@ -14,23 +17,23 @@ import { UpgradeDependencies } from './projenrc/upgrade-dependencies';
 const workflowNodeVersion = 'lts/*';
 
 const project = new typescript.TypeScriptProject({
+  name: 'jsii',
+  license: 'Apache-2.0',
+  authorName: 'Amazon Web Services',
+  authorUrl: 'https://aws.amazon.com',
+  homepage: 'https://aws.github.io/jsii',
+  repository: 'https://github.com/aws/jsii-compiler.git',
+
   projenrcTs: true,
+  runner: typescript.TypeScriptRunner.tsx({ typeCheck: true }),
 
   packageManager: javascript.NodePackageManager.YARN_BERRY,
   yarnBerryOptions: {
+    version: '4.18.1',
     yarnRcOptions: {
-      nodeLinker: YarnNodeLinker.NODE_MODULES,
+      nodeLinker: javascript.YarnNodeLinker.NODE_MODULES,
     },
   },
-
-  name: 'jsii',
-  license: 'Apache-2.0',
-
-  authorName: 'Amazon Web Services',
-  authorUrl: 'https://aws.amazon.com',
-
-  homepage: 'https://aws.github.io/jsii',
-  repository: 'https://github.com/aws/jsii-compiler.git',
 
   pullRequestTemplateContents: [
     '',
@@ -87,6 +90,11 @@ const project = new typescript.TypeScriptProject({
     configFilePath: 'jest.config.json',
     jestConfig: {
       moduleFileExtensions: ['ts', 'tsx', 'js', 'json'],
+      // Count every file in src/, including the ones no test loads. Some tests load the compiled lib/ instead of
+      // src/; lib/ must stay listed so jest maps that coverage back to src/ through the source maps.
+      collectCoverageFrom: ['src/**/*.ts', 'lib/**/*.js'],
+      // Set a little below the measured values (v8 provider), so a real drop fails the tests.
+      coverageThreshold: { statements: 98.4, lines: 98.4, functions: 94.5, branches: 95.8 },
       watchPathIgnorePatterns: [
         // NB: Those are regexes...
         '<rootDir>/fixtures/\\..*',
@@ -98,6 +106,7 @@ const project = new typescript.TypeScriptProject({
     },
     junitReporting: false,
   },
+  typecheckTests: true,
 
   buildWorkflow: false, // We have our own build workflow (need matrix test)
   release: false, // We have our own release workflow
@@ -146,8 +155,12 @@ project.tsconfig?.file?.patch(
 );
 project.tryFindObjectFile('projenrc/tsconfig.json')?.patch(
   // projenrc/support.ts needs these files
-  JsonPatch.add('/include/-', '../src/support.ts'),
-  JsonPatch.add('/include/-', '../src/version.ts'),
+  JsonPatch.add('/include/-', '../src/support-types.ts'),
+  // the base tsconfigs are generated from the tsconfig rule sets
+  JsonPatch.add('/include/-', '../src/case.ts'),
+  JsonPatch.add('/include/-', '../src/tsconfig/compiler-options.ts'),
+  JsonPatch.add('/include/-', '../src/tsconfig/validator.ts'),
+  JsonPatch.add('/include/-', '../src/tsconfig/rulesets/*.ts'),
 );
 
 // Don't show .gitignore'd files in the VSCode explorer
@@ -159,26 +172,56 @@ project.vscode!.extensions.addRecommendations('dbaeumer.vscode-eslint');
 project.vscode!.settings.addSetting('editor.codeActionsOnSave', { 'source.fixAll.eslint': 'explicit' });
 project.vscode!.settings.addSetting('eslint.validate', ['typescript']);
 
+// Base tsconfigs for the `extends` option of a user-provided tsconfig, generated from the validation rule sets.
+const baseTsconfigs = { strict, generated, minimal };
+const baseTsconfigPath = (name: string) => `tsconfig-bases/tsconfig.${name}.json`;
+
 // Exports map...
 project.package.addField('exports', {
   '.': `./${project.package.entrypoint}`,
   './bin/jsii': './bin/jsii',
   './package.json': './package.json',
   './common': './lib/common/index.js',
+  ...Object.fromEntries(
+    Object.keys(baseTsconfigs).map((name) => [`./tsconfig.${name}.json`, `./${baseTsconfigPath(name)}`]),
+  ),
 });
+
+// Each base tsconfig sets the options its rule set requires, with the values of the tsconfig jsii generates.
+const generatedCompilerOptions = convertForJson(BASE_COMPILER_OPTIONS);
+for (const [name, ruleSet] of Object.entries(baseTsconfigs)) {
+  const fields = new Set(ruleSet.requiredFields);
+  const missing = [...fields].filter((field) => !(field in generatedCompilerOptions));
+  if (missing.length > 0) {
+    throw new Error(`${baseTsconfigPath(name)}: no generated value for required option(s) ${missing.join(', ')}`);
+  }
+  new JsonFile(project, baseTsconfigPath(name), {
+    editGitignore: false,
+    marker: false,
+    obj: {
+      compilerOptions: Object.fromEntries(
+        Object.entries(generatedCompilerOptions).filter(([field]) => fields.has(field)),
+      ),
+    },
+  });
+}
 
 // Remove TypeScript devDependency (it's a direct/normal dependency here)
 project.deps.removeDependency('typescript');
 
-// Modernize ts-jest configuration
+// Run tests with swc instead of ts-jest. swc doesn't type-check, so the test suite is type-checked with `tsc` before
+// the tests run (see `typecheckTests`).
+project.deps.removeDependency('ts-jest');
+project.addDevDeps('@swc/core', '@swc/jest');
 if (project.jest?.config) {
   project.jest.config.transform ??= {};
   project.jest.config.transform['^.+\\.[t]sx?$'] = [
-    'ts-jest',
+    '@swc/jest',
     {
-      compiler: 'typescript',
-      tsconfig: 'test/tsconfig.json',
-      diagnostics: { ignoreCodes: ['TS151001'] },
+      jsc: {
+        parser: { syntax: 'typescript' },
+        target: 'es2023',
+      },
     },
   ];
 }
@@ -228,14 +271,17 @@ project.addDevDeps(
   'glob',
 );
 
-project.preCompileTask.exec('ts-node build-tools/code-gen.ts', {
+project.preCompileTask.exec('tsx build-tools/code-gen.ts', {
   name: 'code-gen',
 });
 project.gitignore.addPatterns('/src/version.ts', '/jsii-outdir/', '/test/negatives/.*');
 project.gitignore.exclude('.DS_Store', '.lock');
 
 // Exclude negatives from tsconfig and eslint...
-project.tsconfigDev.addExclude('test/negatives/**/*.ts');
+// (paths in the test tsconfig are relative to test/)
+project.tsconfigDev.addExclude('negatives/**/*.ts');
+// The root tsconfig is composite, so the test project must list the src files that tests import
+project.tsconfigDev.addInclude('../src/**/*.ts');
 project.eslint?.addIgnorePattern('test/negatives/**/*.ts');
 
 // Customize ESLint rules

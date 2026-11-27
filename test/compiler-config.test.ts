@@ -1,7 +1,8 @@
 import { mkdirSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import * as log4js from 'log4js';
-import { compileJsiiForTest, TestWorkspace } from '../src';
+import * as ts from 'typescript';
+import { compileJsiiForTest, JsiiDiagnostic, TestWorkspace } from '../src';
 
 /**
  * These tests compile small projects with the configuration options of the compiler, through the `compileJsiiForTest`
@@ -48,6 +49,42 @@ describe('Compiler configuration', () => {
         { typeScriptConfig: 'tsconfig.dev.json', validateTypeScriptConfig: 'strict' as any },
       ),
     ).toThrow('Failed validation of tsconfig "compilerOptions" in "tsconfig.dev.json" against rule set "strict"!');
+  });
+
+  describe('the "lib" setting of a user-provided tsconfig', () => {
+    // `Array.prototype.includes` is part of the "es2016" library, not of "es2015".
+    const SOURCE_USING_INCLUDES = 'export const found = [1, 2].includes(2);';
+    const NOT_IN_LIB = /^TS2550/;
+
+    /** Compiles the source with a tsconfig that has the given compiler options, and returns the TypeScript errors. */
+    function errorsWith(compilerOptions: Record<string, unknown>) {
+      const result = compileJsiiForTest(
+        {
+          'index.ts': SOURCE_USING_INCLUDES,
+          'tsconfig.dev.json': JSON.stringify({
+            compilerOptions: { declaration: true, module: 'node16', ...compilerOptions },
+          }),
+        },
+        { captureDiagnostics: true },
+        { typeScriptConfig: 'tsconfig.dev.json' },
+      );
+      return result.diagnostics
+        .filter((d) => d.category === ts.DiagnosticCategory.Error && !JsiiDiagnostic.isJsiiDiagnostic(d))
+        .map((d) => `TS${d.code}: ${ts.flattenDiagnosticMessageText(d.messageText, ' ')}`);
+    }
+
+    test('provides the APIs of the listed libraries', () => {
+      expect(errorsWith({ target: 'es2015', lib: ['es2016'] })).toEqual([]);
+    });
+
+    test('does not provide the APIs of libraries that are not listed', () => {
+      expect(errorsWith({ target: 'es2016', lib: ['es2015'] })).toEqual([expect.stringMatching(NOT_IN_LIB)]);
+    });
+
+    test('is based on the compilation target when it is missing', () => {
+      expect(errorsWith({ target: 'es2015' })).toEqual([expect.stringMatching(NOT_IN_LIB)]);
+      expect(errorsWith({ target: 'es2016' })).toEqual([]);
+    });
   });
 
   test('an empty "lib" list does not add any library files to the program', () => {

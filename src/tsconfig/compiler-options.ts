@@ -66,8 +66,13 @@ export function enumAsKebab(enumData: Record<string, string | number>): string[]
  * @returns compilerOptions ready to be written on disk
  */
 export function convertForJson(opt: ts.CompilerOptions): ts.CompilerOptions {
+  // TypeScript's config parser attaches internal `pathsBasePath` when `paths` is set;
+  // drop it so JSON serialization and tsconfig validation only see user-facing options.
+  const rest = { ...opt };
+  delete rest.pathsBasePath;
+
   return {
-    ...opt,
+    ...rest,
 
     // Drop the "lib." prefix and ".d.ts" suffix before writing up the tsconfig.json file
     ...valueHelper('lib', opt.lib, convertLibForJson),

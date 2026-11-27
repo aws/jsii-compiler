@@ -1,5 +1,5 @@
 import { JsonFile, Project } from 'projen';
-import type { ReleasesDocument } from '../src/support';
+import type { ReleasesDocument } from '../src/support-types';
 
 export const SUPPORT_POLICY: ReleasesDocument = {
   current: '6.0',

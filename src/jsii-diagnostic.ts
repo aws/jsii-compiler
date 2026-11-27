@@ -925,7 +925,7 @@ export class JsiiDiagnostic implements ts.Diagnostic {
 
   public addRelatedInformation(node: ts.Node, message: JsiiDiagnostic['messageText']): this {
     // Don't relate info into the TypeScript standard library
-    if (!/[\\/]typescript[\\/]lib[\\/]lib\..+\.d\.ts$/.test(node.getSourceFile().fileName)) {
+    if (!isTypeScriptLibFile(node.getSourceFile().fileName)) {
       this.relatedInformation.push(JsiiDiagnostic.JSII_9999_RELATED_INFO.create(node, message));
     }
     // Clearing out #formatted, as this would no longer be the correct string.
@@ -1005,4 +1005,34 @@ function diagnosticCode(str: string): string | number {
     throw new Error(`Invalid diagnostic code ${str}. A number must follow code that starts with 'JSII'`);
   }
   return str;
+}
+
+const TS_LIB_MARKER = '/typescript/lib/lib.';
+const DTS_SUFFIX = '.d.ts';
+
+/**
+ * Whether `fileName` is a file of the TypeScript standard library: it ends with `.d.ts` and has
+ * `/typescript/lib/lib.` (either separator) before that, with at least one character in between and no
+ * line terminator after the marker. This is the same set of names as
+ * `/[\\/]typescript[\\/]lib[\\/]lib\..+\.d\.ts$/`, checked in linear time (that regex is polynomial on long names).
+ *
+ * @internal
+ */
+export function isTypeScriptLibFile(fileName: string): boolean {
+  if (!fileName.endsWith(DTS_SUFFIX)) {
+    return false;
+  }
+  // The marker must end at least one character before the suffix. Later occurrences leave a shorter tail, so
+  // the last one that fits is the only one to check: if its tail has a line terminator, so do all earlier ones.
+  const lastStart = fileName.length - DTS_SUFFIX.length - 1 - TS_LIB_MARKER.length;
+  if (lastStart < 0) {
+    return false;
+  }
+  const normalized = fileName.replace(/\\/g, '/');
+  const start = normalized.lastIndexOf(TS_LIB_MARKER, lastStart);
+  if (start < 0) {
+    return false;
+  }
+  const tail = normalized.slice(start + TS_LIB_MARKER.length, normalized.length - DTS_SUFFIX.length);
+  return !/[\n\r\u2028\u2029]/.test(tail);
 }

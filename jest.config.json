@@ -6,6 +6,18 @@
     "js",
     "json"
   ],
+  "collectCoverageFrom": [
+    "src/**/*.ts",
+    "lib/**/*.js"
+  ],
+  "coverageThreshold": {
+    "global": {
+      "statements": 98.4,
+      "lines": 98.4,
+      "functions": 94.5,
+      "branches": 95.8
+    }
+  },
   "watchPathIgnorePatterns": [
     "<rootDir>/fixtures/\\..*",
     "<rootDir>/fixtures/node_modules",
@@ -40,14 +52,13 @@
   ],
   "transform": {
     "^.+\\.[t]sx?$": [
-      "ts-jest",
+      "@swc/jest",
       {
-        "compiler": "typescript",
-        "tsconfig": "test/tsconfig.json",
-        "diagnostics": {
-          "ignoreCodes": [
-            "TS151001"
-          ]
+        "jsc": {
+          "parser": {
+            "syntax": "typescript"
+          },
+          "target": "es2023"
         }
       }
     ]

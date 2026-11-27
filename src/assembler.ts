@@ -1417,6 +1417,7 @@ export class Assembler implements Emitter {
       if ((ts.getCombinedModifierFlags(ctorDeclaration) & ts.ModifierFlags.Private) === 0) {
         jsiiType.initializer = {
           locationInModule: this.declarationLocation(ctorDeclaration),
+          protected: (ts.getCombinedModifierFlags(ctorDeclaration) & ts.ModifierFlags.Protected) !== 0 || undefined,
         };
         if (signature) {
           for (const param of signature.getParameters()) {
@@ -1431,8 +1432,6 @@ export class Assembler implements Emitter {
 
             jsiiType.initializer.parameters.push(jsiiParam);
             jsiiType.initializer.variadic = jsiiType.initializer?.parameters?.some((p) => !!p.variadic) || undefined;
-            jsiiType.initializer.protected =
-              (ts.getCombinedModifierFlags(ctorDeclaration) & ts.ModifierFlags.Protected) !== 0 || undefined;
           }
         }
         this._verifyConsecutiveOptionals(ctorDeclaration, jsiiType.initializer.parameters);
