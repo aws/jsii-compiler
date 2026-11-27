@@ -41,8 +41,7 @@ describe('JSII3002 type-model/unexported-foreign-type', () => {
 });
 
 describe('JSII3006 type-model/type-used-as-class', () => {
-  // @TODO(ts7): expects a jsii validation diagnostic (JSII3002/JSII3006); re-enable with the port of the validator
-  test.skip('is reported when a class extends a non-class type', () => {
+  test('is reported when a class extends a non-class type', () => {
     const diagnostics = compileJsiiForDiagnostics('export class Klass extends Array<string> {}');
 
     expect(diagnostics).toContainEqual(

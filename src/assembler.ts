@@ -1772,6 +1772,12 @@ export class Assembler {
     return { interfaces, erasedBases };
   }
 
+  /** The type reference of a class's base class type (classic: from `getBaseTypes`, not the heritage expression). */
+  private _baseClassReference(classDecl: any): any {
+    const baseType = this.checker.getTypeAtLocation(classDecl)?.getBaseTypes?.()?.[0];
+    return baseType ? this._typeReference(baseType) : undefined;
+  }
+
   /** Whether a symbol is declared in the project's own sources (not in the standard library or a dependency). */
   private _isOwnSourceDecl(sym: any): boolean {
     const declPath: string = sym.declarations?.[0]?.path ?? '';
@@ -1876,6 +1882,7 @@ export class Assembler {
     let interfacesRewrittenByStrip = false;
     // The symbols of the class's own heritage clauses, for _validateHeritageClauses.
     const ownHeritageSymbols = new Map<any, any>();
+    let unnamedBaseRef: any;
     const collectHeritage = (classDecl: any): void => {
       const deferredBases: any[] = [];
       for (const h of classDecl.heritageClauses ?? []) {
@@ -1896,6 +1903,21 @@ export class Assembler {
           if (isExt) {
             if (fqnRef) {
               base.value ??= fqnRef;
+            } else if (
+              classDecl === decl &&
+              !s.name.startsWith('__') &&
+              !this._isInternal(s) &&
+              !this._isOwnSourceDecl(s) &&
+              (unnamedBaseRef ??= this._baseClassReference(decl)) != null &&
+              !spec.isNamedTypeReference(unnamedBaseRef)
+            ) {
+              // Classic: a base class that is neither hidden nor a named type (`extends Array<string>`) is reported
+              // and left out, not erased.
+              this._report(
+                JsiiDiagnostic.JSII_3006_TYPE_USED_AS_CLASS,
+                (s.valueDeclaration ?? s.declarations?.[0])?.resolve(this.project),
+                unnamedBaseRef,
+              );
             } else {
               const d0 = s.declarations?.[0]?.resolve(this.project);
               if (d0 && (d0.kind === SyntaxKind.ClassDeclaration || d0.kind === SyntaxKind.InterfaceDeclaration)) {
