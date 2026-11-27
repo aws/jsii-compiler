@@ -285,6 +285,52 @@ class DeprecationError extends Error {
     `);
   });
 
+  // This documents current behavior, see https://github.com/aws/jsii-compiler/issues/3001
+  test('drops the comments at the end of a method body in the emitted JavaScript', () => {
+    const source = `
+      export class A {
+        public static method(): void {
+          /* A static method */
+        }
+        public withBody(): number {
+          // leading
+          return 1;
+          // after
+        }
+      }
+    `;
+
+    const without = compileJsiiForTest(source);
+    const withWarnings = compileJsiiForTest(source, undefined /* callback */, { addDeprecationWarnings: true });
+
+    expect(without.files['index.js']).toContain('/* A static method */');
+    expect(without.files['index.js']).toContain('// after');
+    expect(withWarnings.files['index.js']).toContain('// leading');
+    expect(withWarnings.files['index.js']).not.toContain('/* A static method */');
+    expect(withWarnings.files['index.js']).not.toContain('// after');
+  });
+
+  // This documents current behavior, see https://github.com/aws/jsii-compiler/issues/2949
+  test('fails with JSII9997 for an enum with a deprecated member and a member whose name is a string literal', () => {
+    const result = compileJsiiForTest(
+      `
+        export enum E {
+          ON,
+          ${DEPRECATED}
+          OFF = 1,
+          'B' = 5,
+        }
+      `,
+      { captureDiagnostics: true },
+      { addDeprecationWarnings: true },
+    );
+
+    expect(result.type).toBe('failure');
+    expect(result.diagnostics.map((d) => `${d.messageText}`)).toEqual([
+      expect.stringContaining('Unknown error: Converting circular structure to JSON'),
+    ]);
+  });
+
   // This documents current behavior, see https://github.com/aws/jsii-compiler/issues/2961
   // A member that shares its value with another member (written differently, so JSII1004 does not apply) is
   // dropped from the assembly, so the validator never sees it. This is also why the "collision with
