@@ -913,8 +913,9 @@ export class JsiiDiagnostic implements Diagnostic {
   }
 
   public addRelatedInformation(location: DiagnosticLocation, message: JsiiDiagnostic['messageText']): this {
-    // Don't relate info into the TypeScript standard library
-    if (!/[\\/]typescript[\\/]lib[\\/]lib\..+\.d\.ts$/.test(location.file.fileName)) {
+    // Don't relate info into the TypeScript standard library (TypeScript 7 ships it in
+    // `@typescript/typescript-<platform>/lib`)
+    if (!/[\\/]typescript(-[^\\/]+)?[\\/]lib[\\/]lib\..+\.d\.ts$/.test(location.file.fileName)) {
       this.relatedInformation.push(JsiiDiagnostic.JSII_9999_RELATED_INFO.create(location, message));
     }
     // Clearing out #formatted, as this would no longer be the correct string.

@@ -311,8 +311,7 @@ describe('@jsii', () => {
 });
 
 describe('@jsii ignore', () => {
-  // @TODO(ts7): expects a jsii validation diagnostic (JSII3004); re-enable with the port of the validator
-  test.skip('without an ignore directive, extending a mapped type emits JSII3004', () => {
+  test('without an ignore directive, extending a mapped type emits JSII3004', () => {
     const errors = compileJsiiForErrors(`
       export interface Base {
         readonly foo: string;

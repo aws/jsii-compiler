@@ -2,8 +2,7 @@ import { compileForDiagnostics } from './helpers';
 import { compileJsiiForTest } from '../../src';
 
 describe('JSII3005 type-model/type-used-as-interface', () => {
-  // @TODO(ts7): expects a jsii validation diagnostic (JSII3005, or JSII9997 for an unresolvable heritage clause); re-enable with the port of the validator
-  test.skip('is reported when an interface extends a collection type', () => {
+  test('is reported when an interface extends a collection type', () => {
     // The order in which the two are reported is not specified.
     expect(
       compileForDiagnostics(`
@@ -17,8 +16,7 @@ describe('JSII3005 type-model/type-used-as-interface', () => {
     ]);
   });
 
-  // @TODO(ts7): expects a jsii validation diagnostic (JSII3005, or JSII9997 for an unresolvable heritage clause); re-enable with the port of the validator
-  test.skip('is reported when a behavioral interface extends a class', () => {
+  test('is reported when a behavioral interface extends a class', () => {
     expect(
       compileForDiagnostics(`
         export class Klass {
@@ -31,8 +29,7 @@ describe('JSII3005 type-model/type-used-as-interface', () => {
     ).toEqual(['JSII3005: Type "testpkg.Klass" cannot be used as an interface']);
   });
 
-  // @TODO(ts7): expects a jsii validation diagnostic (JSII3005, or JSII9997 for an unresolvable heritage clause); re-enable with the port of the validator
-  test.skip('is reported when a struct extends a class', () => {
+  test('is reported when a struct extends a class', () => {
     expect(
       compileForDiagnostics(`
         export class Klass {
