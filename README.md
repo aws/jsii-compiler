@@ -82,6 +82,7 @@ TypeScript 7 (the native port) is not yet supported in a GA release. TypeScript 
 are integrating it on the [`preview/v7.1`](https://github.com/aws/jsii-compiler/tree/preview/v7.1) branch. Builds from
 that branch are published as dev pre-releases under the `v7.1-next` dist-tag (`npm install jsii@v7.1-next`). They are
 for testing only and can break at any time. Until TypeScript 7 support is released, `jsii` remains on TypeScript 6.0.
+The differences from `jsii` on TypeScript 6.0 that cannot be removed are listed in [TYPESCRIPT-7.md](./TYPESCRIPT-7.md).
 
 ## :question: Documentation
 
