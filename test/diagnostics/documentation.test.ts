@@ -1,8 +1,7 @@
 import { compileJsiiForDiagnostics } from '../compiler-helpers';
 
 describe('JSII7000 documentation/non-existent-parameter', () => {
-  // @TODO(ts7): expects a jsii validation diagnostic (JSII7000/JSII7999); re-enable with the port of the validator
-  test.skip('is reported when @param refers to a parameter the method does not have', () => {
+  test('is reported when @param refers to a parameter the method does not have', () => {
     const diagnostics = compileJsiiForDiagnostics(`
       export class Klass {
         /**
@@ -41,8 +40,7 @@ describe('JSII7000 documentation/non-existent-parameter', () => {
 });
 
 describe('JSII7999 documentation/documentation-error', () => {
-  // @TODO(ts7): expects a jsii validation diagnostic (JSII7000/JSII7999); re-enable with the port of the validator
-  test.skip('is reported when a doc tag is malformed', () => {
+  test('is reported when a doc tag is malformed', () => {
     const diagnostics = compileJsiiForDiagnostics(`
       /** @deprecated */
       export class Klass {}

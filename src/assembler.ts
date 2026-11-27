@@ -1776,10 +1776,30 @@ export class Assembler {
     //   3. extending a non-datatype interface clears it (applied as a fixpoint
     //      post-pass in assemble(), mirroring _deferUntilTypesAvailable).
     // The classic path then validates all-readonly (JSII3008) and struct bases (JSII3007), see _validateInterfaceName.
+    const hintsStruct = this._jsDocTags(sym).some((t: any) => t.name === 'struct');
     if ((jsiiType.methods ?? []).length === 0) {
-      const hintsStruct = this._jsDocTags(sym).some((t: any) => t.name === 'struct');
       if (!isInterfaceName(name) || hintsStruct) {
         jsiiType.datatype = true;
+      }
+    } else if (hintsStruct) {
+      // Classic: the hint cannot make an interface with methods a struct (JSII7001).
+      let diag = this._report(
+        JsiiDiagnostic.JSII_7001_ILLEGAL_HINT,
+        this._jsDocTagNode(decl, 'struct'),
+        'struct',
+        'interfaces with only readonly properties',
+      ).addRelatedInformationIf(
+        this._diagnosticLocation(this._nameOrDeclaration(decl)),
+        'The annotated declartion is here',
+      );
+      for (const method of jsiiType.methods ?? []) {
+        const methodDecl = this.relatedNodes.get(method);
+        if (methodDecl != null) {
+          diag = diag.addRelatedInformationIf(
+            this._diagnosticLocation(this._nameOrDeclaration(methodDecl)),
+            'A method is declared here',
+          );
+        }
       }
     }
 
@@ -2645,7 +2665,7 @@ export class Assembler {
           if (!prop) {
             continue;
           }
-          const docs = this._visitDocumentation(prop);
+          const docs = this._visitDocumentation(prop, false);
           if (docs?.summary != null || docs?.remarks != null) {
             return docs;
           }
@@ -2735,6 +2755,7 @@ export class Assembler {
         m.variadic = true;
       }
       this._verifyConsecutiveOptionals(decl, m.parameters);
+      this._validateReferencedDocParams(msym, decl, m);
       const opt: { optional?: boolean } = {};
       const retType = this._returnTypeCache.has(sig.id)
         ? this._returnTypeCache.get(sig.id)
@@ -2940,6 +2961,10 @@ export class Assembler {
     // the parameter declaration (common for documented parameter properties)
     // and the `@param` tag of the owning function's JSDoc; when both exist
     // they are concatenated (inline first), as strada's output shows.
+    if (decl != null && this._leadingJsDocBlock(decl)?.includes('@')) {
+      // Classic: a parameter's own doc tags are checked too (JSII7999, JSII7001); only read when it has a tag.
+      this._visitDocumentation(prm);
+    }
     const inline = this._inlineJsDocText(decl);
     const tagText = this._paramDocComment(prm, decl);
     let comments = inline != null && tagText != null ? `${inline}\n${tagText}` : inline ?? tagText;
@@ -3805,7 +3830,56 @@ export class Assembler {
   // documentation (strada: _visitDocumentation)
   // -------------------------------------------------------------------------
 
-  private _visitDocumentation(sym: any): any | undefined {
+  /**
+   * Classic `_validateReferencedDocParams`: every `@param` of a method's docs names one of its parameters (JSII7000).
+   */
+  private _validateReferencedDocParams(msym: any, decl: any, method: spec.Method): void {
+    const actualNames = new Set((method.parameters ?? []).map((p) => p.name));
+    for (const tag of this._jsDocTags(msym)) {
+      if (tag.name !== 'param') {
+        continue;
+      }
+      const text: string = typeof tag.text === 'string' ? tag.text : (tag.text ?? []).map((p: any) => p.text).join('');
+      const param = text.split(' ')[0];
+      if (!actualNames.has(param)) {
+        this._report(JsiiDiagnostic.JSII_7000_NON_EXISTENT_PARAMETER, decl, method, param);
+      }
+    }
+  }
+
+  /**
+   * The JSDoc tag `@<name>` of a declaration, as a node for a diagnostic: from its `@` to the next tag or the end of
+   * the comment, like TypeScript's tag nodes (classic `_findHint`). Read from the source text; no request.
+   */
+  private _jsDocTagNode(decl: any, name: string): any {
+    const sf = decl?.getSourceFile?.();
+    if (sf == null) {
+      return undefined;
+    }
+    const text = this._sourceTextOf(sf);
+    const leading = text.slice(decl.pos, decl.getStart(sf));
+    const blockStart = leading.lastIndexOf('/**');
+    const blockEnd = blockStart < 0 ? -1 : leading.indexOf('*/', blockStart);
+    if (blockStart < 0 || blockEnd < 0) {
+      return undefined;
+    }
+    const block = leading.slice(blockStart, blockEnd);
+    const m = new RegExp(`(^/\\*\\*|\\n)[\\s*]*(@${name})(?![\\w-])`).exec(block);
+    if (m == null) {
+      return undefined;
+    }
+    const start = m.index + m[0].length - m[2].length;
+    const next = /\n[\s*]*@/.exec(block.slice(start));
+    const end = next != null ? start + next.index + next[0].length - 1 : block.length;
+    const offset = decl.pos + blockStart;
+    return { getSourceFile: () => sf, getStart: () => offset + start, end: offset + end };
+  }
+
+  /**
+   * `diagnose`: report the problems of the docs (JSII7999, JSII7001), which is wanted for the symbol being visited
+   * but not when its docs are only read for documentation inheritance.
+   */
+  private _visitDocumentation(sym: any, diagnose = true): any | undefined {
     const summaryRaw = this._docCommentWithClassicLinks(sym);
     const docs: any = {};
     if (summaryRaw) {
@@ -3856,7 +3930,22 @@ export class Assembler {
       }
     };
 
-    eatTag('struct'); // a type-system hint, consumed by the datatype detection, not documentation
+    const docDiagnostics = new Array<string>();
+    if (eatTag('struct') !== undefined && diagnose) {
+      // a type-system hint, consumed by the datatype detection, not documentation; only valid on interfaces
+      const decl = (sym.valueDeclaration ?? sym.declarations?.[0])?.resolve(this.project);
+      if (decl != null && decl.kind !== this.ts.SyntaxKind.InterfaceDeclaration) {
+        this._report(
+          JsiiDiagnostic.JSII_7001_ILLEGAL_HINT,
+          this._jsDocTagNode(decl, 'struct'),
+          'struct',
+          'interfaces with only readonly properties',
+        ).addRelatedInformationIf(
+          this._diagnosticLocation(this._nameOrDeclaration(decl)),
+          'The annotated declaration is here',
+        );
+      }
+    }
     setIfDefined('default', eatTag('default', 'defaultValue'));
     const deprecated = eatTag('deprecated');
     setIfDefined('deprecated', deprecated);
@@ -3866,10 +3955,20 @@ export class Assembler {
     if (eatTag('subclassable') !== undefined) {
       docs.subclassable = true;
     }
-    setIfDefined('stability', eatTag('stability'));
+    const stability = eatTag('stability');
+    if (stability !== undefined) {
+      if (['stable', 'experimental', 'external', 'deprecated'].includes(stability)) {
+        docs.stability = stability;
+      } else {
+        docDiagnostics.push(`Unrecognized @stability: '${stability}'`);
+      }
+    }
     // @experimental and @stable are shorthands for the matching @stability
     const experimental = eatTag('experimental') !== undefined;
     const stable = eatTag('stable') !== undefined;
+    if ([docs.stability !== undefined, experimental, stable].filter((x) => x).length > 1) {
+      docDiagnostics.push('Use only one of @stability, @experimental or @stable');
+    }
     if (experimental) {
       docs.stability = 'experimental';
     }
@@ -3877,7 +3976,22 @@ export class Assembler {
       docs.stability = 'stable';
     }
     if (deprecated !== undefined) {
+      if (docs.stability !== undefined && docs.stability !== 'deprecated') {
+        docDiagnostics.push("@deprecated tag requires '@stability deprecated' or no @stability at all.");
+      }
       docs.stability = 'deprecated';
+    }
+    if (docs.example?.includes('```')) {
+      docDiagnostics.push('@example must be code only, no code block fences allowed.');
+    }
+    if (deprecated?.trim() === '') {
+      docDiagnostics.push('@deprecated tag needs a reason and/or suggested alternatives.');
+    }
+    if (diagnose && docDiagnostics.length > 0) {
+      const decl = (sym.valueDeclaration ?? sym.declarations?.[0])?.resolve(this.project);
+      for (const message of docDiagnostics) {
+        this._report(JsiiDiagnostic.JSII_7999_DOCUMENTATION_ERROR, decl, message);
+      }
     }
     if (tagValues.size > 0) {
       docs.custom = {};
