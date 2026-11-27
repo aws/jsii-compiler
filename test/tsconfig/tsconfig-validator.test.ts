@@ -50,6 +50,20 @@ describe('rule sets', () => {
   });
 });
 
+describe('ruleset: minimal', () => {
+  test('rejects a config without declaration', () => {
+    const validator = new TypeScriptConfigValidator(TypeScriptConfigValidationRuleSet.MINIMAL);
+    expect(() => validator.validate({ compilerOptions: {} })).toThrow(
+      'declaration: Expected value true, got: undefined',
+    );
+  });
+
+  test('accepts declaration', () => {
+    const validator = new TypeScriptConfigValidator(TypeScriptConfigValidationRuleSet.MINIMAL);
+    validator.validate({ compilerOptions: { declaration: true } });
+  });
+});
+
 describe('ruleset: strict', () => {
   test('can set outDir', () => {
     const validator = new TypeScriptConfigValidator(TypeScriptConfigValidationRuleSet.STRICT);
