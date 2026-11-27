@@ -7,8 +7,11 @@ import { Match, RuleSet } from '../validator';
 const minimal = new RuleSet();
 minimal.import(incompatibleOptions);
 
-// jsii needs declarations. Like strict, require `declaration` explicitly,
-// even though tsc also emits them for composite projects.
-minimal.shouldPass('declaration', Match.TRUE);
+// jsii needs declarations. tsc also emits them for composite projects,
+// so `composite: true` is accepted when `declaration` is not set.
+minimal.shouldPass(
+  'declaration',
+  (value, options) => Match.TRUE(value, options) || Match.TRUE(options?.data?.composite),
+);
 
 export default minimal;

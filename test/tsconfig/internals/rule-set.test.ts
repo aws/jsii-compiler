@@ -118,6 +118,14 @@ describe('Object Validator rules', () => {
     ]);
   });
 
+  test('passes the validated object to matchers', () => {
+    const ruleSet = new RuleSet();
+    ruleSet.shouldPass('a', (_value, options) => options?.data?.b === true);
+
+    expect(violationsOf(ruleSet, { b: true })).toEqual([]);
+    expect(violationsOf(ruleSet, { b: false })).toEqual([expect.objectContaining({ field: 'a' })]);
+  });
+
   test('ignores rules of an unknown type', () => {
     const ruleSet = rules();
     ruleSet.rules.push({ field: 'unknown', matcher: () => false, type: 'unknown' as unknown as RuleType });
