@@ -277,6 +277,40 @@ describe('jsii compile', () => {
       expect(result.stderr).toContain('mutually exclusive');
     });
 
+    // https://github.com/aws/jsii-compiler/issues/2983
+    describe('JSII4009 (validation disabled)', () => {
+      const compileWithValidationOff = (...args: string[]) =>
+        runCli(
+          project({ 'tsconfig.dev.json': JSON.stringify(userTsconfig()) }),
+          '--tsconfig',
+          'tsconfig.dev.json',
+          '--validate-tsconfig',
+          'off',
+          ...args,
+        );
+
+      test('is counted as a warning', async () => {
+        const result = await compileWithValidationOff();
+
+        expect(result.exitCode).toBeUndefined();
+        expect(result.stdout).toContain('warning JSII4009');
+        expect(result.stdout).toContain('Warnings: 1');
+      });
+
+      test('fails the build with --fail-on-warnings', async () => {
+        const result = await compileWithValidationOff('--fail-on-warnings');
+
+        expect(result.exitCode).toBe(1);
+      });
+
+      test('is counted as silenced with --silence-warnings', async () => {
+        const result = await compileWithValidationOff('--silence-warnings', 'JSII4009');
+
+        expect(result.stdout).not.toContain('warning JSII4009');
+        expect(result.stdout).toContain('Warnings: 0 (+1 silenced)');
+      });
+    });
+
     test('--validate-tsconfig selects the rule set', async () => {
       const dir = project({ 'tsconfig.dev.json': JSON.stringify(userTsconfig({ strict: false })) });
 
@@ -501,24 +535,6 @@ describe('current behavior that is reported as an issue', () => {
     expect(result.exitCode).toBe(1);
     expect(result.stdout).toContain('JSII0004: Could not find "main" file');
     expect(result.stdout).not.toContain('TS18003');
-  });
-
-  // https://github.com/aws/jsii-compiler/issues/2983
-  test('JSII4009 is printed, but it is not counted as a warning', async () => {
-    const dir = project({ 'tsconfig.dev.json': JSON.stringify(userTsconfig()) });
-
-    const result = await run(
-      dir,
-      '--tsconfig',
-      'tsconfig.dev.json',
-      '--validate-tsconfig',
-      'off',
-      '--fail-on-warnings',
-    );
-
-    expect(result.exitCode).toBeUndefined();
-    expect(result.stdout).toContain('warning JSII4009');
-    expect(result.stdout).toContain('Errors: 0 | Warnings: 0');
   });
 
   describe('violations of the tsconfig validation', () => {

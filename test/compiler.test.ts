@@ -361,7 +361,10 @@ describe(Compiler, () => {
       });
 
       const result = compiler.emit();
-      expect(result.diagnostics).toEqual([]);
+      // No rule set is given, so validation is off and only JSII4009 says so.
+      expect(result.diagnostics).toEqual([
+        expect.objectContaining({ jsiiCode: 4009, category: ts.DiagnosticCategory.Warning }),
+      ]);
       expect(result.emitSkipped).toBe(false);
     });
 
@@ -397,7 +400,10 @@ describe(Compiler, () => {
       });
 
       const result = compiler.emit();
-      expect(result.diagnostics).toEqual([]);
+      // No rule set is given, so validation is off and only JSII4009 says so.
+      expect(result.diagnostics).toEqual([
+        expect.objectContaining({ jsiiCode: 4009, category: ts.DiagnosticCategory.Warning }),
+      ]);
       expect(result.emitSkipped).toBe(false);
     });
 
