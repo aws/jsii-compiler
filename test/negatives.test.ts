@@ -10,34 +10,7 @@ const SOURCE_DIR = path.join(__dirname, 'negatives');
 
 // @TODO(ts7): fixtures that expect jsii validation diagnostics which are not ported to the TypeScript 7 assembler
 // yet. The PR that ports a diagnostic removes the fixtures it makes pass from this list; the list ends up empty.
-const NOT_PORTED_YET = new Set([
-  'neg.downgrade-to-readonly.ts',
-  'neg.implementation-changes-types.1.ts',
-  'neg.implementation-changes-types.2.ts',
-  'neg.implementation-changes-types.3.ts',
-  'neg.implementation-changes-types.4.ts',
-  'neg.implementation-changes-types.5.ts',
-  'neg.implementation-changes-types.6.ts',
-  'neg.implementing-method-changes-optionality.1.ts',
-  'neg.implementing-method-changes-optionality.2.ts',
-  'neg.implementing-method-changes-optionality.ts',
-  'neg.implementing-property-changes-optionality.1.ts',
-  'neg.implementing-property-changes-optionality.2.ts',
-  'neg.implementing-property-changes-optionality.ts',
-  'neg.inheritance-changes-types.1.ts',
-  'neg.inheritance-changes-types.2.ts',
-  'neg.inheritance-changes-types.3.ts',
-  'neg.inheritance-changes-types.4.ts',
-  'neg.inheritance-changes-types.5.ts',
-  'neg.inheritance-changes-types.6.ts',
-  'neg.inheritance-changes-types.7.ts',
-  'neg.inheritance-changes-types.8.ts',
-  'neg.inheritance-changes-types.9.ts',
-  'neg.inheritance-changes-types.from-base.ts',
-  'neg.inheritance-property-changes-mutability.to-mutable.ts',
-  'neg.inheritance-property-changes-mutability.to-readonly.ts',
-  'neg.override-changes-visibility.ts',
-]);
+const NOT_PORTED_YET = new Set<string>([]);
 
 expect.addSnapshotSerializer({
   test: (val) => typeof val === 'string',
