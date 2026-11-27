@@ -234,6 +234,8 @@ export class Assembler {
   private readonly packageInfoCache = new Map<string, any>();
   /** For dependencies without symbolIds: the submodule fqn of their types, by symbol id (`_dependencySubmodules`). */
   private readonly dependencySubmodules = new Map<string, Map<unknown, string>>();
+  /** The declaration of a base class that is not a jsii type (`extends Error`), by class fqn, for JSII9002. */
+  private readonly unregisteredBaseDecls = new Map<string, any>();
   /**
    * Checks that need the whole type model, run in registration order once all
    * types are visited (classic `_deferUntilTypesAvailable`).
@@ -1894,7 +1896,8 @@ export class Assembler {
   /** The type reference of a class's base class type (classic: from `getBaseTypes`, not the heritage expression). */
   private _baseClassReference(classDecl: any): any {
     const baseType = this.checker.getTypeAtLocation(classDecl)?.getBaseTypes?.()?.[0];
-    return baseType ? this._typeReference(baseType) : undefined;
+    this.typeUse = 'base class';
+    return baseType ? this._typeReference(baseType, undefined, undefined, classDecl) : undefined;
   }
 
   /** Whether a symbol is declared in the project's own sources (not in the standard library or a dependency). */
@@ -1952,6 +1955,18 @@ export class Assembler {
     this.deferred.push(() => {
       if (spec.isClassType(jsiiType) && jsiiType.base != null) {
         const base = this._dereferenceType(jsiiType.base);
+        if (base == null && this.unregisteredBaseDecls.has(jsiiType.fqn)) {
+          // Classic: the base class is looked up "used in syntax", for the base class check and, without a
+          // constructor of its own, for the inherited initializer.
+          this._report(
+            JsiiDiagnostic.JSII_9002_UNRESOLVEABLE_TYPE,
+            this.unregisteredBaseDecls.get(jsiiType.fqn),
+            jsiiType.base,
+          );
+          if (this.inheritsInitializer.has(jsiiType.fqn)) {
+            this._report(JsiiDiagnostic.JSII_9002_UNRESOLVEABLE_TYPE, this.relatedNodes.get(jsiiType), jsiiType.base);
+          }
+        }
         if (base != null && !spec.isClassType(base)) {
           this._report(JsiiDiagnostic.JSII_3006_TYPE_USED_AS_CLASS, declOf(base), { fqn: base.fqn });
         }
@@ -2032,6 +2047,14 @@ export class Assembler {
               // One that is not a named type (`extends Array<string>`) is reported here; a named one (`extends Error`)
               // is not a jsii type either (JSII3001).
               unnamedBaseRef ??= this._baseClassReference(decl);
+              if (unnamedBaseRef != null && spec.isNamedTypeReference(unnamedBaseRef)) {
+                // A named type that is not a jsii type (`extends Error`, reported as JSII3001) stays the base class.
+                base.value ??= unnamedBaseRef.fqn;
+                this.unregisteredBaseDecls.set(
+                  jsiiType.fqn,
+                  (s.valueDeclaration ?? s.declarations?.[0])?.resolve(this.project),
+                );
+              }
               if (
                 unnamedBaseRef != null &&
                 !spec.isNamedTypeReference(unnamedBaseRef) &&
