@@ -17,7 +17,7 @@ import * as literate from './literate';
 import { ProjectInfo } from './project-info';
 import { DeprecationWarningsInjector, WARNINGSCODE_FILE_NAME } from './transforms/deprecation-warnings';
 import { TypeScriptConfig, TypeScriptConfigValidationRuleSet } from './tsconfig';
-import { BASE_COMPILER_OPTIONS, convertForJson, convertForTsconfigFile } from './tsconfig/compiler-options';
+import { BASE_COMPILER_OPTIONS, convertForJson } from './tsconfig/compiler-options';
 import { parseTsconfigJson, readTypeScriptConfigFile, TsconfigReadError } from './tsconfig/read';
 import { TypeScriptConfigValidator } from './tsconfig/tsconfig-validator';
 import { ValidationError } from './tsconfig/validator';
@@ -146,7 +146,6 @@ export class Compiler {
       projectInfo: this.options.projectInfo,
       tsconfigFileName: this.configFileName,
       generatedTsconfig: !this.userProvidedTypeScriptConfig,
-      userTsconfig: this.userProvidedTypeScriptConfig ? this.tsconfig : undefined,
       stripDeprecated: this.options.stripDeprecated,
       stripDeprecatedAllowListFile: this.options.stripDeprecatedAllowListFile,
       addDeprecationWarnings: this.options.addDeprecationWarnings,
@@ -187,11 +186,9 @@ export class Compiler {
   private configureTypeScript(): TypeScriptConfig {
     if (this.userProvidedTypeScriptConfig) {
       let config: TypeScriptConfig;
+      let configErrors: readonly unknown[];
       try {
-        // @TODO(NEXT): paths and `extends` of a --tsconfig in a subdirectory resolve against the project root, not the
-        // file's own directory as tsc does (aws/jsii-compiler#2991). After 7.1's first release: drop the
-        // `projectRoot` argument.
-        config = readTypeScriptConfigFile(this.configPath, this.projectRoot);
+        ({ config, errors: configErrors } = readTypeScriptConfigFile(this.configPath));
       } catch (e) {
         if (!(e instanceof TsconfigReadError)) {
           throw e;
@@ -209,8 +206,9 @@ export class Compiler {
         );
       }
 
-      // validate the user provided config
-      if (rules !== TypeScriptConfigValidationRuleSet.NONE) {
+      // validate the user provided config. With errors in it, TypeScript reports those with the build, like tsc,
+      // and the options it could read are not validated.
+      if (rules !== TypeScriptConfigValidationRuleSet.NONE && configErrors.length === 0) {
         const configName = path.relative(this.projectRoot, this.configPath);
         try {
           const validator = new TypeScriptConfigValidator(rules);
@@ -438,11 +436,6 @@ export interface BuildProjectOptions {
    * A generated config may be amended with an inferred `rootDir`.
    */
   readonly generatedTsconfig?: boolean;
-  /**
-   * The user-provided tsconfig as TypeScript's parser read it: `extends` resolved, bases that
-   * cannot be read, parsed or that are circular skipped, rejected options left out.
-   */
-  readonly userTsconfig?: TypeScriptConfig;
   readonly stripDeprecated?: boolean;
   readonly stripDeprecatedAllowListFile?: string;
   /** Whether to write `.warnings.jsii.js` (`--add-deprecation-warnings`). */
@@ -481,44 +474,6 @@ function deriveEntry(projectRoot: string, projectInfo: ProjectInfo, rootDir?: st
   return path.resolve(projectRoot, mainFile);
 }
 
-/**
- * Config file errors for parts of the tsconfig that jsii skips when it reads it, like
- * the classic compiler: a broken `extends` base (unreadable TS5083, circular TS18000,
- * or errors in the base file).
- */
-// @TODO(NEXT): TS7 reports these tsconfig errors like tsc does; jsii hides them to match TS6-based main, which never
-// saw them (aws/jsii-compiler#2982, #2991). After 7.1's first release: report the program's config file
-// diagnostics and drop this set, `hasSkippedConfigErrors` and `flattenTsconfig`.
-const SKIPPED_CONFIG_ERRORS = new Set([5083, 18000]);
-
-function hasSkippedConfigErrors(program: any, tsconfigPath: string): boolean {
-  const errors: any[] = program.getConfigFileParsingDiagnostics?.() ?? [];
-  return errors.some(
-    (d) =>
-      SKIPPED_CONFIG_ERRORS.has(d.code) ||
-      (d.fileName != null && path.resolve(d.fileName) !== path.resolve(tsconfigPath)),
-  );
-}
-
-/**
- * A tsconfig text for a configuration TypeScript's parser already resolved: its
- * options (path options are absolute; `pathsBasePath` is internal, so `paths` are
- * made absolute against it instead) and its source files.
- */
-function flattenTsconfig(config: TypeScriptConfig): string {
-  const { pathsBasePath, ...compilerOptions } = convertForTsconfigFile(config.compilerOptions) as any;
-  if (compilerOptions.paths != null && compilerOptions.baseUrl == null && pathsBasePath != null) {
-    compilerOptions.paths = Object.fromEntries(
-      Object.entries(compilerOptions.paths as Record<string, string[]>).map(([k, v]) => [
-        k,
-        v.map((p) => path.posix.resolve(pathsBasePath, p)),
-      ]),
-    );
-  }
-  // `include` holds the parsed file names, as with the classic compiler.
-  return JSON.stringify({ files: config.include ?? [], compilerOptions });
-}
-
 /** The program reports config paths as absolute paths; record them relative to the project, like the classic compiler. */
 function relativeConfigPath(projectRoot: string, configPath: string | undefined): string | undefined {
   return configPath != null && path.isAbsolute(configPath) ? path.relative(projectRoot, configPath) : configPath;
@@ -555,18 +510,6 @@ export function buildProject(options: BuildProjectOptions): BuildProjectResult {
   // The program's own diagnostics (options and config): the type check is the slow part (see `check` below).
   let tsDiagnostics = collectTsDiagnostics(project.program, CONFIG_DIAGNOSTICS);
   let tsconfigText: string | undefined;
-
-  // The classic compiler built from the options it read itself and never saw the
-  // config file errors of a broken `extends` (missing, unparseable or circular
-  // base). TypeScript 7 reports those and then skips the emit. Build such a
-  // project from the configuration jsii read instead, which skips the broken bases.
-  if (options.userTsconfig != null && hasSkippedConfigErrors(project.program, host.tsconfigPath)) {
-    host.close();
-    tsconfigText = flattenTsconfig(options.userTsconfig);
-    host = CompilerHost.open(options.projectRoot, options.tsconfigFileName, tsconfigText);
-    project = host.getProject();
-    tsDiagnostics = collectTsDiagnostics(project.program, CONFIG_DIAGNOSTICS);
-  }
 
   // TypeScript 7 no longer infers `rootDir` from the common directory of the
   // sources when `outDir` is set (TS5011). The classic compiler relied on that
@@ -838,7 +781,7 @@ export function buildProject(options: BuildProjectOptions): BuildProjectResult {
 }
 
 /** The text of a file a diagnostic points into, if it can be read. */
-function readSourceFile(fileName: string): string | undefined {
+export function readSourceFile(fileName: string): string | undefined {
   try {
     return fs.readFileSync(fileName, 'utf8');
   } catch {

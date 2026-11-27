@@ -81,22 +81,34 @@ only repeated that check with other words. The rule set stays, empty, for option
 **Who is affected:** tools that parse the JSII4000 text or the `jsii rules` output. The same configurations pass and
 fail as before.
 
-## Rejected compiler options in a user tsconfig are errors
+## tsconfig errors are reported
 
-**What differs:** in a user tsconfig (`--tsconfig`), an unknown compiler option (TS5023), a value of the wrong type
-(TS5024) or a value that is not allowed (TS6046) fails the build with TypeScript's error, as `tsc` reports it. That
-includes the options and values TypeScript 7 removed, such as `importsNotUsedAsValues`, `charset`, `prepend`,
-`target: "es3"` or `module: "none"`. `jsii` on TypeScript 6.0 drops unknown options and bad values silently and builds.
-tsconfig validation runs on the options TypeScript accepted, so a rejected option is not a `JSII4000` violation (for
-example `importsNotUsedAsValues: Unexpected field` on `main`); a rejected value shows as `got: undefined`, as on `main`.
+**What differs:** `jsii` reports TypeScript's errors for a user tsconfig (`--tsconfig`, or `jsii.tsconfig` in
+`package.json`) and for the files it `extends`, the way `tsc` does. The build fails (exit code 1) and the errors count in
+the summary. `jsii validate-tsconfig` prints the same errors and fails (exit code 1) instead of validating the options,
+as `tsc --showConfig` does on TypeScript 6.0. On `main`, `jsii` drops these errors, skips what they are about and builds.
 
-**Why it cannot match:** `main` gets this from TypeScript 6.0's option parser. TypeScript 7 knows a different set of
-options, so matching `main` meant shipping a copy of TypeScript 6.0's option table. Reporting what TypeScript 7 rejects
-is what `tsc` does.
+| Case | `main` | TypeScript 7 |
+|---|---|---|
+| Unknown option, or one TypeScript 7 removed (`importsNotUsedAsValues`, `charset`, `prepend`, ...) | ignored, `✨ Successful`; `strict` reports a removed option as `Unexpected field` | `tsconfig.json:15:3 - error TS5023: Unknown compiler option 'bogusOption'.` |
+| Value of the wrong type (`"declaration": "yes"`) | `strict`: `declaration: Expected value true, got: undefined`; other rule sets: ignored | `tsconfig.json:4:18 - error TS5024: Compiler option 'declaration' requires a value of type boolean.` |
+| Value that is not allowed (`"target": "es1999"`, or `es3` and `module: "none"`, which TypeScript 7 removed) | `strict`: `target: ... got: undefined`; other rule sets: ignored, the default is used | `tsconfig.json:14:13 - error TS6046: Argument for '--target' option must be: 'es6', ...` |
+| `extends` a file that does not exist | ignored, `✨ Successful` | `error TS5083: Cannot read file '<dir>/missing.json'.` |
+| `extends` a file that cannot be parsed | ignored, `✨ Successful` | `base.json:1:29 - error TS1109: Expression expected.` (with TS1005, TS1328, ...) |
+| Circular `extends` | ignored, `✨ Successful` | `error TS18000: Circularity detected while resolving configuration: {0}` |
+| A rejected option in a file the tsconfig `extends` | ignored, `✨ Successful` | `base.json:1:21 - error TS5023: Unknown compiler option 'bogus'.` |
+| `--tsconfig sub/tsconfig.json` with a relative `extends` or relative paths | resolved against the project root, so the base is not found and skipped | resolved against `sub/`, like `tsc` |
 
-**Who is affected:** projects whose user tsconfig has a typo or an option TypeScript 7 does not know. They fix the
-tsconfig. Generated tsconfigs are not affected. A rejected option in a file the tsconfig `extends` is still skipped
-silently, like a broken `extends`.
+With such errors, the rule set is not checked: the `JSII4000` violations for the options TypeScript could read come once
+the errors are fixed. The TS18000 text ends in a literal `{0}` in TypeScript 7.1.0-beta, where TypeScript 6.0 prints
+the chain of files; that is a TypeScript 7 bug.
+
+**Why it differs:** these are TypeScript's own errors. `jsii` on TypeScript 6.0 read the tsconfig itself and dropped
+them (aws/jsii-compiler#2982, #2991, #3029). Matching that on TypeScript 7 meant hiding the errors of the TypeScript 7
+program and keeping a copy of TypeScript 6.0's option table. `jsii` on TypeScript 7 follows `tsc` instead.
+
+**Who is affected:** projects with a broken user tsconfig that built before: a typo in an option, a value or an option
+TypeScript 7 removed, or a broken `extends`. They fix the tsconfig. Generated tsconfigs are not affected.
 
 ## Options from `extends` are listed after the file's own
 

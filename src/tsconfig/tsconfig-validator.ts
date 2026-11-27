@@ -1,6 +1,6 @@
 import { TypeScriptConfig, TypeScriptConfigValidationRuleSet } from '.';
 import { convertForJson } from './compiler-options';
-import { readTypeScriptConfigFile, TsconfigReadError } from './read';
+import { readTypeScriptConfigFile, TsconfigErrors, TsconfigReadError } from './read';
 import generated from './rulesets/generated.public';
 import minimal from './rulesets/minimal.public';
 import strict from './rulesets/strict.public';
@@ -83,12 +83,14 @@ export function describeRuleSet(ruleSet: TypeScriptConfigValidationRuleSet): Rul
  * the compiler does, so validation behaves identically to a real compilation.
  *
  * @param configPath the path to the tsconfig file to read
- * @throws {@link JsiiError} if the file cannot be read or parsed
+ * @throws {@link JsiiError} if the file cannot be read or parsed, {@link TsconfigErrors}
+ *         if TypeScript reports errors for it (such as an unknown option or a broken `extends`)
  * @returns the parsed TypeScript configuration
  */
 export function readTypeScriptConfig(configPath: string): TypeScriptConfig {
+  let result;
   try {
-    return readTypeScriptConfigFile(configPath);
+    result = readTypeScriptConfigFile(configPath);
   } catch (e) {
     if (e instanceof TsconfigReadError) {
       // The classic wording names the path as given.
@@ -98,6 +100,11 @@ export function readTypeScriptConfig(configPath: string): TypeScriptConfig {
     }
     throw e;
   }
+  // Like `tsc --showConfig`: TypeScript's errors for the tsconfig instead of its options.
+  if (result.errors.length > 0) {
+    throw new TsconfigErrors(configPath, result.errors);
+  }
+  return result.config;
 }
 
 /**

@@ -1,7 +1,6 @@
 import {
   BASE_COMPILER_OPTIONS,
   convertForJson,
-  convertForTsconfigFile,
   enumAsCamel,
   enumAsKebab,
   enumAsLower,
@@ -63,10 +62,5 @@ describe('convertForJson', () => {
 
   test('keeps values that are already in the JSON form', () => {
     expect(convertForJson(BASE_COMPILER_OPTIONS)).toEqual(BASE_COMPILER_OPTIONS);
-  });
-
-  test('convertForTsconfigFile gives the values tsc accepts', () => {
-    expect(convertForTsconfigFile(parsed)).toMatchObject({ target: 'esnext', jsx: 'react-jsx' });
-    expect(convertForTsconfigFile({ jsx: 5 }).jsx).toBe('react-jsxdev');
   });
 });
