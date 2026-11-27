@@ -13,8 +13,8 @@
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import * as log4js from 'log4js';
 import { isMainThread, MessageChannel, receiveMessageOnPort, Worker, workerData } from 'node:worker_threads';
+import * as log4js from 'log4js';
 
 /** Below this many files, starting a second TypeScript process costs more than the check takes. */
 // shortcut: a fixed size; measure when the fixed cost of the second process (about 0.3s) changes.
