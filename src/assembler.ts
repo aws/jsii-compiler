@@ -232,6 +232,8 @@ export class Assembler {
   private typeUse = 'type';
   /** The package.json found for a directory, for `_unregisteredTypeFqn` (classic `findPackageInfo`). */
   private readonly packageInfoCache = new Map<string, any>();
+  /** For dependencies without symbolIds: the submodule fqn of their types, by symbol id (`_dependencySubmodules`). */
+  private readonly dependencySubmodules = new Map<string, Map<unknown, string>>();
   /**
    * Checks that need the whole type model, run in registration order once all
    * types are visited (classic `_deferUntilTypesAvailable`).
@@ -777,11 +779,54 @@ export class Assembler {
         return fqn;
       }
     }
-    // Fallback for assemblies without symbolIds: a top-level type of that name.
+    // Fallback for assemblies without symbolIds: the submodule that exports the type, else a top-level type of that
+    // name (classic `_submoduleMap` of the dependency, then `fallbackFqn`).
+    const submodule = this._dependencySubmodules(dep).get(sym.id);
+    if (submodule != null && this.externalDeps.get(dep)!.has(`${submodule}.${sym.name}`.slice(dep.length + 1))) {
+      return `${submodule}.${sym.name}`;
+    }
     if (this.externalDeps.get(dep)!.has(sym.name)) {
       return `${dep}.${sym.name}`;
     }
     return undefined;
+  }
+
+  /**
+   * The submodule fqn of each type a dependency exports from a submodule (`export * as ns from`, namespaces), found
+   * by walking the dependency's entry point once. Only used for assemblies without symbolIds.
+   * shortcut: types nested in classes are not mapped; upgrade if old assemblies with such types must be supported.
+   */
+  private _dependencySubmodules(dep: string): Map<unknown, string> {
+    let result = this.dependencySubmodules.get(dep);
+    if (result != null) {
+      return result;
+    }
+    result = new Map<unknown, string>();
+    this.dependencySubmodules.set(dep, result);
+    const { SyntaxKind } = this.ts;
+    const depDir = [...this.externalDepDirs].find(([, name]) => name === dep)?.[0];
+    const types: string | undefined =
+      depDir && JSON.parse(fs.readFileSync(path.join(depDir, 'package.json'), 'utf-8')).types;
+    // `types` may name the source (`index.ts`) rather than the declarations
+    const entry = types && this.program.getSourceFile(path.resolve(depDir!, types.replace(/(?<!\.d)\.ts$/, '.d.ts')));
+    const entrySym = entry && this.checker.getSymbolAtLocation(entry);
+    const visit = (moduleSym: any, prefix: string, seen: Set<unknown>) => {
+      if (moduleSym == null || seen.has(moduleSym.id)) {
+        return;
+      }
+      seen.add(moduleSym.id);
+      for (const e of this.checker.getExportsOfModule(moduleSym)) {
+        const target = this._resolveAlias(e);
+        const kind = target.declarations?.[0]?.kind;
+        if (kind === SyntaxKind.SourceFile || kind === SyntaxKind.ModuleDeclaration) {
+          visit(target, `${prefix}.${e.name}`, seen);
+        } else if (prefix !== dep && !result!.has(target.id)) {
+          result!.set(target.id, prefix);
+        }
+      }
+    };
+    visit(entrySym, dep, new Set());
+    return result;
   }
 
   // -------------------------------------------------------------------------
