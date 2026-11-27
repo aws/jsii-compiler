@@ -92,11 +92,8 @@ function classDeclarations(sourceFile: any, k: any, qualify: boolean): Array<{ n
 /**
  * Where the printed statement goes in the body of an emitted member: before
  * the statement at `index`, laid out like the TypeScript printer lays out a
- * block, on one line (`{ a; b; }`) or one statement per line.
- *
- * The TypeScript 6 printer dropped the comments between the last statement of
- * a block it rewrote and the closing `}` (they belong to the `}` token, whose
- * position is lost with the new statement list), so they are removed here too.
+ * block, on one line (`{ a; b; }`) or one statement per line. (The comments
+ * the TypeScript 6 printer lost in that body are removed by `rewrittenBodyEdits`.)
  */
 export function statementInsertion(
   jsText: string,
@@ -108,14 +105,11 @@ export function statementInsertion(
   const body = member.body;
   const statements: any[] = body.statements;
   const open = body.getStart(jsSource);
-  const close = body.end - 1;
   const memberIndent = indentationAt(jsText, member.getStart(jsSource));
   const afterPrevious = index === 0 ? open + 1 : statements[index - 1].end;
   const multiLine = jsText.slice(open, body.end).includes('\n');
 
-  const edits: Insertion[] = [
-    ...dropCommentsBeforeClose(jsText, statements, open + 1, close, multiLine ? `\n${memberIndent}` : ' '),
-  ];
+  const edits: Insertion[] = [];
 
   if (!multiLine) {
     edits.push({ offset: afterPrevious, text: ` ${indentLines(printed, memberIndent)}` });
@@ -130,6 +124,32 @@ export function statementInsertion(
   } else {
     edits.push({ offset: afterPrevious, text: `\n${indent}${indentLines(printed, indent)}` });
   }
+  return edits;
+}
+
+/**
+ * With --add-deprecation-warnings, the classic transformer replaced the body of
+ * every method, accessor and constructor it reached (in any class or object
+ * literal, whether or not it added a call), and did not look inside them. The
+ * TypeScript 6 printer then lost the comments before the closing `}` of each
+ * such body (aws/jsii-compiler#3001). The edits that remove the same comments.
+ */
+export function rewrittenBodyEdits(jsText: string, jsSource: any, k: any): Insertion[] {
+  const edits: Insertion[] = [];
+  const kinds = [k.MethodDeclaration, k.GetAccessor, k.SetAccessor, k.Constructor];
+  const visit = (node: any): undefined => {
+    if (kinds.includes(node.kind) && node.body != null) {
+      const body = node.body;
+      const open = body.getStart(jsSource);
+      const multiLine = jsText.slice(open, body.end).includes('\n');
+      const replacement = multiLine ? `\n${indentationAt(jsText, node.getStart(jsSource))}` : ' ';
+      edits.push(...dropCommentsBeforeClose(jsText, body.statements, open + 1, body.end - 1, replacement));
+      return undefined;
+    }
+    node.forEachChild(visit);
+    return undefined;
+  };
+  jsSource.forEachChild(visit);
   return edits;
 }
 

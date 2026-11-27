@@ -16,7 +16,7 @@ import * as log4js from 'log4js';
 
 import { TypeScriptApi, TypeScriptProject } from './compiler-host';
 import { DeprecationWarningsInjector } from './transforms/deprecation-warnings';
-import { EmittedFile, pairClasses, prependStatements } from './transforms/emitted-js';
+import { EmittedFile, pairClasses, prependStatements, rewrittenBodyEdits } from './transforms/emitted-js';
 import { rttiInsertions } from './transforms/runtime-info';
 import { insertIntoEmittedJs, Insertion } from './transforms/source-map';
 
@@ -137,6 +137,14 @@ export function emitProject(
       }
     }
     if (!classesHere || !classesHere.length) {
+      if (options.deprecationWarnings) {
+        // No jsii class, but the classic transformer still rewrote the bodies of the file (see rewrittenBodyEdits).
+        const js = fs.readFileSync(outPath, 'utf8');
+        const updated = withRewrittenBodies(ts, project, outPath, js);
+        if (updated !== js) {
+          fs.writeFileSync(outPath, updated, { encoding: 'utf8' });
+        }
+      }
       continue; // JS without exported classes: no rtti to inject, leave as written
     }
     // Read the server-written JS, add the rtti (and deprecation warning calls), write it back.
@@ -168,13 +176,17 @@ function addToEmittedJs(
     const classes = jsSource != null ? pairClasses(tsSource, jsSource, ts.SyntaxKind) : undefined;
     if (classes == null) {
       LOG.warn(`ts backend: the classes of ${jsFile} do not match ${tsFile}; rtti appended, no deprecation warnings`);
-      return injectRtti(jsText, rttiSnippet(classesHere, options.assembly.version));
+      const js = options.deprecationWarnings ? withRewrittenBodies(ts, project, jsFile, jsText) : jsText;
+      return injectRtti(js, rttiSnippet(classesHere, options.assembly.version));
     }
     const file: EmittedFile = { jsFile, jsText, jsSource, tsFile, tsSource, k: ts.SyntaxKind, classes };
 
     const edits: Insertion[] = [];
     const prepend: string[] = [];
     const calls = options.deprecationWarnings?.callInsertions(file, options.assembly, options.projectRoot);
+    if (options.deprecationWarnings) {
+      edits.push(...rewrittenBodyEdits(jsText, jsSource, ts.SyntaxKind));
+    }
     const rtti = rttiInsertions(
       file,
       new Map(classesHere.filter((c) => c.inFileName != null).map((c) => [c.inFileName!, c.fqn])),
@@ -192,6 +204,20 @@ function addToEmittedJs(
     return insertIntoEmittedJs(jsFile, jsText, edits);
   } finally {
     retained?.dispose();
+  }
+}
+
+/** The emitted `.js` with the edits of `rewrittenBodyEdits` applied. */
+function withRewrittenBodies(ts: TypeScriptApi, project: TypeScriptProject, jsFile: string, jsText: string): string {
+  // shortcut: a file without any comment has nothing to lose; skip parsing it.
+  if (!/\/\/(?!# sourceMappingURL=)|\/\*/.test(jsText)) {
+    return jsText;
+  }
+  const retained = project.api.createSourceFile(jsFile, jsText);
+  try {
+    return insertIntoEmittedJs(jsFile, jsText, rewrittenBodyEdits(jsText, retained.sourceFile, ts.SyntaxKind));
+  } finally {
+    retained.dispose();
   }
 }
 

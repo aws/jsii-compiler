@@ -446,13 +446,19 @@ function deriveEntry(projectRoot: string, projectInfo: ProjectInfo, rootDir?: st
   return path.resolve(projectRoot, mainFile);
 }
 
-/** Whether the config file errors come from an `extends` base: unreadable (TS5083), circular (TS18000) or unparseable. */
-function hasBrokenExtends(program: any, tsconfigPath: string): boolean {
+/**
+ * Config file errors for parts of the tsconfig that jsii skips when it reads it, like
+ * the classic compiler: a broken `extends` base (unreadable TS5083, circular TS18000,
+ * or errors in the base file) and compiler options TypeScript rejects (unknown
+ * TS5023/TS5025, wrong type TS5024, bad value TS6046, command line only TS6266).
+ */
+const SKIPPED_CONFIG_ERRORS = new Set([5083, 18000, 5023, 5024, 5025, 6046, 6266]);
+
+function hasSkippedConfigErrors(program: any, tsconfigPath: string): boolean {
   const errors: any[] = program.getConfigFileParsingDiagnostics?.() ?? [];
   return errors.some(
     (d) =>
-      d.code === 5083 ||
-      d.code === 18000 ||
+      SKIPPED_CONFIG_ERRORS.has(d.code) ||
       (d.fileName != null && path.resolve(d.fileName) !== path.resolve(tsconfigPath)),
   );
 }
@@ -513,9 +519,10 @@ export function buildProject(options: BuildProjectOptions): BuildProjectResult {
 
   // The classic compiler built from the options it read itself and never saw the
   // config file errors of a broken `extends` (missing, unparseable or circular
-  // base). TypeScript 7 reports those and then skips the emit. Build such a project
-  // from the configuration jsii read instead, which skips the broken bases.
-  if (options.userTsconfig != null && hasBrokenExtends(project.program, host.tsconfigPath)) {
+  // base) or of options TypeScript rejects. TypeScript 7 reports those and then
+  // skips the emit. Build such a project from the configuration jsii read instead,
+  // which skips the broken bases and the rejected options.
+  if (options.userTsconfig != null && hasSkippedConfigErrors(project.program, host.tsconfigPath)) {
     host.close();
     host = CompilerHost.open(options.projectRoot, options.tsconfigFileName, flattenTsconfig(options.userTsconfig));
     project = host.getProject();
@@ -556,6 +563,22 @@ export function buildProject(options: BuildProjectOptions): BuildProjectResult {
     tscOutDir != null ? compilerOptions.rootDir ?? inferRootDir(project.rootFileNames, projectRoot) : undefined;
 
   const entry = deriveEntry(projectRoot, projectInfo, tscRootDir, tscOutDir);
+
+  // The classic compiler handed a user tsconfig's options to TypeScript without the
+  // file they came from, so TypeScript rejected `incremental` without a
+  // `tsBuildInfoFile` (TS5074, an options error that also stops the emit).
+  const programOptions = project.program.getCompilerOptions();
+  if (!options.generatedTsconfig && programOptions.incremental && programOptions.tsBuildInfoFile == null) {
+    tsDiagnostics = [
+      ...tsDiagnostics,
+      {
+        ...syntheticErrorDiagnostic(
+          "Option '--incremental' can only be specified using tsconfig, emitting to single file or when option '--tsBuildInfoFile' is specified.",
+        ),
+        code: 5074,
+      },
+    ];
+  }
 
   // Like the classic compiler, log one error line for the first stage that fails:
   // TypeScript ("Compilation errors"), then the assembler ("Type model errors"),
@@ -646,6 +669,10 @@ export function buildProject(options: BuildProjectOptions): BuildProjectResult {
     let emittedFiles: string[] = [];
     let emitFailed = false;
     try {
+      if (tsHasErrors && programOptions.noEmitOnError) {
+        // Errors TypeScript 7 does not know about (above) must stop the emit too.
+        throw new Error('TypeScript emit was skipped');
+      }
       ({ emittedFiles } = emitProject(host.ts, project, {
         projectRoot,
         assembly: assembly ?? ({ version: projectInfo.version, types: {} } as unknown as spec.Assembly),
