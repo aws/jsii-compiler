@@ -191,18 +191,11 @@ function addToEmittedJs(
     const edits: Insertion[] = [];
     const prepend: string[] = [];
     const calls = options.deprecationWarnings?.callInsertions(file, options.assembly, options.projectRoot);
-    if (options.deprecationWarnings) {
-      edits.push(...rewrittenBodyEdits(jsText, jsSource, ts.SyntaxKind));
-    }
     const rtti = rttiInsertions(
       file,
-      // A class exported under several fqns (re-exported from submodules) gets the first, its canonical one.
-      new Map(
-        classesHere
-          .filter((c) => c.inFileName != null)
-          .reverse()
-          .map((c) => [c.inFileName!, c.fqn]),
-      ),
+      // A class exported under several fqns (re-exported from submodules) gets the one visited last, as the
+      // classic compiler's registration did: the assembly lists types in the classic visit order.
+      new Map(classesHere.filter((c) => c.inFileName != null).map((c) => [c.inFileName!, c.fqn])),
       options.assembly.version,
       project.program.getCompilerOptions(),
     );
@@ -214,6 +207,15 @@ function addToEmittedJs(
     }
     if (prepend.length > 0) {
       edits.push(...prependStatements(jsText, jsSource, tsSource, ts.SyntaxKind, prepend));
+    }
+    if (options.deprecationWarnings) {
+      // The rtti may remove the same comments (in a constructor the emit made up): keep one of each edit.
+      const keys = new Set(edits.map((e) => `${e.offset}:${e.length ?? 0}:${e.text}`));
+      edits.push(
+        ...rewrittenBodyEdits(jsText, jsSource, ts.SyntaxKind).filter(
+          (e) => !keys.has(`${e.offset}:${e.length ?? 0}:${e.text}`),
+        ),
+      );
     }
     return insertIntoEmittedJs(jsFile, jsText, edits);
   } finally {
