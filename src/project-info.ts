@@ -172,6 +172,9 @@ export interface ProjectInfoResult {
 
 export function loadProjectInfo(projectRoot: string): ProjectInfoResult {
   const packageJsonPath = path.join(projectRoot, 'package.json');
+  if (!fs.existsSync(packageJsonPath)) {
+    throw new JsiiError(`Could not find a "package.json" file in ${projectRoot}`);
+  }
   const pkg: PackageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
 
   const diagnostics: ts.Diagnostic[] = [];

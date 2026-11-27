@@ -78,6 +78,17 @@ describe('jsii compile', () => {
     expect(result.stderr).not.toContain('at Object');
   });
 
+  test('reports a missing package.json as a short error, without the help text', async () => {
+    const dir = fs.realpathSync(project({ 'package.json': null }));
+
+    const result = await runCli(dir);
+
+    expect(result.exitCode).toBe(-1);
+    expect(result.stderr).toContain(`Could not find a "package.json" file in ${dir}`);
+    expect(result.stderr).not.toContain('ENOENT');
+    expect(result.stdout + result.stderr).not.toContain('--help');
+  });
+
   describe('--fail-on-warnings', () => {
     test('treats warnings as errors', async () => {
       const dir = project({ 'README.md': null });
@@ -495,15 +506,6 @@ describe('current behavior that is reported as an issue', () => {
     expect(result.exitCode).toBeUndefined();
     expect(result.stdout).toContain('warning JSII4009');
     expect(result.stdout).toContain('Errors: 0 | Warnings: 0');
-  });
-
-  // https://github.com/aws/jsii-compiler/issues/2984
-  test('a missing package.json prints the help and the raw error', async () => {
-    const result = await run(project({ 'package.json': null }));
-
-    expect(result.exitCode).toBe(1);
-    expect(result.stderr).toContain('jsii compile [PROJECT_ROOT]');
-    expect(result.stderr).toContain('ENOENT: no such file or directory');
   });
 
   describe('violations of the tsconfig validation', () => {
