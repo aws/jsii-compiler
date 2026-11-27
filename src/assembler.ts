@@ -24,7 +24,7 @@ import { DeprecatedRemover } from './transforms/deprecated-remover';
 import { DeprecationWarningsInjector } from './transforms/deprecation-warnings';
 import { RuntimeTypeInfoInjector } from './transforms/runtime-info';
 import { combinedTransformers } from './transforms/utils';
-import { typeReferenceEqual, typeReferenceToString } from './type-reference';
+import { compareUnionMembers, typeReferenceEqual, typeReferenceToString } from './type-reference';
 import { TypeTracker } from './type-tracker';
 import { isBehavioralInterfaceType, visitType, visitTypeReference } from './type-visitor';
 import { JsiiError, parentFqn } from './utils';
@@ -2512,6 +2512,11 @@ export class Assembler implements Emitter {
           continue;
         }
         types.push(resolvedType);
+      }
+
+      // The checker lists union members in the order it created the types, which no other compiler can reproduce.
+      if (field === 'union') {
+        types.sort(compareUnionMembers);
       }
 
       const returnedType: spec.UnionTypeReference | spec.IntersectionTypeReference = {

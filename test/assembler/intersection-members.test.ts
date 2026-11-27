@@ -25,13 +25,13 @@ describe('JSII1011 typescript-restriction/intersection-member-different', () => 
       what: 'a union of types',
       a: 'readonly member: string | number',
       b: 'readonly member: string | boolean',
-      reasons: ['string | number', 'string | boolean'],
+      reasons: ['number | string', 'boolean | string'],
     },
     {
       what: 'the number of types in a union',
       a: 'readonly member: string | number',
       b: 'readonly member: string | number | boolean',
-      reasons: ['string | number', 'string | number | boolean'],
+      reasons: ['number | string', 'boolean | number | string'],
     },
     {
       what: 'an intersection of types',
