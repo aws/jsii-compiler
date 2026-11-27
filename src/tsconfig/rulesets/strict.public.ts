@@ -1,4 +1,5 @@
 import configurableOptions from './configurable-options';
+import deprecatedOptions from './deprecated-options';
 import incompatibleOptions from './incompatible-options';
 import strictFamilyOptions from './strict-family-options';
 import { Match, RuleSet, RuleType } from '../validator';
@@ -35,5 +36,8 @@ strict.shouldPass('noUncheckedSideEffectImports', Match.optional(Match.TRUE));
 strict.shouldPass('esModuleInterop', Match.optional(Match.TRUE));
 strict.shouldPass('allowSyntheticDefaultImports', Match.optional(Match.TRUE));
 strict.shouldPass('alwaysStrict', Match.optional(Match.TRUE));
+
+// Deprecated ts options that should not be used with jsii
+strict.import(deprecatedOptions);
 
 export default strict;
