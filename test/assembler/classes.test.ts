@@ -51,11 +51,18 @@ describe('classes', () => {
     expect(klass.initializer?.protected).toBe(true);
   });
 
-  // This documents current behavior, see https://github.com/aws/jsii-compiler/issues/3082
-  // The initializer should be protected.
-  test('a protected constructor without parameters is not marked as protected', () => {
+  test('a protected constructor without parameters is a protected initializer', () => {
     const klass = classOf('export class Klass { protected constructor() {} }');
 
+    expect(klass.initializer).toBeDefined();
+    expect(klass.initializer?.protected).toBe(true);
+    expect(klass.initializer?.parameters).toBeUndefined();
+  });
+
+  test('a public constructor without parameters is not protected', () => {
+    const klass = classOf('export class Klass { public constructor() {} }');
+
+    expect(klass.initializer).toBeDefined();
     expect(klass.initializer?.protected).toBeUndefined();
   });
 
