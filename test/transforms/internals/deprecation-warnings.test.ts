@@ -13,12 +13,15 @@ import { DeprecationWarningsInjector, WARNINGSCODE_FILE_NAME } from '../../../sr
  */
 
 let projectRoot: string;
+let host: CompilerHost | undefined;
 
 beforeEach(() => {
   projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'jsii-deprecation-warnings-internals-'));
 });
 
 afterEach(() => {
+  host?.close();
+  host = undefined;
   fs.rmSync(projectRoot, { recursive: true, force: true });
 });
 
@@ -57,44 +60,40 @@ describe('enums', () => {
   test('deprecated members sharing their value with a non-deprecated member produce no warning', () => {
     fs.writeFileSync(path.join(projectRoot, 'index.ts'), 'export enum State { ON = 1, LEGACY_ON = 1, OFF = 2 }');
     fs.writeFileSync(path.join(projectRoot, 'tsconfig.json'), JSON.stringify({ files: ['index.ts'] }));
-    const host = CompilerHost.open(projectRoot);
-    try {
-      const project = host.getProject();
-      const { SyntaxKind } = host.ts;
-      const enumDecl = project.program
-        .getSourceFile(path.join(projectRoot, 'index.ts'))
-        .statements.find((s: any) => s.kind === SyntaxKind.EnumDeclaration);
-      const members = new Map<string, any>(enumDecl.members.map((m: any) => [m.name.text, { resolve: () => m }]));
+    host = CompilerHost.open(projectRoot);
+    const project = host.getProject();
+    const { SyntaxKind } = host.ts;
+    const enumDecl = project.program
+      .getSourceFile(path.join(projectRoot, 'index.ts'))
+      .statements.find((s: any) => s.kind === SyntaxKind.EnumDeclaration);
+    const members = new Map<string, any>(enumDecl.members.map((m: any) => [m.name.text, { resolve: () => m }]));
 
-      const deprecatedDocs = (deprecated: string) => ({ stability: spec.Stability.Deprecated, deprecated });
-      const assembly = {
-        name: 'test',
-        types: {
-          'test.State': {
-            assembly: 'test',
-            fqn: 'test.State',
-            kind: spec.TypeKind.Enum,
-            locationInModule: { filename: 'index.ts', line: 1 },
-            members: [
-              { name: 'ON' },
-              { name: 'LEGACY_ON', docs: deprecatedDocs('Use ON') },
-              { name: 'OFF', docs: deprecatedDocs('Do not turn off') },
-            ],
-            name: 'State',
-          },
+    const deprecatedDocs = (deprecated: string) => ({ stability: spec.Stability.Deprecated, deprecated });
+    const assembly = {
+      name: 'test',
+      types: {
+        'test.State': {
+          assembly: 'test',
+          fqn: 'test.State',
+          kind: spec.TypeKind.Enum,
+          locationInModule: { filename: 'index.ts', line: 1 },
+          members: [
+            { name: 'ON' },
+            { name: 'LEGACY_ON', docs: deprecatedDocs('Use ON') },
+            { name: 'OFF', docs: deprecatedDocs('Do not turn off') },
+          ],
+          name: 'State',
         },
-      } as unknown as spec.Assembly;
+      },
+    } as unknown as spec.Assembly;
 
-      new DeprecationWarningsInjector(host.ts, project, new Map([['test.State', members]])).process(assembly, {
-        projectRoot,
-        dependencyClosure: [],
-      } as unknown as ProjectInfo);
+    new DeprecationWarningsInjector(host.ts, project, new Map([['test.State', members]])).process(assembly, {
+      projectRoot,
+      dependencyClosure: [],
+    } as unknown as ProjectInfo);
 
-      const warnings = fs.readFileSync(path.join(projectRoot, WARNINGSCODE_FILE_NAME), 'utf-8');
-      expect(warnings).toContain('print("test.State#OFF", "Do not turn off")');
-      expect(warnings).not.toContain('test.State#LEGACY_ON');
-    } finally {
-      host.close();
-    }
+    const warnings = fs.readFileSync(path.join(projectRoot, WARNINGSCODE_FILE_NAME), 'utf-8');
+    expect(warnings).toContain('print("test.State#OFF", "Do not turn off")');
+    expect(warnings).not.toContain('test.State#LEGACY_ON');
   });
 });
