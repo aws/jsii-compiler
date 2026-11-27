@@ -1822,11 +1822,11 @@ export class Assembler {
       }
     }
 
-    this._validateInternalMembers(sym, decl, erasedBases, isInterface);
-
     const instanceProps = this.checker.getPropertiesOfType(type);
     const staticTypeForPrefetch = !isInterface ? this.checker.getTypeOfSymbol(sym) : undefined;
     const staticPropsForPrefetch = staticTypeForPrefetch ? this.checker.getPropertiesOfType(staticTypeForPrefetch) : [];
+
+    this._validateInternalMembers(sym, decl, erasedBases, isInterface, instanceProps, staticPropsForPrefetch);
     // One RPC for all member docs of this type (instance + static).
     this._prefetchDocs([...instanceProps, ...staticPropsForPrefetch]);
 
@@ -1981,7 +1981,14 @@ export class Assembler {
    * declaration (a getter and its setter both count), for an interface at each
    * member of the type and of each erased base interface.
    */
-  private _validateInternalMembers(sym: any, decl: any, erasedBases: any[], isInterface: boolean): void {
+  private _validateInternalMembers(
+    sym: any,
+    decl: any,
+    erasedBases: any[],
+    isInterface: boolean,
+    instanceProps: readonly any[],
+    staticProps: readonly any[],
+  ): void {
     const { SyntaxKind } = this.ts;
     const baseSyms = erasedBases.map((b) => b.getSymbol?.() ?? b.symbol).filter((s) => s != null);
     if (isInterface) {
@@ -2002,9 +2009,21 @@ export class Assembler {
     }
     // Classic: the erased bases of a class are its erased base classes, not the erased interfaces it implements.
     const erasedClasses = baseSyms.filter((s) => s.declarations?.[0]?.kind === SyntaxKind.ClassDeclaration);
-    const typeDecls: any[] = [sym, ...erasedClasses].flatMap((s) =>
-      (s.declarations ?? []).map((h: any) => h.resolve(this.project)).filter((d: any) => d != null),
-    );
+    const typeHandles: any[] = [sym, ...erasedClasses].flatMap((s) => s.declarations ?? []);
+    const typeDecls: any[] = typeHandles.map((h: any) => h.resolve(this.project)).filter((d: any) => d != null);
+    // The symbol of each member declaration in these files, from the members `_visitMembers` already read
+    // (the symbol of a member named by an identifier). A declaration not found there, such as a base member
+    // the type overrides, is looked up.
+    const typePaths = new Set(typeHandles.map((h: any) => h.path));
+    const symbolsByDecl = new Map<any, any>();
+    for (const member of [...instanceProps, ...staticProps]) {
+      for (const h of member.declarations ?? []) {
+        const memberDecl = typePaths.has(h.path) ? h.resolve(this.project) : undefined;
+        if (memberDecl != null && !symbolsByDecl.has(memberDecl)) {
+          symbolsByDecl.set(memberDecl, member);
+        }
+      }
+    }
     for (const typeDecl of [decl, ...typeDecls.filter((d) => d !== decl)]) {
       if (typeDecl.kind !== SyntaxKind.ClassDeclaration && typeDecl.kind !== SyntaxKind.InterfaceDeclaration) {
         continue;
@@ -2017,7 +2036,9 @@ export class Assembler {
         ) {
           continue;
         }
-        const member = this._symbolAtNodeSafe(memberDecl.name);
+        const member =
+          (memberDecl.name.kind === SyntaxKind.Identifier ? symbolsByDecl.get(memberDecl) : undefined) ??
+          this._symbolAtNodeSafe(memberDecl.name);
         if (member != null && this._isInternal(member)) {
           this._validateInternalMember(member, memberDecl);
         }
