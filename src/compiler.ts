@@ -733,11 +733,10 @@ export function buildProject(options: BuildProjectOptions): BuildProjectResult {
         assembly = assembled;
         strippedClasses = assembler.strippedClasses;
         const jsiiDiagnostics = assembler.diagnostics;
-        diagnostics.push(...jsiiDiagnostics);
-        logFailure('Type model', jsiiDiagnostics);
-        jsiiFailed = jsiiDiagnostics.some((d) => d.category === DiagnosticCategory.Error);
 
-        if (!jsiiFailed && options.addDeprecationWarnings) {
+        // Classic: the deprecation warnings are made when the type model has no errors, even when a use of a
+        // stripped type (JSII3999) or a validator reports one.
+        if (!assembler.typeModelFailed && options.addDeprecationWarnings) {
           assembly.metadata = {
             ...assembly.metadata,
             jsii: { ...(assembly.metadata?.jsii ?? {}), compiledWithDeprecationWarnings: true },
@@ -745,10 +744,20 @@ export function buildProject(options: BuildProjectOptions): BuildProjectResult {
           deprecationWarnings = new DeprecationWarningsInjector(host.ts, project, assembler.enumMemberDeclarations);
           deprecationWarnings.process(assembly, projectInfo);
         }
+        diagnostics.push(...jsiiDiagnostics);
+        logFailure('Type model', jsiiDiagnostics);
+        jsiiFailed = jsiiDiagnostics.some((d) => d.category === DiagnosticCategory.Error);
       } catch (e: any) {
         // Same contract as the classic compiler: a failure while assembling is
         // reported as a JSII9997 error diagnostic rather than crashing the build.
-        diagnostics.push(...assembler.diagnostics, JsiiDiagnostic.JSII_9997_UNKNOWN_ERROR.createDetached(e));
+        // @TODO(NEXT): a failure of the deprecation warnings (a property of a stripped type) loses the other
+        // diagnostics, as in the classic compiler (aws/jsii-compiler#3013). After 7.1's first release: report them.
+        diagnostics.push(
+          ...(assembled ? [] : assembler.diagnostics),
+          JsiiDiagnostic.JSII_9997_UNKNOWN_ERROR.createDetached(e),
+        );
+        // shortcut: the classic compiler emitted what the warnings had made before the failure; this emits none.
+        deprecationWarnings = undefined;
       }
 
       if (process.env.JSII_TS7_TIMING) {

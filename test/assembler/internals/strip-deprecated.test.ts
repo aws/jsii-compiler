@@ -1,4 +1,5 @@
 import * as spec from '@jsii/spec';
+import { DiagnosticCategory } from 'typescript';
 
 import { compileJsiiForTest } from '../../../lib';
 
@@ -52,4 +53,29 @@ test('a stripped struct is still checked as a keyword argument', () => {
     { stripDeprecated: true },
   );
   expect(result.diagnostics.map((d) => (d as { jsiiCode?: number }).jsiiCode)).toContain(5017);
+});
+
+test('a use of a stripped type of a submodule names its fqn', () => {
+  const result = compileJsiiForTest(
+    {
+      'index.ts': `
+        export * as sub from './sub';
+        import { Old } from './sub';
+        export class Use {
+          public method(old: Old): void { void old; }
+        }
+      `,
+      'sub.ts': `
+        /** @deprecated gone */
+        export interface Old { readonly x: string }
+      `,
+    },
+    { captureDiagnostics: true },
+    { stripDeprecated: true },
+  );
+  const errors = result.diagnostics.filter((d) => d.category === DiagnosticCategory.Error);
+  expect(errors.map((d) => d.messageText).sort()).toEqual([
+    'Exported APIs cannot use un-exported type "testpkg.sub.Old"',
+    'Parameter has @deprecated type testpkg.sub.Old, and it is erased by --strip-deprecated.',
+  ]);
 });

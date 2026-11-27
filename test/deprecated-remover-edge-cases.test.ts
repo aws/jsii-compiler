@@ -233,8 +233,7 @@ describe('leftover usage of deprecated types', () => {
     export interface IOther {}
   `;
 
-  // @TODO(ts7): --strip-deprecated does not rewrite the emitted .d.ts/.js and reports no leftover-usage diagnostics on the TypeScript 7 compiler yet (some rows may pass; the table is skipped as a whole)
-  test.skip.each([
+  test.each([
     ['method return type', 'public method(): IOld { return {} as any; }', 'Method'],
     ['method parameter', 'public method(x: IOld) { Array.isArray(x); }', 'Parameter'],
     ['constructor parameter', 'public constructor(x: IOld) { Array.isArray(x); }', 'Parameter'],
@@ -257,8 +256,7 @@ describe('leftover usage of deprecated types', () => {
     );
   });
 
-  // @TODO(ts7): --strip-deprecated does not rewrite the emitted .d.ts/.js and reports no leftover-usage diagnostics on the TypeScript 7 compiler yet
-  test.skip('refers to the declaration of the deprecated type', () => {
+  test('refers to the declaration of the deprecated type', () => {
     const [diagnostic] = leftoverDiagnostics(`
       ${PRELUDE}
       export class Klass {
@@ -328,8 +326,7 @@ describe('leftover usage of deprecated types, together with deprecation warnings
     export interface Props { readonly old: IOld }
   `;
 
-  // @TODO(ts7): --strip-deprecated does not rewrite the emitted .d.ts/.js and reports no leftover-usage diagnostics on the TypeScript 7 compiler yet
-  test.skip('is reported with the type it uses when only --strip-deprecated is used', () => {
+  test('is reported with the type it uses when only --strip-deprecated is used', () => {
     const result = compileJsiiForTest(source, { captureDiagnostics: true }, { stripDeprecated: true });
 
     expect(result.diagnostics.map((d) => `${d.messageText}`)).toContain(
@@ -338,8 +335,7 @@ describe('leftover usage of deprecated types, together with deprecation warnings
   });
 
   // This documents current behavior, see https://github.com/aws/jsii-compiler/issues/3013
-  // @TODO(ts7): --strip-deprecated does not rewrite the emitted .d.ts/.js and reports no leftover-usage diagnostics on the TypeScript 7 compiler yet
-  test.skip('is reported as an internal error when --add-deprecation-warnings is used as well', () => {
+  test('is reported as an internal error when --add-deprecation-warnings is used as well', () => {
     const result = compileJsiiForTest(
       source,
       { captureDiagnostics: true },

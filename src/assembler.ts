@@ -173,6 +173,11 @@ export class Assembler {
   public readonly enumMemberDeclarations = new Map<string, Map<string, any>>();
   /** Classes left out by --strip-deprecated (their code is still emitted, with rtti, as by the classic compiler). */
   public readonly strippedClasses = new Array<spec.ClassType>();
+  /**
+   * Whether the type model has errors, before the uses of stripped types and the validators are checked (the
+   * classic assembler stopped there, and made the deprecation warnings after that point).
+   */
+  public typeModelFailed = false;
   private readonly submodules: Record<string, spec.Submodule> = {};
   private readonly typeFqnBySymbolId = new Map<unknown, string>();
   private readonly exported: RegisteredType[] = [];
@@ -229,6 +234,11 @@ export class Assembler {
   private readonly strippedTypeSymIds = new Set<unknown>();
   /** The declaration of each type dropped by --strip-deprecated, by fqn (for the JSII3999 of a leftover use). */
   private readonly strippedTypeDecls = new Map<string, any>();
+  /**
+   * The fqn of each type dropped by --strip-deprecated, by symbol id (the first one). A reference to such a type
+   * names it, but a heritage clause erases it (see `strippedTypeSymIds`).
+   */
+  private readonly strippedFqnBySymbolId = new Map<unknown, string>();
 
   /** The export symbol of each submodule, by submodule fqn (classic `_submodules` keys). */
   private readonly submoduleSymbols = new Map<string, any>();
@@ -326,7 +336,8 @@ export class Assembler {
     const assembly = this._buildAssembly();
     // Classic: the validator runs on the finished assembly, and only when the
     // assembler itself reported no error.
-    if (!this._diagnostics.some((d) => d.category === DiagnosticCategory.Error)) {
+    this.typeModelFailed = this._diagnostics.some((d) => d.category === DiagnosticCategory.Error);
+    if (!this.typeModelFailed) {
       this._reportLeftoverUsesOfStrippedTypes(assembly);
       const validator = new Validator(this.options.projectInfo, assembly, {
         nodeOf: (element) => this.relatedNodes.get(element),
@@ -1273,6 +1284,9 @@ export class Assembler {
       this.strippedTypeSymIds.add(sym.id);
       const strippedDecl = sym.declarations?.[0]?.resolve(this.project);
       this.strippedTypeDecls.set(fqn, strippedDecl);
+      if (!this.strippedFqnBySymbolId.has(sym.id)) {
+        this.strippedFqnBySymbolId.set(sym.id, fqn);
+      }
       if (strippedDecl?.kind === SyntaxKind.ClassDeclaration) {
         this.strippedClasses.push({
           assembly: this.assemblyName,
@@ -3473,7 +3487,8 @@ export class Assembler {
       const s = type.getSymbol();
       const parent = s?.getParent();
       for (const enumSym of s ? [s, parent] : []) {
-        const ownFqn = enumSym && this.typeFqnBySymbolId.get(enumSym.id);
+        const ownFqn =
+          enumSym && (this.typeFqnBySymbolId.get(enumSym.id) ?? this.strippedFqnBySymbolId.get(enumSym.id));
         if (ownFqn) {
           return { fqn: ownFqn };
         }
@@ -3586,7 +3601,7 @@ export class Assembler {
     }
     const target = type.isTypeReference() ? type.getTarget() : type;
     const tsym = target.getSymbol() ?? sym;
-    const ownFqn = this.typeFqnBySymbolId.get(tsym.id);
+    const ownFqn = this.typeFqnBySymbolId.get(tsym.id) ?? this.strippedFqnBySymbolId.get(tsym.id);
     if (ownFqn) {
       return { fqn: ownFqn };
     }
