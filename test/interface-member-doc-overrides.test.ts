@@ -1,4 +1,5 @@
 import * as spec from '@jsii/spec';
+import { compileJsiiForErrors } from './compiler-helpers';
 import { compileJsiiForTest } from '../src';
 
 // See: https://github.com/projen/projen/issues/1172
@@ -36,6 +37,21 @@ describe('Interfaces may re-declare inherited members with an identical shape', 
       export interface IB extends IA {
         /** Better docs. */
         readonly foo: number;
+      }
+    `);
+
+    const ib = result.assembly.types!['testpkg.IB'] as spec.InterfaceType;
+    expect(ib.properties).toEqual([expect.objectContaining({ name: 'foo', overrides: 'testpkg.IA' })]);
+  });
+
+  test('mutable property', () => {
+    const result = compileJsiiForTest(`
+      export interface IA {
+        foo: number;
+      }
+      export interface IB extends IA {
+        /** Better docs. */
+        foo: number;
       }
     `);
 
@@ -92,4 +108,21 @@ describe('Interfaces may re-declare inherited members with an identical shape', 
 
     expect(result.assembly.usedFeatures ?? []).not.toContain('interface-member-doc-overrides');
   });
+});
+
+// See https://github.com/aws/jsii-compiler/issues/2970
+// @TODO(ts7): expects a jsii validation diagnostic (JSII5015); re-enable with the port of the validator
+test.skip('a property that changes its shape is reported as JSII5015', () => {
+  expect(
+    compileJsiiForErrors(`
+      export interface IA {
+        readonly foo: string;
+      }
+      export interface IB extends IA {
+        foo: string;
+      }
+    `),
+  ).toEqual([
+    'Interface "testpkg.IB" re-declares member "foo" with a different type or signature. Re-declared members must match the inherited declaration exactly, as C# interfaces cannot narrow inherited members.',
+  ]);
 });
