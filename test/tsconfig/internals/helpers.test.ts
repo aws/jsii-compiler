@@ -1,6 +1,6 @@
 import fc from 'fast-check';
-import { fcTsconfig, fcTsconfigRealistic } from './helpers';
-import { Match, RuleSet, RuleType } from '../../src/tsconfig/validator';
+import { Match, RuleSet, RuleType } from '../../../src/tsconfig/validator';
+import { fcTsconfig, fcTsconfigRealistic } from '../helpers';
 
 // These tests cover the arbitraries that the property based tests in this directory are built on.
 

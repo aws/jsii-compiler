@@ -1,4 +1,4 @@
-import { enumAsCamel, enumAsKebab, enumAsLower } from '../../src/tsconfig/compiler-options';
+import { enumAsCamel, enumAsKebab, enumAsLower } from '../../../src/tsconfig/compiler-options';
 
 enum Sample {
   None = 0,
