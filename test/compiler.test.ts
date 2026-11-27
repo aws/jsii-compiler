@@ -18,14 +18,6 @@ import { ProjectInfo } from '../src/project-info';
 import { TypeScriptConfigValidationRuleSet } from '../src/tsconfig';
 import { TypeScriptConfigValidator } from '../src/tsconfig/tsconfig-validator';
 
-// Make the typescript module's properties configurable so jest.spyOn works.
-// TS 6.0 exports non-configurable properties that cannot be spied on directly.
-jest.mock('typescript', () => {
-  const actual = jest.requireActual('typescript');
-  // Spread into a fresh object to make all properties writable/configurable
-  return { __esModule: true, ...actual };
-});
-
 beforeEach(() => {
   jest.restoreAllMocks();
 });
@@ -408,9 +400,6 @@ describe(Compiler, () => {
       ]);
       expect(result.emitSkipped).toBe(false);
     });
-
-    // The two "lib" tests of main that spy on ts.createIncrementalProgram are in test/compiler/internals/lib.test.ts on
-    // 7.1, which reads the files of the TypeScript 7 program instead (https://github.com/aws/jsii-compiler/issues/3042).
 
     // @TODO(ts7): `--watch` is not supported by the TypeScript 7 compiler yet
     test.skip('"watch" mode', async () => {

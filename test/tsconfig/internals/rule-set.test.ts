@@ -90,6 +90,28 @@ describe('Object Validator rules', () => {
     ]);
   });
 
+  describe('the message of a FAIL rule', () => {
+    const messageOf = (matcher: (actual: any) => boolean, value: unknown) => {
+      const ruleSet = new RuleSet();
+      ruleSet.shouldFail('field', matcher);
+      return violationsOf(ruleSet, { field: value })[0].message;
+    };
+
+    test('names the value that the matcher rejects', () => {
+      expect(messageOf(Match.eq('es5'), 'es5')).toBe('Expected value not to be "es5", got: "es5"');
+    });
+
+    test('names the values that the matcher rejects', () => {
+      expect(messageOf(Match.oneOf('amd', 'umd'), 'amd')).toBe(
+        'Expected value not to be one of ["amd","umd"], got: "amd"',
+      );
+    });
+
+    test('falls back to a general message when the matcher does not say what it rejects', () => {
+      expect(messageOf((actual) => actual === 1, 1)).toBe('Value is not allowed, got: 1');
+    });
+  });
+
   test('reports unexpected fields when they are not allowed', () => {
     expect(violationsOf(rules(), { mustBeTrue: true, other: 1 })).toEqual([
       expect.objectContaining({ field: 'other' }),
