@@ -7,6 +7,7 @@ import chalk from 'chalk';
 import * as log4js from 'log4js';
 
 import { Assembler } from './assembler';
+import { BackgroundCheck, BackgroundCheckResult, MIN_FILES_FOR_BACKGROUND_CHECK } from './background-check';
 import { findDependencyDirectory } from './common/find-utils';
 import { CompilerHost } from './compiler-host';
 import { Diagnostic, DiagnosticCategory, flattenDiagnosticMessageText } from './diagnostic';
@@ -536,7 +537,9 @@ export function buildProject(options: BuildProjectOptions): BuildProjectResult {
 
   let host = CompilerHost.open(options.projectRoot, options.tsconfigFileName);
   let project = host.getProject();
-  let tsDiagnostics = collectTsDiagnostics(project.program);
+  // The program's own diagnostics (options and config): the type check is the slow part (see `check` below).
+  let tsDiagnostics = collectTsDiagnostics(project.program, CONFIG_DIAGNOSTICS);
+  let tsconfigText: string | undefined;
 
   // The classic compiler built from the options it read itself and never saw the
   // config file errors of a broken `extends` (missing, unparseable or circular
@@ -545,9 +548,10 @@ export function buildProject(options: BuildProjectOptions): BuildProjectResult {
   // which skips the broken bases and the rejected options.
   if (options.userTsconfig != null && hasSkippedConfigErrors(project.program, host.tsconfigPath)) {
     host.close();
-    host = CompilerHost.open(options.projectRoot, options.tsconfigFileName, flattenTsconfig(options.userTsconfig));
+    tsconfigText = flattenTsconfig(options.userTsconfig);
+    host = CompilerHost.open(options.projectRoot, options.tsconfigFileName, tsconfigText);
     project = host.getProject();
-    tsDiagnostics = collectTsDiagnostics(project.program);
+    tsDiagnostics = collectTsDiagnostics(project.program, CONFIG_DIAGNOSTICS);
   }
 
   // TypeScript 7 no longer infers `rootDir` from the common directory of the
@@ -563,9 +567,10 @@ export function buildProject(options: BuildProjectOptions): BuildProjectResult {
       tsconfig.compilerOptions = { ...tsconfig.compilerOptions, rootDir: inferred };
       fs.writeFileSync(tsconfigPath, JSON.stringify(tsconfig, null, 2), 'utf8');
       host.close();
+      tsconfigText = undefined;
       host = CompilerHost.open(options.projectRoot, options.tsconfigFileName);
       project = host.getProject();
-      tsDiagnostics = collectTsDiagnostics(project.program);
+      tsDiagnostics = collectTsDiagnostics(project.program, CONFIG_DIAGNOSTICS);
     }
   }
 
@@ -594,17 +599,26 @@ export function buildProject(options: BuildProjectOptions): BuildProjectResult {
   // file they came from, so TypeScript rejected `incremental` without a
   // `tsBuildInfoFile` (TS5074, an options error that also stops the emit).
   const programOptions = project.program.getCompilerOptions();
-  if (!options.generatedTsconfig && programOptions.incremental && programOptions.tsBuildInfoFile == null) {
-    tsDiagnostics = [
-      ...tsDiagnostics,
-      {
-        ...syntheticErrorDiagnostic(
-          "Option '--incremental' can only be specified using tsconfig, emitting to single file or when option '--tsBuildInfoFile' is specified.",
-        ),
-        code: 5074,
-      },
-    ];
-  }
+  // (TS5074 is added to the diagnostics with the others, below.)
+  const incrementalWithoutBuildInfo =
+    !options.generatedTsconfig && programOptions.incremental && programOptions.tsBuildInfoFile == null;
+
+  // The type check of the whole program and the emit are slow (TypeScript 7 does them in a process of its own, and
+  // jsii only waits for it), and the assembler does not depend on them: a big project does both in a second process
+  // while it assembles, and collects the results when it needs them. Without TS5074 (that one stops the emit, which
+  // only this process knows).
+  const check =
+    !incrementalWithoutBuildInfo && project.rootFileNames.length >= MIN_FILES_FOR_BACKGROUND_CHECK
+      ? BackgroundCheck.start({
+          packageDir: host.ts.packageDir,
+          projectRoot,
+          tsconfigPath: host.tsconfigPath,
+          tsconfigText,
+          errorCategory: DiagnosticCategory.Error,
+          categories: Object.values(DiagnosticCategory).filter((c): c is number => typeof c === 'number'),
+          noEmitOnError: !!programOptions.noEmitOnError,
+        })
+      : undefined;
 
   // Like the classic compiler, log one error line for the first stage that fails:
   // TypeScript ("Compilation errors"), then the assembler ("Type model errors"),
@@ -626,10 +640,39 @@ export function buildProject(options: BuildProjectOptions): BuildProjectResult {
     }
   };
 
-  try {
+  let tsHasErrors = false;
+  let checkedEmit: BackgroundCheckResult['emit'];
+  let settled = false;
+  const diagnostics: Diagnostic[] = [];
+  /** Take the type check's results (from the second process when there is one) and report them first. */
+  const settleTsDiagnostics = () => {
+    if (settled) {
+      return;
+    }
+    settled = true;
+    const checked = check?.wait();
+    tsDiagnostics = checked != null ? toDiagnostics(checked.diagnostics) : collectTsDiagnostics(project.program);
+    checkedEmit = checked?.emit;
+    if (incrementalWithoutBuildInfo) {
+      tsDiagnostics = [
+        ...tsDiagnostics,
+        {
+          ...syntheticErrorDiagnostic(
+            "Option '--incremental' can only be specified using tsconfig, emitting to single file or when option '--tsBuildInfoFile' is specified.",
+          ),
+          code: 5074,
+        },
+      ];
+    }
     logFailure('Compilation', tsDiagnostics);
-    const tsHasErrors = tsDiagnostics.some((d) => d.category === DiagnosticCategory.Error);
-    const diagnostics: Diagnostic[] = [...tsDiagnostics];
+    tsHasErrors = tsDiagnostics.some((d) => d.category === DiagnosticCategory.Error);
+    diagnostics.push(...tsDiagnostics);
+  };
+
+  try {
+    if (check == null) {
+      settleTsDiagnostics();
+    }
 
     // Like the classic compiler, assemble and emit even when an earlier stage
     // failed, so all diagnostics are reported together. The `.jsii` file is
@@ -639,6 +682,7 @@ export function buildProject(options: BuildProjectOptions): BuildProjectResult {
     let deprecationWarnings: DeprecationWarningsInjector | undefined;
     let strippedClasses: readonly spec.ClassType[] | undefined;
     if (!project.program.getSourceFile(entry)) {
+      settleTsDiagnostics();
       logFailure('Type model', undefined);
       diagnostics.push(missingEntryDiagnostic(entry, projectInfo, tscRootDir, tscOutDir));
     } else {
@@ -656,8 +700,21 @@ export function buildProject(options: BuildProjectOptions): BuildProjectResult {
         readme: loadReadme(projectRoot),
       });
 
+      let assembled: spec.Assembly | undefined;
+      let assembleError: unknown;
       try {
-        assembly = assembler.assemble();
+        assembled = assembler.assemble();
+      } catch (e: any) {
+        assembleError = e;
+      }
+      // TypeScript's diagnostics come before the assembler's.
+      settleTsDiagnostics();
+
+      try {
+        if (assembled == null) {
+          throw assembleError;
+        }
+        assembly = assembled;
         strippedClasses = assembler.strippedClasses;
         const jsiiDiagnostics = assembler.diagnostics;
         diagnostics.push(...jsiiDiagnostics);
@@ -712,6 +769,7 @@ export function buildProject(options: BuildProjectOptions): BuildProjectResult {
         rootDir: tscRootDir,
         deprecationWarnings,
         strippedClasses,
+        emitResult: checkedEmit,
       }));
     } catch (err) {
       emitFailed = true;
@@ -751,6 +809,7 @@ export function buildProject(options: BuildProjectOptions): BuildProjectResult {
         );
       }
     }
+    check?.wait();
     host.close();
   }
 }
@@ -764,22 +823,27 @@ function readSourceFile(fileName: string): string | undefined {
   }
 }
 
+/** Like tsc: errors of the tsconfig file come first. Without them, an error TypeScript reports only there (such as TS18002) just skips the emit, as "TS0: emit pipeline failed". */
+const CONFIG_DIAGNOSTICS = ['getConfigFileParsingDiagnostics', 'getProgramDiagnostics'];
+const ALL_DIAGNOSTICS = [
+  ...CONFIG_DIAGNOSTICS,
+  'getGlobalDiagnostics',
+  'getSyntacticDiagnostics',
+  'getSemanticDiagnostics',
+];
+
 /**
  * Collect the program's pre-emit diagnostics (options, global, syntactic and
  * semantic) from the program and map them to jsii's `Diagnostic` for the
  * standard reporting pipeline.
  */
-function collectTsDiagnostics(program: any): Diagnostic[] {
+function collectTsDiagnostics(program: any, names = ALL_DIAGNOSTICS): Diagnostic[] {
   const call = (name: string): any[] => (typeof program[name] === 'function' ? program[name]() ?? [] : []);
-  const raw: any[] = [
-    // Like tsc: errors of the tsconfig file come first. Without them, an error TypeScript
-    // reports only there (such as TS18002) just skips the emit, as "TS0: emit pipeline failed".
-    ...call('getConfigFileParsingDiagnostics'),
-    ...call('getProgramDiagnostics'),
-    ...call('getGlobalDiagnostics'),
-    ...call('getSyntacticDiagnostics'),
-    ...call('getSemanticDiagnostics'),
-  ];
+  return toDiagnostics(names.flatMap(call));
+}
+
+/** The diagnostics of the API as jsii's, with the text of the files they point into. */
+function toDiagnostics(raw: readonly any[]): Diagnostic[] {
   const texts = new Map<string, string | undefined>();
   const readSource = (fileName: string): string | undefined => {
     if (!texts.has(fileName)) {
