@@ -177,7 +177,7 @@ function addToEmittedJs(
 ): string {
   const tsFile = path.resolve(options.projectRoot, classesHere[0].relSrc);
   const tsSource = project.program.getSourceFile(tsFile);
-  const retained = tsSource != null ? project.api.createSourceFile(jsFile, jsText) : undefined;
+  const retained = tsSource != null ? parseEmittedJs(project, jsFile, jsText) : undefined;
   try {
     const jsSource = retained?.sourceFile;
     const classes = jsSource != null ? pairClasses(tsSource, jsSource, ts.SyntaxKind) : undefined;
@@ -231,12 +231,24 @@ function withRewrittenBodies(ts: TypeScriptApi, project: TypeScriptProject, jsFi
   if (!/\/\/(?!# sourceMappingURL=)|\/\*/.test(jsText)) {
     return jsText;
   }
-  const retained = project.api.createSourceFile(jsFile, jsText);
+  const retained = parseEmittedJs(project, jsFile, jsText);
   try {
     return insertIntoEmittedJs(jsFile, jsText, rewrittenBodyEdits(jsText, retained.sourceFile, ts.SyntaxKind));
   } finally {
     retained.dispose();
   }
+}
+
+/**
+ * Parse an emitted `.js` file without its trailing `//# sourceMappingURL=`
+ * comment. An inline source map is most of the text (aws-cdk-lib: 167 of the
+ * 227 MB parsed), and it is trivia after the last statement, so the nodes and
+ * positions the edits use are the same without it, and it does not cross the
+ * channel to the TypeScript 7 process and back.
+ */
+function parseEmittedJs(project: TypeScriptProject, jsFile: string, jsText: string): any {
+  const mapComment = /\n\/\/# sourceMappingURL=[^\n]*\s*$/.exec(jsText);
+  return project.api.createSourceFile(jsFile, mapComment != null ? jsText.slice(0, mapComment.index) : jsText);
 }
 
 /** Normalize a relative path for use as a map key (posix separators). */
