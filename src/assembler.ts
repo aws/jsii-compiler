@@ -285,6 +285,16 @@ export class Assembler {
     if (this.assemblyName.includes('.')) {
       this._diagnostics.push(JsiiDiagnostic.JSII_0009_PACKAGE_NAME_CONTAINS_DOT.createDetached(this.assemblyName));
     }
+    // The package metadata checks of the classic `Assembler.emit`, in its order.
+    if (!this.options.projectInfo.description) {
+      this._diagnostics.push(JsiiDiagnostic.JSII_0001_PKG_MISSING_DESCRIPTION.createDetached());
+    }
+    if (!this.options.projectInfo.homepage) {
+      this._diagnostics.push(JsiiDiagnostic.JSII_0002_PKG_MISSING_HOMEPAGE.createDetached());
+    }
+    if (this.options.readme == null) {
+      this._diagnostics.push(JsiiDiagnostic.JSII_0003_MISSING_README.createDetached());
+    }
     this._loadDependencyAssemblies();
 
     const entrySf = this.program.getSourceFile(this.entry);
