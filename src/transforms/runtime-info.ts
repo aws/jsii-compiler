@@ -64,7 +64,9 @@ export function rttiInsertions(
   const { jsText, jsSource } = file;
   const form = rttiForm(compilerOptions);
   const symbol = uniqueName(file);
-  const temps = new Temporaries(file);
+  // Only the forms that need a temporary look for the emit's own (a walk over the whole emitted file).
+  let temporaries: Temporaries | undefined;
+  const temps = () => (temporaries ??= new Temporaries(file));
   const edits: Insertion[] = [];
   const annotated: Array<{ jsClass: any; offset: number; indent: string; info: string }> = [];
   for (const { ts: tsClass, js: jsClass, qualifiedName } of file.classes) {
@@ -98,7 +100,7 @@ export function rttiInsertions(
       edits.push({ offset, text: `\n${indent}static [${symbol}] = ${info};` });
       continue;
     }
-    temps.request(jsClass);
+    temps().request(jsClass);
     annotated.push({ jsClass, offset, indent, info });
   }
   if (edits.length === 0 && annotated.length === 0) {
@@ -107,11 +109,11 @@ export function rttiInsertions(
 
   // The temporaries are named once all of them are known (the `var` statement is printed first).
   if (annotated.length > 0) {
-    edits.push(...temps.plan());
+    edits.push(...temps().plan());
   }
   const k = file.k;
   for (const { jsClass, offset, indent, info } of annotated) {
-    const temp = temps.nameOf(jsClass);
+    const temp = temps().nameOf(jsClass);
     const first = `${temp} = ${symbol}`;
     if (form === 'staticBlocks') {
       // A static block the emit put first for the class's own temporaries (`static { _a = KEY; }`) is where
@@ -119,10 +121,10 @@ export function rttiInsertions(
       const next = jsClass.members.find((m: any) => m.pos >= offset);
       const pending =
         next?.kind === k.ClassStaticBlockDeclaration && next.body.statements.length === 1
-          ? temps.pendingAssignments(next.body.statements[0], jsClass)
+          ? temps().pendingAssignments(next.body.statements[0], jsClass)
           : undefined;
       if (pending != null) {
-        edits.push(pendingInsertion(pending, first, temps));
+        edits.push(pendingInsertion(pending, first, temps()));
         edits.push({ offset: next.end, text: `\n${indent}static { this[${temp}] = ${info}; }` });
       } else {
         edits.push({
@@ -151,9 +153,9 @@ export function rttiInsertions(
     // assigned the rtti temporary.
     const statements: any[] = jsClass.parent?.statements ?? [];
     const next = statements.find((st: any) => st.pos >= after);
-    const pending = next != null ? temps.pendingAssignments(next, jsClass) : undefined;
+    const pending = next != null ? temps().pendingAssignments(next, jsClass) : undefined;
     if (pending != null) {
-      edits.push(pendingInsertion(pending, first, temps));
+      edits.push(pendingInsertion(pending, first, temps()));
       edits.push({ offset: next.end, text: `\n${at}${define}` });
     } else {
       edits.push({ offset: after, text: `\n${at}${first};\n${at}${define}` });
