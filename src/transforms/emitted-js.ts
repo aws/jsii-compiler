@@ -215,6 +215,7 @@ export function prependStatements(
     return (
       text === '"use strict";' ||
       /^var __\w+ = \(this && this\.__\w+\)/.test(text) ||
+      /^var _[\w$]+(?:, _[\w$]+)*;$/.test(text) ||
       text.startsWith('Object.defineProperty(exports, "__esModule"') ||
       /^exports\.[\w$]+ = (exports\.[\w$]+ = )*void 0;$/.test(text) ||
       /^exports\.[\w$]+ = [A-Za-z_$][\w$]*;$/.test(text)
