@@ -409,8 +409,24 @@ export class Compiler {
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
-const sortJson = require('sort-json');
+/**
+ * A copy of `value` with the keys of every object sorted, like `sort-json`. That one copies its options for every node
+ * and sorts the indices of every array as text, filling the copy out of order (it took 4s of the 5s of the fingerprint
+ * of aws-cdk-lib's assembly). The arrays here keep their order, which is all its result is for them.
+ */
+function sortJson(value: any): any {
+  if (typeof value !== 'object' || value === null) {
+    return value;
+  }
+  if (Array.isArray(value)) {
+    return value.map(sortJson);
+  }
+  const copy: any = {};
+  for (const key of Object.keys(value).sort()) {
+    copy[key] = sortJson(value[key]);
+  }
+  return copy;
+}
 
 export interface BuildProjectOptions {
   readonly projectRoot: string;
