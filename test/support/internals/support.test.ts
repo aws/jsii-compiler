@@ -1,10 +1,11 @@
 import { EventEmitter } from 'node:events';
-import { get } from 'node:https';
 
 import { emitSupportPolicyInformation } from '../../../src/support';
 import { RELEASE_LINE } from '../../../src/version';
+import { OutputCapture } from '../../output-helpers';
 
-jest.mock('node:https', () => ({ get: jest.fn() }));
+// Only the network is faked: the answers of GitHub. The factory hands over to a function that each test sets.
+jest.mock('node:https', () => ({ get: (...args: unknown[]) => (globalThis as any).__fakeHttpsGet(...args) }));
 
 const RELEASES_URL = 'https://raw.githubusercontent.com/aws/jsii-compiler/main/releases.json';
 
@@ -22,7 +23,7 @@ interface FakeResponse {
  * @param respond what the fake server answers, or an error to be emitted by the request itself.
  */
 function fakeReleasesServer(respond: FakeResponse | { requestEvent: 'abort' | 'timeout' | 'error'; error?: Error }) {
-  return (get as jest.Mock).mockImplementation(((url: URL, callback: (response: EventEmitter) => void) => {
+  (globalThis as any).__fakeHttpsGet = (url: URL, callback: (response: EventEmitter) => void) => {
     const request = Object.assign(new EventEmitter(), {
       end: () => {
         setImmediate(() => {
@@ -46,7 +47,7 @@ function fakeReleasesServer(respond: FakeResponse | { requestEvent: 'abort' | 't
     });
     expect(url.toString()).toBe(RELEASES_URL);
     return request;
-  }) as unknown as typeof get);
+  };
 }
 
 /** Builds a releases document in which the compiler's own release line is in the given state. */
@@ -69,24 +70,23 @@ function releases(options: { endOfSupport?: boolean; supportedUntil?: string; cu
 }
 
 describe('emitSupportPolicyInformation', () => {
-  let consoleError: jest.SpyInstance;
+  let capture: OutputCapture;
 
   beforeEach(() => {
     delete process.env.JSII_SILENCE_SUPPORT_WARNING;
     delete process.env.JSII_DEBUG;
-    consoleError = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    capture = new OutputCapture('error');
     jest.useFakeTimers({ now: new Date('2026-06-15T12:00:00.000Z'), doNotFake: ['setImmediate', 'nextTick'] });
   });
 
   afterEach(() => {
     jest.useRealTimers();
-    jest.restoreAllMocks();
+    capture.stop();
     delete process.env.JSII_SILENCE_SUPPORT_WARNING;
     delete process.env.JSII_DEBUG;
   });
 
-  const printed = () =>
-    consoleError.mock.calls.map(([line]) => String(line).replace(/\u001b\[[\d;]*m/g, '')).join('\n');
+  const printed = () => capture.output;
 
   test('does nothing when silenced', async () => {
     process.env.JSII_SILENCE_SUPPORT_WARNING = '1';

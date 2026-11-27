@@ -184,8 +184,8 @@ project.addDevDeps('typescript@~6.0');
 // at the TypeScript 7 binary so all of them compile with the same version.
 const TSC = 'node_modules/@typescript/native/bin/tsc';
 
-// Run tests with swc instead of ts-jest, which needs the TypeScript 6 compiler API. swc doesn't type-check, so the
-// test suite is type-checked with `tsc` before the tests run (see `typecheckTests`).
+// Run tests with swc instead of ts-jest. swc doesn't type-check, so the test suite is type-checked with `tsc` before
+// the tests run (see `typecheckTests`).
 project.deps.removeDependency('ts-jest');
 project.addDevDeps('@swc/core', '@swc/jest');
 if (project.jest?.config) {

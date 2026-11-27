@@ -209,7 +209,7 @@ describe('jsii diagnostics', () => {
     test.skip('JSII3004 describes an unexpected heritage clause token by its syntax kind', () => {
       const diagnostic = (JsiiDiagnostic.JSII_3004_INVALID_SUPERTYPE.createDetached as any)({
         token: ts.SyntaxKind.Identifier,
-      } as any);
+      } as unknown as ts.HeritageClause);
 
       expect(diagnostic.messageText).toBe('Illegal Identifier clause for an exported API: unnamed base type');
     });
