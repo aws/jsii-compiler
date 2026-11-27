@@ -1,6 +1,7 @@
 import { DiagnosticCategory } from 'typescript';
 
-import { Code, configureCategories } from '../src/jsii-diagnostic';
+import { Code, configureCategories, JsiiDiagnostic } from '../src/jsii-diagnostic';
+import { formatDiagnostic, stripAnsi } from '../src/utils';
 
 describe('jsii diagnostics', () => {
   describe('configureCategories', () => {
@@ -59,5 +60,14 @@ describe('jsii diagnostics', () => {
         });
       }).toThrow(/Unrecognized diagnostic code/);
     });
+  });
+
+  test('prints the code with four digits', () => {
+    const formatted = stripAnsi(
+      formatDiagnostic(JsiiDiagnostic.JSII_0003_MISSING_README.createDetached(), process.cwd()),
+    );
+
+    expect(formatted).toContain('JSII0003: There is no "README.md" file.');
+    expect(formatted).toContain('[metadata/missing-readme]');
   });
 });
