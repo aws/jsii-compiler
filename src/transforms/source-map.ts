@@ -33,10 +33,7 @@ export function insertIntoEmittedJs(jsFile: string, text: string, insertions: re
   // From the last to the first; at the same offset, a deletion before an insertion.
   const sorted = [...insertions].sort((l, r) => r.offset - l.offset || (r.length ?? 0) - (l.length ?? 0));
 
-  let result = text;
-  for (const ins of sorted) {
-    result = result.slice(0, ins.offset) + ins.text + result.slice(ins.offset + (ins.length ?? 0));
-  }
+  const result = applyInsertions(text, sorted);
 
   const url = SOURCE_MAPPING_URL.exec(text)?.[1]?.trim();
   if (url == null) {
@@ -52,6 +49,34 @@ export function insertIntoEmittedJs(jsFile: string, text: string, insertions: re
     fs.writeFileSync(mapFile, updateMapJson(fs.readFileSync(mapFile, 'utf-8'), text, sorted));
   }
   return result;
+}
+
+/**
+ * The text with the insertions (last to first) applied one after the other.
+ * When no insertion reaches into the text of the one applied before it, that
+ * is the same as joining the pieces between them in one pass, which does not
+ * copy the whole text once per insertion.
+ */
+function applyInsertions(text: string, descending: readonly Insertion[]): string {
+  for (let i = 1; i < descending.length; i++) {
+    const ins = descending[i];
+    if (ins.offset + (ins.length ?? 0) > descending[i - 1].offset) {
+      let result = text;
+      for (const each of descending) {
+        result = result.slice(0, each.offset) + each.text + result.slice(each.offset + (each.length ?? 0));
+      }
+      return result;
+    }
+  }
+  const pieces: string[] = [];
+  let cursor = 0;
+  for (let i = descending.length - 1; i >= 0; i--) {
+    const ins = descending[i];
+    pieces.push(text.slice(cursor, ins.offset), ins.text);
+    cursor = ins.offset + (ins.length ?? 0);
+  }
+  pieces.push(text.slice(cursor));
+  return pieces.join('');
 }
 
 /**
@@ -98,9 +123,16 @@ function lineStartsOf(text: string): number[] {
 }
 
 function positionOf(lineStarts: readonly number[], offset: number): { line: number; column: number } {
+  // The last line that starts at or before `offset`.
   let line = 0;
-  while (line + 1 < lineStarts.length && lineStarts[line + 1] <= offset) {
-    line++;
+  let high = lineStarts.length - 1;
+  while (line < high) {
+    const mid = (line + high + 1) >>> 1;
+    if (lineStarts[mid] <= offset) {
+      line = mid;
+    } else {
+      high = mid - 1;
+    }
   }
   return { line, column: offset - lineStarts[line] };
 }
@@ -109,6 +141,8 @@ function positionOf(lineStarts: readonly number[], offset: number): { line: numb
 type Segment = number[];
 
 const BASE64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+/** The value of each base64 digit, by character code (-1 for other characters, as `BASE64.indexOf` gives). */
+const BASE64_VALUES = Array.from({ length: 128 }, (_, code) => BASE64.indexOf(String.fromCharCode(code)));
 
 function decodeMappings(mappings: string): Segment[][] {
   const state = [0, 0, 0, 0, 0];
@@ -148,8 +182,8 @@ function decodeVlq(segment: string): number[] {
   const values: number[] = [];
   let value = 0;
   let shift = 0;
-  for (const char of segment) {
-    const digit = BASE64.indexOf(char);
+  for (let i = 0; i < segment.length; i++) {
+    const digit = BASE64_VALUES[segment.charCodeAt(i)] ?? -1;
     value += (digit & 31) << shift;
     if (digit & 32) {
       shift += 5;
