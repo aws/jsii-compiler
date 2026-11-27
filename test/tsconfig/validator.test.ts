@@ -222,6 +222,34 @@ describe('Built-in matchers', () => {
 });
 
 describe('Object Validator', () => {
+  // https://github.com/aws/jsii-compiler/issues/2987
+  test.each([
+    [Match.eq('es5'), 'es5', 'Expected value not to be "es5", got: "es5"'],
+    [Match.oneOf('amd', 'umd'), 'amd', 'Expected value not to be one of ["amd","umd"], got: "amd"'],
+    [Match.TRUE, true, 'Expected value not to be true, got: true'],
+  ])('describes the violation of a forbidding rule the way the rule reads (%#)', (matcher, value, message) => {
+    const rules = new RuleSet();
+    rules.shouldFail('option', matcher);
+    const validator = new ObjectValidator(rules, 'testData');
+
+    expect(() => validator.validate({ option: value })).toThrow(
+      expect.objectContaining({ violations: [{ field: 'option', message }] }),
+    );
+  });
+
+  // https://github.com/aws/jsii-compiler/issues/2987
+  test('describes an option that must be absent as expected to be absent', () => {
+    const rules = new RuleSet();
+    rules.shouldPass('option', Match.MISSING);
+    const validator = new ObjectValidator(rules, 'testData');
+
+    expect(() => validator.validate({ option: true })).toThrow(
+      expect.objectContaining({
+        violations: [{ field: 'option', message: 'Expected value to be absent, got true' }],
+      }),
+    );
+  });
+
   test('throws for non objects', () => {
     fc.assert(
       fc.property(fc.oneof(fc.anything({ maxDepth: 0 }), fc.array(fc.anything())), (data: any) => {
