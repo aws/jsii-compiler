@@ -1,5 +1,6 @@
 import * as Case from '../case';
 import type { CompilerOptionsJson } from './index';
+import { loadTypeScriptApi } from '../compiler-host';
 
 /**
  * The compiler options jsii always applies, in the JSON form they are written
@@ -73,51 +74,72 @@ export function convertNewLineForJson(newLine: 0 | 1): string {
   }
 }
 
-/** Options whose string values TypeScript matches case-insensitively. */
-const CASE_INSENSITIVE_OPTIONS = [
-  'target',
-  'module',
-  'moduleResolution',
-  'moduleDetection',
-  'jsx',
-  'newLine',
-  'importsNotUsedAsValues',
-];
-
-/** Spellings TypeScript accepts as aliases of a canonical value. */
-const VALUE_ALIASES: { [option: string]: { [alias: string]: string } } = {
-  target: { es6: 'es2015' },
-  module: { es6: 'es2015' },
-  moduleResolution: { node: 'node10' },
-};
+/**
+ * Converts compiler options as TypeScript's config parser returns them (enum
+ * values as numbers, `lib` as file names) to the form a user writes in
+ * `tsconfig.json`, which is the form the rule sets are written against. Values
+ * already in that form (such as {@link BASE_COMPILER_OPTIONS}) are kept.
+ *
+ * Like the classic compiler, enum values are named after their TypeScript enum
+ * member: lower case, or kebab case for `jsx`. That gives `target: "latest"` for
+ * `esnext` and `jsx: "react-js-x"` for `react-jsx` (aws/jsii-compiler#2990); a file
+ * jsii writes uses {@link convertForTsconfigFile} instead.
+ */
+// @TODO(NEXT): `esnext` and `react-jsx(dev)` get wrong names, as on main (aws/jsii-compiler#2990). After 7.1's first
+// release: use the spelling of convertForTsconfigFile here as well.
+export function convertForJson(opt: CompilerOptionsJson): CompilerOptionsJson {
+  return {
+    ...opt,
+    // `lib.es2022.d.ts` -> `es2022`
+    ...convertHelper('lib', opt.lib, (lib) =>
+      Array.isArray(lib) ? lib.map((l) => (typeof l === 'string' ? l.replace(/^lib\.(.*)\.d\.ts$/, '$1') : l)) : lib,
+    ),
+    ...convertHelper('jsx', opt.jsx, (v) => enumName(v, 'JsxEmit', Case.kebab)),
+    ...convertHelper('module', opt.module, (v) => enumName(v, 'ModuleKind')),
+    ...convertHelper('moduleResolution', opt.moduleResolution, (v) => enumName(v, 'ModuleResolutionKind')),
+    ...convertHelper('moduleDetection', opt.moduleDetection, (v) => enumName(v, 'ModuleDetectionKind')),
+    ...convertHelper('target', opt.target, (v) => (v === 1 ? 'es5' : enumName(v, 'ScriptTarget'))),
+    ...convertHelper('newLine', opt.newLine, (v) => enumName(v, 'NewLineKind')),
+  };
+}
 
 /**
- * Normalizes compiler options read from a `tsconfig.json` to the canonical
- * spelling the rule sets are written against: TypeScript matches enum-valued
- * options (`target`, `module`, `lib`, ...) case-insensitively and accepts a few
- * aliases, so `"ES2022"` and `"es2022"` configure the same compilation. The
- * classic in-process parser performed this normalization implicitly; TypeScript 7
- * parses the file on the server, so jsii applies the same rules here before
- * validating or writing options.
+ * {@link convertForJson} with the values `tsc` accepts in a `tsconfig.json` file,
+ * for a tsconfig that jsii writes from parsed options.
  */
-export function convertForJson(opt: CompilerOptionsJson): CompilerOptionsJson {
-  const out: CompilerOptionsJson = { ...opt };
-  for (const name of CASE_INSENSITIVE_OPTIONS) {
-    const value = out[name];
-    if (typeof value === 'string') {
-      const lower = value.toLowerCase();
-      out[name] = VALUE_ALIASES[name]?.[lower] ?? lower;
-    }
+export function convertForTsconfigFile(opt: CompilerOptionsJson): CompilerOptionsJson {
+  const ts = loadTypeScriptApi();
+  const out = convertForJson(opt);
+  if (opt.target === ts.ScriptTarget.ESNext) {
+    out.target = 'esnext';
   }
-  if (Array.isArray(out.lib)) {
-    out.lib = out.lib.map((lib) =>
-      typeof lib === 'string'
-        ? lib
-            .toLowerCase()
-            .replace(/^lib\./, '')
-            .replace(/\.d\.ts$/, '')
-        : lib,
-    );
+  if (opt.jsx === ts.JsxEmit.ReactJSX || opt.jsx === ts.JsxEmit.ReactJSXDev) {
+    out.jsx = opt.jsx === ts.JsxEmit.ReactJSX ? 'react-jsx' : 'react-jsxdev';
   }
   return out;
+}
+
+/** Converts the value of one option; like the classic compiler, a falsy value (`module: 0`) is kept as it is. */
+function convertHelper(name: string, value: unknown, converter: (value: unknown) => unknown): CompilerOptionsJson {
+  if (!value) {
+    return {};
+  }
+  return { [name]: converter(value) };
+}
+
+/**
+ * The name of the TypeScript 7 enum member for a numeric value (`NewLineKind`
+ * names are `CRLF` and `LF`). Other values are kept. TypeScript 7 has no `ES5`
+ * target, but its parser still takes `target: "es5"` (value 1): the caller names it.
+ */
+function enumName(
+  value: unknown,
+  kind: 'JsxEmit' | 'ModuleKind' | 'ModuleResolutionKind' | 'ModuleDetectionKind' | 'ScriptTarget' | 'NewLineKind',
+  converter = (v: string) => v.toLowerCase(),
+): unknown {
+  if (typeof value !== 'number') {
+    return value;
+  }
+  const name = loadTypeScriptApi()[kind][value];
+  return typeof name === 'string' ? converter(name) : value;
 }

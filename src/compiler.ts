@@ -16,7 +16,7 @@ import * as literate from './literate';
 import { ProjectInfo } from './project-info';
 import { DeprecationWarningsInjector, WARNINGSCODE_FILE_NAME } from './transforms/deprecation-warnings';
 import { TypeScriptConfig, TypeScriptConfigValidationRuleSet } from './tsconfig';
-import { BASE_COMPILER_OPTIONS } from './tsconfig/compiler-options';
+import { BASE_COMPILER_OPTIONS, convertForJson, convertForTsconfigFile } from './tsconfig/compiler-options';
 import { parseTsconfigJson, readTypeScriptConfigFile, TsconfigReadError } from './tsconfig/read';
 import { TypeScriptConfigValidator } from './tsconfig/tsconfig-validator';
 import { ValidationError } from './tsconfig/validator';
@@ -213,7 +213,11 @@ export class Compiler {
         const configName = path.relative(this.projectRoot, this.configPath);
         try {
           const validator = new TypeScriptConfigValidator(rules);
-          validator.validate(config);
+          validator.validate({
+            ...config,
+            // convert the internal format to the user format which is what the validator operates on
+            compilerOptions: convertForJson(config.compilerOptions),
+          });
         } catch (error: unknown) {
           if (error instanceof ValidationError) {
             utils.logDiagnostic(
@@ -418,8 +422,8 @@ export interface BuildProjectOptions {
    */
   readonly generatedTsconfig?: boolean;
   /**
-   * The user-provided tsconfig as jsii read it: `extends` resolved, bases that
-   * cannot be read, parsed or that are circular skipped (like the classic compiler).
+   * The user-provided tsconfig as TypeScript's parser read it: `extends` resolved, bases that
+   * cannot be read, parsed or that are circular skipped, rejected options left out.
    */
   readonly userTsconfig?: TypeScriptConfig;
   readonly stripDeprecated?: boolean;
@@ -481,12 +485,12 @@ function hasSkippedConfigErrors(program: any, tsconfigPath: string): boolean {
 }
 
 /**
- * A tsconfig text without `extends` for a configuration jsii already resolved.
- * Its path options are absolute; `pathsBasePath` is internal, so `paths` are made
- * absolute against it instead.
+ * A tsconfig text for a configuration TypeScript's parser already resolved: its
+ * options (path options are absolute; `pathsBasePath` is internal, so `paths` are
+ * made absolute against it instead) and its source files.
  */
 function flattenTsconfig(config: TypeScriptConfig): string {
-  const { pathsBasePath, ...compilerOptions } = config.compilerOptions as any;
+  const { pathsBasePath, ...compilerOptions } = convertForTsconfigFile(config.compilerOptions) as any;
   if (compilerOptions.paths != null && compilerOptions.baseUrl == null && pathsBasePath != null) {
     compilerOptions.paths = Object.fromEntries(
       Object.entries(compilerOptions.paths as Record<string, string[]>).map(([k, v]) => [
@@ -495,8 +499,8 @@ function flattenTsconfig(config: TypeScriptConfig): string {
       ]),
     );
   }
-  const { extends: _extends, ...rest } = config;
-  return JSON.stringify({ ...rest, compilerOptions });
+  // `include` holds the parsed file names, as with the classic compiler.
+  return JSON.stringify({ files: config.include ?? [], compilerOptions });
 }
 
 /** The program reports config paths as absolute paths; record them relative to the project, like the classic compiler. */
