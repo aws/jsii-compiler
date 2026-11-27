@@ -76,9 +76,7 @@ describe('Compiler configuration', () => {
     ).toEqual(['ERROR']);
   });
 
-  // @TODO(ts7): the TypeScript 7 compiler reports no diagnostic (and does not skip the emit) when it cannot write
-  // an output file; main reports TS5033. Re-enable once the emit diagnostics are passed on.
-  test.skip('reports an error when the TypeScript output cannot be written', () => {
+  test('reports an error when the TypeScript output cannot be written', () => {
     // A directory where the compiler wants to write "index.js" makes the emit fail.
     mkdirSync(join(sourceDir, 'index.js'));
     const compiler = new Compiler({ projectInfo: makeProjectInfo(sourceDir, 'index.d.ts') });

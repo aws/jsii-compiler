@@ -70,8 +70,7 @@ describe('Compiler configuration', () => {
     );
   });
 
-  // @TODO(ts7): the TypeScript 7 compiler does not report TS5033 (fix on branch emit-write-errors)
-  test.skip('reports an error when the TypeScript output cannot be written', () => {
+  test('reports an error when the TypeScript output cannot be written', () => {
     // A directory where the compiler wants to write "index.js" makes the emit fail.
     const result = compileJsiiForTest({ 'index.ts': SOURCE, 'index.js/keep': '' }, { captureDiagnostics: true });
 

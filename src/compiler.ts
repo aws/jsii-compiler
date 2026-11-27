@@ -684,13 +684,14 @@ export function buildProject(options: BuildProjectOptions): BuildProjectResult {
     // build (emitSkipped + a synthetic diagnostic); the assembly file is left on
     // disk to aid debugging, but the exit status reflects the error.
     let emittedFiles: string[] = [];
+    let emitDiagnostics: readonly any[] = [];
     let emitFailed = false;
     try {
       if (tsHasErrors && programOptions.noEmitOnError) {
         // Errors TypeScript 7 does not know about (above) must stop the emit too.
         throw new Error('TypeScript emit was skipped');
       }
-      ({ emittedFiles } = emitProject(host.ts, project, {
+      ({ emittedFiles, diagnostics: emitDiagnostics } = emitProject(host.ts, project, {
         projectRoot,
         assembly: assembly ?? ({ version: projectInfo.version, types: {} } as unknown as spec.Assembly),
         outDir: tscOutDir,
@@ -708,6 +709,12 @@ export function buildProject(options: BuildProjectOptions): BuildProjectResult {
         diagnostics.push(syntheticErrorDiagnostic(`ts backend: emit pipeline failed: ${(err as Error).message}`));
       }
     }
+
+    // Like the classic compiler, the diagnostics of the emit itself (TS5033 when an output file cannot be written)
+    // are reported, and an error among them fails the build.
+    const emitted = emitDiagnostics.map((d) => toDiagnostic(d, readSourceFile));
+    logFailure('Compilation', emitted);
+    diagnostics.push(...emitted);
 
     const failed = emitFailed || diagnostics.some((d) => d.category === DiagnosticCategory.Error);
     return {
@@ -731,6 +738,15 @@ export function buildProject(options: BuildProjectOptions): BuildProjectResult {
       }
     }
     host.close();
+  }
+}
+
+/** The text of a file a diagnostic points into, if it can be read. */
+function readSourceFile(fileName: string): string | undefined {
+  try {
+    return fs.readFileSync(fileName, 'utf8');
+  } catch {
+    return undefined;
   }
 }
 
