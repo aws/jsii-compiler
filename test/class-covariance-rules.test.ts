@@ -221,7 +221,7 @@ describe('not allowed', () => {
 
   test('a different primitive', () => {
     expect(overrideReturning('string | number', 'string')).toEqual([
-      '"testpkg.B#m" changes the return type to "string" when overriding testpkg.A. Change it to "string | number"',
+      '"testpkg.B#m" changes the return type to "string" when overriding testpkg.A. Change it to "number | string"',
     ]);
   });
 
