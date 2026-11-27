@@ -5,7 +5,21 @@ import * as path from 'node:path';
 import { dropRejectedOptions } from './classic-compiler-options';
 import { convertForJson } from './compiler-options';
 import type { CompilerOptionsJson, TypeScriptConfig } from './index';
+import { loadTypeScriptApi } from '../compiler-host';
 import { JsiiError } from '../utils';
+
+/**
+ * A requested tsconfig file that TypeScript cannot read or parse, with
+ * TypeScript's error (a diagnostic of the TypeScript 7 API, such as TS1005 or
+ * TS5083), as the classic compiler got it from `ts.readConfigFile`.
+ */
+export class TsconfigReadError extends JsiiError {
+  public constructor(public readonly configPath: string, public readonly diagnostic: any) {
+    super(`Failed to read tsconfig at "${configPath}": ${diagnostic.text ?? diagnostic.messageText}`);
+    // JsiiError sets its own prototype; restore this one so `instanceof TsconfigReadError` works.
+    Object.setPrototypeOf(this, TsconfigReadError.prototype);
+  }
+}
 
 /**
  * Parses a `tsconfig.json` document. TypeScript accepts comments and trailing
@@ -16,6 +30,33 @@ export function parseTsconfigJson(text: string, fileName: string): any {
     return JSON.parse(stripJsonComments(text));
   } catch (e: any) {
     throw new JsiiError(`Failed to parse "${fileName}": ${e.message}`);
+  }
+}
+
+/**
+ * The JSON of the requested tsconfig file. What `JSON.parse` cannot take (or
+ * takes but is not an object) goes to TypeScript's own parser, as with
+ * `ts.readConfigFile` in the classic compiler: it accepts some files `JSON.parse`
+ * rejects (an empty one), and reports TypeScript's error for the others.
+ */
+function readRequestedConfig(absolutePath: string): any {
+  try {
+    const own = JSON.parse(stripJsonComments(fs.readFileSync(absolutePath, 'utf8')));
+    if (own != null && typeof own === 'object' && !Array.isArray(own)) {
+      return own;
+    }
+  } catch {
+    // TypeScript's parser decides below.
+  }
+  const api = new (loadTypeScriptApi().API)({ cwd: path.dirname(absolutePath) });
+  try {
+    const { config, error } = api.readConfigFile(absolutePath);
+    if (error != null) {
+      throw new TsconfigReadError(absolutePath, error);
+    }
+    return config ?? {};
+  } finally {
+    api.close();
   }
 }
 
@@ -70,7 +111,7 @@ export function readTypeScriptConfigFile(configPath: string, baseDir?: string): 
   const absolutePath = path.resolve(configPath);
   const seen = new Set<string>();
   const rootDir = baseDir ?? path.dirname(absolutePath);
-  const result = readOne(absolutePath, seen, path.dirname(absolutePath), rootDir);
+  const result = readOne(absolutePath, seen, path.dirname(absolutePath), rootDir, true);
   delete (result as any).extends;
   return {
     ...result,
@@ -78,18 +119,29 @@ export function readTypeScriptConfigFile(configPath: string, baseDir?: string): 
   };
 }
 
-function readOne(absolutePath: string, seen: Set<string>, targetDir: string, baseDir?: string): TypeScriptConfig {
+function readOne(
+  absolutePath: string,
+  seen: Set<string>,
+  targetDir: string,
+  baseDir?: string,
+  requested = false,
+): TypeScriptConfig {
   if (seen.has(absolutePath)) {
     throw new JsiiError(`Circular "extends" in tsconfig: ${absolutePath}`);
   }
   seen.add(absolutePath);
-  let text: string;
-  try {
-    text = fs.readFileSync(absolutePath, 'utf8');
-  } catch (e: any) {
-    throw new JsiiError(`Failed to read tsconfig at "${absolutePath}": ${e.message}`);
+  let own: any;
+  if (requested) {
+    own = readRequestedConfig(absolutePath);
+  } else {
+    let text: string;
+    try {
+      text = fs.readFileSync(absolutePath, 'utf8');
+    } catch (e: any) {
+      throw new JsiiError(`Failed to read tsconfig at "${absolutePath}": ${e.message}`);
+    }
+    own = parseTsconfigJson(text, absolutePath) ?? {};
   }
-  const own = parseTsconfigJson(text, absolutePath) ?? {};
   const ownDir = baseDir ?? path.dirname(absolutePath);
 
   let merged: TypeScriptConfig = { compilerOptions: {} };

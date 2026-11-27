@@ -55,10 +55,7 @@ describe('Compiler configuration', () => {
     );
   });
 
-  // @TODO(ts7): the TypeScript 7 compiler throws `Failed to parse "<path>": <JSON error>` from src/tsconfig/read.ts
-  // and logs no diagnostic; main throws `Failed to load tsconfig at <path>` and logs an error. Re-enable once the
-  // message and the log are the same as main's.
-  test.skip('fails when the user-provided tsconfig cannot be read, and logs why', () => {
+  test('fails when the user-provided tsconfig cannot be read, and logs why', () => {
     writeFileSync(join(sourceDir, 'tsconfig.dev.json'), '{ this is not json');
 
     expect(

@@ -1,10 +1,11 @@
 import { TypeScriptConfig, TypeScriptConfigValidationRuleSet } from '.';
 import { convertForJson } from './compiler-options';
-import { readTypeScriptConfigFile } from './read';
+import { readTypeScriptConfigFile, TsconfigReadError } from './read';
 import generated from './rulesets/generated.public';
 import minimal from './rulesets/minimal.public';
 import strict from './rulesets/strict.public';
 import { Match, ObjectValidator, RuleDescription, RuleSet, RuleType, ValidationError, Violation } from './validator';
+import { JsiiError } from '../utils';
 
 const RuleSets: {
   [name in TypeScriptConfigValidationRuleSet]: RuleSet;
@@ -86,7 +87,17 @@ export function describeRuleSet(ruleSet: TypeScriptConfigValidationRuleSet): Rul
  * @returns the parsed TypeScript configuration
  */
 export function readTypeScriptConfig(configPath: string): TypeScriptConfig {
-  return readTypeScriptConfigFile(configPath);
+  try {
+    return readTypeScriptConfigFile(configPath);
+  } catch (e) {
+    if (e instanceof TsconfigReadError) {
+      // The classic wording names the path as given.
+      throw new JsiiError(
+        `Failed to read tsconfig at "${configPath}": ${e.diagnostic.text ?? e.diagnostic.messageText}`,
+      );
+    }
+    throw e;
+  }
 }
 
 /**
