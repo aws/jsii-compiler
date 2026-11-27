@@ -1773,6 +1773,7 @@ export class Assembler {
             initializer.protected = true;
           }
         }
+        this._verifyConsecutiveOptionals(effectiveCtor, initializer.parameters);
       }
       // strada: initializer docs come from the constructor symbol's JSDoc
       // (summary/remarks + tags like @default), same as any member.
@@ -1796,6 +1797,55 @@ export class Assembler {
     }
 
     this._visitMembers(sym, decl, jsiiType, false, erasedClassBases);
+    this._verifyNoStaticMixing(jsiiType, decl);
+  }
+
+  /** Classic: JSII3009 for an optional parameter followed by a required one (the parameter becomes required). */
+  private _verifyConsecutiveOptionals(node: any, parameters?: spec.Parameter[]): void {
+    if (!parameters) {
+      return;
+    }
+    const remaining = [...parameters].reverse();
+    while (remaining.length > 0) {
+      const current = remaining.pop()!;
+      if (current.optional) {
+        const offender = remaining.find((p) => !p.optional && !p.variadic);
+        if (offender == null) {
+          continue;
+        }
+        this._report(JsiiDiagnostic.JSII_3009_OPTIONAL_PARAMETER_BEFORE_REQUIRED, node, current, offender);
+        delete (current as any).optional;
+      }
+    }
+  }
+
+  /**
+   * Classic `_verifyNoStaticMixing`: a class may not declare a member both static and not (JSII5013), nor with a
+   * staticness that differs from a member of the same name in a base class (JSII5014, once all types are known).
+   */
+  private _verifyNoStaticMixing(klass: spec.ClassType, decl: any): void {
+    const members = [...(klass.methods ?? []), ...(klass.properties ?? [])];
+    const nonStatics = new Set(members.filter((x) => !x.static).map((x) => x.name));
+    for (const name of new Set(members.filter((x) => x.static).map((x) => x.name))) {
+      if (nonStatics.has(name)) {
+        this._report(JsiiDiagnostic.JSII_5013_STATIC_INSTANCE_CONFLICT, decl, name, klass);
+      }
+    }
+    if (klass.base == null) {
+      return;
+    }
+    this.deferred.push(() => {
+      const classMembers = typeMembers(klass);
+      for (let base = this._dereferenceType(klass.base!); base != null && spec.isClassType(base); ) {
+        for (const [name, baseMember] of Object.entries(typeMembers(base))) {
+          const member = classMembers[name];
+          if (member != null && !!baseMember.static !== !!member.static) {
+            this._report(JsiiDiagnostic.JSII_5014_INHERITED_STATIC_CONFLICT, decl, member, klass, baseMember, base);
+          }
+        }
+        base = base.base != null ? this._dereferenceType(base.base) : undefined;
+      }
+    });
   }
 
   // -------------------------------------------------------------------------
@@ -2184,6 +2234,7 @@ export class Assembler {
       if (params.some((p: any) => p.variadic)) {
         m.variadic = true;
       }
+      this._verifyConsecutiveOptionals(decl, m.parameters);
       const opt: { optional?: boolean } = {};
       const retType = this.checker.getReturnTypeOfSignature(sig);
       // Promise-returning methods: jsii marks them `async`; `_typeReference` models
@@ -3432,6 +3483,18 @@ function isConstantCase(x: string) {
 }
 
 /** Port of the classic Assembler's `noEmptyDict`. */
+/** The members of a type by name; a method wins over a property of the same name (classic `typeMembers`). */
+function typeMembers(jsiiType: spec.InterfaceType | spec.ClassType): Record<string, spec.Property | spec.Method> {
+  const ret: Record<string, spec.Property | spec.Method> = {};
+  for (const prop of jsiiType.properties ?? []) {
+    ret[prop.name] = prop;
+  }
+  for (const method of jsiiType.methods ?? []) {
+    ret[method.name ?? ''] = method;
+  }
+  return ret;
+}
+
 function containsIntersection(type: spec.TypeReference): boolean {
   if (spec.isIntersectionTypeReference(type)) {
     return true;
