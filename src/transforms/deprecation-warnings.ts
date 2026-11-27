@@ -149,6 +149,8 @@ export class DeprecationWarningsInjector {
         if (member.kind === k.Constructor && !hasConstructor(tsClass, k)) {
           // Made up by the emit (field initializers without `useDefineForClassFields`): not in the `.ts` file,
           // so the classic transformer never saw it.
+          // @TODO(NEXT): so `new` of a deprecated class without a constructor of its own never warns. After 7.1's
+          // first release, warn here too (and consider classes the emit gives no constructor at all).
           continue;
         }
         const name: string | undefined = member.name?.getText(jsSource);

@@ -162,6 +162,9 @@ export function rewrittenBodyEdits(jsText: string, jsSource: any, k: any): Inser
  * new list. A comment on the line of the last element is its trailing comment
  * and is kept.
  */
+// @TODO(NEXT): TypeScript 6 lost these comments only as a side effect of a transformer replacing the list
+// (https://github.com/aws/jsii-compiler/issues/3001); nothing needs it. After 7.1's first release, keep the
+// comments: delete this function and its calls.
 export function dropCommentsBeforeClose(
   jsText: string,
   elements: readonly any[],
@@ -194,6 +197,10 @@ export function dropCommentsBeforeClose(
  *   top of the file) move after them too, and comments at the end of the file are
  *   dropped (their positions are lost with the new statement list).
  */
+// @TODO(NEXT): moving the prologue directives (they stop being directives), moving or dropping the header comments
+// and dropping the comments at the end of the file are side effects of TypeScript 6 printing a new statement list.
+// After 7.1's first release, insert the added statements after the preamble and leave directives and comments where
+// the emit put them.
 export function prependStatements(
   jsText: string,
   jsSource: any,

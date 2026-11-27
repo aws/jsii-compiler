@@ -76,6 +76,7 @@ export function rttiInsertions(
     const close = jsClass.end - 1;
     const indent = `${indentationAt(jsText, jsClass.getStart(jsSource))}    `;
     // The member list was replaced, so the printer lost the comments before the closing `}`.
+    // @TODO(NEXT): a TypeScript 6 side effect (see dropCommentsBeforeClose); keep them after 7.1's first release.
     edits.push(...dropCommentsBeforeClose(jsText, members, members.pos, close, `\n${indentationAt(jsText, close)}`));
     // The static was the first member when the TypeScript transforms ran, and they put their own members
     // before it: the static blocks of ES decorators, then the fields of parameter properties.
@@ -83,6 +84,7 @@ export function rttiInsertions(
     const madeUp = members[0]?.kind === file.k.Constructor && !hasConstructor(tsClass, file.k) ? members[0] : undefined;
     if (madeUp?.body != null) {
       // The emit moves the comments before the class's `}` into the constructor it made up; they were lost too.
+      // @TODO(NEXT): a TypeScript 6 side effect; keep them after 7.1's first release.
       const body = madeUp.body;
       const replacement = `\n${indentationAt(jsText, madeUp.getStart(jsSource))}`;
       edits.push(
@@ -165,6 +167,8 @@ export function rttiInsertions(
  * list, after the assignments of private-name storage (`_Foo_x = new WeakMap()`)
  * and before those of other temporaries, which is the order TypeScript 6 used.
  */
+// @TODO(NEXT): only reproduces TypeScript 6's statement layout (see Temporaries); after 7.1's first release, assign the
+// rtti temporary in a statement of its own.
 function pendingInsertion(pending: readonly any[], first: string, temps: Temporaries): Insertion {
   const before = pending.find((assignment) => isCounterName(assignment.left.text) && temps.isTemporary(assignment));
   if (before != null) {
@@ -262,6 +266,9 @@ interface Scope {
  * skipping the identifiers of the `.ts` file and the names of enclosing scopes.
  * The emit's own counter temporaries are renamed to match.
  */
+// @TODO(NEXT): renaming the emit's own temporaries and sharing their `var` and assignment statement only reproduces
+// how the TypeScript 6 printer happened to name and order them. After 7.1's first release, give the rtti temporary a
+// name of its own (or a `const` next to the class) and leave the emit's temporaries as they are.
 class Temporaries {
   private readonly scopes = new Map<any, Scope>();
   private identifiers?: Set<string>;
