@@ -104,6 +104,7 @@ const YELLOW = '\u001b[93m';
 const BLUE = '\u001b[94m';
 const CYAN = '\u001b[96m';
 const GREY = '\u001b[90m';
+const GREEN = '\u001b[92m';
 const GUTTER_STYLE = '\u001b[7m';
 const RESET = '\u001b[0m';
 
@@ -120,11 +121,10 @@ function categoryColor(category: DiagnosticCategory): (s: string) => string {
     case DiagnosticCategory.Warning:
       return colored(YELLOW);
     case DiagnosticCategory.Suggestion:
-      // Like the classic formatter (TypeScript's `getCategoryFormat`), which refuses suggestions: printing one with
-      // -vvv makes the CLI fail (aws/jsii-compiler#3002).
-      // @TODO(NEXT): failing on a suggestion only copies a TypeScript 6 assertion. After 7.1's first release: print it
-      // in green, as `ts.DiagnosticCategory.Suggestion` would.
-      throw new Error('Debug Failure. Should never get an Info diagnostic on the command line.');
+      // The classic formatter refuses suggestions: main fails with "Debug Failure" when -vvv prints one
+      // (aws/jsii-compiler#3002). The TypeScript 7 compiler deliberately does not copy that crash and prints the
+      // suggestion, in the color `ts.DiagnosticCategory.Suggestion` would use.
+      return colored(GREEN);
     default:
       return colored(BLUE);
   }
