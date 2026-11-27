@@ -333,7 +333,7 @@ export class Assembler {
       throw new Error(`ts: entrypoint not found: ${this.entry}`);
     }
     const moduleSymbol = this.checker.getSymbolAtLocation(entrySf);
-    const moduleExports = this.checker.getExportsOfModule(moduleSymbol);
+    const moduleExports = this._exportsOfModule(moduleSymbol);
 
     this._registerModuleExports(moduleExports);
 
@@ -767,13 +767,53 @@ export class Assembler {
   // module walk + type registration (strada: _registerNamespaces / _visitNode)
   // -------------------------------------------------------------------------
 
+  /**
+   * The exports of a module in the order of the classic `getExportsOfModule`: the module's own exports first, then
+   * the names that its `export * from` declarations add, depth first. The TypeScript 7 checker lists the `export *`
+   * names first; jsii visits types (and so orders `assembly.types` and the deprecation validators) in this order.
+   */
+  private _exportsOfModule(moduleSym: any): any[] {
+    const exports: any[] = this.checker.getExportsOfModule(moduleSym);
+    const rank = new Map<string, number>();
+    const visited = new Set<unknown>();
+    const visit = (sym: any): void => {
+      if (sym == null || visited.has(sym.id)) {
+        return;
+      }
+      visited.add(sym.id);
+      const stars: any[] = [];
+      for (const [name, own] of sym.getExports?.() ?? []) {
+        if (name === '__export') {
+          stars.push(own);
+        } else if (!rank.has(name)) {
+          rank.set(name, rank.size);
+        }
+      }
+      for (const star of stars) {
+        for (const handle of star.declarations ?? []) {
+          const specifier = handle.resolve(this.project)?.moduleSpecifier;
+          visit(specifier && this.checker.getSymbolAtLocation(specifier));
+        }
+      }
+    };
+    visit(moduleSym);
+    // Names not found by the walk keep their relative order, after the others.
+    const rankOf = (e: any) => rank.get(e.name) ?? rank.size;
+    return exports
+      .map((e, index) => ({ e, index }))
+      .sort((a, b) => rankOf(a.e) - rankOf(b.e) || a.index - b.index)
+      .map(({ e }) => e);
+  }
+
   private _registerModuleExports(moduleExports: any[]): void {
     const { SyntaxKind, SymbolFlags } = this.ts;
     const candidates = new Map<
       unknown,
-      Array<{ name: string; prefix: string; moduleDir: string; sym: any; aliasDeclH?: any }>
+      Array<{ name: string; prefix: string; moduleDir: string; sym: any; aliasDeclH?: any; seq: number }>
     >();
     const visitedModules = new Set<string>();
+    // The order in which exports are seen: the classic assembler visited (and registered) types in this order.
+    let seq = 0;
 
     const collect = (mExports: any[], prefix: string, moduleDir: string): void => {
       for (const e of mExports) {
@@ -797,7 +837,7 @@ export class Assembler {
           // (strada's ExportSpecifier resolution lands on an ImportSpecifier,
           // which no _visitNode branch handles — silently dropped).
           const aliasDeclH = (e.flags & SymbolFlags.Alias) !== 0 ? e.declarations?.[0] : undefined;
-          candidates.get(sym.id)!.push({ name: e.name, prefix, moduleDir, sym, aliasDeclH });
+          candidates.get(sym.id)!.push({ name: e.name, prefix, moduleDir, sym, aliasDeclH, seq: seq++ });
         } else if (
           kind === SyntaxKind.SourceFile ||
           (sym.flags & SymbolFlags.ValueModule) !== 0 ||
@@ -829,7 +869,7 @@ export class Assembler {
           this.submoduleSymbols.set(subFqn, e);
           this.submodules[subFqn] = this._submoduleSpec(e, sym, kind === SyntaxKind.SourceFile);
           const subDir = path.dirname(sym.declarations?.[0]?.path ?? moduleDir);
-          collect(this.checker.getExportsOfModule(sym), subFqn, subDir);
+          collect(this._exportsOfModule(sym), subFqn, subDir);
         } else {
           this._reportUnsupportedExport(sym, declH);
         }
@@ -845,7 +885,7 @@ export class Assembler {
     // re-export, e.g. aws_docdb re-exporting aws_rds.CaCertificate) gets a full
     // duplicate type entry under each such fqn — strada emits one entry per
     // namespace visit.
-    const registrations: Array<{ sym: any; name: string; fqn: string }> = [];
+    const registrations: Array<{ sym: any; name: string; fqn: string; seq: number }> = [];
     for (const [, cands] of candidates) {
       let best = cands[0];
       let bestLen = -1;
@@ -859,7 +899,7 @@ export class Assembler {
         }
       }
       const bestFqn = `${best.prefix}.${best.name}`;
-      registrations.push({ sym: best.sym, name: best.name, fqn: bestFqn });
+      registrations.push({ sym: best.sym, name: best.name, fqn: bestFqn, seq: best.seq });
       const extraFqns = new Set<string>([bestFqn]);
       for (const c of cands) {
         const fqn = `${c.prefix}.${c.name}`;
@@ -888,15 +928,27 @@ export class Assembler {
           continue;
         }
         extraFqns.add(fqn);
-        registrations.push({ sym: c.sym, name: c.name, fqn });
+        registrations.push({ sym: c.sym, name: c.name, fqn, seq: c.seq });
       }
     }
     // Batch-prefetch docs for all candidate type symbols (used by the
     // isInternal/shouldStrip checks inside _registerType).
     this._prefetchDocs(registrations.map((r) => r.sym));
+    // Register canonical fqns first (references resolve to the first registration of a symbol), then visit the
+    // types in the order their exports were seen; nested types stay right after their parent.
+    const seqOf = new Map<unknown, number>();
     for (const r of registrations) {
+      const start = this.exported.length;
       this._registerType(r.sym, r.name, r.fqn);
+      for (const entry of this.exported.slice(start)) {
+        seqOf.set(entry, r.seq);
+      }
     }
+    const visitOrder = this.exported
+      .map((entry, index) => ({ entry, index }))
+      .sort((x, y) => (seqOf.get(x.entry) ?? 0) - (seqOf.get(y.entry) ?? 0) || x.index - y.index)
+      .map(({ entry }) => entry);
+    this.exported.splice(0, this.exported.length, ...visitOrder);
   }
 
   private _registerType(sym: any, name: string, fqn: string): void {
