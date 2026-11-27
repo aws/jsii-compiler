@@ -73,8 +73,8 @@ describe('accessors', () => {
 });
 
 describe('JSII5010 / JSII5015 re-declaration of interface members', () => {
-  // This documents current behavior, see https://github.com/aws/jsii-compiler/issues/2970
-  test('a property that changes its shape is not reported as JSII5015, the validator reports JSII5010 instead', () => {
+  // See https://github.com/aws/jsii-compiler/issues/2970
+  test('a property that changes its shape is reported as JSII5015', () => {
     expect(
       compileForDiagnostics(`
         export interface IA {
@@ -84,6 +84,8 @@ describe('JSII5010 / JSII5015 re-declaration of interface members', () => {
           foo: string;
         }
       `),
-    ).toEqual(['JSII5010: "testpkg.IB#foo" turns mutable when implementing testpkg.IA. Make it readonly']);
+    ).toEqual([
+      'JSII5015: Interface "testpkg.IB" re-declares member "foo" with a different type or signature. Re-declared members must match the inherited declaration exactly, as C# interfaces cannot narrow inherited members.',
+    ]);
   });
 });

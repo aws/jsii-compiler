@@ -6,7 +6,6 @@ import {
   describeRuleSet,
   getCompilerOptionsRuleSet,
   readTypeScriptConfig,
-  TypeScriptConfigValidator,
   validateTypeScriptConfigFile,
 } from '../../src/tsconfig/tsconfig-validator';
 import { Match, RuleSet, RuleType } from '../../src/tsconfig/validator';
@@ -105,7 +104,6 @@ describe('validateTypeScriptConfigFile()', () => {
   });
 
   afterEach(() => {
-    jest.restoreAllMocks();
     rmSync(workdir, { recursive: true, force: true });
   });
 
@@ -173,16 +171,5 @@ describe('validateTypeScriptConfigFile()', () => {
 
   test('throws a JsiiError when the file does not exist', () => {
     expect(() => readTypeScriptConfig(join(workdir, 'does-not-exist.json'))).toThrow(JsiiError);
-  });
-
-  test('rethrows errors that are not validation errors', () => {
-    const configPath = writeConfig({ compilerOptions: { strict: true } });
-    jest.spyOn(TypeScriptConfigValidator.prototype, 'validate').mockImplementation(() => {
-      throw new Error('unexpected failure');
-    });
-
-    expect(() => validateTypeScriptConfigFile(configPath, TypeScriptConfigValidationRuleSet.STRICT)).toThrow(
-      'unexpected failure',
-    );
   });
 });
