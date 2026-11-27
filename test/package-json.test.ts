@@ -1,6 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { compileJsiiForTest, TestWorkspace } from '../src';
+import { captureOutput } from './output-helpers';
 
 /**
  * The compiler reads the project's `package.json` before it compiles anything. These tests compile a small project
@@ -106,15 +107,13 @@ describe('package.json validation', () => {
     });
 
     test('warns when "deprecated" is set but the stability is not "deprecated"', () => {
-      const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
-      try {
-        const { assembly } = compileWith({ deprecated: 'use something else', stability: 'stable' });
+      const { result, output } = captureOutput(
+        () => compileWith({ deprecated: 'use something else', stability: 'stable' }),
+        'warn',
+      );
 
-        expect(assembly.docs?.stability).toBe('stable');
-        expect(warn).toHaveBeenCalledWith(expect.stringContaining('Package is deprecated (use something else)'));
-      } finally {
-        warn.mockRestore();
-      }
+      expect(result.assembly.docs?.stability).toBe('stable');
+      expect(output).toContain('Package is deprecated (use something else)');
     });
 
     test('rejects an unknown stability', () => {
@@ -169,14 +168,9 @@ describe('dependencies', () => {
   });
 
   test('rejects a dependency for which no jsii assembly can be found', () => {
-    const error = jest.spyOn(console, 'error').mockImplementation(() => undefined);
-    try {
-      expect(() =>
-        compileWith({ dependencies: { 'not-installed': '^1.0.0' }, peerDependencies: { 'not-installed': '^1.0.0' } }),
-      ).toThrow(/Unable to locate jsii assembly for "not-installed"/);
-    } finally {
-      error.mockRestore();
-    }
+    expect(() =>
+      compileWith({ dependencies: { 'not-installed': '^1.0.0' }, peerDependencies: { 'not-installed': '^1.0.0' } }),
+    ).toThrow(/Unable to locate jsii assembly for "not-installed"/);
   });
 
   describe('local "file:" dependencies', () => {
