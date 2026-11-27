@@ -45,7 +45,7 @@ describe('Rule Set', () => {
 
   test('ignores rules of an unknown type when looking for required fields', () => {
     const rules = ruleSet();
-    rules.rules.push({ field: 'unknown', matcher: Match.ANY, type: 'unknown' as RuleType });
+    rules.rules.push({ field: 'unknown', matcher: Match.ANY, type: 'unknown' as unknown as RuleType });
 
     expect(rules.requiredFields).toEqual(['mustBeTrue', 'mustNotBeMissing']);
   });
@@ -120,7 +120,7 @@ describe('Object Validator rules', () => {
 
   test('ignores rules of an unknown type', () => {
     const ruleSet = rules();
-    ruleSet.rules.push({ field: 'unknown', matcher: () => false, type: 'unknown' as RuleType });
+    ruleSet.rules.push({ field: 'unknown', matcher: () => false, type: 'unknown' as unknown as RuleType });
 
     expect(violationsOf(ruleSet, { mustBeTrue: true })).toEqual([]);
   });
