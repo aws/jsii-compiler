@@ -78,6 +78,12 @@ describe('jsii compile', () => {
     expect(result.stderr).not.toContain('at Object');
   });
 
+  test('prints diagnostic codes with four digits', async () => {
+    const result = await runCli(project({ 'README.md': null }));
+
+    expect(result.stdout).toContain('warning JSII0003: There is no "README.md" file.');
+  });
+
   describe('--fail-on-warnings', () => {
     test('treats warnings as errors', async () => {
       const dir = project({ 'README.md': null });
@@ -294,7 +300,7 @@ describe('jsii compile', () => {
       const verbose = await runCli(project({}, { description: undefined }), '-vvv');
 
       expect(quiet.exitCode).toBeUndefined();
-      expect(quiet.stdout).not.toContain('JSII1');
+      expect(quiet.stdout).not.toContain('JSII0001');
       expect(verbose.exitCode).toBe(1);
       expect(verbose.stderr).toContain('Debug Failure. Should never get an Info diagnostic on the command line.');
     });
@@ -435,14 +441,6 @@ describe('jsii --version', () => {
 describe('current behavior that is reported as an issue', () => {
   const run = (dir: string, ...args: string[]) => runCli(dir, ...args);
 
-  // https://github.com/aws/jsii-compiler/issues/2979
-  test('diagnostic codes below 1000 are printed without zero padding', async () => {
-    const result = await run(project({ 'README.md': null }));
-
-    expect(result.stdout).toContain('warning JSII3: There is no "README.md" file.');
-    expect(result.stdout).not.toContain('JSII0003');
-  });
-
   // https://github.com/aws/jsii-compiler/issues/2980
   test('the assembly is written although compilation errors prevented it from being created', async () => {
     const dir = project({ 'index.ts': "export class Klass {}\nexport const n: number = 'a';" });
@@ -475,7 +473,7 @@ describe('current behavior that is reported as an issue', () => {
     const result = await run(dir, '--tsconfig', 'tsconfig.json');
 
     expect(result.exitCode).toBe(1);
-    expect(result.stdout).toContain('JSII4: Could not find "main" file');
+    expect(result.stdout).toContain('JSII0004: Could not find "main" file');
     expect(result.stdout).not.toContain('TS18003');
   });
 
