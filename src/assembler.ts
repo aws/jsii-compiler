@@ -181,6 +181,7 @@ export class Assembler {
   private readonly _jsDocTagsCache = new Map<string, any[]>();
   private readonly _docCommentCache = new Map<string, any>();
   private readonly _sourceTextCache = new Map<string, string>();
+  private readonly _typeOfSymbolAtCache = new Map<string, any>();
   private _docCacheHits = 0;
 
   /** Number of doc-read cache hits (RPCs avoided). Exposed for perf reporting. */
@@ -698,6 +699,47 @@ export class Assembler {
       } else {
         this._docCommentCache.set(t.key, results[i] ?? null);
       }
+    }
+  }
+
+  /** `checker.getTypeOfSymbolAtLocation`, from the values `_prefetchPropertyTypes` read ahead when there is one. */
+  private _typeOfSymbolAt(sym: any, node: any): any {
+    const key = `${sym.id}|${node.id}`;
+    return this._typeOfSymbolAtCache.has(key)
+      ? this._typeOfSymbolAtCache.get(key)
+      : this.checker.getTypeOfSymbolAtLocation(sym, node);
+  }
+
+  /**
+   * Read the type of each property declared by the type (as `_visitProperty` reads it) in one batch, instead of a
+   * round trip per property. Properties declared elsewhere are mostly not listed on this type, so they are left out.
+   */
+  private _prefetchPropertyTypes(props: readonly any[], typeDecl: any): void {
+    const { SymbolFlags, SyntaxKind } = this.ts;
+    const todo: Array<{ sym: any; node: any; key: string }> = [];
+    for (const p of props) {
+      if ((p.flags & SymbolFlags.Method) !== 0) {
+        continue;
+      }
+      const node = p.declarations?.[0]?.resolve(this.project);
+      const owner = node?.kind === SyntaxKind.Parameter ? node.parent?.parent : node?.parent;
+      const key = `${p.id}|${node?.id}`;
+      if (node != null && owner === typeDecl && !this._typeOfSymbolAtCache.has(key)) {
+        todo.push({ sym: p, node, key });
+      }
+    }
+    if (todo.length < 2) {
+      return;
+    }
+    let results: any[];
+    try {
+      results = this.project.api.batch(...todo.map((t) => this.checker.getTypeOfSymbolAtLocation.gen(t.sym, t.node)));
+    } catch {
+      // shortcut: a failed batch reads nothing ahead; each property is then read on its own, as before.
+      return;
+    }
+    for (const [i, t] of todo.entries()) {
+      this._typeOfSymbolAtCache.set(t.key, results[i]);
     }
   }
 
@@ -2343,6 +2385,7 @@ export class Assembler {
 
     // One RPC for all member docs of this type (instance + static).
     this._prefetchDocs([...instanceProps, ...staticPropsForPrefetch]);
+    this._prefetchPropertyTypes([...instanceProps, ...staticPropsForPrefetch], decl);
     this._validateInternalMembers(sym, decl, erasedBases, isInterface, instanceProps, staticPropsForPrefetch);
 
     // Constructor parameter properties are only listed for the EFFECTIVE
@@ -2784,7 +2827,7 @@ export class Assembler {
       return undefined;
     }
     this._warnAboutReservedWords(psym.name, decl);
-    const t = this.checker.getTypeOfSymbolAtLocation(psym, decl);
+    const t = this._typeOfSymbolAt(psym, decl);
     const opt: { optional?: boolean } = {};
     this.typeUse = 'property type';
     const p: any = {
