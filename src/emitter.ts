@@ -193,6 +193,7 @@ function addToEmittedJs(
       file,
       new Map(classesHere.filter((c) => c.inFileName != null).map((c) => [c.inFileName!, c.fqn])),
       options.assembly.version,
+      project.program.getCompilerOptions(),
     );
     for (const added of [calls, rtti]) {
       edits.push(...(added?.edits ?? []));

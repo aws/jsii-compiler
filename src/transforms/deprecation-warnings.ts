@@ -26,6 +26,7 @@ import { Assembly } from '@jsii/spec';
 import { TypeScriptApi, TypeScriptProject } from '../compiler-host';
 import { ProjectInfo } from '../project-info';
 import { EmittedFile, normalizeRel, statementInsertion } from './emitted-js';
+import { hasConstructor } from './runtime-info';
 import { Insertion } from './source-map';
 
 export const WARNINGSCODE_FILE_NAME = '.warnings.jsii.js';
@@ -143,6 +144,11 @@ export class DeprecationWarningsInjector {
           member.body == null ||
           ![k.MethodDeclaration, k.GetAccessor, k.SetAccessor, k.Constructor].includes(member.kind)
         ) {
+          continue;
+        }
+        if (member.kind === k.Constructor && !hasConstructor(tsClass, k)) {
+          // Made up by the emit (field initializers without `useDefineForClassFields`): not in the `.ts` file,
+          // so the classic transformer never saw it.
           continue;
         }
         const name: string | undefined = member.name?.getText(jsSource);
