@@ -842,37 +842,33 @@ export class Assembler {
           best = c;
         }
       }
-      const bestFqn = `${best.prefix}.${best.name}`;
-      registrations.push({ sym: best.sym, name: best.name, fqn: bestFqn, seq: best.seq });
+      // Classic: a type is named after its declaration, also when it is exported under another name
+      // (`export { X as Y }` gives `X`).
+      const name = best.sym.name;
+      const bestFqn = `${best.prefix}.${name}`;
+      registrations.push({ sym: best.sym, name, fqn: bestFqn, seq: best.seq });
       const extraFqns = new Set<string>([bestFqn]);
       for (const c of cands) {
-        const fqn = `${c.prefix}.${c.name}`;
+        const fqn = `${c.prefix}.${name}`;
         if (extraFqns.has(fqn)) {
           continue;
         }
-        // Only FOREIGN re-exports (candidate module dir does NOT contain the
-        // declaration, e.g. aws_docdb re-exporting a type declared in aws-rds/)
-        // produce a duplicate entry. Candidates from ancestor dirs (the package
-        // root re-exporting a submodule's type) collapse into the canonical fqn.
-        const declPath = c.sym.declarations?.[0]?.path ?? '';
-        const dir = c.moduleDir.endsWith('/') ? c.moduleDir : c.moduleDir + '/';
-        if (declPath.startsWith(dir)) {
-          continue;
-        }
-        // strada only emits the duplicate for `export { X } from '...'` — the
-        // alias declaration must be an ExportSpecifier whose ExportDeclaration
-        // carries a module specifier. Aliases that go through a local import
-        // (`import { X } ...; export { X };`) are dropped by strada's visitor.
-        if (!c.aliasDeclH || c.aliasDeclH.kind !== SyntaxKind.ExportSpecifier) {
-          continue;
-        }
-        const aliasDecl = c.aliasDeclH.resolve(this.project);
-        const exportDeclNode = aliasDecl?.parent?.parent;
-        if (exportDeclNode?.moduleSpecifier == null) {
-          continue;
+        // strada visits every export of every module, so each module that exports the type (directly, through
+        // `export *` or through `export { X } from '...'`) gets an entry of its own. Aliases that go through a
+        // local import (`import { X } ...; export { X };`) are dropped by strada's visitor: their ExportSpecifier
+        // resolves to an ImportSpecifier, which no _visitNode branch handles.
+        if (c.aliasDeclH != null) {
+          if (c.aliasDeclH.kind !== SyntaxKind.ExportSpecifier) {
+            continue;
+          }
+          const aliasDecl = c.aliasDeclH.resolve(this.project);
+          const exportDeclNode = aliasDecl?.parent?.parent;
+          if (exportDeclNode?.moduleSpecifier == null) {
+            continue;
+          }
         }
         extraFqns.add(fqn);
-        registrations.push({ sym: c.sym, name: c.name, fqn, seq: c.seq });
+        registrations.push({ sym: c.sym, name, fqn, seq: c.seq });
       }
     }
     // Batch-prefetch docs for all candidate type symbols (used by the
@@ -901,7 +897,7 @@ export class Assembler {
     if (!isFirst) {
       // Already registered under its canonical fqn. A *different* fqn means a
       // cross-submodule re-export: emit a duplicate entry under that fqn too
-      // (nested-export recursion runs only for the canonical registration).
+      // (its nested types get entries under that fqn as well).
       if (this.typeFqnBySymbolId.get(sym.id) === fqn || this.exported.some((e) => e.fqn === fqn)) {
         return;
       }
@@ -932,11 +928,8 @@ export class Assembler {
       this.typeFqnBySymbolId.set(sym.id, fqn);
     }
     this.exported.push({ name, sym, decl, fqn });
-    if (!isFirst) {
-      return;
-    }
 
-    // nested exported types (namespaces on a class/interface)
+    // nested exported types (namespaces on a class/interface), under every fqn of the type, like strada
     const nested = sym.getExports?.();
     if (nested && nested.size) {
       for (const [, nsym0] of nested) {
