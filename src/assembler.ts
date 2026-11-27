@@ -236,6 +236,8 @@ export class Assembler {
   private readonly dependencySubmodules = new Map<string, Map<unknown, string>>();
   /** The declaration of a base class that is not a jsii type (`extends Error`), by class fqn, for JSII9002. */
   private readonly unregisteredBaseDecls = new Map<string, any>();
+  /** The value declaration of an implemented or extended type that is not a jsii type, by fqn, for JSII9002. */
+  private readonly unregisteredInterfaceDecls = new Map<string, any>();
   /**
    * Checks that need the whole type model, run in registration order once all
    * types are visited (classic `_deferUntilTypesAvailable`).
@@ -346,7 +348,9 @@ export class Assembler {
         }
       }
       for (const iface of type.interfaces ?? []) {
-        // As in main: the clause looked up is the other kind's (`implements` for an interface).
+        // As in main: the clause looked up is the other kind's (`implements` for an interface), so the node is lost.
+        // @TODO(NEXT): main's validator has this bug (https://github.com/aws/jsii-compiler/issues/3109); after 7.1's
+        // first release, use the matching type of the `extends` (interface) or `implements` (class) clause.
         const token = spec.isInterfaceType(type) ? SyntaxKind.ImplementsKeyword : SyntaxKind.ExtendsKeyword;
         refs.push({ fqn: iface, node: clause(token) });
       }
@@ -1862,7 +1866,7 @@ export class Assembler {
         }
         // Classic: a base that is neither hidden (internal, unexported, an anonymous type) nor a named type is not
         // erased: it is reported (JSII3005, e.g. `extends Array<string>`) and left out.
-        if (s != null && !s.name.startsWith('__') && !this._isInternal(s) && !this._isOwnSourceDecl(s)) {
+        if (s != null && !s.name.startsWith('__') && !this._isHiddenType(s) && !this._isLocalSourceDecl(s)) {
           const ref = this._typeReference(iface);
           if (!spec.isNamedTypeReference(ref)) {
             this._report(
@@ -1870,8 +1874,13 @@ export class Assembler {
               s.valueDeclaration?.resolve?.(this.project) ?? s.declarations?.[0]?.resolve(this.project),
               ref,
             );
-            continue;
+          } else if (!seen.has(ref.fqn)) {
+            // A named type that is not a jsii type stays a base (reported when it is looked up, JSII9002).
+            seen.add(ref.fqn);
+            interfaces.push(ref.fqn);
+            this.unregisteredInterfaceDecls.set(ref.fqn, s.valueDeclaration?.resolve?.(this.project));
           }
+          continue;
         }
         // Not an exported/foreign type: erase it and descend into its own bases,
         // so its public ancestors surface and its members get re-listed here.
@@ -1900,10 +1909,18 @@ export class Assembler {
     return baseType ? this._typeReference(baseType, undefined, undefined, classDecl) : undefined;
   }
 
-  /** Whether a symbol is declared in the project's own sources (not in the standard library or a dependency). */
-  private _isOwnSourceDecl(sym: any): boolean {
+  /**
+   * Whether a symbol is declared in the project's own source files (not in a declaration file, the standard library
+   * or a dependency): the classic `_isUnexportedLocalType` for types that have no jsii fqn.
+   */
+  private _isLocalSourceDecl(sym: any): boolean {
     const declPath: string = sym.declarations?.[0]?.path ?? '';
-    return !this._isStdlibDecl(sym) && this._dependencyOfPath(declPath) == null && !declPath.includes('/node_modules/');
+    return (
+      !declPath.endsWith('.d.ts') &&
+      !this._isStdlibDecl(sym) &&
+      this._dependencyOfPath(declPath) == null &&
+      !declPath.includes('/node_modules/')
+    );
   }
 
   /** Whether all declarations of a supertype's symbol are classes, interfaces or modules (classic). */
@@ -1974,6 +1991,12 @@ export class Assembler {
       for (const fqn of jsiiType.interfaces ?? []) {
         const iface = this._dereferenceType(fqn);
         if (iface == null) {
+          // Classic: looked up "used in syntax" by the interface check (at the interface's value declaration, none for
+          // an interface) and by the struct checks (at the type's own declaration).
+          if (this.unregisteredInterfaceDecls.has(fqn)) {
+            this._report(JsiiDiagnostic.JSII_9002_UNRESOLVEABLE_TYPE, this.unregisteredInterfaceDecls.get(fqn), fqn);
+          }
+          this._report(JsiiDiagnostic.JSII_9002_UNRESOLVEABLE_TYPE, this.relatedNodes.get(jsiiType), fqn);
           continue;
         }
         if (!spec.isInterfaceType(iface)) {
@@ -2040,8 +2063,8 @@ export class Assembler {
             } else if (
               classDecl === decl &&
               !s.name.startsWith('__') &&
-              !this._isInternal(s) &&
-              !this._isOwnSourceDecl(s)
+              !this._isHiddenType(s) &&
+              !this._isLocalSourceDecl(s)
             ) {
               // Classic: a base class from the standard library or a dependency that is not a jsii type is not erased.
               // One that is not a named type (`extends Array<string>`) is reported here; a named one (`extends Error`)
@@ -2082,6 +2105,21 @@ export class Assembler {
             }
           } else if (fqnRef) {
             interfaces.add(fqnRef);
+          } else if (!s.name.startsWith('__') && !this._isHiddenType(s) && !this._isLocalSourceDecl(s)) {
+            // Classic: an implemented type that is neither hidden nor local is not erased. A named one stays an
+            // interface (JSII9002 when it is looked up), another one is reported (JSII3005).
+            this.typeUse = 'base interface';
+            const ref = this._typeReference(this.checker.getTypeAtLocation(t), undefined, undefined, undefined);
+            if (spec.isNamedTypeReference(ref)) {
+              interfaces.add(ref.fqn);
+              this.unregisteredInterfaceDecls.set(ref.fqn, s.valueDeclaration?.resolve?.(this.project));
+            } else {
+              this._report(
+                JsiiDiagnostic.JSII_3005_TYPE_USED_AS_INTERFACE,
+                (s.valueDeclaration ?? s.declarations?.[0])?.resolve(this.project),
+                ref,
+              );
+            }
           } else {
             const d0 = s.declarations?.[0]?.resolve(this.project);
             if (d0 && d0.kind === SyntaxKind.InterfaceDeclaration) {
@@ -3353,6 +3391,11 @@ export class Assembler {
       );
     }
     return fallbackFqn;
+  }
+
+  /** Classic `_isPrivateOrInternal`: private (see `_isPrivateType`), `@internal`, underscored or `@jsii ignore`d. */
+  private _isHiddenType(sym: any): boolean {
+    return this._isPrivateType(sym) || this._isInternal(sym);
   }
 
   /**
