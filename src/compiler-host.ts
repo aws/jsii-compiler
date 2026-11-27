@@ -151,7 +151,7 @@ export class CompilerHost {
    * Open an API session against `projectRoot`/`tsconfig.json` and return a host
    * bound to the resulting program + checker.
    */
-  public static open(projectRoot: string, tsconfigFileName = 'tsconfig.json'): CompilerHost {
+  public static open(projectRoot: string, tsconfigFileName = 'tsconfig.json', tsconfigText?: string): CompilerHost {
     const ts = loadTypeScriptApi();
     const tsconfigPath = path.join(projectRoot, tsconfigFileName);
 
@@ -159,7 +159,12 @@ export class CompilerHost {
     // (opt-in via JSII_TS7_TIMING; negligible overhead but off by default).
     const collectTiming = !!process.env.JSII_TS7_TIMING;
     const api = new ts.API({ cwd: projectRoot, collectTiming });
-    const snapshot = api.createSnapshot({ openProjects: [tsconfigPath] });
+    // `tsconfigText` replaces the tsconfig's content for this session only (the file on disk is left alone).
+    const fileSystem =
+      tsconfigText != null
+        ? nodeCreateRequire(__filename)('#typescript/fs').createFileSystemLayer([[tsconfigPath, tsconfigText]])
+        : undefined;
+    const snapshot = api.createSnapshot({ openProjects: [tsconfigPath], fileSystem });
 
     return new CompilerHost(ts, api, snapshot, tsconfigPath);
   }
