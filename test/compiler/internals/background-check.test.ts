@@ -66,3 +66,19 @@ test('emits despite errors when they do not skip the emit', () => {
   expect(result?.diagnostics).toHaveLength(1);
   expect(fs.existsSync(path.join(projectRoot, 'out', 'a.js'))).toBe(true);
 });
+
+test('gives no result when the worker fails, so the build checks and emits in its own process', () => {
+  fs.writeFileSync(path.join(projectRoot, 'a.ts'), 'export class A {}\n');
+
+  const failing = BackgroundCheck.start({
+    packageDir: path.join(projectRoot, 'no-typescript-here'),
+    projectRoot,
+    tsconfigPath: path.join(projectRoot, 'tsconfig.json'),
+    errorCategory: DiagnosticCategory.Error,
+    categories: [DiagnosticCategory.Error],
+    noEmitOnError: true,
+  });
+
+  expect(failing?.wait()).toBeUndefined();
+  expect(fs.existsSync(path.join(projectRoot, 'out', 'a.js'))).toBe(false);
+});

@@ -13,6 +13,7 @@
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import * as log4js from 'log4js';
 import { isMainThread, MessageChannel, receiveMessageOnPort, Worker, workerData } from 'node:worker_threads';
 
 /** Below this many files, starting a second TypeScript process costs more than the check takes. */
@@ -40,8 +41,16 @@ export interface BackgroundCheckResult {
   readonly emit?: { emitSkipped?: boolean; emittedFiles?: string[]; diagnostics: any[] };
 }
 
+const LOG = log4js.getLogger('jsii/background-check');
+
 /** How long the worker has to start. */
-const START_TIMEOUT_MS = 30_000;
+const START_TIMEOUT_MS = 10_000;
+/**
+ * How long the build waits for a worker that started: a worker that dies (out of memory, killed) cannot be told
+ * from a slow one while this thread is blocked.
+ */
+// shortcut: a fixed limit; make it a function of the size of the project if a slower build ever reaches it.
+const MAX_WAIT_MS = 30 * 60_000;
 
 /** What marks the `workerData` of the thread this file starts (jest's own workers have other data). */
 const WORKER_KIND = 'jsii-background-check';
@@ -142,13 +151,15 @@ export class BackgroundCheck {
         ? path.resolve(__dirname, '..', 'lib', 'background-check.js')
         : __filename;
       if (!fs.existsSync(file)) {
+        LOG.debug(`no worker to start: ${file} does not exist`);
         return undefined;
       }
       const worker = new Worker(file, { workerData: data, transferList: [port2] });
       // The worker does not keep the process alive; the build waits for it.
       worker.unref();
       return new BackgroundCheck(worker, done, port1);
-    } catch {
+    } catch (error: any) {
+      LOG.debug(`the worker did not start: ${String(error?.message ?? error)}`);
       return undefined;
     }
   }
@@ -168,14 +179,23 @@ export class BackgroundCheck {
   public wait(): BackgroundCheckResult | undefined {
     if (this.result === undefined) {
       // The worker says it is running before it does anything: one that does not start would be waited for forever.
+      let reason: string | undefined;
       for (let waited = 0; Atomics.load(this.done, 0) === 0; waited += 1000) {
         if (waited >= START_TIMEOUT_MS && Atomics.load(this.done, 1) === 0) {
+          reason = `it did not start in ${START_TIMEOUT_MS / 1000}s`;
+          break;
+        }
+        if (waited >= MAX_WAIT_MS) {
+          reason = `it did not finish in ${MAX_WAIT_MS / 60_000} minutes`;
           break;
         }
         Atomics.wait(this.done, 0, 0, 1000);
       }
       const message = receiveMessageOnPort(this.port as any)?.message;
       this.result = message != null && message.error == null ? message : null;
+      if (this.result == null) {
+        LOG.debug(`the worker failed, checking and emitting in this process: ${message?.error ?? reason}`);
+      }
       void this.worker.terminate();
       this.port.close();
     }
