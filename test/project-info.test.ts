@@ -31,6 +31,14 @@ const BASE_PROJECT = {
 } satisfies PackageJson;
 
 describe('loadProjectInfo', () => {
+  test('reports a missing package.json as a short error', () => {
+    const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'jsii-no-package-json-'));
+    try {
+      expect(() => loadProjectInfo(projectRoot)).toThrow(`Could not find a "package.json" file in ${projectRoot}`);
+    } finally {
+      fs.rmSync(projectRoot, { recursive: true, force: true });
+    }
+  });
   test('loads valid project', () =>
     _withTestProject((projectRoot) => {
       const { projectInfo: info } = loadProjectInfo(projectRoot);
