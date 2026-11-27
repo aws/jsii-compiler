@@ -43,6 +43,21 @@ describe('Interfaces may re-declare inherited members with an identical shape', 
     expect(ib.properties).toEqual([expect.objectContaining({ name: 'foo', overrides: 'testpkg.IA' })]);
   });
 
+  test('mutable property', () => {
+    const result = compileJsiiForTest(`
+      export interface IA {
+        foo: number;
+      }
+      export interface IB extends IA {
+        /** Better docs. */
+        foo: number;
+      }
+    `);
+
+    const ib = result.assembly.types!['testpkg.IB'] as spec.InterfaceType;
+    expect(ib.properties).toEqual([expect.objectContaining({ name: 'foo', overrides: 'testpkg.IA' })]);
+  });
+
   test('method', () => {
     const result = compileJsiiForTest(`
       export interface IA {

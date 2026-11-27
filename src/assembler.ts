@@ -3226,7 +3226,9 @@ function isIdenticalRedeclaration(
   member: spec.Property | spec.Method,
   baseMember: spec.Property | spec.Method,
 ): boolean {
-  if (spec.isMethod(member) && spec.isMethod(baseMember)) {
+  // Not `spec.isMethod`: it only tells methods from initializers and is true
+  // for properties too.
+  if (!spec.isProperty(member) && !spec.isProperty(baseMember)) {
     const params = member.parameters ?? [];
     const baseParams = baseMember.parameters ?? [];
     return (
@@ -3243,7 +3245,7 @@ function isIdenticalRedeclaration(
     );
   }
 
-  if (!spec.isMethod(member) && !spec.isMethod(baseMember)) {
+  if (spec.isProperty(member) && spec.isProperty(baseMember)) {
     return (
       !!member.static === !!baseMember.static &&
       !!member.optional === !!baseMember.optional &&
