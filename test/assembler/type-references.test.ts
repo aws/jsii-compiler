@@ -35,4 +35,25 @@ describe('union types', () => {
       'boolean | number | testpkg.Apple | testpkg.Zebra | array<number | string | testpkg.Zebra> | array<string> | map<boolean>',
     );
   });
+
+  test('list an intersection of types after the other kinds of members', () => {
+    const result = compileJsiiForTest(`
+      export interface IA { readonly a: string }
+      export interface IB { readonly b: string }
+      export class Consumer {
+        public consume(value: (IA & IB) | string[] | IA | string): void {
+          Array.isArray(value);
+        }
+      }
+    `);
+
+    const consumer = result.assembly.types!['testpkg.Consumer'] as spec.ClassType;
+    const type = consumer.methods![0].parameters![0].type as spec.UnionTypeReference;
+    expect(type.union.types).toEqual([
+      { primitive: spec.PrimitiveType.String },
+      { fqn: 'testpkg.IA' },
+      { collection: { kind: spec.CollectionKind.Array, elementtype: { primitive: spec.PrimitiveType.String } } },
+      { intersection: { types: [{ fqn: 'testpkg.IA' }, { fqn: 'testpkg.IB' }] } },
+    ]);
+  });
 });
