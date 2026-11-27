@@ -2,7 +2,7 @@ import { compileJsiiForTest } from '../../lib';
 
 // The runtime type information (`Symbol.for("jsii.rtti")` on each exported class) used to be injected by a
 // TypeScript transformer during emit. The TypeScript 7 API has no transformer hook, so the compiler injects it
-// into the emitted JavaScript after the emit (see src/emitter.ts). These tests check the emitted files end to end:
+// into the emitted JavaScript after the emit (see src/transforms/runtime-info.ts). These tests check the emitted files end to end:
 // the injected code is loaded and the marker is read back the way the jsii runtime does.
 
 const RTTI = Symbol.for('jsii.rtti');
@@ -43,8 +43,7 @@ test('injects into every file that declares classes, with the file-local export 
 });
 
 test('does not clash with existing names in the module', () => {
-  // The previous transformer declared a `JSII_RTTI_SYMBOL_<n>` constant and had to pick a unique name; the
-  // injected code declares nothing, so a module using that name is unaffected.
+  // The injected code declares a `JSII_RTTI_SYMBOL_<n>` constant and picks a name the module does not use.
   const exports = load(
     compile({
       'index.ts': 'const JSII_RTTI_SYMBOL_1 = 42;\nexport const taken = JSII_RTTI_SYMBOL_1;\nexport class Foo {}',

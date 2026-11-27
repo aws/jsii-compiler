@@ -539,6 +539,7 @@ export function buildProject(options: BuildProjectOptions): BuildProjectResult {
     let assembly: spec.Assembly | undefined;
     let jsiiFailed = true;
     let deprecationWarnings: DeprecationWarningsInjector | undefined;
+    let strippedClasses: readonly spec.ClassType[] | undefined;
     if (!project.program.getSourceFile(entry)) {
       logFailure('Type model', undefined);
       diagnostics.push(missingEntryDiagnostic(entry, projectInfo, tscRootDir, tscOutDir));
@@ -559,6 +560,7 @@ export function buildProject(options: BuildProjectOptions): BuildProjectResult {
 
       try {
         assembly = assembler.assemble();
+        strippedClasses = assembler.strippedClasses;
         const jsiiDiagnostics = assembler.diagnostics;
         diagnostics.push(...jsiiDiagnostics);
         logFailure('Type model', jsiiDiagnostics);
@@ -597,12 +599,13 @@ export function buildProject(options: BuildProjectOptions): BuildProjectResult {
     let emittedFiles: string[] = [];
     let emitFailed = false;
     try {
-      ({ emittedFiles } = emitProject(project, {
+      ({ emittedFiles } = emitProject(host.ts, project, {
         projectRoot,
         assembly: assembly ?? ({ version: projectInfo.version, types: {} } as unknown as spec.Assembly),
         outDir: tscOutDir,
         rootDir: tscRootDir,
         deprecationWarnings,
+        strippedClasses,
       }));
     } catch (err) {
       emitFailed = true;

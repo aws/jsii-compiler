@@ -1,11 +1,11 @@
 /*
  * ---------------------------------------------------------------------------
  * Emit: produce the JS / d.ts artifacts via the TypeScript 7 `program.emit()`,
- * then inject the jsii runtime type information (the `Symbol.for("jsii.rtti")`
- * marker on each exported class) into the emitted `.js`. The previous
- * implementation did the injection with a `CustomTransformer` during emit; the
+ * then add the jsii runtime type information (see transforms/runtime-info.ts)
+ * and the --add-deprecation-warnings calls to the emitted `.js`. The previous
+ * implementation did that with `CustomTransformer`s during emit; the
  * TypeScript 7 API has no transformer hook, so this is a post-emit text pass
- * (the injected code is the same).
+ * that produces the same code.
  * ---------------------------------------------------------------------------
  */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return */
@@ -14,9 +14,11 @@ import * as path from 'node:path';
 import * as spec from '@jsii/spec';
 import * as log4js from 'log4js';
 
-import { TypeScriptProject } from './compiler-host';
+import { TypeScriptApi, TypeScriptProject } from './compiler-host';
 import { DeprecationWarningsInjector } from './transforms/deprecation-warnings';
-import { insertIntoEmittedJs } from './transforms/source-map';
+import { EmittedFile, pairClasses, prependStatements } from './transforms/emitted-js';
+import { rttiInsertions } from './transforms/runtime-info';
+import { insertIntoEmittedJs, Insertion } from './transforms/source-map';
 
 const LOG = log4js.getLogger('jsii/emitter');
 
@@ -29,6 +31,11 @@ export interface EmitProjectOptions {
   readonly rootDir?: string;
   /** Adds the calls into `.warnings.jsii.js` (`--add-deprecation-warnings`). */
   readonly deprecationWarnings?: DeprecationWarningsInjector;
+  /**
+   * Classes removed from the assembly by --strip-deprecated. Their code is
+   * still emitted, and the classic compiler gave them rtti too.
+   */
+  readonly strippedClasses?: readonly spec.ClassType[];
 }
 
 export interface EmitProjectResult {
@@ -42,7 +49,7 @@ const RTTI_SYMBOL = 'jsii.rtti';
  * Emit JS/d.ts for the whole project in a SINGLE `program.emit()` call. The
  * server writes every output file directly to disk and returns only file names,
  * so the ~345MB emit payload (aws-cdk-lib) never crosses the RPC channel; jsii
- * then reads back only the class-bearing `.js` files to append the jsii rtti
+ * then reads back only the class-bearing `.js` files to add the jsii rtti
  * marker.
  *
  * NOTE (perf/stability): emitting per source file would issue one round-trip
@@ -50,7 +57,11 @@ const RTTI_SYMBOL = 'jsii.rtti';
  * destabilize the out-of-process session (EPIPE / process exit). The
  * whole-project emit collapses this to one request.
  */
-export function emitProject(project: TypeScriptProject, options: EmitProjectOptions): EmitProjectResult {
+export function emitProject(
+  ts: TypeScriptApi,
+  project: TypeScriptProject,
+  options: EmitProjectOptions,
+): EmitProjectResult {
   const { program } = project;
   const root = options.projectRoot;
   const assembly = options.assembly;
@@ -60,11 +71,11 @@ export function emitProject(project: TypeScriptProject, options: EmitProjectOpti
   // via the tsc outDir/rootDir transform, so it is robust to duplicate basenames
   // across modules (common at aws-cdk-lib scale). We also index by basename as a
   // fallback for simple layouts.
-  const classesByJsRel = new Map<string, Array<{ name: string; fqn: string; relSrc: string }>>();
+  const classesByJsRel = new Map<string, Array<{ name: string; fqn: string; relSrc: string; inFileName?: string }>>();
   // Basename fallback index: basename -> the set of jsRel paths that share it.
   // The fallback is only safe when a basename is unambiguous (single jsRel).
   const jsRelsByBasename = new Map<string, Set<string>>();
-  for (const [fqn, type] of Object.entries(assembly.types ?? {})) {
+  for (const type of [...Object.values(assembly.types ?? {}), ...(options.strippedClasses ?? [])]) {
     if ((type as any).kind !== spec.TypeKind.Class) {
       continue;
     }
@@ -72,7 +83,9 @@ export function emitProject(project: TypeScriptProject, options: EmitProjectOpti
     if (!relSrc) {
       continue;
     }
-    const entry = { name: (type as any).name, fqn, relSrc };
+    const symbolId: string | undefined = type.symbolId;
+    const inFileName = symbolId?.slice(symbolId.lastIndexOf(':') + 1);
+    const entry = { name: type.name, fqn: type.fqn, relSrc, inFileName };
     const jsRel = sourceRelToJsRel(relSrc, options.outDir, options.rootDir);
     if (!classesByJsRel.has(jsRel)) {
       classesByJsRel.set(jsRel, []);
@@ -126,21 +139,60 @@ export function emitProject(project: TypeScriptProject, options: EmitProjectOpti
     if (!classesHere || !classesHere.length) {
       continue; // JS without exported classes: no rtti to inject, leave as written
     }
-    // Read the server-written JS, inject the rtti snippet, write it back. Only a
-    // small fraction of files (those declaring exported classes) are touched.
-    let js = fs.readFileSync(outPath, 'utf8');
-    if (options.deprecationWarnings) {
-      const tsFile = path.resolve(root, classesHere[0].relSrc);
-      js = insertIntoEmittedJs(
-        outPath,
-        js,
-        options.deprecationWarnings.callInsertions(outPath, js, tsFile, assembly, root),
-      );
-    }
-    fs.writeFileSync(outPath, injectRtti(js, rttiSnippet(classesHere, assembly.version)), { encoding: 'utf8' });
+    // Read the server-written JS, add the rtti (and deprecation warning calls), write it back.
+    // Only a small fraction of files (those declaring exported classes) are touched.
+    const js = fs.readFileSync(outPath, 'utf8');
+    fs.writeFileSync(outPath, addToEmittedJs(ts, project, options, outPath, js, classesHere), { encoding: 'utf8' });
   }
 
   return { emittedFiles };
+}
+
+/**
+ * The emitted `.js` of a file with jsii classes, with the rtti and (with
+ * --add-deprecation-warnings) the deprecation warning calls added.
+ */
+function addToEmittedJs(
+  ts: TypeScriptApi,
+  project: TypeScriptProject,
+  options: EmitProjectOptions,
+  jsFile: string,
+  jsText: string,
+  classesHere: ReadonlyArray<{ name: string; fqn: string; relSrc: string; inFileName?: string }>,
+): string {
+  const tsFile = path.resolve(options.projectRoot, classesHere[0].relSrc);
+  const tsSource = project.program.getSourceFile(tsFile);
+  const retained = tsSource != null ? project.api.createSourceFile(jsFile, jsText) : undefined;
+  try {
+    const jsSource = retained?.sourceFile;
+    const classes = jsSource != null ? pairClasses(tsSource, jsSource, ts.SyntaxKind) : undefined;
+    if (classes == null) {
+      LOG.warn(`ts backend: the classes of ${jsFile} do not match ${tsFile}; rtti appended, no deprecation warnings`);
+      return injectRtti(jsText, rttiSnippet(classesHere, options.assembly.version));
+    }
+    const file: EmittedFile = { jsFile, jsText, jsSource, tsFile, tsSource, k: ts.SyntaxKind, classes };
+
+    const edits: Insertion[] = [];
+    const prepend: string[] = [];
+    const calls = options.deprecationWarnings?.callInsertions(file, options.assembly, options.projectRoot);
+    const rtti = rttiInsertions(
+      file,
+      new Map(classesHere.filter((c) => c.inFileName != null).map((c) => [c.inFileName!, c.fqn])),
+      options.assembly.version,
+    );
+    for (const added of [calls, rtti]) {
+      edits.push(...(added?.edits ?? []));
+      if (added?.prepend != null) {
+        prepend.push(added.prepend);
+      }
+    }
+    if (prepend.length > 0) {
+      edits.push(...prependStatements(jsText, jsSource, tsSource, ts.SyntaxKind, prepend));
+    }
+    return insertIntoEmittedJs(jsFile, jsText, edits);
+  } finally {
+    retained?.dispose();
+  }
 }
 
 /** Normalize a relative path for use as a map key (posix separators). */
@@ -164,6 +216,9 @@ function sourceRelToJsRel(relSrc: string, outDir?: string, rootDir?: string): st
 }
 
 /**
+ * Fallback for a file whose classes cannot be paired with its `.ts` file (see
+ * `addToEmittedJs`): the rtti is set after the classes are defined instead.
+ *
  * Insert the rtti snippet into emitted JS. When the file ends with a
  * `//# sourceMappingURL=` comment, the snippet is inserted BEFORE it so the
  * marker comment stays the last line of the file (tooling convention).
@@ -182,7 +237,7 @@ export function injectRtti(source: string, snippet: string): string {
  * shape the classic runtime-info transformer produces at runtime.
  * Exported for unit tests.
  */
-export function rttiSnippet(classes: Array<{ name: string; fqn: string }>, version: string): string {
+export function rttiSnippet(classes: ReadonlyArray<{ name: string; fqn: string }>, version: string): string {
   let snippet = '\n// jsii runtime type information (injected after emit)\n';
   for (const c of classes) {
     snippet +=

@@ -220,6 +220,8 @@ export class Assembler {
   private readonly types: Record<string, spec.Type> = {};
   /** Enum member declarations by enum fqn and member name (read by --add-deprecation-warnings). */
   public readonly enumMemberDeclarations = new Map<string, Map<string, any>>();
+  /** Classes left out by --strip-deprecated (their code is still emitted, with rtti, as by the classic compiler). */
+  public readonly strippedClasses = new Array<spec.ClassType>();
   private readonly submodules: Record<string, spec.Submodule> = {};
   private readonly typeFqnBySymbolId = new Map<unknown, string>();
   private readonly exported: RegisteredType[] = [];
@@ -908,6 +910,17 @@ export class Assembler {
     }
     if (this._shouldStrip(sym, fqn)) {
       this.strippedTypeSymIds.add(sym.id);
+      const strippedDecl = sym.declarations?.[0]?.resolve(this.project);
+      if (strippedDecl?.kind === SyntaxKind.ClassDeclaration) {
+        this.strippedClasses.push({
+          assembly: this.assemblyName,
+          fqn,
+          kind: spec.TypeKind.Class,
+          name,
+          symbolId: this._symbolIdOf(sym),
+          locationInModule: this._locationOf(strippedDecl),
+        });
+      }
       return;
     }
     const decl = sym.declarations?.[0]?.resolve(this.project);
