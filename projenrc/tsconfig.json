@@ -7,7 +7,16 @@
   },
   "include": [
     "**/*.ts",
+<<<<<<< HEAD
     "../.projenrc.ts"
+=======
+    "../.projenrc.ts",
+    "../src/support-types.ts",
+    "../src/case.ts",
+    "../src/tsconfig/compiler-options.ts",
+    "../src/tsconfig/validator.ts",
+    "../src/tsconfig/rulesets/*.ts"
+>>>>>>> 9fc4cac (feat(tsconfig): export base tsconfigs for the validation rule sets (#2940))
   ],
   "exclude": [
     "node_modules"

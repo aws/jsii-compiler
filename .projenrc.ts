@@ -1,11 +1,19 @@
+<<<<<<< HEAD
 import { javascript, JsonPatch, github, typescript, YamlFile } from 'projen';
 import { YarnNodeLinker } from 'projen/lib/javascript/yarnrc';
+=======
+import { javascript, JsonFile, JsonPatch, github, typescript, YamlFile } from 'projen';
+>>>>>>> 9fc4cac (feat(tsconfig): export base tsconfigs for the validation rule sets (#2940))
 import { BuildWorkflow } from './projenrc/build-workflow';
 import { JsiiCalcFixtures } from './projenrc/fixtures';
 import { ReleaseWorkflow } from './projenrc/release';
 import { SUPPORT_POLICY, SupportPolicy } from './projenrc/support';
 import { UpdateIntegPackage } from './projenrc/update-integ-package';
 import { UpgradeDependencies } from './projenrc/upgrade-dependencies';
+import { BASE_COMPILER_OPTIONS, convertForJson } from './src/tsconfig/compiler-options';
+import generated from './src/tsconfig/rulesets/generated.public';
+import minimal from './src/tsconfig/rulesets/minimal.public';
+import strict from './src/tsconfig/rulesets/strict.public';
 
 //  See 'projenrc/support.ts' for TypeScript versions we are tracking.
 //  To add a new TypeScript version, follow the complete process documented in:
@@ -144,6 +152,18 @@ project.tsconfig?.file?.patch(
   JsonPatch.add('/compilerOptions/composite', true),
   JsonPatch.add('/compilerOptions/declarationMap', true),
 );
+<<<<<<< HEAD
+=======
+project.tryFindObjectFile('projenrc/tsconfig.json')?.patch(
+  // projenrc/support.ts needs these files
+  JsonPatch.add('/include/-', '../src/support-types.ts'),
+  // the base tsconfigs are generated from the tsconfig rule sets
+  JsonPatch.add('/include/-', '../src/case.ts'),
+  JsonPatch.add('/include/-', '../src/tsconfig/compiler-options.ts'),
+  JsonPatch.add('/include/-', '../src/tsconfig/validator.ts'),
+  JsonPatch.add('/include/-', '../src/tsconfig/rulesets/*.ts'),
+);
+>>>>>>> 9fc4cac (feat(tsconfig): export base tsconfigs for the validation rule sets (#2940))
 
 // Don't show .gitignore'd files in the VSCode explorer
 project.vscode!.settings.addSetting('explorer.excludeGitIgnore', true);
@@ -154,13 +174,39 @@ project.vscode!.extensions.addRecommendations('dbaeumer.vscode-eslint');
 project.vscode!.settings.addSetting('editor.codeActionsOnSave', { 'source.fixAll.eslint': 'explicit' });
 project.vscode!.settings.addSetting('eslint.validate', ['typescript']);
 
+// Base tsconfigs for the `extends` option of a user-provided tsconfig, generated from the validation rule sets.
+const baseTsconfigs = { strict, generated, minimal };
+const baseTsconfigPath = (name: string) => `tsconfig-bases/tsconfig.${name}.json`;
+
 // Exports map...
 project.package.addField('exports', {
   '.': `./${project.package.entrypoint}`,
   './bin/jsii': './bin/jsii',
   './package.json': './package.json',
   './common': './lib/common/index.js',
+  ...Object.fromEntries(
+    Object.keys(baseTsconfigs).map((name) => [`./tsconfig.${name}.json`, `./${baseTsconfigPath(name)}`]),
+  ),
 });
+
+// Each base tsconfig sets the options its rule set requires, with the values of the tsconfig jsii generates.
+const generatedCompilerOptions = convertForJson(BASE_COMPILER_OPTIONS);
+for (const [name, ruleSet] of Object.entries(baseTsconfigs)) {
+  const fields = new Set(ruleSet.requiredFields);
+  const missing = [...fields].filter((field) => !(field in generatedCompilerOptions));
+  if (missing.length > 0) {
+    throw new Error(`${baseTsconfigPath(name)}: no generated value for required option(s) ${missing.join(', ')}`);
+  }
+  new JsonFile(project, baseTsconfigPath(name), {
+    editGitignore: false,
+    marker: false,
+    obj: {
+      compilerOptions: Object.fromEntries(
+        Object.entries(generatedCompilerOptions).filter(([field]) => fields.has(field)),
+      ),
+    },
+  });
+}
 
 // Remove TypeScript devDependency (it's a direct/normal dependency here)
 project.deps.removeDependency('typescript');

@@ -35,5 +35,8 @@
 /projenrc/tsconfig.json linguist-generated linguist-language=JSON-with-Comments
 /releases.json linguist-generated
 /test/tsconfig.json linguist-generated linguist-language=JSON-with-Comments
+/tsconfig-bases/tsconfig.generated.json linguist-generated
+/tsconfig-bases/tsconfig.minimal.json linguist-generated
+/tsconfig-bases/tsconfig.strict.json linguist-generated
 /tsconfig.json linguist-generated linguist-language=JSON-with-Comments
 /yarn.lock linguist-generated
