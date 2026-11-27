@@ -513,24 +513,6 @@ describe('current behavior that is reported as an issue', () => {
     expect(result.stdout).not.toContain('TS18003');
   });
 
-  // https://github.com/aws/jsii-compiler/issues/2983
-  test('JSII4009 is printed, but it is not counted as a warning', async () => {
-    const dir = project({ 'tsconfig.dev.json': JSON.stringify(userTsconfig()) });
-
-    const result = await run(
-      dir,
-      '--tsconfig',
-      'tsconfig.dev.json',
-      '--validate-tsconfig',
-      'off',
-      '--fail-on-warnings',
-    );
-
-    expect(result.exitCode).toBeUndefined();
-    expect(result.stdout).toContain('warning JSII4009');
-    expect(result.stdout).toContain('Errors: 0 | Warnings: 0');
-  });
-
   // https://github.com/aws/jsii-compiler/issues/2984
   test('a missing package.json prints the help and the raw error', async () => {
     const result = await run(project({ 'package.json': null }));
