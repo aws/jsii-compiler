@@ -80,3 +80,17 @@ sorted by name, and does not tell which file set an option.
 
 **Who is affected:** only tsconfig files with a rejected value that also `extends` a file setting the same option, and
 the order of the lines in a `JSII4000` error with several violations.
+
+## Names of well-known symbol members in messages
+
+**What differs:** a message that names a member declared with a well-known symbol, such as `[Symbol.iterator]()`,
+prints TypeScript's internal name for it, and the number at its end differs. For
+`export class A implements Iterable<string> { public [Symbol.iterator]() { ... } }`, JSII8006 reads:
+
+- TypeScript 6.0: `Members with a name starting with "_" (e.g: "__@iterator@8") must be marked @internal`
+- TypeScript 7: `Members with a name starting with "_" (e.g: "__@iterator@281474976710662") must be marked @internal`
+
+**Why it cannot match:** the number is TypeScript's internal symbol id. Each compiler assigns its own, and it changes
+with the program on both.
+
+**Who is affected:** only the text of the message. The same members are reported, with the same code and location.
