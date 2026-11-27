@@ -16,8 +16,8 @@ why it cannot match, and who is affected.
 
 **What differs:** with `incremental` builds, `jsii` on TypeScript 6.0 writes TypeScript's build info file. For a
 generated `tsconfig.json` that is `<outDir>/tsconfig.tsbuildinfo`; for a user tsconfig it is the file set in
-`tsBuildInfoFile`. The TypeScript 7 compiler writes no build info file. The emitted `.js`, `.d.ts` and `.jsii` files are
-the same.
+`tsBuildInfoFile`. The TypeScript 7 compiler writes no build info file. The emitted `.js`, `.d.ts` and `.jsii` files do
+not change because of it.
 
 **Why it cannot match:** `program.emit` in the TypeScript 7 API never writes build info, whatever the compiler options
 say. Writing the file from `jsii` would mean producing TypeScript's private, version-specific build info format
@@ -30,13 +30,40 @@ Nothing else changes, and clean scripts or `.gitignore` entries for the file do 
 
 **What differs:** the inline source map in every emitted `.js` file comes from the TypeScript 7 emitter. It has no
 `"sourceRoot":""` entry, and its `mappings` differ slightly (for example, `export` is mapped onto `class`). The code
-itself and the `.d.ts` files are the same.
+itself is the same. (The `.d.ts` files can differ where types are inferred; see the next entry.)
 
 **Why it cannot match:** the mappings are written by the TypeScript printer. Producing the TypeScript 6.0 mappings would
 need the TypeScript 6.0 printer.
 
 **Who is affected:** nobody at runtime. Debuggers and stack-trace tools read both maps. Only tools that compare the
 bytes of the source maps see a difference.
+
+## Emitted `.d.ts` can differ where types are inferred
+
+**What differs:** where a declaration has no type written in the source, the `.d.ts` file holds the type TypeScript
+infers, printed by TypeScript. TypeScript 7 sometimes prints it in another way. In `aws-cdk-lib`, 6 of 2,744 `.d.ts`
+files differ from `jsii` on TypeScript 6.0. Two examples:
+
+```ts
+// export function defaultSubnetName(type: SubnetType) { ... return 'Public'; ... return 'Private'; ... }
+export declare function defaultSubnetName(type: SubnetType): "Public" | "Private" | "Isolated"; // TypeScript 6.0
+export declare function defaultSubnetName(type: SubnetType): "Isolated" | "Private" | "Public"; // TypeScript 7
+
+// export const TOKEN_VAULT_CREDENTIAL_SECRET_WRITE_PERMS = ['secretsmanager:PutSecretValue'] as const;
+export declare const TOKEN_VAULT_CREDENTIAL_SECRET_WRITE_PERMS: readonly ["secretsmanager:PutSecretValue"]; // 6.0
+export declare const TOKEN_VAULT_CREDENTIAL_SECRET_WRITE_PERMS: readonly ['secretsmanager:PutSecretValue']; // 7
+```
+
+Another inferred case is the order of the properties of an object type built with a spread. Two cases come from a
+type written in the source, which TypeScript 6.0 printed again: `pattern?: any` (6.0: `pattern?: any | undefined`),
+and `gateway: IGateway` (6.0: `gateway: bedrockagentcore.IGateway`, through another import of the same type).
+
+**Why it cannot match:** `jsii` does not write these types. The TypeScript 7 declaration emitter infers and prints them,
+and its printer orders union members, keeps quotes and reuses the source text in its own way. Producing the
+TypeScript 6.0 text would need the TypeScript 6.0 checker and printer.
+
+**Who is affected:** nobody who uses the types. The two texts describe the same types, so code type-checks the same
+against either. Only tools that compare the bytes of `.d.ts` files see a difference.
 
 ## The `strict` rule set reports removed options differently
 
