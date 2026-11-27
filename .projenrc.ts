@@ -168,6 +168,13 @@ project.package.addField('exports', {
 // Remove TypeScript devDependency (it's a direct/normal dependency here)
 project.deps.removeDependency('typescript');
 
+// Code imports TypeScript as `#typescript`, so the jsii 7.x lines (which map it to the TypeScript 7 package) only differ
+// from this branch in the mapping here.
+project.package.addField('imports', {
+  '#typescript': 'typescript',
+  '#typescript/*': 'typescript/*',
+});
+
 // Modernize ts-jest configuration
 if (project.jest?.config) {
   project.jest.config.transform ??= {};
@@ -235,6 +242,8 @@ project.gitignore.exclude('.DS_Store', '.lock');
 // Exclude negatives from tsconfig and eslint...
 project.tsconfigDev.addExclude('test/negatives/**/*.ts');
 project.eslint?.addIgnorePattern('test/negatives/**/*.ts');
+// Treat `#typescript` as internal, so import ordering is the same on every release line.
+project.tryFindObjectFile('.eslintrc.json')?.patch(JsonPatch.add('/settings/import~1internal-regex', '^#'));
 
 // Customize ESLint rules
 project.tsconfigDev.addInclude('build-tools/**/*.ts');
