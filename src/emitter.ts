@@ -115,6 +115,9 @@ export function emitProject(
     outputNames = [...classesByJsRel.keys()];
   }
 
+  const emittedJsRels = new Set(
+    outputNames.filter((n) => /\.js$/.test(n)).map((n) => normalizeRel(path.relative(root, path.resolve(root, n)))),
+  );
   for (const name of outputNames) {
     const outPath = path.resolve(root, name);
     emittedFiles.push(outPath);
@@ -126,9 +129,11 @@ export function emitProject(
     let classesHere = classesByJsRel.get(jsRel);
     if (!classesHere) {
       // Fall back to basename matching ONLY when it is unambiguous (a single
-      // source file maps to this basename); otherwise skip and say so.
+      // source file maps to this basename) and that file was not emitted where
+      // its path maps to (else this is another file with the same name, such as
+      // an `index.js` that only re-exports); otherwise skip and say so.
       const candidates = jsRelsByBasename.get(path.basename(name));
-      if (candidates?.size === 1) {
+      if (candidates?.size === 1 && !emittedJsRels.has([...candidates][0])) {
         classesHere = classesByJsRel.get([...candidates][0]);
       } else if (candidates && candidates.size > 1) {
         LOG.warn(
@@ -191,7 +196,13 @@ function addToEmittedJs(
     }
     const rtti = rttiInsertions(
       file,
-      new Map(classesHere.filter((c) => c.inFileName != null).map((c) => [c.inFileName!, c.fqn])),
+      // A class exported under several fqns (re-exported from submodules) gets the first, its canonical one.
+      new Map(
+        classesHere
+          .filter((c) => c.inFileName != null)
+          .reverse()
+          .map((c) => [c.inFileName!, c.fqn]),
+      ),
       options.assembly.version,
       project.program.getCompilerOptions(),
     );
