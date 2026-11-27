@@ -67,6 +67,8 @@ export class Compiler implements Emitter {
   private readonly userProvidedTypeScriptConfig: boolean;
   private readonly tsconfig: TypeScriptConfig;
   private rootFiles: string[] = [];
+  /** Diagnostics about the TypeScript configuration, reported with those of every build. */
+  private readonly configDiagnostics: ts.Diagnostic[] = [];
   private readonly configPath: string;
   private readonly projectRoot: string;
 
@@ -189,9 +191,8 @@ export class Compiler implements Emitter {
       // emit a warning if validation is disabled
       const rules = this.options.validateTypeScriptConfig ?? TypeScriptConfigValidationRuleSet.NONE;
       if (rules === TypeScriptConfigValidationRuleSet.NONE) {
-        utils.logDiagnostic(
+        this.configDiagnostics.push(
           JsiiDiagnostic.JSII_4009_DISABLED_TSCONFIG_VALIDATION.create(undefined, this.configPath),
-          this.projectRoot,
         );
       }
 
@@ -331,6 +332,11 @@ export class Compiler implements Emitter {
         hasErrors = true;
         diagnostics.push(JsiiDiagnostic.JSII_0007_MISSING_WARNINGS_EXPORT.createDetached());
       }
+    }
+
+    diagnostics.push(...this.configDiagnostics);
+    if (!hasErrors && this.diagsHaveAbortableErrors(this.configDiagnostics)) {
+      hasErrors = true;
     }
 
     return {
