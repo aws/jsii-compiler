@@ -2,7 +2,6 @@ import * as fs from 'node:fs';
 import { createRequire } from 'node:module';
 import * as path from 'node:path';
 
-import { dropRejectedOptions } from './classic-compiler-options';
 import { convertForJson } from './compiler-options';
 import type { CompilerOptionsJson, TypeScriptConfig } from './index';
 import { loadTypeScriptApi } from '../compiler-host';
@@ -99,8 +98,8 @@ function stripJsonComments(text: string): string {
  * `files` / `include` / `exclude` come from the nearest file that sets them,
  * with relative paths rebased onto the directory of the requested file. Path
  * valued `compilerOptions` are made absolute, as TypeScript's own parser does.
- * A base that cannot be resolved or read is skipped, and so are the compiler
- * options TypeScript 6 rejects (unknown options, wrong values), as the classic compiler did.
+ * A base that cannot be resolved or read is skipped, as the classic compiler did.
+ * Compiler options are kept as written; TypeScript 7 reports the ones it rejects.
  *
  * @param baseDir the directory that relative paths and `extends` in the requested
  *                file are resolved against (default: the directory of the file).
@@ -164,10 +163,7 @@ function readOne(
 
   const ownRebased: TypeScriptConfig = {
     ...own,
-    // @TODO(NEXT): unknown options and bad values vanish before validation, so typos pass `strict` and bad values
-    // show as `got: undefined` (aws/jsii-compiler#3029). After 7.1's first release: validate the raw options and
-    // drop `dropRejectedOptions`.
-    compilerOptions: resolveCompilerOptions(dropRejectedOptions(own.compilerOptions ?? {}), ownDir),
+    compilerOptions: resolveCompilerOptions(own.compilerOptions ?? {}, ownDir),
     ...(own.files ? { files: own.files.map((f: string) => rebase(f, ownDir, targetDir)) } : {}),
     ...(own.include ? { include: own.include.map((f: string) => rebase(f, ownDir, targetDir)) } : {}),
     ...(own.exclude ? { exclude: own.exclude.map((f: string) => rebase(f, ownDir, targetDir)) } : {}),

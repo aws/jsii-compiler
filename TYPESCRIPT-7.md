@@ -37,3 +37,17 @@ need the TypeScript 6.0 printer.
 
 **Who is affected:** nobody at runtime. Debuggers and stack-trace tools read both maps. Only tools that compare the
 bytes of the source maps see a difference.
+## Rejected compiler options in a user tsconfig are errors
+
+**What differs:** in a user tsconfig (`--tsconfig`), an unknown compiler option (TS5023), a value of the wrong type
+(TS5024) or a value that is not allowed (TS6046) fails the build with TypeScript's error, as `tsc` reports it. `jsii` on
+TypeScript 6.0 drops such options silently and builds. tsconfig validation also sees the options as written: `strict`
+reports an unknown option as `Unexpected field`, and a bad value as itself, where `main` says `got: undefined`.
+
+**Why it cannot match:** `main` gets this from TypeScript 6.0's option parser. TypeScript 7 knows a different set of
+options, so matching `main` meant shipping a copy of TypeScript 6.0's option table. Reporting what TypeScript 7 rejects
+is what `tsc` does.
+
+**Who is affected:** projects whose user tsconfig has a typo or an option TypeScript 7 does not know. They fix the
+tsconfig. Generated tsconfigs are not affected.
+
