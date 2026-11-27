@@ -168,6 +168,7 @@ project.vscode!.settings.addSetting('eslint.validate', ['typescript']);
 
 // Base tsconfigs for the `extends` option of a user-provided tsconfig, generated from the validation rule sets.
 const baseTsconfigs = { strict, generated, minimal };
+const baseTsconfigPath = (name: string) => `tsconfig-bases/tsconfig.${name}.json`;
 
 // Exports map...
 project.package.addField('exports', {
@@ -176,7 +177,7 @@ project.package.addField('exports', {
   './package.json': './package.json',
   './common': './lib/common/index.js',
   ...Object.fromEntries(
-    Object.keys(baseTsconfigs).map((name) => [`./tsconfig.${name}.json`, `./tsconfig.${name}.json`]),
+    Object.keys(baseTsconfigs).map((name) => [`./tsconfig.${name}.json`, `./${baseTsconfigPath(name)}`]),
   ),
 });
 
@@ -187,10 +188,11 @@ for (const [name, ruleSet] of Object.entries(baseTsconfigs)) {
   const fields = new Set([...ruleSet.requiredFields, 'declaration']);
   const missing = [...fields].filter((field) => !(field in generatedCompilerOptions));
   if (missing.length > 0) {
-    throw new Error(`tsconfig.${name}.json: no generated value for required option(s) ${missing.join(', ')}`);
+    throw new Error(`${baseTsconfigPath(name)}: no generated value for required option(s) ${missing.join(', ')}`);
   }
-  new JsonFile(project, `tsconfig.${name}.json`, {
+  new JsonFile(project, baseTsconfigPath(name), {
     editGitignore: false,
+    marker: false,
     obj: {
       compilerOptions: Object.fromEntries(
         Object.entries(generatedCompilerOptions).filter(([field]) => fields.has(field)),

@@ -39,8 +39,8 @@ describe('exported tsconfigs', () => {
   });
 
   test('tsconfig.generated.json matches the generated compiler options', () => {
-    const generated = JSON.parse(readFileSync(join(packageRoot, 'tsconfig.generated.json'), 'utf-8'));
+    const generated = JSON.parse(readFileSync(join(packageRoot, 'tsconfig-bases', 'tsconfig.generated.json'), 'utf-8'));
 
-    expect(generated.compilerOptions).toEqual(convertForJson(BASE_COMPILER_OPTIONS));
+    expect(generated).toEqual({ compilerOptions: convertForJson(BASE_COMPILER_OPTIONS) });
   });
 });
