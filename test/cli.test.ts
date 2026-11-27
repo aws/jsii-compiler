@@ -465,6 +465,16 @@ describe('jsii validate-tsconfig', () => {
     expect(result.stderr).toContain('Failed to read tsconfig at');
   });
 
+  // TypeScript 7: TypeScript's errors for the tsconfig are reported, like tsc (main: ignored; see TYPESCRIPT-7.md)
+  test('fails with the TypeScript errors of the configuration', async () => {
+    const dir = project({ 'tsconfig.json': JSON.stringify(userTsconfig({ notAnOption: true })) });
+
+    const result = await runCli(dir, 'validate-tsconfig');
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stdout).toContain("error TS5023: Unknown compiler option 'notAnOption'.");
+  });
+
   // https://github.com/aws/jsii-compiler/issues/2987
   test.each([
     [{ target: 'es5' }, 'target: Expected value to be one of ["es2022","es2023","esnext"], got: "es5"'],
