@@ -373,9 +373,24 @@ export class Match {
   // eslint-disable-next-line @typescript-eslint/member-ordering
   public static MISSING = wrapMatcher(
     (actual) => actual === null || actual === undefined,
-    (actual) => `Expected value to be present, got ${JSON.stringify(actual)}`,
+    (actual) => `Expected value to be absent, got ${JSON.stringify(actual)}`,
     [undefined, null],
   );
+}
+
+/**
+ * The violation message for a FAIL rule: names the values the rule rejects, or falls back to a
+ * generic message when the matcher gives none.
+ */
+function failRuleMessage(rejected: any[], actual: any): string {
+  const got = JSON.stringify(actual);
+  if (rejected.length === 0) {
+    return `Value is not allowed, got: ${got}`;
+  }
+  if (rejected.length === 1) {
+    return `Expected value not to be ${JSON.stringify(rejected[0])}, got: ${got}`;
+  }
+  return `Expected value not to be one of ${JSON.stringify(rejected)}, got: ${got}`;
 }
 
 export interface Violation {
@@ -420,11 +435,18 @@ export class ObjectValidator {
 
       // Use a fallback message, but allow the matcher to report a better arrow
       let violationMessage = 'Value is not allowed, got: ' + JSON.stringify(value);
+      const hints: any[] = [];
       const matchResult = rule.matcher(value, {
         reporter: (message: string) => {
           violationMessage = message;
         },
+        hints: (allowed) => hints.push(...allowed),
       });
+
+      // Matchers phrase their message for a PASS rule, which reads backwards for a FAIL rule.
+      if (rule.type === RuleType.FAIL) {
+        violationMessage = failRuleMessage(hints, value);
+      }
 
       switch (rule.type) {
         case RuleType.PASS:
