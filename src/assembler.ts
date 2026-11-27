@@ -717,6 +717,9 @@ export class Assembler {
    * names first; jsii visits types (and so orders `assembly.types` and the deprecation validators) in this order.
    */
   private _exportsOfModule(moduleSym: any): any[] {
+    // @TODO(NEXT): this walk only reproduces the TypeScript 6 order so that `assembly.types` and the validators in
+    // `.warnings.jsii.js` come out as on main; the order has no meaning of its own. After 7.1's first release, use
+    // `checker.getExportsOfModule` as is and drop this method (outputs that follow the type order change once).
     const exports: any[] = this.checker.getExportsOfModule(moduleSym);
     const rank = new Map<string, number>();
     const visited = new Set<unknown>();
@@ -856,6 +859,9 @@ export class Assembler {
       best = cands.find((c) => c.moduleFile != null && c.moduleFile === c.sym.declarations?.[0]?.path) ?? best;
       // Classic: a type is named after its declaration, also when it is exported under another name
       // (`export { X as Y }` gives `X`).
+      // @TODO(NEXT): the package does not export `X` then, so bindings cannot load it
+      // (https://github.com/aws/jsii-compiler/issues/3033). After 7.1's first release, name the entry after the
+      // export (`best.name`, `c.name`) or report renamed re-exports as an error.
       const name = best.sym.name;
       const bestFqn = `${best.prefix}.${name}`;
       registrations.push({ sym: best.sym, name, fqn: bestFqn, seq: best.seq });
@@ -869,6 +875,10 @@ export class Assembler {
         // `export *` or through `export { X } from '...'`) gets an entry of its own. Aliases that go through a
         // local import (`import { X } ...; export { X };`) are dropped by strada's visitor: their ExportSpecifier
         // resolves to an ImportSpecifier, which no _visitNode branch handles.
+        // @TODO(NEXT): copies of one class under several fqns share one runtime class, which carries only one of
+        // the fqns, and re-exporting through a local import drops the entry for no reason. After 7.1's first
+        // release, keep one entry per type at its canonical fqn and treat every re-export (with or without a
+        // module specifier) the same way.
         if (c.aliasDeclH != null) {
           if (c.aliasDeclH.kind !== SyntaxKind.ExportSpecifier) {
             continue;
