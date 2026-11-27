@@ -33,7 +33,6 @@ describe('exported tsconfigs', () => {
     const tsconfig = join(workdir, 'tsconfig.json');
     writeFileSync(tsconfig, JSON.stringify({ extends: preset }));
 
-    // an unresolved extends yields empty compilerOptions, which the minimal rule set would accept
     expect(readTypeScriptConfig(tsconfig).compilerOptions.declaration).toBe(true);
     expect(validateTypeScriptConfigFile(tsconfig, ruleSet)).toEqual([]);
   });

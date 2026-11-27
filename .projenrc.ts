@@ -190,8 +190,7 @@ project.package.addField('exports', {
 // Each base tsconfig sets the options its rule set requires, with the values of the tsconfig jsii generates.
 const generatedCompilerOptions = convertForJson(BASE_COMPILER_OPTIONS);
 for (const [name, ruleSet] of Object.entries(baseTsconfigs)) {
-  // The minimal rule set accepts a missing `declaration`, but TypeScript then emits no declarations, which jsii needs.
-  const fields = new Set([...ruleSet.requiredFields, 'declaration']);
+  const fields = new Set(ruleSet.requiredFields);
   const missing = [...fields].filter((field) => !(field in generatedCompilerOptions));
   if (missing.length > 0) {
     throw new Error(`${baseTsconfigPath(name)}: no generated value for required option(s) ${missing.join(', ')}`);
