@@ -17,7 +17,7 @@ export const RULE_SET_DESCRIPTIONS: {
   [TypeScriptConfigValidationRuleSet.GENERATED]:
     'Enforces a config as created by --generate-tsconfig. Use this to stay compatible with the generated config, but have full ownership over the file.',
   [TypeScriptConfigValidationRuleSet.MINIMAL]:
-    'Only enforce options that are known to be incompatible with jsii. This rule set is likely to be incomplete and new rules will be added without notice as incompatibilities emerge.',
+    'Only enforce options that jsii requires or that are known to be incompatible with jsii. This rule set is likely to be incomplete and new rules will be added without notice as incompatibilities emerge.',
   [TypeScriptConfigValidationRuleSet.NONE]:
     'Disables all config validation, including options that are known to be incompatible with jsii. Intended for experimentation only. Use at your own risk.',
 };
