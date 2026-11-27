@@ -135,7 +135,7 @@ export class BenchmarkTest {
           },
           {
             name: 'Authenticate Via OIDC Role',
-            if: `github.event.repository.fork == false && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/maintenance/v'))`,
+            if: `github.event.repository.fork == false && (${RELEASE_BRANCH} || ${PREVIEW_BRANCH})`,
             uses: 'aws-actions/configure-aws-credentials@v6',
             with: {
               'aws-region': 'us-east-1',
@@ -147,56 +147,53 @@ export class BenchmarkTest {
           },
           {
             name: 'Publish Metrics',
-            if: `github.event.repository.fork == false && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/maintenance/v'))`,
-            run: `aws cloudwatch put-metric-data --namespace JsiiPerformance --metric-data '[
-              {
-                "MetricName": "TSC-average",
-                "Value": \${{steps.output_summary.outputs.duration-tsc}}
-              },
-              {
-                "MetricName": "JSII-average",
-                "Value": \${{steps.output_summary.outputs.duration-jsii}}
-              },
-              {
-                "MetricName": "JSII-slowdown",
-                "Value": \${{steps.output_summary.outputs.jsii-slowdown}}
-              },
-              {
-                "MetricName": "TSC-average",
-                "Value": \${{steps.output_summary.outputs.duration-tsc}},
-                "Dimensions": [
-                  {
-                    "Name": "TscVersion",
-                    "Value": "\${{ needs.build.outputs.release-line }}"
-                  }
-                ]
-              },
-              {
-                "MetricName": "JSII-average",
-                "Value": \${{steps.output_summary.outputs.duration-jsii}},
-                "Dimensions": [
-                  {
-                    "Name": "JsiiVersion",
-                    "Value": "\${{ needs.build.outputs.release-line }}"
-                  }
-                ]
-              },
-              {
-                "MetricName": "JSII-slowdown",
-                "Value": \${{steps.output_summary.outputs.jsii-slowdown}},
-                "Dimensions": [
-                  {
-                    "Name": "JsiiVersion",
-                    "Value": "\${{ needs.build.outputs.release-line }}"
-                  }
-                ]
-              }
-            ]'`,
+            if: `github.event.repository.fork == false && (${RELEASE_BRANCH})`,
+            run: putMetricData([...UNVERSIONED_METRICS, ...VERSIONED_METRICS]),
+          },
+          {
+            // Preview lines only publish per-release-line metrics, so their timings
+            // don't mix into the averages across released versions.
+            name: 'Publish Preview Metrics',
+            if: `github.event.repository.fork == false && ${PREVIEW_BRANCH}`,
+            run: putMetricData(VERSIONED_METRICS),
           },
         ],
       },
     });
   }
+}
+
+const RELEASE_BRANCH = `github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/maintenance/v')`;
+const PREVIEW_BRANCH = `startsWith(github.ref, 'refs/heads/preview/v')`;
+
+const UNVERSIONED_METRICS = [
+  { MetricName: 'TSC-average', Value: '${{steps.output_summary.outputs.duration-tsc}}' },
+  { MetricName: 'JSII-average', Value: '${{steps.output_summary.outputs.duration-jsii}}' },
+  { MetricName: 'JSII-slowdown', Value: '${{steps.output_summary.outputs.jsii-slowdown}}' },
+];
+
+const VERSIONED_METRICS = [
+  {
+    MetricName: 'TSC-average',
+    Value: '${{steps.output_summary.outputs.duration-tsc}}',
+    Dimensions: [{ Name: 'TscVersion', Value: '${{ needs.build.outputs.release-line }}' }],
+  },
+  {
+    MetricName: 'JSII-average',
+    Value: '${{steps.output_summary.outputs.duration-jsii}}',
+    Dimensions: [{ Name: 'JsiiVersion', Value: '${{ needs.build.outputs.release-line }}' }],
+  },
+  {
+    MetricName: 'JSII-slowdown',
+    Value: '${{steps.output_summary.outputs.jsii-slowdown}}',
+    Dimensions: [{ Name: 'JsiiVersion', Value: '${{ needs.build.outputs.release-line }}' }],
+  },
+];
+
+/** The CLI command that publishes `metrics`. Metric values are numbers once GitHub substitutes the step outputs. */
+function putMetricData(metrics: ReadonlyArray<{ Value: string }>): string {
+  const data = JSON.stringify(metrics, undefined, 2).replace(/"(\$\{\{steps\.[^}]+\}\})"/g, '$1');
+  return `aws cloudwatch put-metric-data --namespace JsiiPerformance --metric-data '${data}'`;
 }
 
 if (require.main === module) {
