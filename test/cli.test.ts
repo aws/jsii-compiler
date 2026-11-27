@@ -424,6 +424,21 @@ describe('jsii validate-tsconfig', () => {
     expect(result.stderr).toContain('Failed to read tsconfig at');
   });
 
+  // https://github.com/aws/jsii-compiler/issues/2987
+  test.each([
+    [{ target: 'es5' }, 'target: Expected value not to be "es5", got: "es5"'],
+    [{ module: 'amd' }, 'module: Expected value not to be one of ["amd","umd","systemjs","none"], got: "amd"'],
+    [{ noEmit: true }, 'noEmit: Expected value not to be true, got: true'],
+    [{ downlevelIteration: true }, 'downlevelIteration: Expected value to be absent, got true'],
+  ])('describes the violation of %j the way the rule reads', async (overrides, violation) => {
+    const dir = project({ 'tsconfig.json': JSON.stringify(userTsconfig(overrides)) });
+
+    const result = await runCli(dir, 'validate-tsconfig');
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stdout).toContain(violation);
+  });
+
   test('works without a package.json', async () => {
     const dir = project({ 'package.json': null, 'tsconfig.json': JSON.stringify(userTsconfig()) });
 
@@ -514,18 +529,6 @@ describe('current behavior that is reported as an issue', () => {
       return (await run(dir, 'validate-tsconfig', 'tsconfig.dev.json')).stdout;
     };
 
-    // https://github.com/aws/jsii-compiler/issues/2987
-    test('print the expected value of a rule that forbids a value as the one that was expected', async () => {
-      expect(await violations({ target: 'es5' })).toContain('target: Expected value "es5", got: "es5"');
-    });
-
-    // https://github.com/aws/jsii-compiler/issues/2987
-    test('print "to be present" for an option that must not be present', async () => {
-      expect(await violations({ downlevelIteration: true })).toContain(
-        'downlevelIteration: Expected value to be present, got true',
-      );
-    });
-
     // https://github.com/aws/jsii-compiler/issues/2992
     test('reject "paths" because of an option that TypeScript adds', async () => {
       expect(await violations({ paths: { '@x/*': ['lib/*'] } })).toContain(
@@ -552,7 +555,7 @@ describe('current behavior that is reported as an issue', () => {
       const result = await run(project(files()), 'validate-tsconfig', 'sub/tsconfig.json');
 
       expect(result.exitCode).toBe(1);
-      expect(result.stdout).toContain('baseUrl: Expected value to be present');
+      expect(result.stdout).toContain('baseUrl: Expected value to be absent');
     });
 
     // https://github.com/aws/jsii-compiler/issues/2991
