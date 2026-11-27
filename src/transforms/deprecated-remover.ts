@@ -69,9 +69,6 @@ export class DeclarationsStripper {
   private prepared?: {
     readonly removed: Set<any>;
     readonly removedKeys: Set<string>;
-    readonly removedTypeNames: Set<string>;
-    /** Matches any of `removedTypeNames` (to skip the files that cannot import one). */
-    readonly removedTypeName?: RegExp;
     readonly byFile: Map<string, { removed: any[]; transformations: HeritageTransformation[] }>;
   };
 
@@ -83,11 +80,11 @@ export class DeclarationsStripper {
 
   /** Rewrites the `.d.ts` file emitted for `tsFile` on disk. */
   public apply(dtsFile: string, tsFile: string): void {
-    const { removed, removedKeys, removedTypeNames, removedTypeName, byFile } = this.prepare();
+    const { removed, removedKeys, byFile } = this.prepare();
     const own = byFile.get(path.resolve(tsFile));
     const dtsText = fs.readFileSync(dtsFile, 'utf8');
     const reExports = /^export\b[^;]*\bfrom\b/m.test(dtsText);
-    const imports = /^import\b/m.test(dtsText) && removedTypeName != null && removedTypeName.test(dtsText);
+    const imports = removedKeys.size > 0 && /^import\b[^;]*\{/m.test(dtsText);
     if (own == null && !reExports && !imports) {
       return;
     }
@@ -113,7 +110,7 @@ export class DeclarationsStripper {
       edits.push(...this.removals(dtsText, dts, removedHere));
       edits.push(...this.heritage(dtsText, dts, tsSource, own?.transformations ?? [], removedHere, removed));
       if (imports) {
-        edits.push(...this.imports(dtsText, dts, tsSource, removedTypeNames, removedKeys));
+        edits.push(...this.imports(dtsText, dts, tsSource, removedKeys));
       }
       if (reExports) {
         edits.push(...this.reExports(dtsText, dts, tsSource, removedKeys));
@@ -130,10 +127,8 @@ export class DeclarationsStripper {
     if (this.prepared != null) {
       return this.prepared;
     }
-    const k = this.ts.SyntaxKind;
     const removed = new Set<any>();
     const removedKeys = new Set<string>();
-    const removedTypeNames = new Set<string>();
     const byFile = new Map<string, { removed: any[]; transformations: HeritageTransformation[] }>();
     const forFile = (node: any) => {
       const fileName = path.resolve(node.getSourceFile().fileName);
@@ -156,17 +151,12 @@ export class DeclarationsStripper {
       }
       removed.add(node);
       removedKeys.add(key);
-      if ([k.ClassDeclaration, k.InterfaceDeclaration, k.EnumDeclaration].includes(node.kind) && node.name != null) {
-        removedTypeNames.add(node.name.text);
-      }
       forFile(node).removed.push(node);
     }
     for (const transformation of this.stripping.transformations) {
       forFile(transformation.target).transformations.push(transformation);
     }
-    const removedTypeName =
-      removedTypeNames.size > 0 ? new RegExp(`\\b(?:${[...removedTypeNames].join('|')})\\b`) : undefined;
-    this.prepared = { removed, removedKeys, removedTypeNames, removedTypeName, byFile };
+    this.prepared = { removed, removedKeys, byFile };
     return this.prepared;
   }
 
@@ -413,37 +403,26 @@ export class DeclarationsStripper {
   }
 
   /** Classic: the named imports of a removed type are removed; an import that names nothing is kept for its effects. */
-  private imports(
-    text: string,
-    dts: any,
-    tsSource: any,
-    removedTypeNames: Set<string>,
-    removedKeys: Set<string>,
-  ): Insertion[] {
+  private imports(text: string, dts: any, tsSource: any, removedKeys: Set<string>): Insertion[] {
     const k = this.ts.SyntaxKind;
-    // shortcut: only the imports named like a removed type are looked up (an import of a type re-exported under
-    // another name is not); look them all up if that ever matters.
-    const candidates: any[] = [];
-    for (const statement of tsSource.statements) {
-      const bindings = statement.kind === k.ImportDeclaration ? statement.importClause?.namedBindings : undefined;
-      if (bindings?.kind !== k.NamedImports) {
-        continue;
-      }
-      for (const element of bindings.elements) {
-        if (removedTypeNames.has((element.propertyName ?? element.name).text)) {
-          candidates.push(element);
-        }
-      }
-    }
+    const namedImports = (statements: readonly any[]): any[] =>
+      statements.flatMap((statement) => {
+        const bindings = statement.kind === k.ImportDeclaration ? statement.importClause?.namedBindings : undefined;
+        return bindings?.kind === k.NamedImports ? [...bindings.elements] : [];
+      });
+    // Only the names the `.d.ts` still imports are looked up (the emit dropped the others), through any re-export.
+    const emittedNames = new Set(namedImports(dts.statements).map((e) => e.name.text));
+    const candidates = namedImports(tsSource.statements).filter((e) => emittedNames.has(e.name.text));
     if (candidates.length === 0) {
       return [];
     }
     const checker = this.project.checker;
     const removedNames = new Set<string>();
     const symbols: any[] = checker.getSymbolAtLocation(candidates.map((e) => e.name));
-    for (const [i, element] of candidates.entries()) {
-      const target = symbols[i] != null ? checker.getAliasedSymbol(symbols[i]) : undefined;
-      if ((target?.declarations ?? []).some((d: any) => removedKeys.has(`${d.path}:${d.index}`))) {
+    const resolved = candidates.flatMap((element, i) => (symbols[i] != null ? [{ element, symbol: symbols[i] }] : []));
+    const targets: any[] = this.project.api.batch(...resolved.map((r) => checker.getAliasedSymbol.gen(r.symbol)));
+    for (const [i, { element }] of resolved.entries()) {
+      if ((targets[i]?.declarations ?? []).some((d: any) => removedKeys.has(`${d.path}:${d.index}`))) {
         removedNames.add(element.name.text);
       }
     }
