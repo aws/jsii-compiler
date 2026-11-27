@@ -156,6 +156,9 @@ function compareMembers(l: any, r: any): number {
   return key(l).localeCompare(key(r));
 }
 
+/** How many nodes or symbols go into one request when the assembler reads ahead for the whole project. */
+const PREFETCH_CHUNK = 5000;
+
 export class Assembler {
   private readonly ts: TypeScriptApi;
   private readonly checker: any;
@@ -318,6 +321,7 @@ export class Assembler {
 
     this._registerModuleExports(moduleExports, moduleSymbol.declarations?.[0]?.path);
 
+    this._prefetchMembersOfTypes();
     for (const { name, sym, decl, fqn } of this.exported) {
       this._visitNode(name, sym, decl, fqn);
     }
@@ -779,6 +783,39 @@ export class Assembler {
     }
     for (const [i, t] of todo.entries()) {
       this._typeOfSymbolAtCache.set(t.key, results[i]);
+    }
+  }
+
+  /**
+   * Read the type, the members and the member docs of all exported classes and interfaces in a few large requests
+   * before they are visited, instead of a few requests per type. `_visitMembers` then finds them in the caches it
+   * reads anyway (the checker's type cache, the members cached on each type, `_jsDocTags` and `_docComment`).
+   */
+  private _prefetchMembersOfTypes(): void {
+    const { SyntaxKind } = this.ts;
+    const decls = this.exported
+      .map((e) => e.decl)
+      .filter((d) => d?.kind === SyntaxKind.ClassDeclaration || d?.kind === SyntaxKind.InterfaceDeclaration);
+    const members = new Set<any>();
+    try {
+      for (let i = 0; i < decls.length; i += PREFETCH_CHUNK) {
+        const types: any[] = this.checker.getTypeAtLocation(decls.slice(i, i + PREFETCH_CHUNK));
+        const memberLists: any[][] = this.project.api.batch(
+          ...types.map((t) => this.checker.getPropertiesOfType.gen(t)),
+        );
+        for (const list of memberLists) {
+          for (const m of list ?? []) {
+            members.add(m);
+          }
+        }
+      }
+    } catch {
+      // shortcut: a failed request reads nothing more ahead; each type is then read when it is visited, as before.
+      return;
+    }
+    const all = [...members];
+    for (let i = 0; i < all.length; i += PREFETCH_CHUNK) {
+      this._prefetchDocs(all.slice(i, i + PREFETCH_CHUNK));
     }
   }
 
