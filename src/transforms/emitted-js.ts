@@ -64,6 +64,48 @@ function className(node: any, k: any): string | undefined {
 function classDeclarations(sourceFile: any, k: any, qualify: boolean): Array<{ node: any; qualifiedName?: string }> {
   const result: Array<{ node: any; qualifiedName?: string }> = [];
   const isAmbient = (node: any) => (node.modifiers ?? []).some((m: any) => m.kind === k.DeclareKeyword);
+
+  // Most files only declare classes as statements of the file or of a namespace, which is quick to find. The
+  // file's text tells when that is all of them: every class has a `class` keyword, so as many `class` words (not
+  // in comments) as classes found leaves no other class to look for.
+  // shortcut: strings are not told from code, so a `/*` or `//` in one hides the words after it; a class it hides
+  // goes unpaired (the file is then paired by what the walk finds) instead of failing the pairing.
+  const statementClasses = (node: any, namespace: string[] | undefined): undefined => {
+    if (node.kind === k.ClassDeclaration) {
+      if (!isAmbient(node)) {
+        const name = node.name?.text;
+        result.push({
+          node,
+          qualifiedName: qualify && namespace != null && name != null ? [...namespace, name].join('.') : undefined,
+        });
+      }
+    } else if (node.kind === k.ModuleDeclaration) {
+      if (!isAmbient(node) && node.body != null) {
+        statementClasses(node.body, namespace && [...namespace, node.name.text]);
+      }
+    } else if (node.kind === k.ModuleBlock) {
+      for (const statement of node.statements) {
+        statementClasses(statement, namespace);
+      }
+    } else if (node.kind === k.VariableStatement) {
+      for (const declaration of node.declarationList.declarations) {
+        if (declaration.initializer?.kind === k.ClassExpression && !isAmbient(declaration.initializer)) {
+          result.push({ node: declaration.initializer });
+        }
+      }
+    }
+    return undefined;
+  };
+  for (const statement of sourceFile.statements) {
+    statementClasses(statement, []);
+  }
+  const text: string = sourceFile.text;
+  const words = (t: string) => (t.match(/\bclass\b/g) ?? []).length;
+  if (words(text) === result.length || words(text.replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, '')) === result.length) {
+    return result;
+  }
+  result.length = 0;
+
   const visit = (node: any, namespace: string[] | undefined): undefined => {
     if (node.kind === k.ClassDeclaration || node.kind === k.ClassExpression) {
       if (!isAmbient(node)) {
