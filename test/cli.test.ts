@@ -4,7 +4,6 @@ import * as path from 'node:path';
 import { SPEC_FILE_NAME, SPEC_FILE_NAME_COMPRESSED } from '@jsii/spec';
 
 import { makeCliProject, mockYargsToTrackParse, runCli } from './cli-helpers';
-import { silencedWarnings } from '../src/warnings';
 
 jest.mock('yargs', () => mockYargsToTrackParse());
 
@@ -16,7 +15,6 @@ const project = (...args: Parameters<typeof makeCliProject>) => {
 };
 
 afterEach(() => {
-  silencedWarnings.clear();
   for (const dir of projects.splice(0)) {
     fs.rmSync(dir, { force: true, recursive: true });
   }
@@ -300,13 +298,62 @@ describe('jsii compile', () => {
   });
 
   describe('--verbose', () => {
-    test.each([[[]], [['-v']], [['-vv']], [['-vvv']], [['-vvvv']]])('is accepted as %j', async (flags) => {
+    // Diagnostics are shown by their category: warnings by default, suggestions (such as the missing description)
+    // only when the output is at its most verbose.
+    // This documents current behavior, see https://github.com/aws/jsii-compiler/issues/3002
+    // Showing a suggestion makes the compiler crash.
+    test('shows suggestions only at the highest levels of verbosity, where they make the CLI crash', async () => {
+      const quiet = await runCli(project({}, { description: undefined }));
+      const verbose = await runCli(project({}, { description: undefined }), '-vvv');
+
+      expect(quiet.exitCode).toBeUndefined();
+      expect(quiet.stdout).not.toContain('JSII1');
+      expect(verbose.exitCode).toBe(1);
+      expect(verbose.stderr).toContain('Debug Failure. Should never get an Info diagnostic on the command line.');
+    });
+
+    test('shows messages (such as the use of unsupported syntax) from the second level of verbosity', async () => {
+      const dir = project({
+        'index.ts': 'export class Klass { public static value = 0; static { Klass.value = 1; } }',
+      });
+
+      const info = await runCli(dir, '-v');
+      const debug = await runCli(dir, '-vv');
+
+      expect(info.stdout).not.toContain('JSII9998');
+      expect(debug.stdout).toContain('JSII9998');
+    });
+
+    test.each([[['-v']], [['-vv']], [['-vvvv']]])('is accepted as %j', async (flags) => {
       const dir = project();
 
       const result = await runCli(dir, ...flags);
 
       expect(result.exitCode).toBeUndefined();
     });
+  });
+});
+
+describe('@jsii suppress', () => {
+  const source = (directive: string) => ({
+    'index.ts': `export class Foo {
+      ${directive}
+      public foo(): void {}
+    }`,
+  });
+
+  test('hides the warning it names', async () => {
+    const result = await runCli(project(source('/** @jsii suppress JSII5019 */')));
+
+    expect(result.exitCode).toBeUndefined();
+    expect(result.stdout).not.toContain('JSII5019');
+  });
+
+  test('ignores an identifier that is not a diagnostic, and shows the warning', async () => {
+    const result = await runCli(project(source('/** @jsii suppress not-a-diagnostic */')));
+
+    expect(result.exitCode).toBeUndefined();
+    expect(result.stdout).toContain('JSII5019');
   });
 });
 
@@ -394,6 +441,139 @@ describe('jsii --version', () => {
     const result = await runCli(process.cwd(), '--version');
 
     expect(result.stdout).toMatch(/^\d+\.\d+\.\d+ \(build .+\), typescript \d+\.\d+\.\d+/);
+  });
+});
+
+// These tests document current behavior that looks wrong. Each one references the issue that describes it.
+describe('current behavior that is reported as an issue', () => {
+  const run = (dir: string, ...args: string[]) => runCli(dir, ...args);
+
+  // https://github.com/aws/jsii-compiler/issues/2979
+  test('diagnostic codes below 1000 are printed without zero padding', async () => {
+    const result = await run(project({ 'README.md': null }));
+
+    expect(result.stdout).toContain('warning JSII3: There is no "README.md" file.');
+    expect(result.stdout).not.toContain('JSII0003');
+  });
+
+  // https://github.com/aws/jsii-compiler/issues/2980
+  test('the assembly is written although compilation errors prevented it from being created', async () => {
+    const dir = project({ 'index.ts': "export class Klass {}\nexport const n: number = 'a';" });
+
+    const result = await run(dir);
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain('Compilation errors prevented the JSII assembly from being created');
+    expect(fs.existsSync(path.join(dir, SPEC_FILE_NAME))).toBe(true);
+  });
+
+  // https://github.com/aws/jsii-compiler/issues/2981
+  test('--fail-on-warnings with only warnings reports errors', async () => {
+    const result = await run(project({ 'README.md': null }), '--fail-on-warnings');
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain('Type model errors prevented the JSII assembly from being created');
+    expect(result.stdout).toContain('❌ Failed with errors');
+    expect(result.stdout).toContain('Errors: 0 | Warnings: 1');
+  });
+
+  // https://github.com/aws/jsii-compiler/issues/2982
+  test('errors from parsing the tsconfig are dropped, and the entry point is reported as missing', async () => {
+    const { include, exclude, ...config } = userTsconfig({ outDir: 'lib', rootDir: 'lib' });
+    const dir = project(
+      { 'tsconfig.json': JSON.stringify(config), 'lib/index.ts': 'export class Klass {}', 'index.ts': null },
+      { main: 'lib/index.js', types: 'lib/index.d.ts' },
+    );
+
+    const result = await run(dir, '--tsconfig', 'tsconfig.json');
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stdout).toContain('JSII4: Could not find "main" file');
+    expect(result.stdout).not.toContain('TS18003');
+  });
+
+  // https://github.com/aws/jsii-compiler/issues/2983
+  test('JSII4009 is printed, but it is not counted as a warning', async () => {
+    const dir = project({ 'tsconfig.dev.json': JSON.stringify(userTsconfig()) });
+
+    const result = await run(
+      dir,
+      '--tsconfig',
+      'tsconfig.dev.json',
+      '--validate-tsconfig',
+      'off',
+      '--fail-on-warnings',
+    );
+
+    expect(result.exitCode).toBeUndefined();
+    expect(result.stdout).toContain('warning JSII4009');
+    expect(result.stdout).toContain('Errors: 0 | Warnings: 0');
+  });
+
+  // https://github.com/aws/jsii-compiler/issues/2984
+  test('a missing package.json prints the help and the raw error', async () => {
+    const result = await run(project({ 'package.json': null }));
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain('jsii compile [PROJECT_ROOT]');
+    expect(result.stderr).toContain('ENOENT: no such file or directory');
+  });
+
+  describe('violations of the tsconfig validation', () => {
+    const violations = async (overrides: Record<string, unknown>) => {
+      const dir = project({ 'tsconfig.dev.json': JSON.stringify(userTsconfig(overrides)) });
+      return (await run(dir, 'validate-tsconfig', 'tsconfig.dev.json')).stdout;
+    };
+
+    // https://github.com/aws/jsii-compiler/issues/2987
+    test('print the expected value of a rule that forbids a value as the one that was expected', async () => {
+      expect(await violations({ target: 'es5' })).toContain('target: Expected value "es5", got: "es5"');
+    });
+
+    // https://github.com/aws/jsii-compiler/issues/2987
+    test('print "to be present" for an option that must not be present', async () => {
+      expect(await violations({ downlevelIteration: true })).toContain(
+        'downlevelIteration: Expected value to be present, got true',
+      );
+    });
+
+    // https://github.com/aws/jsii-compiler/issues/2992
+    test('reject "paths" because of an option that TypeScript adds', async () => {
+      expect(await violations({ paths: { '@x/*': ['lib/*'] } })).toContain(
+        'pathsBasePath: Unexpected field, got: pathsBasePath',
+      );
+    });
+  });
+
+  describe('a tsconfig in a subdirectory with "extends"', () => {
+    const files = () => ({
+      'sub/tsconfig.json': JSON.stringify({ extends: './base.json', ...userTsconfig() }),
+      'sub/base.json': JSON.stringify({ compilerOptions: { baseUrl: '.' } }),
+    });
+
+    // https://github.com/aws/jsii-compiler/issues/2991
+    test('is resolved against the project root when compiling, so the base is not read', async () => {
+      const result = await run(project(files()), '--tsconfig', 'sub/tsconfig.json', '--validate-tsconfig', 'strict');
+
+      expect(result.exitCode).toBeUndefined();
+    });
+
+    // https://github.com/aws/jsii-compiler/issues/2991
+    test('is resolved against its own directory by validate-tsconfig, so the base is read', async () => {
+      const result = await run(project(files()), 'validate-tsconfig', 'sub/tsconfig.json');
+
+      expect(result.exitCode).toBe(1);
+      expect(result.stdout).toContain('baseUrl: Expected value to be present');
+    });
+
+    // https://github.com/aws/jsii-compiler/issues/2991
+    test('passes the validation when the base does not exist', async () => {
+      const dir = project({ 'tsconfig.json': JSON.stringify({ extends: './nope.json', ...userTsconfig() }) });
+
+      const result = await run(dir, '--tsconfig', 'tsconfig.json', '--validate-tsconfig', 'strict');
+
+      expect(result.exitCode).toBeUndefined();
+    });
   });
 });
 

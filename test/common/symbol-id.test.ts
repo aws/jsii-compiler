@@ -1,10 +1,9 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import type { Assembly } from '@jsii/spec';
 import * as ts from 'typescript';
 
-import { normalizePath, symbolIdentifier } from '../../src/common/symbol-id';
+import { compileJsiiForTest, normalizePath, symbolIdentifier } from '../../src';
 
 let tmpDir: string;
 
@@ -119,7 +118,7 @@ describe('symbolIdentifier', () => {
       'package.json': '{}',
       'dist/lib/index.ts': 'export class Foo {}',
     });
-    const assembly = { metadata: { tscRootDir: 'src', tscOutDir: 'dist' } } as unknown as Assembly;
+    const assembly = withMetadata({ tscRootDir: 'src', tscOutDir: 'dist' });
 
     expect(symbolIdentifier(project.checker, symbolOf(project, 'dist/lib/index.ts', 'Foo'), { assembly })).toBe(
       'src/lib/index:Foo',
@@ -131,7 +130,7 @@ describe('symbolIdentifier', () => {
       'package.json': JSON.stringify({ jsii: { tsc: { rootDir: 'ts', outDir: 'js' } } }),
       'js/index.ts': 'export class Foo {}',
     });
-    const assembly = { metadata: { tscRootDir: 'src', tscOutDir: 'dist' } } as unknown as Assembly;
+    const assembly = withMetadata({ tscRootDir: 'src', tscOutDir: 'dist' });
 
     expect(symbolIdentifier(project.checker, symbolOf(project, 'js/index.ts', 'Foo'), { assembly })).toBe(
       'ts/index:Foo',
@@ -174,3 +173,8 @@ describe('normalizePath', () => {
     expect(normalizePath('dist/lib/index', '.', 'dist')).toBe('lib/index');
   });
 });
+
+/** An assembly that was produced by the compiler, whose metadata is replaced. */
+function withMetadata(metadata: Record<string, unknown>) {
+  return { ...compileJsiiForTest('export class Foo {}').assembly, metadata };
+}
