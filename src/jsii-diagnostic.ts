@@ -212,31 +212,6 @@ export interface DiagnosticLocation {
   readonly length: number;
 }
 
-/**
- * Whether `fileName` names a TypeScript standard library declaration file,
- * that is `.../typescript/lib/lib.<name>.d.ts`.
- *
- * This is a string check rather than a regular expression. An unanchored
- * pattern with `.+` before a fixed suffix backtracks polynomially on crafted
- * paths.
- */
-function isTypeScriptStdLibFile(fileName: string): boolean {
-  const normalized = fileName.replace(/\\/g, '/');
-  const slash = normalized.lastIndexOf('/');
-  if (slash < 0) {
-    return false;
-  }
-  const directory = normalized.slice(0, slash);
-  const baseName = normalized.slice(slash + 1);
-  // "lib." + at least one character + ".d.ts"
-  return (
-    directory.endsWith('/typescript/lib') &&
-    baseName.startsWith('lib.') &&
-    baseName.endsWith('.d.ts') &&
-    baseName.length >= 'lib.x.d.ts'.length
-  );
-}
-
 export class JsiiDiagnostic implements Diagnostic {
   //////////////////////////////////////////////////////////////////////////////
   // 0001 => 0999 -- PACKAGE METADATA PROBLEMS
@@ -939,7 +914,7 @@ export class JsiiDiagnostic implements Diagnostic {
 
   public addRelatedInformation(location: DiagnosticLocation, message: JsiiDiagnostic['messageText']): this {
     // Don't relate info into the TypeScript standard library
-    if (!isTypeScriptStdLibFile(location.file.fileName)) {
+    if (!/[\\/]typescript[\\/]lib[\\/]lib\..+\.d\.ts$/.test(location.file.fileName)) {
       this.relatedInformation.push(JsiiDiagnostic.JSII_9999_RELATED_INFO.create(location, message));
     }
     // Clearing out #formatted, as this would no longer be the correct string.

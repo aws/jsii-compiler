@@ -8,16 +8,15 @@ import {
   SPEC_FILE_NAME,
   SPEC_FILE_NAME_COMPRESSED,
 } from '@jsii/spec';
+import * as ts from 'typescript';
 import { compileJsiiForErrors } from './compiler-helpers';
 import { compile, Lock } from './fixtures';
 import { compileJsiiForTest } from '../src';
 import { Compiler } from '../src/compiler';
-import { DiagnosticCategory } from '../src/diagnostic';
 import { JsiiDiagnostic } from '../src/jsii-diagnostic';
 import { ProjectInfo } from '../src/project-info';
 import { TypeScriptConfigValidationRuleSet } from '../src/tsconfig';
 import { TypeScriptConfigValidator } from '../src/tsconfig/tsconfig-validator';
-import { silencedWarnings } from '../src/warnings';
 
 // Make the typescript module's properties configurable so jest.spyOn works.
 // TS 6.0 exports non-configurable properties that cannot be spied on directly.
@@ -97,6 +96,99 @@ describe(Compiler, () => {
       expect(() => validator.validate(tsconfig)).not.toThrow();
     });
 
+    // @TODO(ts7): `--watch` is not supported by the TypeScript 7 compiler yet
+    test.skip('"watch" mode', async () => {
+      const sourceDir = mkdtempSync(join(tmpdir(), 'jsii-compiler-watch-mode-'));
+
+      try {
+        writeFileSync(join(sourceDir, 'index.ts'), 'export class MarkerA {}');
+        // Intentionally using lower case name - it should be case-insensitive
+        writeFileSync(join(sourceDir, 'readme.md'), '# Test Package');
+
+        const compiler = new Compiler({
+          projectInfo: _makeProjectInfo(sourceDir, 'index.d.ts'),
+          failOnWarnings: true,
+          projectReferences: false,
+        });
+
+        let firstCompilation = true;
+        let onWatchClosed: () => void;
+        let onWatchFailed: (err: unknown) => void;
+        const watchClosed = new Promise<void>((ok, ko) => {
+          onWatchClosed = ok;
+          onWatchFailed = ko;
+        });
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- @TODO(ts7): watch mode is not ported to the TypeScript 7 compiler yet
+        const watch = await (compiler as any).watch({
+          nonBlocking: true,
+          // Ignore diagnostics reporting (not to pollute test console output)
+          reportDiagnostics: () => null,
+          // Ignore watch status reporting (not to pollute test console output)
+          reportWatchStatus: () => null,
+          // Verify everything goes according to plan
+          compilationComplete: (emitResult: any) => {
+            try {
+              expect(emitResult.emitSkipped).toBeFalsy();
+              const output = JSON.stringify(loadAssemblyFromPath(sourceDir));
+              if (firstCompilation) {
+                firstCompilation = false;
+                expect(output).toContain('"MarkerA"');
+                setTimeout(() => writeFileSync(join(sourceDir, 'index.ts'), 'export class MarkerB {}'), 1000);
+                return;
+              }
+              expect(output).toContain('"MarkerB"');
+              watch.close();
+              // Tell the test suite we're done here!
+              onWatchClosed();
+            } catch (e) {
+              watch.close();
+              onWatchFailed(e);
+            }
+          },
+        });
+        await watchClosed;
+      } finally {
+        rmSync(sourceDir, { force: true, recursive: true });
+      }
+    }, 100_000);
+
+    test('rootDir and outDir are added to assembly', () => {
+      const outDir = 'jsii-outdir';
+      const rootDir = 'jsii-rootdir';
+      const sourceDir = mkdtempSync(join(tmpdir(), 'jsii-tmpdir'));
+      mkdirSync(join(sourceDir, rootDir), { recursive: true });
+
+      try {
+        writeFileSync(join(sourceDir, rootDir, 'index.ts'), 'export class MarkerA {}');
+        // Intentionally using lower case name - it should be case-insensitive
+        writeFileSync(join(sourceDir, rootDir, 'readme.md'), '# Test Package');
+
+        const compiler = new Compiler({
+          projectInfo: {
+            ..._makeProjectInfo(sourceDir, join(outDir, 'index.d.ts')),
+            tsc: {
+              outDir,
+              rootDir,
+            },
+          },
+          failOnWarnings: true,
+          projectReferences: false,
+        });
+
+        compiler.emit();
+
+        const assembly = loadAssemblyFromPath(sourceDir);
+        expect(assembly.metadata).toEqual(
+          expect.objectContaining({
+            tscRootDir: rootDir,
+            tscOutDir: outDir,
+          }),
+        );
+      } finally {
+        rmSync(sourceDir, { force: true, recursive: true });
+      }
+    });
+
     test('absolute rootDir is emitted as a relative tscRootDir in the assembly', () => {
       const outDir = 'jsii-outdir';
       const rootDir = 'jsii-rootdir';
@@ -138,43 +230,6 @@ describe(Compiler, () => {
       }
     });
 
-    test('rootDir and outDir are added to assembly', () => {
-      const outDir = 'jsii-outdir';
-      const rootDir = 'jsii-rootdir';
-      const sourceDir = mkdtempSync(join(tmpdir(), 'jsii-tmpdir'));
-      mkdirSync(join(sourceDir, rootDir), { recursive: true });
-
-      try {
-        writeFileSync(join(sourceDir, rootDir, 'index.ts'), 'export class MarkerA {}');
-        // Intentionally using lower case name - it should be case-insensitive
-        writeFileSync(join(sourceDir, rootDir, 'readme.md'), '# Test Package');
-
-        const compiler = new Compiler({
-          projectInfo: {
-            ..._makeProjectInfo(sourceDir, join(outDir, 'index.d.ts')),
-            tsc: {
-              outDir,
-              rootDir,
-            },
-          },
-          failOnWarnings: true,
-          projectReferences: false,
-        });
-
-        compiler.emit();
-
-        const assembly = loadAssemblyFromPath(sourceDir);
-        expect(assembly.metadata).toEqual(
-          expect.objectContaining({
-            tscRootDir: rootDir,
-            tscOutDir: outDir,
-          }),
-        );
-      } finally {
-        rmSync(sourceDir, { force: true, recursive: true });
-      }
-    });
-
     test.each([
       { sources: '.', types: 'index.d.ts', rootDir: undefined, advice: `Set it to "${join('dist', 'index.d.ts')}"` },
       { sources: 'lib', types: 'index.d.ts', rootDir: 'lib', advice: 'Point "types" and "main" at the compiled files' },
@@ -200,7 +255,7 @@ describe(Compiler, () => {
         const jsiiDiagnostics = result.diagnostics.filter(JsiiDiagnostic.isJsiiDiagnostic);
         // Report the misplaced "types" instead of a missing entry point next to the outDir.
         expect(jsiiDiagnostics.map((diag) => diag.jsiiCode)).toEqual([8]);
-        expect(String(jsiiDiagnostics[0].messageText)).toContain(advice);
+        expect(ts.flattenDiagnosticMessageText(jsiiDiagnostics[0].messageText, '\n')).toContain(advice);
       } finally {
         rmSync(sourceDir, { force: true, recursive: true });
       }
@@ -310,37 +365,10 @@ describe(Compiler, () => {
       const result = compiler.emit();
       // No rule set is given, so validation is off and only JSII4009 says so.
       expect(result.diagnostics).toEqual([
-        expect.objectContaining({ jsiiCode: 4009, category: DiagnosticCategory.Warning }),
+        expect.objectContaining({ jsiiCode: 4009, category: ts.DiagnosticCategory.Warning }),
       ]);
       expect(result.emitSkipped).toBe(false);
     });
-
-    // https://github.com/aws/jsii-compiler/issues/2983
-    test.each([
-      { silenced: false, emitSkipped: true },
-      { silenced: true, emitSkipped: false },
-    ])(
-      'JSII4009 fails the build with failOnWarnings unless silenced (silenced: $silenced)',
-      ({ silenced, emitSkipped }) => {
-        writeFileSync(join(sourceDir, tsconfigPath), JSON.stringify(tsconfigForNode18Strict(), null, 2));
-        writeFileSync(join(sourceDir, 'index.ts'), 'export class MarkerA {}');
-        writeFileSync(join(sourceDir, 'README.md'), '# Test Package');
-        const compiler = new Compiler({
-          projectInfo: _makeProjectInfo(sourceDir, 'index.d.ts'),
-          typeScriptConfig: tsconfigPath,
-          failOnWarnings: true,
-        });
-
-        if (silenced) {
-          silencedWarnings.add(4009);
-        }
-        try {
-          expect(compiler.emit().emitSkipped).toBe(emitSkipped);
-        } finally {
-          silencedWarnings.delete(4009);
-        }
-      },
-    );
 
     test('use user-provided config uses include and exclude', () => {
       mkdirSync(join(sourceDir, 'sub'));
@@ -376,10 +404,70 @@ describe(Compiler, () => {
       const result = compiler.emit();
       // No rule set is given, so validation is off and only JSII4009 says so.
       expect(result.diagnostics).toEqual([
-        expect.objectContaining({ jsiiCode: 4009, category: DiagnosticCategory.Warning }),
+        expect.objectContaining({ jsiiCode: 4009, category: ts.DiagnosticCategory.Warning }),
       ]);
       expect(result.emitSkipped).toBe(false);
     });
+
+    // The two "lib" tests of main that spy on ts.createIncrementalProgram are in test/compiler/internals/lib.test.ts on
+    // 7.1, which reads the files of the TypeScript 7 program instead (https://github.com/aws/jsii-compiler/issues/3042).
+
+    // @TODO(ts7): `--watch` is not supported by the TypeScript 7 compiler yet
+    test.skip('"watch" mode', async () => {
+      writeFileSync(join(sourceDir, tsconfigPath), JSON.stringify(tsconfigForNode18Strict(), null, 2));
+
+      try {
+        writeFileSync(join(sourceDir, 'index.ts'), 'export class MarkerA {}');
+        // Intentionally using lower case name - it should be case-insensitive
+        writeFileSync(join(sourceDir, 'readme.md'), '# Test Package');
+
+        const compiler = new Compiler({
+          projectInfo: _makeProjectInfo(sourceDir, 'index.d.ts'),
+          failOnWarnings: true,
+          typeScriptConfig: tsconfigPath,
+          validateTypeScriptConfig: TypeScriptConfigValidationRuleSet.STRICT,
+        });
+
+        let firstCompilation = true;
+        let onWatchClosed: () => void;
+        let onWatchFailed: (err: unknown) => void;
+        const watchClosed = new Promise<void>((ok, ko) => {
+          onWatchClosed = ok;
+          onWatchFailed = ko;
+        });
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- @TODO(ts7): watch mode is not ported to the TypeScript 7 compiler yet
+        const watch = await (compiler as any).watch({
+          nonBlocking: true,
+          // Ignore diagnostics reporting (not to pollute test console output)
+          reportDiagnostics: () => null,
+          // Ignore watch status reporting (not to pollute test console output)
+          reportWatchStatus: () => null,
+          // Verify everything goes according to plan
+          compilationComplete: (emitResult: any) => {
+            try {
+              expect(emitResult.emitSkipped).toBeFalsy();
+              const output = JSON.stringify(loadAssemblyFromPath(sourceDir));
+              if (firstCompilation) {
+                firstCompilation = false;
+                expect(output).toContain('"MarkerA"');
+                setTimeout(() => writeFileSync(join(sourceDir, 'index.ts'), 'export class MarkerB {}'), 1000);
+                return;
+              }
+              expect(output).toContain('"MarkerB"');
+              watch.close();
+              // Tell the test suite we're done here!
+              onWatchClosed();
+            } catch (e) {
+              watch.close();
+              onWatchFailed(e);
+            }
+          },
+        });
+        await watchClosed;
+      } finally {
+        rmSync(sourceDir, { force: true, recursive: true });
+      }
+    }, 25_000);
   });
 
   describe('package name', () => {
@@ -410,9 +498,11 @@ describe(Compiler, () => {
       // Only the package name is reported, not the types that jsii looked up by name.
       const errors = result.diagnostics
         .filter(JsiiDiagnostic.isJsiiDiagnostic)
-        .filter((diag) => diag.category === DiagnosticCategory.Error);
+        .filter((diag) => diag.category === ts.DiagnosticCategory.Error);
       expect(errors.map((diag) => diag.jsiiCode)).toEqual([9]);
-      expect(String(errors[0].messageText)).toContain(`${JSON.stringify(name)} contains a "."`);
+      expect(ts.flattenDiagnosticMessageText(errors[0].messageText, '\n')).toContain(
+        `${JSON.stringify(name)} contains a "."`,
+      );
     });
 
     test('does not report a package name without a dot', () => {

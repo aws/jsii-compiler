@@ -404,6 +404,7 @@ export class BuildWorkflow {
       autoMerge.on({
         pullRequestTarget: {
           types: ['opened', 'reopened', 'ready_for_review'],
+          branches: ['main', 'maintenance/*'],
         },
       });
       autoMerge.addJob('enable-auto-merge', {

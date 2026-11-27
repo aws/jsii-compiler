@@ -19,6 +19,7 @@ tsconfig.tsbuildinfo
 /.eslintrc.json
 /projenrc/tsconfig.json
 /.*
+/AGENTS.md
 /CODE_OF_CONDUCT.md
 /CONTRIBUTING.md
 /build-tools/

@@ -45,13 +45,50 @@ To send us a pull request, please:
 
 1. Fork the repository.
 2. Modify the source; please focus on the specific change you are contributing. If you also reformat all the code, it will be hard for us to focus on your change.
-3. Ensure local tests pass.
+3. Ensure local tests pass, and add tests for your change (see [Running tests](#running-tests) and [Writing tests](#writing-tests)).
 4. Commit to your fork using clear commit messages.
 5. Send us a pull request, answering any default questions in the pull request interface.
 6. Pay attention to any automated CI failures reported in the pull request, and stay involved in the conversation.
 
 GitHub provides additional document on [forking a repository](https://help.github.com/articles/fork-a-repo/) and
 [creating a pull request](https://help.github.com/articles/creating-a-pull-request/).
+
+## Running tests
+
+The project is managed with [projen](https://projen.io). Install the dependencies, build once, then run the tests:
+
+```console
+$ yarn install
+$ npx projen pre-compile && npx projen compile && npx projen post-compile
+$ npx projen test
+```
+
+`npx projen test` runs the tests with [jest](https://jestjs.io) and then the linter. To run only some tests, call jest
+directly, for example `yarn jest test/assembler`. Jest also measures coverage: you find the report in the `coverage`
+directory.
+
+## Writing tests
+
+Tests live in the `test` directory, in a folder per feature (for example `test/assembler`). A few habits keep them
+useful over time:
+
+* **Test what users can see.** Compile a small piece of real code, run the CLI, or call the exported API, and check the
+  result: the assembly, the diagnostics, the exit code, the output. Tests like this keep working when we reorganize the
+  code inside. For example:
+
+  ```ts
+  const result = compileJsiiForTest('export class Klass {}');
+  expect(Object.keys(result.assembly.types!)).toEqual(['testpkg.Klass']);
+  ```
+
+* **Prefer real input over mocks.** If you replace parts of the compiler with mocks, a test can pass while the real
+  thing is broken. When a line seems hard to reach, try a different input first. Replacing the network, or reading what
+  is written to standard output, is fine.
+* **Leave TypeScript's internals alone.** Unexported TypeScript APIs can change in any release, and a situation that
+  source code cannot produce is unlikely to matter to users.
+* **Test jsii's own helpers in an `internals` folder.** Some features have no public entry point, for example the rule
+  sets of the tsconfig validation. You can test those directly. Put the tests in `test/<feature>/internals` (for
+  example `test/tsconfig/internals`), call the code and check what it returns or throws.
 
 ## Finding contributions to work on
 

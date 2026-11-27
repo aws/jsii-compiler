@@ -1,4 +1,4 @@
-import { isInterfaceName, isStdlibDeclPath, splitSummary } from '../src/assembler';
+import { isInterfaceName, isStdlibDeclPath, splitSummary } from '../../../src/assembler';
 
 // Unit tests for the pure helpers of the assembler.
 

@@ -1,10 +1,10 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 
-import { toDiagnostic } from '../src/compiler';
-import { resolveTypeScript7PackageDir } from '../src/compiler-host';
-import { DiagnosticCategory } from '../src/diagnostic';
-import { _formatDiagnostic } from '../src/utils';
+import { toDiagnostic } from '../../../src/compiler';
+import { resolveTypeScript7PackageDir } from '../../../src/compiler-host';
+import { DiagnosticCategory } from '../../../src/diagnostic';
+import { _formatDiagnostic } from '../../../src/utils';
 
 // Toolchain-free tests for the TypeScript 7 API loader and diagnostics mapping.
 
