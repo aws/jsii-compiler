@@ -576,12 +576,47 @@ export class Assembler {
   }
 
   /**
-   * Documentation is read per symbol: on TypeScript 7.1 the request-batching
-   * combinator was measured slower than individual requests for this workload.
-   * Kept as a no-op hook so call sites document where a prefetch would go.
+   * Read the JSDoc tags and documentation comment of the symbols that are not
+   * cached yet in one batch, instead of two round trips per symbol. The values
+   * are the ones `_jsDocTags` and `_docComment` would read.
    */
-  private _prefetchDocs(_syms: any[]): void {
-    /* intentionally empty */
+  private _prefetchDocs(syms: any[]): void {
+    const todo: Array<{ tags: boolean; sym: any; key: string }> = [];
+    const seen = new Set<string>();
+    for (const sym of syms) {
+      const key = this._symbolDocKey(sym);
+      if (key == null || seen.has(key)) {
+        continue;
+      }
+      seen.add(key);
+      if (!this._jsDocTagsCache.has(key)) {
+        todo.push({ tags: true, sym, key });
+      }
+      if (!this._docCommentCache.has(key)) {
+        todo.push({ tags: false, sym, key });
+      }
+    }
+    if (todo.length < 2) {
+      return;
+    }
+    let results: any[];
+    try {
+      results = this.project.api.batch(
+        ...todo.map((t) =>
+          t.tags ? t.sym.getJsDocTags.gen(this.checker) : t.sym.getDocumentationComment.gen(this.checker),
+        ),
+      );
+    } catch {
+      // shortcut: a failed batch reads nothing ahead; each symbol is then read on its own, as before.
+      return;
+    }
+    for (const [i, t] of todo.entries()) {
+      if (t.tags) {
+        this._jsDocTagsCache.set(t.key, results[i] ?? []);
+      } else {
+        this._docCommentCache.set(t.key, results[i] ?? null);
+      }
+    }
   }
 
   private _shouldStrip(sym: any, fqn: string): boolean {
@@ -2117,9 +2152,9 @@ export class Assembler {
     const staticTypeForPrefetch = !isInterface ? this.checker.getTypeOfSymbol(sym) : undefined;
     const staticPropsForPrefetch = staticTypeForPrefetch ? this.checker.getPropertiesOfType(staticTypeForPrefetch) : [];
 
-    this._validateInternalMembers(sym, decl, erasedBases, isInterface, instanceProps, staticPropsForPrefetch);
     // One RPC for all member docs of this type (instance + static).
     this._prefetchDocs([...instanceProps, ...staticPropsForPrefetch]);
+    this._validateInternalMembers(sym, decl, erasedBases, isInterface, instanceProps, staticPropsForPrefetch);
 
     // Constructor parameter properties are only listed for the EFFECTIVE
     // constructor — the first constructor found on the type itself or along its
