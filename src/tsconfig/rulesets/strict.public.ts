@@ -32,6 +32,11 @@ strict.shouldPass('noEmitOnError', Match.TRUE);
 strict.shouldPass('declaration', Match.TRUE);
 strict.shouldPass('noUncheckedSideEffectImports', Match.optional(Match.TRUE));
 
+// Allowed, but only as `true`: TypeScript 7 removed the `false` setting (TS5108)
+strict.shouldPass('esModuleInterop', Match.optional(Match.TRUE));
+strict.shouldPass('allowSyntheticDefaultImports', Match.optional(Match.TRUE));
+strict.shouldPass('alwaysStrict', Match.optional(Match.TRUE));
+
 // Deprecated ts options that should not be used with jsii
 strict.import(deprecatedOptions);
 

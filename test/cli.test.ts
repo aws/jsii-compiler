@@ -472,10 +472,13 @@ describe('jsii validate-tsconfig', () => {
 
   // https://github.com/aws/jsii-compiler/issues/2987
   test.each([
-    [{ target: 'es5' }, 'target: Expected value not to be "es5", got: "es5"'],
-    [{ module: 'amd' }, 'module: Expected value not to be one of ["amd","umd","systemjs","none"], got: "amd"'],
+    [{ target: 'es5' }, 'target: Expected value to be one of ["es2022","es2023","esnext"], got: "es5"'],
+    [
+      { module: 'amd' },
+      'module: Expected value to be one of ["node16","node18","node20","nodenext","commonjs"], got: "amd"',
+    ],
     [{ noEmit: true }, 'noEmit: Expected value not to be true, got: true'],
-    [{ downlevelIteration: true }, 'downlevelIteration: Expected value to be absent, got true'],
+    [{ downlevelIteration: true }, 'downlevelIteration: Unexpected field, got: downlevelIteration'],
   ])('describes the violation of %j the way the rule reads', async (overrides, violation) => {
     const dir = project({ 'tsconfig.json': JSON.stringify(userTsconfig(overrides)) });
 
@@ -578,7 +581,7 @@ describe('current behavior that is reported as an issue', () => {
       const result = await run(project(files()), 'validate-tsconfig', 'sub/tsconfig.json');
 
       expect(result.exitCode).toBe(1);
-      expect(result.stdout).toContain('baseUrl: Expected value to be absent');
+      expect(result.stdout).toContain('baseUrl: Unexpected field');
     });
 
     // https://github.com/aws/jsii-compiler/issues/2991
