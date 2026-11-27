@@ -51,9 +51,7 @@ test('renders links in the remarks and in tags', () => {
   expect(docs).toEqual({ summary: 'Summary.', remarks: 'Remarks with {@link Other}.', see: '{@link Other }' });
 });
 
-// @TODO(ts7): the TypeScript 7 compiler renders these as `{@link code | Other.make}` and `{@link plain | Other}`.
-// Re-enable once {@linkcode} and {@linkplain} are rendered like main.
-test.skip('renders {@linkcode} and {@linkplain}', () => {
+test('renders {@linkcode} and {@linkplain}', () => {
   const docs = docsOf('/**\n * Use {@linkcode Other.make} or {@linkplain Other}.\n */\nexport class Foo {}');
 
   expect(docs).toEqual({ summary: 'Use {@linkcode Other.make} or {@linkplain Other}.' });
