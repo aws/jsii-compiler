@@ -11,6 +11,7 @@
  * collects the results when it needs them.
  * ---------------------------------------------------------------------------
  */
+import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { isMainThread, MessageChannel, receiveMessageOnPort, Worker, workerData } from 'node:worker_threads';
 
@@ -39,6 +40,9 @@ export interface BackgroundCheckResult {
   readonly emit?: { emitSkipped?: boolean; emittedFiles?: string[]; diagnostics: any[] };
 }
 
+/** How long the worker has to start. */
+const START_TIMEOUT_MS = 30_000;
+
 /** What marks the `workerData` of the thread this file starts (jest's own workers have other data). */
 const WORKER_KIND = 'jsii-background-check';
 
@@ -48,6 +52,7 @@ const WORKER_KIND = 'jsii-background-check';
  * plain values as results.
  */
 function runWorker(data: BackgroundCheckOptions & WorkerData): void {
+  Atomics.store(data.done, 1, 1);
   const plain = (diagnostic: any) => {
     const out: any = {};
     for (const key of ['category', 'fileName', 'pos', 'end', 'code', 'text', 'messageText', 'message']) {
@@ -122,7 +127,7 @@ export class BackgroundCheck {
   /** Start it. Returns `undefined` when no worker can be started: do the work in this process then. */
   public static start(options: BackgroundCheckOptions): BackgroundCheck | undefined {
     try {
-      const done = new Int32Array(new SharedArrayBuffer(4));
+      const done = new Int32Array(new SharedArrayBuffer(8));
       const { port1, port2 } = new MessageChannel();
       const data: BackgroundCheckOptions & WorkerData = {
         ...options,
@@ -131,12 +136,15 @@ export class BackgroundCheck {
         done,
         port: port2,
       };
-      // This file is the worker too. Run from sources (the tests), it is TypeScript: tsx/cjs loads it in the thread.
-      const worker = new Worker(__filename, {
-        workerData: data,
-        transferList: [port2],
-        execArgv: __filename.endsWith('.ts') ? ['--require', 'tsx/cjs'] : [],
-      });
+      // This file is the worker too. Run from sources (the tests) it is TypeScript, which a worker cannot load: use
+      // the compiled file next to them (`lib/`, built before the tests run), and none when it is not built.
+      const file = __filename.endsWith('.ts')
+        ? path.resolve(__dirname, '..', 'lib', 'background-check.js')
+        : __filename;
+      if (!fs.existsSync(file)) {
+        return undefined;
+      }
+      const worker = new Worker(file, { workerData: data, transferList: [port2] });
       // The worker does not keep the process alive; the build waits for it.
       worker.unref();
       return new BackgroundCheck(worker, done, port1);
@@ -159,7 +167,13 @@ export class BackgroundCheck {
    */
   public wait(): BackgroundCheckResult | undefined {
     if (this.result === undefined) {
-      Atomics.wait(this.done, 0, 0);
+      // The worker says it is running before it does anything: one that does not start would be waited for forever.
+      for (let waited = 0; Atomics.load(this.done, 0) === 0; waited += 1000) {
+        if (waited >= START_TIMEOUT_MS && Atomics.load(this.done, 1) === 0) {
+          break;
+        }
+        Atomics.wait(this.done, 0, 0, 1000);
+      }
       const message = receiveMessageOnPort(this.port as any)?.message;
       this.result = message != null && message.error == null ? message : null;
       void this.worker.terminate();
