@@ -228,6 +228,14 @@ export class Assembler {
   private readonly submoduleSymbols = new Map<string, any>();
   /** The declaration each type and member of the assembly was read from (classic `node-bindings`). */
   private readonly relatedNodes = new WeakMap<object, any>();
+  /** What the type being converted by `_typeReference` is used for, for JSII3001/JSII3002 (classic `purpose`). */
+  private typeUse = 'type';
+  /** The package.json found for a directory, for `_unregisteredTypeFqn` (classic `findPackageInfo`). */
+  private readonly packageInfoCache = new Map<string, any>();
+  /** For dependencies without symbolIds: the submodule fqn of their types, by symbol id (`_dependencySubmodules`). */
+  private readonly dependencySubmodules = new Map<string, Map<unknown, string>>();
+  /** The declaration of a base class that is not a jsii type (`extends Error`), by class fqn, for JSII9002. */
+  private readonly unregisteredBaseDecls = new Map<string, any>();
   /**
    * Checks that need the whole type model, run in registration order once all
    * types are visited (classic `_deferUntilTypesAvailable`).
@@ -299,8 +307,78 @@ export class Assembler {
     // assembler itself reported no error.
     if (!this._diagnostics.some((d) => d.category === DiagnosticCategory.Error)) {
       this._validateNames(assembly);
+      this._validateTypeReferences(assembly);
     }
     return assembly;
+  }
+
+  /**
+   * Classic validator `_allTypeReferencesAreValid`: every named type the assembly refers to exists, in this assembly
+   * (JSII3000) or in a dependency (JSII9000, JSII9001).
+   */
+  private _validateTypeReferences(assembly: spec.Assembly): void {
+    const { SyntaxKind } = this.ts;
+    const refs: Array<{ fqn: string; node: any }> = [];
+    const collect = (type: spec.TypeReference | undefined, node: any): void => {
+      if (type == null) {
+        return;
+      }
+      if (spec.isNamedTypeReference(type)) {
+        refs.push({ fqn: type.fqn, node });
+      } else if (spec.isCollectionTypeReference(type)) {
+        collect(type.collection.elementtype, node);
+      } else if (spec.isUnionTypeReference(type)) {
+        for (const t of type.union.types) {
+          collect(t, node);
+        }
+      }
+    };
+    const types = Object.values(assembly.types ?? {}).filter(spec.isClassOrInterfaceType);
+    for (const type of types) {
+      const decl = this.relatedNodes.get(type);
+      const clause = (token: number) => (decl?.heritageClauses ?? []).find((hc: any) => hc.token === token);
+      if (spec.isClassType(type)) {
+        if (type.base) {
+          refs.push({ fqn: type.base, node: clause(SyntaxKind.ExtendsKeyword)?.types[0] });
+        }
+        for (const param of type.initializer?.parameters ?? []) {
+          collect(param.type, this.relatedNodes.get(param)?.type);
+        }
+      }
+      for (const iface of type.interfaces ?? []) {
+        // As in main: the clause looked up is the other kind's (`implements` for an interface).
+        const token = spec.isInterfaceType(type) ? SyntaxKind.ImplementsKeyword : SyntaxKind.ExtendsKeyword;
+        refs.push({ fqn: iface, node: clause(token) });
+      }
+    }
+    for (const type of types) {
+      for (const prop of type.properties ?? []) {
+        collect(prop.type, this.relatedNodes.get(prop)?.type);
+      }
+    }
+    for (const type of types) {
+      for (const method of type.methods ?? []) {
+        collect(method.returns?.type, this.relatedNodes.get(method)?.type);
+        for (const param of method.parameters ?? []) {
+          collect(param.type, this.relatedNodes.get(param)?.type);
+        }
+      }
+    }
+    for (const { fqn, node } of refs) {
+      const [assm] = fqn.split('.');
+      if (assm === assembly.name) {
+        if (!(fqn in (assembly.types ?? {}))) {
+          this._report(JsiiDiagnostic.JSII_3000_EXPORTED_API_USES_HIDDEN_TYPE, node, fqn);
+        }
+        continue;
+      }
+      const dependency = this.options.projectInfo.dependencyClosure.find((dep) => dep.name === assm);
+      if (dependency == null) {
+        this._report(JsiiDiagnostic.JSII_9000_UNKNOWN_MODULE, node, assm);
+      } else if (!(fqn in (dependency.types ?? {}))) {
+        this._report(JsiiDiagnostic.JSII_9001_TYPE_NOT_FOUND, node, { fqn });
+      }
+    }
   }
 
   // -------------------------------------------------------------------------
@@ -738,11 +816,54 @@ export class Assembler {
         return fqn;
       }
     }
-    // Fallback for assemblies without symbolIds: a top-level type of that name.
+    // Fallback for assemblies without symbolIds: the submodule that exports the type, else a top-level type of that
+    // name (classic `_submoduleMap` of the dependency, then `fallbackFqn`).
+    const submodule = this._dependencySubmodules(dep).get(sym.id);
+    if (submodule != null && this.externalDeps.get(dep)!.has(`${submodule}.${sym.name}`.slice(dep.length + 1))) {
+      return `${submodule}.${sym.name}`;
+    }
     if (this.externalDeps.get(dep)!.has(sym.name)) {
       return `${dep}.${sym.name}`;
     }
     return undefined;
+  }
+
+  /**
+   * The submodule fqn of each type a dependency exports from a submodule (`export * as ns from`, namespaces), found
+   * by walking the dependency's entry point once. Only used for assemblies without symbolIds.
+   * shortcut: types nested in classes are not mapped; upgrade if old assemblies with such types must be supported.
+   */
+  private _dependencySubmodules(dep: string): Map<unknown, string> {
+    let result = this.dependencySubmodules.get(dep);
+    if (result != null) {
+      return result;
+    }
+    result = new Map<unknown, string>();
+    this.dependencySubmodules.set(dep, result);
+    const { SyntaxKind } = this.ts;
+    const depDir = [...this.externalDepDirs].find(([, name]) => name === dep)?.[0];
+    const types: string | undefined =
+      depDir && JSON.parse(fs.readFileSync(path.join(depDir, 'package.json'), 'utf-8')).types;
+    // `types` may name the source (`index.ts`) rather than the declarations
+    const entry = types && this.program.getSourceFile(path.resolve(depDir!, types.replace(/(?<!\.d)\.ts$/, '.d.ts')));
+    const entrySym = entry && this.checker.getSymbolAtLocation(entry);
+    const visit = (moduleSym: any, prefix: string, seen: Set<unknown>) => {
+      if (moduleSym == null || seen.has(moduleSym.id)) {
+        return;
+      }
+      seen.add(moduleSym.id);
+      for (const e of this.checker.getExportsOfModule(moduleSym)) {
+        const target = this._resolveAlias(e);
+        const kind = target.declarations?.[0]?.kind;
+        if (kind === SyntaxKind.SourceFile || kind === SyntaxKind.ModuleDeclaration) {
+          visit(target, `${prefix}.${e.name}`, seen);
+        } else if (prefix !== dep && !result!.has(target.id)) {
+          result!.set(target.id, prefix);
+        }
+      }
+    };
+    visit(entrySym, dep, new Set());
+    return result;
   }
 
   // -------------------------------------------------------------------------
@@ -1810,7 +1931,8 @@ export class Assembler {
   /** The type reference of a class's base class type (classic: from `getBaseTypes`, not the heritage expression). */
   private _baseClassReference(classDecl: any): any {
     const baseType = this.checker.getTypeAtLocation(classDecl)?.getBaseTypes?.()?.[0];
-    return baseType ? this._typeReference(baseType) : undefined;
+    this.typeUse = 'base class';
+    return baseType ? this._typeReference(baseType, undefined, undefined, classDecl) : undefined;
   }
 
   /** Whether a symbol is declared in the project's own sources (not in the standard library or a dependency). */
@@ -1868,6 +1990,18 @@ export class Assembler {
     this.deferred.push(() => {
       if (spec.isClassType(jsiiType) && jsiiType.base != null) {
         const base = this._dereferenceType(jsiiType.base);
+        if (base == null && this.unregisteredBaseDecls.has(jsiiType.fqn)) {
+          // Classic: the base class is looked up "used in syntax", for the base class check and, without a
+          // constructor of its own, for the inherited initializer.
+          this._report(
+            JsiiDiagnostic.JSII_9002_UNRESOLVEABLE_TYPE,
+            this.unregisteredBaseDecls.get(jsiiType.fqn),
+            jsiiType.base,
+          );
+          if (this.inheritsInitializer.has(jsiiType.fqn)) {
+            this._report(JsiiDiagnostic.JSII_9002_UNRESOLVEABLE_TYPE, this.relatedNodes.get(jsiiType), jsiiType.base);
+          }
+        }
         if (base != null && !spec.isClassType(base)) {
           this._report(JsiiDiagnostic.JSII_3006_TYPE_USED_AS_CLASS, declOf(base), { fqn: base.fqn });
         }
@@ -1942,17 +2076,31 @@ export class Assembler {
               classDecl === decl &&
               !s.name.startsWith('__') &&
               !this._isInternal(s) &&
-              !this._isOwnSourceDecl(s) &&
-              (unnamedBaseRef ??= this._baseClassReference(decl)) != null &&
-              !spec.isNamedTypeReference(unnamedBaseRef)
+              !this._isOwnSourceDecl(s)
             ) {
-              // Classic: a base class that is neither hidden nor a named type (`extends Array<string>`) is reported
-              // and left out, not erased.
-              this._report(
-                JsiiDiagnostic.JSII_3006_TYPE_USED_AS_CLASS,
-                (s.valueDeclaration ?? s.declarations?.[0])?.resolve(this.project),
-                unnamedBaseRef,
-              );
+              // Classic: a base class from the standard library or a dependency that is not a jsii type is not erased.
+              // One that is not a named type (`extends Array<string>`) is reported here; a named one (`extends Error`)
+              // is not a jsii type either (JSII3001).
+              unnamedBaseRef ??= this._baseClassReference(decl);
+              if (unnamedBaseRef != null && spec.isNamedTypeReference(unnamedBaseRef)) {
+                // A named type that is not a jsii type (`extends Error`, reported as JSII3001) stays the base class.
+                base.value ??= unnamedBaseRef.fqn;
+                this.unregisteredBaseDecls.set(
+                  jsiiType.fqn,
+                  (s.valueDeclaration ?? s.declarations?.[0])?.resolve(this.project),
+                );
+              }
+              if (
+                unnamedBaseRef != null &&
+                !spec.isNamedTypeReference(unnamedBaseRef) &&
+                !(spec.isPrimitiveTypeReference(unnamedBaseRef) && unnamedBaseRef.primitive === spec.PrimitiveType.Any)
+              ) {
+                this._report(
+                  JsiiDiagnostic.JSII_3006_TYPE_USED_AS_CLASS,
+                  (s.valueDeclaration ?? s.declarations?.[0])?.resolve(this.project),
+                  unnamedBaseRef,
+                );
+              }
             } else {
               const d0 = s.declarations?.[0]?.resolve(this.project);
               if (d0 && (d0.kind === SyntaxKind.ClassDeclaration || d0.kind === SyntaxKind.InterfaceDeclaration)) {
@@ -2518,6 +2666,7 @@ export class Assembler {
       if (retType?.getSymbol?.()?.name === 'Promise') {
         m.async = true;
       }
+      this.typeUse = 'return type';
       const ret = this._typeReference(retType, opt, decl.type, decl.type ?? decl.name);
       if (ret) {
         m.returns = opt.optional ? { optional: true, type: ret } : { type: ret };
@@ -2543,7 +2692,16 @@ export class Assembler {
     }
     this.deferred.push(() => {
       const struct = this._dereferenceType(lastParamType.fqn);
-      if (struct == null || !spec.isInterfaceType(struct) || !struct.datatype) {
+      if (struct == null) {
+        // Classic: the type of the last parameter is looked up "used in syntax".
+        this._report(
+          JsiiDiagnostic.JSII_9002_UNRESOLVEABLE_TYPE,
+          this.relatedNodes.get(parameters[parameters.length - 1]),
+          lastParamType.fqn,
+        );
+        return;
+      }
+      if (!spec.isInterfaceType(struct) || !struct.datatype) {
         return;
       }
       const propNames = new Set<string>();
@@ -2583,6 +2741,7 @@ export class Assembler {
     this._warnAboutReservedWords(psym.name, decl);
     const t = this.checker.getTypeOfSymbolAtLocation(psym, decl);
     const opt: { optional?: boolean } = {};
+    this.typeUse = 'property type';
     const p: any = {
       locationInModule: this._locationOf(decl),
       name: psym.name,
@@ -2655,6 +2814,7 @@ export class Assembler {
         continue;
       }
       const opt: { optional?: boolean } = {};
+      this.typeUse = 'parameter type';
       const valueType = this._typeReference(
         this.checker.getTypeFromTypeNode(valueTypeNode),
         opt,
@@ -2678,7 +2838,9 @@ export class Assembler {
     this._warnAboutReservedWords(prm.name, decl);
     const t = decl ? this.checker.getTypeOfSymbolAtLocation(prm, decl) : undefined;
     const opt: { optional?: boolean } = {};
+    this.typeUse = 'parameter type';
     const p: any = { name: prm.name, type: this._typeReference(t, opt, decl?.type, decl?.type ?? decl?.name) };
+    this.relatedNodes.set(p, decl);
     if (decl?.dotDotDotToken) {
       p.variadic = true;
       p.type = p.type?.collection?.elementtype ?? p.type;
@@ -3083,8 +3245,9 @@ export class Assembler {
         return { primitive: 'json' };
       }
       if (f & (TypeFlags.ESSymbolLike | TypeFlags.BigIntLike)) {
-        // shortcut: classic used their apparent types (Symbol, BigInt) and reported JSII3001; ported with JSII3001.
-        return { primitive: 'any' };
+        // Classic: the apparent type (`Symbol`, `BigInt`) is a global, not a jsii type.
+        const apparent = this.checker.getApparentType(type);
+        return { fqn: this._unregisteredTypeFqn(apparent, apparent.getSymbol(), declaration) };
       }
       this._report(JsiiDiagnostic.JSII_1001_TYPE_HAS_NO_SYMBOL, declaration);
       return { primitive: 'any' };
@@ -3100,10 +3263,22 @@ export class Assembler {
         );
         return { collection: { elementtype: { primitive: 'any' }, kind: 'array' } };
       }
-      return { collection: { elementtype: this._plainTypeReference(args[0], declaration), kind: 'array' } };
+      const use = this.typeUse;
+      this.typeUse = 'list element type';
+      try {
+        return { collection: { elementtype: this._plainTypeReference(args[0], declaration), kind: 'array' } };
+      } finally {
+        this.typeUse = use;
+      }
     }
     if (sym.name === '__type') {
-      return { collection: { elementtype: this._mapElementType(type, sym, declaration), kind: 'map' } };
+      const use = this.typeUse;
+      this.typeUse = 'map element type';
+      try {
+        return { collection: { elementtype: this._mapElementType(type, sym, declaration), kind: 'map' } };
+      } finally {
+        this.typeUse = use;
+      }
     }
     if (sym.name === 'Promise') {
       const args = type.isTypeReference() ? this.checker.getTypeArguments(type) : [];
@@ -3136,6 +3311,11 @@ export class Assembler {
     if (fqn) {
       return { fqn };
     }
+    if ((tsym.flags & this.ts.SymbolFlags.TypeParameter) === 0) {
+      return { fqn: this._unregisteredTypeFqn(type, tsym, declaration) };
+    }
+    // A type parameter (already reported as JSII1006).
+    // shortcut: classic modeled its apparent type (constraint); this keeps the previous approximation.
     const indexInfos = this.checker.getIndexInfosOfType(type);
     if (indexInfos.length) {
       return {
@@ -3146,6 +3326,112 @@ export class Assembler {
       };
     }
     return { primitive: 'any' };
+  }
+
+  /**
+   * Classic `_getFQN` for a named type that is not a jsii type of this assembly or of a dependency: reports why
+   * (JSII3001 hidden or global type, JSII9003 no package, JSII9000 undeclared dependency, JSII3002/JSII9002 not in the
+   * dependency's assembly) and returns the fqn main writes. Only reached for such types, so the requests it makes
+   * (the type's fully qualified name) are not made for valid code.
+   */
+  private _unregisteredTypeFqn(type: any, sym: any, declaration: any): string {
+    const typeHandle = sym.valueDeclaration ?? sym.declarations?.[0];
+    const typeDecl = typeHandle?.resolve(this.project);
+    const related = (d: JsiiDiagnostic) =>
+      d.addRelatedInformationIf(this._diagnosticLocation(typeDecl), 'The referenced type is declared here');
+    const reportInternal = () => {
+      const isThisType =
+        this.checker.typeToTypeNode(type, declaration?.parent, 0)?.kind === this.ts.SyntaxKind.ThisKeyword;
+      related(
+        this._report(JsiiDiagnostic.JSII_3001_EXPOSED_INTERNAL_TYPE, declaration, sym.name, isThisType, this.typeUse),
+      );
+    };
+    let hasError = false;
+    if (this._isPrivateType(sym) || this._isInternal(sym)) {
+      reportInternal();
+      hasError = true;
+    }
+    const tsName: string = this.checker.getFullyQualifiedName(sym);
+    const groups = /^"([^"]+)"\.(.*)$/.exec(tsName);
+    if (!groups) {
+      if (!hasError) {
+        reportInternal();
+      }
+      return tsName;
+    }
+    const [, modulePath, typeName] = groups;
+    const pkg = this._findPackageInfo(modulePath);
+    if (!pkg) {
+      if (!hasError) {
+        related(this._report(JsiiDiagnostic.JSII_9003_UNRESOLVEABLE_MODULE, declaration, modulePath));
+      }
+      return `unknown.${typeName}`;
+    }
+    const fallbackFqn = `${pkg.name}.${typeName}`;
+    if (pkg.name === this.assemblyName) {
+      return fallbackFqn;
+    }
+    if (!this.options.projectInfo.dependencyClosure.some((d) => d.name === pkg.name)) {
+      this._report(JsiiDiagnostic.JSII_9000_UNKNOWN_MODULE, declaration, pkg.name);
+      return fallbackFqn;
+    }
+    if (!hasError) {
+      this._report(JsiiDiagnostic.JSII_9002_UNRESOLVEABLE_TYPE, typeDecl, fallbackFqn);
+      related(
+        this._report(
+          JsiiDiagnostic.JSII_3002_USE_OF_UNEXPORTED_FOREIGN_TYPE,
+          declaration,
+          fallbackFqn,
+          this.typeUse,
+          pkg,
+        ),
+      );
+    }
+    return fallbackFqn;
+  }
+
+  /**
+   * Classic `_isPrivate`: a `#name`, a type declaration without an `export` modifier (or in an exported ambient
+   * module), or a `private` member.
+   */
+  private _isPrivateType(sym: any): boolean {
+    const { SyntaxKind } = this.ts;
+    if (sym.name.startsWith('#')) {
+      return true;
+    }
+    const typeKinds = [SyntaxKind.ClassDeclaration, SyntaxKind.InterfaceDeclaration, SyntaxKind.EnumDeclaration];
+    const hasModifier = (node: any, kind: number) => (node?.modifiers ?? []).some((m: any) => m.kind === kind);
+    const valueDecl = sym.valueDeclaration;
+    if (!sym.name.startsWith('__') && (valueDecl == null || typeKinds.includes(valueDecl.kind))) {
+      return !(sym.declarations ?? []).some((handle: any) => {
+        const decl = handle.resolve(this.project);
+        if (hasModifier(decl, SyntaxKind.ExportKeyword)) {
+          return true;
+        }
+        // Nested classes from project references: an exported ambient module
+        const moduleDecl = decl?.parent?.kind === SyntaxKind.ModuleBlock ? decl.parent.parent : undefined;
+        return hasModifier(moduleDecl, SyntaxKind.DeclareKeyword) && hasModifier(moduleDecl, SyntaxKind.ExportKeyword);
+      });
+    }
+    const decl = (valueDecl ?? sym.declarations?.[0])?.resolve(this.project);
+    return hasModifier(decl, SyntaxKind.PrivateKeyword);
+  }
+
+  /** The package.json of the package that contains `dir` (classic `findPackageInfo`). */
+  private _findPackageInfo(dir: string): any {
+    if (!this.packageInfoCache.has(dir)) {
+      const file = path.join(dir, 'package.json');
+      const parent = path.dirname(dir);
+      this.packageInfoCache.set(
+        dir,
+        fs.existsSync(file)
+          ? JSON.parse(fs.readFileSync(file, 'utf-8'))
+          : parent === dir
+          ? undefined
+          : this._findPackageInfo(parent),
+      );
+    }
+    return this.packageInfoCache.get(dir);
   }
 
   /**

@@ -6,8 +6,7 @@ import { TestWorkspace, compileJsiiForTest } from '../../src/helpers';
 import { compileJsiiForDiagnostics } from '../compiler-helpers';
 
 describe('JSII9000 miscellaneous/unknown-module', () => {
-  // @TODO(ts7): expects a jsii validation diagnostic (JSII9000-JSII9003, JSII9997); re-enable with the port of the validator
-  test.skip('is reported when a type comes from a module that is not a declared dependency', () =>
+  test('is reported when a type comes from a module that is not a declared dependency', () =>
     TestWorkspace.withWorkspace((ws) => {
       ws.addDependency(compileJsiiForTest('export class Foreign {}', { packageJson: { name: 'dependency' } }));
 
@@ -34,8 +33,7 @@ describe('JSII9000 miscellaneous/unknown-module', () => {
 });
 
 describe('JSII9002 miscellaneous/unresolveable-type', () => {
-  // @TODO(ts7): expects a jsii validation diagnostic (JSII9000-JSII9003, JSII9997); re-enable with the port of the validator
-  test.skip('is reported when a built-in type that is not a jsii type is exposed', () => {
+  test('is reported when a built-in type that is not a jsii type is exposed', () => {
     const diagnostics = compileJsiiForDiagnostics(`
       export class Klass {
         public method(_arg: symbol) {}
@@ -64,8 +62,7 @@ describe('JSII9003 miscellaneous/unresolveable-module', () => {
     fs.rmSync(externalDir, { recursive: true, force: true });
   });
 
-  // @TODO(ts7): expects a jsii validation diagnostic (JSII9000-JSII9003, JSII9997); re-enable with the port of the validator
-  test.skip('is reported when a type is declared in a location that is not part of any package', () => {
+  test('is reported when a type is declared in a location that is not part of any package', () => {
     const diagnostics = compileJsiiForDiagnostics(`
       import { External } from '${externalDir}/external';
       export class Klass {

@@ -12,11 +12,6 @@ const SOURCE_DIR = path.join(__dirname, 'negatives');
 // yet. The PR that ports a diagnostic removes the fixtures it makes pass from this list; the list ends up empty.
 const NOT_PORTED_YET = new Set([
   'neg.downgrade-to-readonly.ts',
-  'neg.expose-unexported-type-constructor-param.ts',
-  'neg.expose-unexported-type-external.ts',
-  'neg.expose-unexported-type-internal-in-namespace.ts',
-  'neg.expose-unexported-type-internal.ts',
-  'neg.expose-unexported-type-this.ts',
   'neg.implementation-changes-types.1.ts',
   'neg.implementation-changes-types.2.ts',
   'neg.implementation-changes-types.3.ts',
