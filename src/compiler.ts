@@ -17,7 +17,7 @@ import { ProjectInfo } from './project-info';
 import { DeprecationWarningsInjector, WARNINGSCODE_FILE_NAME } from './transforms/deprecation-warnings';
 import { TypeScriptConfig, TypeScriptConfigValidationRuleSet } from './tsconfig';
 import { BASE_COMPILER_OPTIONS } from './tsconfig/compiler-options';
-import { parseTsconfigJson, readTypeScriptConfigFile } from './tsconfig/read';
+import { parseTsconfigJson, readTypeScriptConfigFile, TsconfigReadError } from './tsconfig/read';
 import { TypeScriptConfigValidator } from './tsconfig/tsconfig-validator';
 import { ValidationError } from './tsconfig/validator';
 import * as utils from './utils';
@@ -185,10 +185,20 @@ export class Compiler {
 
   private configureTypeScript(): TypeScriptConfig {
     if (this.userProvidedTypeScriptConfig) {
-      // @TODO(NEXT): paths and `extends` of a --tsconfig in a subdirectory resolve against the project root, not the
-      // file's own directory as tsc does (aws/jsii-compiler#2991). After 7.1's first release: drop the
-      // `projectRoot` argument.
-      const config = readTypeScriptConfigFile(this.configPath, this.projectRoot);
+      let config: TypeScriptConfig;
+      try {
+        // @TODO(NEXT): paths and `extends` of a --tsconfig in a subdirectory resolve against the project root, not the
+        // file's own directory as tsc does (aws/jsii-compiler#2991). After 7.1's first release: drop the
+        // `projectRoot` argument.
+        config = readTypeScriptConfigFile(this.configPath, this.projectRoot);
+      } catch (e) {
+        if (!(e instanceof TsconfigReadError)) {
+          throw e;
+        }
+        // Like the classic compiler: TypeScript's error, then a short one.
+        utils.logDiagnostic(toDiagnostic(e.diagnostic, readSourceFile), this.projectRoot);
+        throw new utils.JsiiError(`Failed to load tsconfig at ${this.configPath}`);
+      }
 
       // emit a warning if validation is disabled
       const rules = this.options.validateTypeScriptConfig ?? TypeScriptConfigValidationRuleSet.NONE;
