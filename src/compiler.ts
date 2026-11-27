@@ -95,12 +95,8 @@ export interface EmitResult {
 export class Compiler {
   private readonly userProvidedTypeScriptConfig: boolean;
   private readonly tsconfig: TypeScriptConfig;
-<<<<<<< HEAD
-=======
-  private rootFiles: string[] = [];
   /** Diagnostics about the TypeScript configuration, reported with those of every build. */
-  private readonly configDiagnostics: ts.Diagnostic[] = [];
->>>>>>> cbc419a (fix: count JSII4009 like other warnings (#3019))
+  private readonly configDiagnostics: Diagnostic[] = [];
   private readonly configPath: string;
   private readonly projectRoot: string;
 
@@ -164,7 +160,7 @@ export class Compiler {
     // Some extra validation on the config.
     // Make sure that { "./.warnings.jsii.js": "./.warnings.jsii.js" } is in the set of
     // exports, if they are specified.
-    const diagnostics: Diagnostic[] = [...result.diagnostics];
+    const diagnostics: Diagnostic[] = [...result.diagnostics, ...this.configDiagnostics];
     let missingWarningsExport = false;
     if (this.options.addDeprecationWarnings && this.options.projectInfo.exports !== undefined) {
       const expected = `./${WARNINGSCODE_FILE_NAME}`;
@@ -234,127 +230,8 @@ export class Compiler {
   /**
    * Builds the TypeScript config object from jsii config.
    *
-<<<<<<< HEAD
    * This is the object that will be written to disk unless an existing tsconfig
    * is passed in.
-=======
-   * These are preparations that either
-   * - must happen immediately before the build, or
-   * - can be different for every build like assigning the relevant root file(s).
-   *
-   * @param files the files that were specified as input in the CLI invocation.
-   */
-  private prepareForBuild(...files: string[]) {
-    if (!this.userProvidedTypeScriptConfig) {
-      this.writeTypeScriptConfig();
-    }
-
-    this.rootFiles = this.determineSources(files);
-  }
-
-  /**
-   * Do a single build
-   */
-  private buildOnce(): ts.EmitResult {
-    if (!this.compilerHost.getDefaultLibLocation) {
-      throw new Error('No default library location was found on the TypeScript compiler host!');
-    }
-
-    const tsconf = this.tsconfig!;
-
-    const prog = ts.createIncrementalProgram({
-      rootNames: this.rootFiles.concat(_pathOfLibraries(tsconf.compilerOptions, this.compilerHost)),
-      options: tsconf.compilerOptions,
-      // Make the references absolute for the compiler
-      projectReferences: tsconf.references?.map((ref) => ({
-        path: path.resolve(path.dirname(this.configPath), ref.path),
-      })),
-      host: this.compilerHost,
-    });
-
-    return this.consumeProgram(prog.getProgram(), this.compilerHost.getDefaultLibLocation());
-  }
-
-  private consumeProgram(program: ts.Program, stdlib: string): ts.EmitResult {
-    const diagnostics = [...ts.getPreEmitDiagnostics(program)];
-    let hasErrors = false;
-
-    if (!hasErrors && this.diagsHaveAbortableErrors(diagnostics)) {
-      hasErrors = true;
-      LOG.error('Compilation errors prevented the JSII assembly from being created');
-    }
-
-    // Do the "Assembler" part first because we need some of the analysis done in there
-    // to post-process the AST
-    const assembler = new Assembler(this.options.projectInfo, this.system, program, stdlib, {
-      stripDeprecated: this.options.stripDeprecated,
-      stripDeprecatedAllowListFile: this.options.stripDeprecatedAllowListFile,
-      addDeprecationWarnings: this.options.addDeprecationWarnings,
-      compressAssembly: this.options.compressAssembly,
-    });
-
-    try {
-      const assmEmit = assembler.emit();
-      if (!hasErrors && (assmEmit.emitSkipped || this.diagsHaveAbortableErrors(assmEmit.diagnostics))) {
-        hasErrors = true;
-        LOG.error('Type model errors prevented the JSII assembly from being created');
-      }
-
-      diagnostics.push(...assmEmit.diagnostics);
-    } catch (e: any) {
-      diagnostics.push(JsiiDiagnostic.JSII_9997_UNKNOWN_ERROR.createDetached(e));
-      hasErrors = true;
-    }
-
-    // Do the emit, but add in transformers which are going to replace real
-    // comments with synthetic ones.
-    const emit = program.emit(
-      undefined, // targetSourceFile
-      undefined, // writeFile
-      undefined, // cancellationToken
-      undefined, // emitOnlyDtsFiles
-      assembler.customTransformers,
-    );
-    diagnostics.push(...emit.diagnostics);
-
-    if (!hasErrors && (emit.emitSkipped || this.diagsHaveAbortableErrors(emit.diagnostics))) {
-      hasErrors = true;
-      LOG.error('Compilation errors prevented the JSII assembly from being created');
-    }
-
-    // Some extra validation on the config.
-    // Make sure that { "./.warnings.jsii.js": "./.warnings.jsii.js" } is in the set of
-    // exports, if they are specified.
-    if (this.options.addDeprecationWarnings && this.options.projectInfo.exports !== undefined) {
-      const expected = `./${WARNINGSCODE_FILE_NAME}`;
-      const warningsExport = Object.entries(this.options.projectInfo.exports).filter(
-        ([k, v]) => k === expected && v === expected,
-      );
-
-      if (warningsExport.length === 0) {
-        hasErrors = true;
-        diagnostics.push(JsiiDiagnostic.JSII_0007_MISSING_WARNINGS_EXPORT.createDetached());
-      }
-    }
-
-    diagnostics.push(...this.configDiagnostics);
-    if (!hasErrors && this.diagsHaveAbortableErrors(this.configDiagnostics)) {
-      hasErrors = true;
-    }
-
-    return {
-      emitSkipped: hasErrors,
-      diagnostics: ts.sortAndDeduplicateDiagnostics(diagnostics),
-      emittedFiles: emit.emittedFiles,
-    };
-  }
-
-  /**
-   * Build the TypeScript config object from jsii config
-   *
-   * This is the object that will be written to disk
-   * unless an existing tsconfig was provided.
->>>>>>> cbc419a (fix: count JSII4009 like other warnings (#3019))
    */
   private buildTypeScriptConfig(): TypeScriptConfig {
     let references: string[] | undefined;
