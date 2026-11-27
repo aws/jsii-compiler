@@ -117,6 +117,9 @@ export function emitProject(
     outputNames = [...classesByJsRel.keys()];
   }
 
+  const emittedJsRels = new Set(
+    outputNames.filter((n) => /\.js$/.test(n)).map((n) => normalizeRel(path.relative(root, path.resolve(root, n)))),
+  );
   for (const name of outputNames) {
     const outPath = path.resolve(root, name);
     emittedFiles.push(outPath);
@@ -128,9 +131,11 @@ export function emitProject(
     let classesHere = classesByJsRel.get(jsRel);
     if (!classesHere) {
       // Fall back to basename matching ONLY when it is unambiguous (a single
-      // source file maps to this basename); otherwise skip and say so.
+      // source file maps to this basename) and that file was not emitted where
+      // its path maps to (else this is another file with the same name, such as
+      // an `index.js` that only re-exports); otherwise skip and say so.
       const candidates = jsRelsByBasename.get(path.basename(name));
-      if (candidates?.size === 1) {
+      if (candidates?.size === 1 && !emittedJsRels.has([...candidates][0])) {
         classesHere = classesByJsRel.get([...candidates][0]);
       } else if (candidates && candidates.size > 1) {
         LOG.warn(
@@ -188,13 +193,13 @@ function addToEmittedJs(
     const edits: Insertion[] = [];
     const prepend: string[] = [];
     const calls = options.deprecationWarnings?.callInsertions(file, options.assembly, options.projectRoot);
-    if (options.deprecationWarnings) {
-      edits.push(...rewrittenBodyEdits(jsText, jsSource, ts.SyntaxKind));
-    }
     const rtti = rttiInsertions(
       file,
+      // A class exported under several fqns (re-exported from submodules) gets the one visited last, as the
+      // classic compiler's registration did: the assembly lists types in the classic visit order.
       new Map(classesHere.filter((c) => c.inFileName != null).map((c) => [c.inFileName!, c.fqn])),
       options.assembly.version,
+      project.program.getCompilerOptions(),
     );
     for (const added of [calls, rtti]) {
       edits.push(...(added?.edits ?? []));
@@ -204,6 +209,15 @@ function addToEmittedJs(
     }
     if (prepend.length > 0) {
       edits.push(...prependStatements(jsText, jsSource, tsSource, ts.SyntaxKind, prepend));
+    }
+    if (options.deprecationWarnings) {
+      // The rtti may remove the same comments (in a constructor the emit made up): keep one of each edit.
+      const keys = new Set(edits.map((e) => `${e.offset}:${e.length ?? 0}:${e.text}`));
+      edits.push(
+        ...rewrittenBodyEdits(jsText, jsSource, ts.SyntaxKind).filter(
+          (e) => !keys.has(`${e.offset}:${e.length ?? 0}:${e.text}`),
+        ),
+      );
     }
     return insertIntoEmittedJs(jsFile, jsText, edits);
   } finally {
