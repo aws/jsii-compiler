@@ -103,7 +103,10 @@
     ".": "./lib/index.js",
     "./bin/jsii": "./bin/jsii",
     "./package.json": "./package.json",
-    "./common": "./lib/common/index.js"
+    "./common": "./lib/common/index.js",
+    "./tsconfig.strict.json": "./tsconfig-bases/tsconfig.strict.json",
+    "./tsconfig.generated.json": "./tsconfig-bases/tsconfig.generated.json",
+    "./tsconfig.minimal.json": "./tsconfig-bases/tsconfig.minimal.json"
   },
   "imports": {
     "#typescript": "@typescript/native",
