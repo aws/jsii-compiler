@@ -40,6 +40,8 @@ export interface EmitProjectOptions {
 
 export interface EmitProjectResult {
   readonly emittedFiles: string[];
+  /** The diagnostics of the emit (such as TS5033 when an output file cannot be written), in the API's shape. */
+  readonly diagnostics: readonly any[];
 }
 
 /** The jsii runtime-type-information symbol key (see @jsii/runtime). */
@@ -153,7 +155,7 @@ export function emitProject(
     fs.writeFileSync(outPath, addToEmittedJs(ts, project, options, outPath, js, classesHere), { encoding: 'utf8' });
   }
 
-  return { emittedFiles };
+  return { emittedFiles, diagnostics: result?.diagnostics ?? [] };
 }
 
 /**
