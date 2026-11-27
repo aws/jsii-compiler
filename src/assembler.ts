@@ -757,6 +757,40 @@ export class Assembler {
       .map(({ e }) => e);
   }
 
+  /**
+   * Classic `_addToSubmodule`: a symbol may be exported by only one submodule (by name); JSII3003 otherwise.
+   */
+  private _registerSubmoduleSymbol(submoduleOfSymbol: Map<unknown, any>, symbol: any, ns: any): void {
+    const current = submoduleOfSymbol.get(symbol.id);
+    if (current == null) {
+      submoduleOfSymbol.set(symbol.id, ns);
+      return;
+    }
+    if (current.name === ns.name) {
+      return;
+    }
+    const declOf = (s: any) => (s.valueDeclaration ?? s.declarations?.[0])?.resolve(this.project);
+    // The causes are listed in the same order every time.
+    const refs = [
+      { decl: declOf(current), name: current.name as string },
+      { decl: declOf(ns), name: ns.name as string },
+    ].sort(({ name: l }, { name: r }) => l.localeCompare(r));
+    this._report(
+      JsiiDiagnostic.JSII_3003_SYMBOL_IS_EXPORTED_TWICE,
+      this._nameOrDeclaration(declOf(symbol)),
+      refs[0].name,
+      refs[1].name,
+    )
+      .addRelatedInformationIf(
+        this._diagnosticLocation(refs[0].decl),
+        `Symbol is exported under the "${refs[0].name}" submodule`,
+      )
+      .addRelatedInformationIf(
+        this._diagnosticLocation(refs[1].decl),
+        `Symbol is exported under the "${refs[1].name}" submodule`,
+      );
+  }
+
   private _registerModuleExports(moduleExports: any[], entryPath?: string): void {
     const { SyntaxKind, SymbolFlags } = this.ts;
     const candidates = new Map<
@@ -775,8 +809,13 @@ export class Assembler {
     // The order in which exports are seen: the classic assembler visited (and registered) types in this order.
     let seq = 0;
 
-    const collect = (mExports: any[], prefix: string, moduleDir: string, moduleFile?: string): void => {
+    // The submodule (its export symbol) each symbol exported by a submodule belongs to, for JSII3003.
+    const submoduleOfSymbol = new Map<unknown, any>();
+    const collect = (mExports: any[], prefix: string, moduleDir: string, moduleFile?: string, ns?: any): void => {
       for (const e of mExports) {
+        if (ns != null) {
+          this._registerSubmoduleSymbol(submoduleOfSymbol, e, ns);
+        }
         const sym = this._resolveAlias(e);
         const declH = sym.declarations?.[0];
         if (!declH) {
@@ -809,6 +848,15 @@ export class Assembler {
           const exportDeclH = e.declarations?.[0];
           if (
             kind === SyntaxKind.SourceFile &&
+            (e.flags & SymbolFlags.Alias) !== 0 &&
+            exportDeclH?.kind === SyntaxKind.ExportSpecifier
+          ) {
+            // Classic: `import * as A from '...'; export { A };` resolves to the import, which no _visitNode branch
+            // handles, so it is not a submodule.
+            continue;
+          }
+          if (
+            kind === SyntaxKind.SourceFile &&
             exportDeclH?.kind === SyntaxKind.NamespaceExport &&
             this._dependencyOfPath(declH.path ?? '') == null &&
             e.name !== Case.camel(e.name) &&
@@ -830,7 +878,7 @@ export class Assembler {
           this.submodules[subFqn] = this._submoduleSpec(e, sym, kind === SyntaxKind.SourceFile);
           const subDir = path.dirname(sym.declarations?.[0]?.path ?? moduleDir);
           const subFile = kind === SyntaxKind.SourceFile ? sym.declarations?.[0]?.path : undefined;
-          collect(this._exportsOfModule(sym), subFqn, subDir, subFile);
+          collect(this._exportsOfModule(sym), subFqn, subDir, subFile, e);
         } else {
           this._reportUnsupportedExport(sym, declH);
         }
