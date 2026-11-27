@@ -186,6 +186,7 @@ if (project.jest?.config) {
 // Add fixtures & other exemptions to npmignore
 project.npmignore?.addPatterns(
   '/.*',
+  '/AGENTS.md',
   '/CODE_OF_CONDUCT.md',
   '/CONTRIBUTING.md',
   '/build-tools/',
