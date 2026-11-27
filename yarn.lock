@@ -6075,7 +6075,6 @@ __metadata:
     projen: "npm:^0.105.8"
     semver: "npm:^7.8.6"
     semver-intersect: "npm:^1.5.0"
-    sort-json: "npm:^2.0.1"
     spdx-license-list: "npm:^6.12.0"
     tar: "npm:^7.5.23"
     tsx: "npm:^4.23.15"
