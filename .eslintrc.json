@@ -39,7 +39,8 @@
         "project": "./tsconfig.json",
         "alwaysTryTypes": true
       }
-    }
+    },
+    "import/internal-regex": "^#"
   },
   "ignorePatterns": [
     "*.js",

@@ -1,7 +1,7 @@
 import { spawnSync } from 'node:child_process';
 import * as os from 'node:os';
 import { parse } from 'semver';
-import { versionMajorMinor } from 'typescript';
+import { versionMajorMinor } from '#typescript';
 
 if (process.argv.length !== 3) {
   console.error('Usage: yarn release <semver-version-string>');
