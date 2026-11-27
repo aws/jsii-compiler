@@ -84,8 +84,7 @@ describe('formatDiagnostic', () => {
     expect(formatted).not.toContain('JSII');
   });
 
-  // @TODO(ts7): re-enable with the backport of main's four-digit codes (#3011, backport #3039).
-  test.skip('formats a jsii diagnostic with its code and name', () => {
+  test('formats a jsii diagnostic with its code and name', () => {
     const formatted = stripAnsi(formatDiagnostic(detached(), process.cwd()));
 
     expect(formatted).toContain('JSII0003: There is no "README.md" file.');
