@@ -74,8 +74,7 @@ describe('accessors', () => {
 
 describe('JSII5010 / JSII5015 re-declaration of interface members', () => {
   // See https://github.com/aws/jsii-compiler/issues/2970
-  // @TODO(ts7): expects a jsii validation diagnostic (JSII5015); re-enable with the port of the validator
-  test.skip('a property that changes its shape is reported as JSII5015', () => {
+  test('a property that changes its shape is reported as JSII5015', () => {
     expect(
       compileForDiagnostics(`
         export interface IA {

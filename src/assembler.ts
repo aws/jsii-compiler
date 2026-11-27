@@ -23,6 +23,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as zlib from 'node:zlib';
 import * as spec from '@jsii/spec';
+import deepEqual from 'fast-deep-equal';
 
 import * as Case from './case';
 import { findDependencyDirectory } from './common/find-utils';
@@ -1525,9 +1526,7 @@ export class Assembler {
     //      property bags rely on this);
     //   3. extending a non-datatype interface clears it (applied as a fixpoint
     //      post-pass in assemble(), mirroring _deferUntilTypesAvailable).
-    // The classic path also validates all-readonly with a JSII_3008 diagnostic;
-    // this backend produces no jsii diagnostics, and the flag itself does not
-    // depend on that validation.
+    // The classic path then validates all-readonly (JSII3008) and struct bases (JSII3007), see _validateInterfaceName.
     if ((jsiiType.methods ?? []).length === 0) {
       const hintsStruct = this._jsDocTags(sym).some((t: any) => t.name === 'struct');
       if (!isInterfaceName(name) || hintsStruct) {
@@ -1543,9 +1542,45 @@ export class Assembler {
     } else {
       this.deferred.push(validateName);
     }
+    this._verifyRedeclaredInterfaceMembers(decl, jsiiType);
   }
 
-  /** Behavioral interfaces need an `I` prefix, and all interface names are PascalCased (classic `_visitInterface`). */
+  /**
+   * Classic: an interface that re-declares a member of a base interface must keep its exact shape (JSII5015), as C#
+   * interfaces cannot narrow inherited members. Checked against every base interface, nearest first, once all types
+   * are known.
+   */
+  private _verifyRedeclaredInterfaceMembers(decl: any, jsiiType: spec.InterfaceType): void {
+    if ((jsiiType.interfaces ?? []).length === 0) {
+      return;
+    }
+    this.deferred.push(() => {
+      const members = typeMembers(jsiiType);
+      const check = (baseFqns: readonly string[]) => {
+        for (const base of baseFqns.map((fqn) => this._dereferenceType(fqn))) {
+          if (base == null || !spec.isInterfaceType(base)) {
+            continue;
+          }
+          const baseMembers = typeMembers(base);
+          for (const [memberName, member] of Object.entries(members)) {
+            const baseMember = baseMembers[memberName];
+            if (memberName === '' || baseMember == null || isIdenticalRedeclaration(member, baseMember)) {
+              continue;
+            }
+            this._report(JsiiDiagnostic.JSII_5015_REDECLARED_INTERFACE_MEMBER, decl, memberName, jsiiType);
+          }
+          check(base.interfaces ?? []);
+        }
+      };
+      check(jsiiType.interfaces ?? []);
+    });
+  }
+
+  /**
+   * Classic `_visitInterface`, once the datatype-ness of the bases is known: behavioral interfaces need an `I` prefix,
+   * all interface names are PascalCased, struct properties are readonly (JSII3008) and behavioral interfaces do not
+   * extend structs (JSII3007).
+   */
   private _validateInterfaceName(sym: any, decl: any, jsiiType: any): void {
     const interfaceName = isInterfaceName(jsiiType.name);
     if (!jsiiType.datatype && !interfaceName) {
@@ -1556,6 +1591,29 @@ export class Assembler {
     const expectedName = interfaceName ? `I${Case.pascal(sym.name.slice(1))}` : Case.pascal(sym.name);
     if (expectedName !== sym.name) {
       this._report(JsiiDiagnostic.JSII_8000_PASCAL_CASED_TYPE_NAMES, decl.name, sym.name, expectedName);
+    }
+
+    if (jsiiType.datatype) {
+      // A struct's properties must be readonly; they are made readonly, since jsii languages pass structs by value.
+      for (const prop of jsiiType.properties ?? []) {
+        if (!prop.immutable) {
+          this._report(
+            JsiiDiagnostic.JSII_3008_STRUCT_PROPS_MUST_BE_READONLY,
+            this._nameOrDeclaration(this.relatedNodes.get(prop)),
+            prop.name,
+            jsiiType,
+          );
+          prop.immutable = true;
+        }
+      }
+    } else {
+      // A behavioral interface may not extend a struct.
+      for (const baseFqn of jsiiType.interfaces ?? []) {
+        const base = this._dereferenceType(baseFqn);
+        if (base != null && spec.isInterfaceType(base) && base.datatype) {
+          this._report(JsiiDiagnostic.JSII_3007_ILLEGAL_STRUCT_EXTENSION, decl, jsiiType, base);
+        }
+      }
     }
   }
 
@@ -3493,6 +3551,39 @@ function typeMembers(jsiiType: spec.InterfaceType | spec.ClassType): Record<stri
     ret[method.name ?? ''] = method;
   }
   return ret;
+}
+
+/** Whether an interface member re-declares a base member with exactly the same shape (classic). */
+function isIdenticalRedeclaration(
+  member: spec.Property | spec.Method,
+  baseMember: spec.Property | spec.Method,
+): boolean {
+  // Not `spec.isMethod`: it only tells methods from initializers and is true for properties too.
+  if (!spec.isProperty(member) && !spec.isProperty(baseMember)) {
+    const params = member.parameters ?? [];
+    const baseParams = baseMember.parameters ?? [];
+    return (
+      !!member.static === !!baseMember.static &&
+      !!member.async === !!baseMember.async &&
+      deepEqual(member.returns, baseMember.returns) &&
+      params.length === baseParams.length &&
+      params.every(
+        (param, i) =>
+          deepEqual(param.type, baseParams[i].type) &&
+          !!param.optional === !!baseParams[i].optional &&
+          !!param.variadic === !!baseParams[i].variadic,
+      )
+    );
+  }
+  if (spec.isProperty(member) && spec.isProperty(baseMember)) {
+    return (
+      !!member.static === !!baseMember.static &&
+      !!member.optional === !!baseMember.optional &&
+      !!member.immutable === !!baseMember.immutable &&
+      deepEqual(member.type, baseMember.type)
+    );
+  }
+  return false;
 }
 
 function containsIntersection(type: spec.TypeReference): boolean {

@@ -261,8 +261,7 @@ describe('re-declaring an interface member (JSII5015)', () => {
   const JSII5015 =
     'Interface "testpkg.IB" re-declares member "m" with a different type or signature. Re-declared members must match the inherited declaration exactly, as C# interfaces cannot narrow inherited members.';
 
-  // @TODO(ts7): expects a jsii validation diagnostic (JSII5015); re-enable with the port of the validator (some rows may pass; the table is skipped as a whole)
-  test.skip.each([
+  test.each([
     ['a narrower union', 'm(): string | number', 'm(): string'],
     ['a different return type', 'm(): string[]', 'm(): number[]'],
     ['a different parameter type', 'm(x: string): void', 'm(x: number): void'],
