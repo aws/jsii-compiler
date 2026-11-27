@@ -17,6 +17,7 @@ import { JsiiDiagnostic } from '../src/jsii-diagnostic';
 import { ProjectInfo } from '../src/project-info';
 import { TypeScriptConfigValidationRuleSet } from '../src/tsconfig';
 import { TypeScriptConfigValidator } from '../src/tsconfig/tsconfig-validator';
+import { silencedWarnings } from '../src/warnings';
 
 // This is necessary to be able to jest.spyOn to functions in the 'ts' module. Replace the read-only
 // object descriptors with a plain object.
@@ -357,9 +358,39 @@ describe(Compiler, () => {
       });
 
       const result = compiler.emit();
-      expect(result.diagnostics).toEqual([]);
+      // No rule set is given, so validation is off and only JSII4009 says so.
+      expect(result.diagnostics).toEqual([
+        expect.objectContaining({ jsiiCode: 4009, category: ts.DiagnosticCategory.Warning }),
+      ]);
       expect(result.emitSkipped).toBe(false);
     });
+
+    // https://github.com/aws/jsii-compiler/issues/2983
+    test.each([
+      { silenced: false, emitSkipped: true },
+      { silenced: true, emitSkipped: false },
+    ])(
+      'JSII4009 fails the build with failOnWarnings unless silenced (silenced: $silenced)',
+      ({ silenced, emitSkipped }) => {
+        writeFileSync(join(sourceDir, tsconfigPath), JSON.stringify(tsconfigForNode18Strict(), null, 2));
+        writeFileSync(join(sourceDir, 'index.ts'), 'export class MarkerA {}');
+        writeFileSync(join(sourceDir, 'README.md'), '# Test Package');
+        const compiler = new Compiler({
+          projectInfo: _makeProjectInfo(sourceDir, 'index.d.ts'),
+          typeScriptConfig: tsconfigPath,
+          failOnWarnings: true,
+        });
+
+        if (silenced) {
+          silencedWarnings.add(4009);
+        }
+        try {
+          expect(compiler.emit().emitSkipped).toBe(emitSkipped);
+        } finally {
+          silencedWarnings.delete(4009);
+        }
+      },
+    );
 
     test('use user-provided config uses include and exclude', () => {
       mkdirSync(join(sourceDir, 'sub'));
@@ -393,7 +424,10 @@ describe(Compiler, () => {
       });
 
       const result = compiler.emit();
-      expect(result.diagnostics).toEqual([]);
+      // No rule set is given, so validation is off and only JSII4009 says so.
+      expect(result.diagnostics).toEqual([
+        expect.objectContaining({ jsiiCode: 4009, category: ts.DiagnosticCategory.Warning }),
+      ]);
       expect(result.emitSkipped).toBe(false);
     });
 
