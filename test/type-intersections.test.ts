@@ -142,9 +142,7 @@ describe('positive tests', () => {
   });
 });
 
-// @TODO(ts7): re-enable once the jsii validation diagnostics (the classic validator) are ported to the
-// TypeScript 7 assembler; the compiler currently emits the assembly without these checks.
-describe.skip('intersection type may not be used in output position', () => {
+describe('intersection type may not be used in output position', () => {
   function expectIntersectionTypeError(code: string) {
     const errs = compileJsiiForErrors(code);
     expect(errs).toContainEqual(expect.stringContaining('Intersection types may only be used as inputs'));
@@ -237,9 +235,7 @@ describe.skip('intersection type may not be used in output position', () => {
   });
 });
 
-// @TODO(ts7): re-enable once the jsii validation diagnostics (the classic validator) are ported to the
-// TypeScript 7 assembler; the compiler currently emits the assembly without these checks.
-test.skip.each([
+test.each([
   ['IFoo', 'string', 'Found non-interface type in type intersection: string'],
   ['boolean', 'string', '"never" type is not allowed'],
   ['IFoo[]', 'IBar', 'Found non-interface type in type intersection: array'],
@@ -262,9 +258,7 @@ test.skip.each([
   expect(errs).toContainEqual(expect.stringContaining(errorMessage));
 });
 
-// @TODO(ts7): re-enable once the jsii validation diagnostics (the classic validator) are ported to the
-// TypeScript 7 assembler; the compiler currently emits the assembly without these checks.
-test.skip('intersection types may not be used as constructor args', () => {
+test('intersection types may not be used as constructor args', () => {
   const errs = compileJsiiForErrors(
     `
     ${IFOO_IBAR}
@@ -279,9 +273,7 @@ test.skip('intersection types may not be used as constructor args', () => {
   expect(errs).toContainEqual(expect.stringContaining('Intersection types cannot be used as constructor arguments'));
 });
 
-// @TODO(ts7): re-enable once the jsii validation diagnostics (the classic validator) are ported to the
-// TypeScript 7 assembler; the compiler currently emits the assembly without these checks.
-test.skip.each([
+test.each([
   ['readonly bar: string', 'readonly bar: string', true as const],
   ['readonly bar: string', 'bar: string', true as const], // read-only & read-write is okay
   ['readonly bar?: string', 'readonly bar: string', 'Member bar is different'],
