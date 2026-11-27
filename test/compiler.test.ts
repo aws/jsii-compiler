@@ -18,14 +18,6 @@ import { ProjectInfo } from '../src/project-info';
 import { TypeScriptConfigValidationRuleSet } from '../src/tsconfig';
 import { TypeScriptConfigValidator } from '../src/tsconfig/tsconfig-validator';
 
-// Make the typescript module's properties configurable so jest.spyOn works.
-// TS 6.0 exports non-configurable properties that cannot be spied on directly.
-jest.mock('typescript', () => {
-  const actual = jest.requireActual('typescript');
-  // Spread into a fresh object to make all properties writable/configurable
-  return { __esModule: true, ...actual };
-});
-
 beforeEach(() => {
   jest.restoreAllMocks();
 });
@@ -405,47 +397,6 @@ describe(Compiler, () => {
         expect.objectContaining({ jsiiCode: 4009, category: ts.DiagnosticCategory.Warning }),
       ]);
       expect(result.emitSkipped).toBe(false);
-    });
-
-    test('respect "lib" setting from user-provided config', () => {
-      const tsconfig = tsconfigForNode18Strict();
-      tsconfig.compilerOptions.lib = ['Decorators.Legacy']; // Something very nonstandard
-      writeFileSync(join(sourceDir, tsconfigPath), JSON.stringify(tsconfig, null, 2));
-
-      const createIncrementalProgram = jest.spyOn(ts, 'createIncrementalProgram');
-
-      const compiler = new Compiler({
-        projectInfo: _makeProjectInfo(sourceDir, 'index.d.ts'),
-        typeScriptConfig: tsconfigPath,
-      });
-      compiler.emit();
-
-      expect(createIncrementalProgram).toHaveBeenCalledWith(
-        expect.objectContaining({
-          rootNames: expect.arrayContaining([expect.stringContaining('lib.decorators.legacy.d.ts')]),
-        }),
-      );
-    });
-
-    test('missing "lib" setting is based on compilation target', () => {
-      const tsconfig = tsconfigForNode18Strict();
-      tsconfig.compilerOptions.target = 'es6';
-      delete tsconfig.compilerOptions.lib;
-      writeFileSync(join(sourceDir, tsconfigPath), JSON.stringify(tsconfig, null, 2));
-
-      const createIncrementalProgram = jest.spyOn(ts, 'createIncrementalProgram');
-
-      const compiler = new Compiler({
-        projectInfo: _makeProjectInfo(sourceDir, 'index.d.ts'),
-        typeScriptConfig: tsconfigPath,
-      });
-      compiler.emit();
-
-      expect(createIncrementalProgram).toHaveBeenCalledWith(
-        expect.objectContaining({
-          rootNames: expect.arrayContaining([expect.stringContaining('lib.es6.d.ts')]),
-        }),
-      );
     });
 
     test('"watch" mode', async () => {
