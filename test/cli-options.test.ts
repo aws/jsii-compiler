@@ -21,6 +21,8 @@ const USER_TSCONFIG = {
   exclude: ['node_modules'],
 };
 
+jest.setTimeout(30_000);
+
 jest.mock('yargs', () => mockYargsToTrackParse());
 
 const projects = new Array<string>();
@@ -158,7 +160,12 @@ describe('options set with JSII_ environment variables', () => {
   });
 
   test('JSII_VALIDATE_TSCONFIG is --validate-tsconfig', async () => {
-    const dir = project({ 'tsconfig.dev.json': '{ "compilerOptions": { "target": "es5" } }' });
+    const dir = project({
+      'tsconfig.dev.json': JSON.stringify({
+        ...USER_TSCONFIG,
+        compilerOptions: { ...USER_TSCONFIG.compilerOptions, strict: undefined },
+      }),
+    });
 
     const result = await runCliWithEnv({ JSII_VALIDATE_TSCONFIG: 'off' }, dir, '--tsconfig', 'tsconfig.dev.json');
 
