@@ -173,6 +173,11 @@ export class Assembler {
   public readonly enumMemberDeclarations = new Map<string, Map<string, any>>();
   /** Classes left out by --strip-deprecated (their code is still emitted, with rtti, as by the classic compiler). */
   public readonly strippedClasses = new Array<spec.ClassType>();
+  /**
+   * Whether the type model has errors, before the uses of stripped types and the validators are checked (the
+   * classic assembler stopped there, and made the deprecation warnings after that point).
+   */
+  public typeModelFailed = false;
   private readonly submodules: Record<string, spec.Submodule> = {};
   private readonly typeFqnBySymbolId = new Map<unknown, string>();
   private readonly exported: RegisteredType[] = [];
@@ -227,6 +232,13 @@ export class Assembler {
   // DeprecatedRemover deletes post-assembly WITHOUT folding its members into
   // subclasses — so member re-listing must not treat it as an erased base.
   private readonly strippedTypeSymIds = new Set<unknown>();
+  /** The declaration of each type dropped by --strip-deprecated, by fqn (for the JSII3999 of a leftover use). */
+  private readonly strippedTypeDecls = new Map<string, any>();
+  /**
+   * The fqn of each type dropped by --strip-deprecated, by symbol id (the first one). A reference to such a type
+   * names it, but a heritage clause erases it (see `strippedTypeSymIds`).
+   */
+  private readonly strippedFqnBySymbolId = new Map<unknown, string>();
 
   /** The export symbol of each submodule, by submodule fqn (classic `_submodules` keys). */
   private readonly submoduleSymbols = new Map<string, any>();
@@ -318,10 +330,15 @@ export class Assembler {
 
     this._validateTypesAgainstPositions();
 
+    for (const fqn of this.strippedTypeDecls.keys()) {
+      delete this.types[fqn];
+    }
     const assembly = this._buildAssembly();
     // Classic: the validator runs on the finished assembly, and only when the
     // assembler itself reported no error.
-    if (!this._diagnostics.some((d) => d.category === DiagnosticCategory.Error)) {
+    this.typeModelFailed = this._diagnostics.some((d) => d.category === DiagnosticCategory.Error);
+    if (!this.typeModelFailed) {
+      this._reportLeftoverUsesOfStrippedTypes(assembly);
       const validator = new Validator(this.options.projectInfo, assembly, {
         nodeOf: (element) => this.relatedNodes.get(element),
         syntaxKind: this.ts.SyntaxKind,
@@ -331,6 +348,65 @@ export class Assembler {
       this._diagnostics.push(...validator.emit().diagnostics);
     }
     return assembly;
+  }
+
+  /**
+   * Classic `DeprecatedRemover.findLeftoverUseOfDeprecatedAPIs`: a JSII3999 for each initializer, method, parameter
+   * and property of the assembly whose type uses a type dropped by --strip-deprecated.
+   */
+  private _reportLeftoverUsesOfStrippedTypes(assembly: spec.Assembly): void {
+    if (this.strippedTypeDecls.size === 0) {
+      return;
+    }
+    const strippedFqn = (type: spec.TypeReference | undefined): string | undefined => {
+      if (type == null || spec.isPrimitiveTypeReference(type)) {
+        return undefined;
+      }
+      if (spec.isNamedTypeReference(type)) {
+        return this.strippedTypeDecls.has(type.fqn) ? type.fqn : undefined;
+      }
+      if (spec.isCollectionTypeReference(type)) {
+        return strippedFqn(type.collection.elementtype);
+      }
+      const members = spec.isUnionTypeReference(type)
+        ? type.union.types
+        : (type as spec.IntersectionTypeReference).intersection.types;
+      return members.map(strippedFqn).find((fqn) => fqn != null);
+    };
+    const report = (fqn: string | undefined, prefix: 'Method' | 'Parameter' | 'Property', element: object) => {
+      if (fqn == null) {
+        return;
+      }
+      const node = this.relatedNodes.get(element);
+      this._report(
+        JsiiDiagnostic.JSII_3999_INCOHERENT_TYPE_MODEL,
+        node?.type ?? node,
+        `${prefix} has @deprecated type ${fqn}, and it is erased by --strip-deprecated.`,
+      ).addRelatedInformationIf(
+        this._diagnosticLocation(this._nameOrDeclaration(this.strippedTypeDecls.get(fqn))),
+        'The @deprecated type is declared here',
+      );
+    };
+    const callable = (method: spec.Method | spec.Initializer) => {
+      report(strippedFqn((method as spec.Method).returns?.type), 'Method', method);
+      for (const param of method.parameters ?? []) {
+        report(strippedFqn(param.type), 'Parameter', param);
+      }
+    };
+    for (const type of Object.values(assembly.types ?? {})) {
+      if (!spec.isClassOrInterfaceType(type)) {
+        continue;
+      }
+      if (spec.isClassType(type) && type.initializer != null) {
+        callable(type.initializer);
+      }
+      for (const method of type.methods ?? []) {
+        callable(method);
+      }
+      for (const prop of type.properties ?? []) {
+        report(strippedFqn(prop.type), 'Property', prop);
+      }
+    }
   }
 
   // -------------------------------------------------------------------------
@@ -407,8 +483,24 @@ export class Assembler {
     return false;
   }
 
-  private _isDeprecated(sym: any): boolean {
-    return this._jsDocTags(sym).some((t: any) => t.name === 'deprecated');
+  /** The stability the tags of a symbol give it, with the precedence of `_visitDocumentation`. */
+  private _tagStability(sym: any): string | undefined {
+    const tags = this._jsDocTags(sym);
+    const has = (name: string) => tags.some((t: any) => t.name === name);
+    if (has('deprecated')) {
+      return 'deprecated';
+    }
+    if (has('stable')) {
+      return 'stable';
+    }
+    if (has('experimental')) {
+      return 'experimental';
+    }
+    const stability = tags.filter((t: any) => t.name === 'stability').pop()?.text;
+    if (stability == null) {
+      return undefined;
+    }
+    return (typeof stability === 'string' ? stability : stability.map((p: any) => p.text).join('')).trim();
   }
 
   /**
@@ -738,8 +830,16 @@ export class Assembler {
     }
   }
 
-  private _shouldStrip(sym: any, fqn: string): boolean {
-    if (!this.stripDeprecated || !this._isDeprecated(sym)) {
+  /**
+   * Classic `DeprecatedRemover`: strips what the assembly lists as deprecated, so a symbol without a stability tag of
+   * its own has the stability it inherits (the package's for a type, the type's for a member). The members of a
+   * stripped type are kept until the type is removed.
+   */
+  private _shouldStrip(sym: any, fqn: string, inherited: string | undefined): boolean {
+    if (!this.stripDeprecated || (this._tagStability(sym) ?? inherited) !== 'deprecated') {
+      return false;
+    }
+    if (fqn.includes('#') && this.strippedTypeDecls.has(fqn.slice(0, fqn.indexOf('#')))) {
       return false;
     }
     if (!this.stripAllowList) {
@@ -1180,9 +1280,13 @@ export class Assembler {
     if (this._jsDocTags(sym).some((t: any) => t.name === 'internal') || this._isIgnored(sym)) {
       return;
     }
-    if (this._shouldStrip(sym, fqn)) {
+    if (this._shouldStrip(sym, fqn, this.defaultStability)) {
       this.strippedTypeSymIds.add(sym.id);
       const strippedDecl = sym.declarations?.[0]?.resolve(this.project);
+      this.strippedTypeDecls.set(fqn, strippedDecl);
+      if (!this.strippedFqnBySymbolId.has(sym.id)) {
+        this.strippedFqnBySymbolId.set(sym.id, fqn);
+      }
       if (strippedDecl?.kind === SyntaxKind.ClassDeclaration) {
         this.strippedClasses.push({
           assembly: this.assemblyName,
@@ -1193,13 +1297,14 @@ export class Assembler {
           locationInModule: this._locationOf(strippedDecl),
         });
       }
-      return;
     }
     const decl = sym.declarations?.[0]?.resolve(this.project);
     if (!decl) {
       return;
     }
-    if (isFirst && !hiddenByName) {
+    // Classic: a stripped type is visited like any other (its diagnostics, its nested types), then removed from the
+    // assembly; references to it do not resolve to it.
+    if (isFirst && !hiddenByName && !this.strippedTypeSymIds.has(sym.id)) {
       this.typeFqnBySymbolId.set(sym.id, fqn);
     }
     this.exported.push({ name, sym, decl, fqn });
@@ -1678,7 +1783,7 @@ export class Assembler {
         continue;
       }
       // The classic assembler does not hide enum members that are `@internal`, `_`-prefixed or `@jsii ignore`d.
-      if (this._shouldStrip(msym, `${fqn}#${msym.name}`)) {
+      if (this._shouldStrip(msym, `${fqn}#${msym.name}`, jsiiType.docs?.stability)) {
         continue;
       }
       const member: any = { name: msym.name };
@@ -2511,7 +2616,7 @@ export class Assembler {
       }
       // Stripping applies to the members the classic assembler listed on this type
       // (own and erased-base members), hence after the ownership check above.
-      if (this._shouldStrip(p, `${jsiiType.fqn}#${p.name}`)) {
+      if (this._shouldStrip(p, `${jsiiType.fqn}#${p.name}`, jsiiType.docs?.stability)) {
         if ((p.flags & SymbolFlags.Method) !== 0) {
           strippedMethods = true;
         } else {
@@ -2548,7 +2653,7 @@ export class Assembler {
         if (sp.name === 'prototype' || this._isInternal(sp)) {
           continue;
         }
-        if (this._shouldStrip(sp, `${jsiiType.fqn}#${sp.name}`)) {
+        if (this._shouldStrip(sp, `${jsiiType.fqn}#${sp.name}`, jsiiType.docs?.stability)) {
           if ((sp.flags & SymbolFlags.Method) !== 0) {
             strippedMethods = true;
           } else {
@@ -3382,7 +3487,8 @@ export class Assembler {
       const s = type.getSymbol();
       const parent = s?.getParent();
       for (const enumSym of s ? [s, parent] : []) {
-        const ownFqn = enumSym && this.typeFqnBySymbolId.get(enumSym.id);
+        const ownFqn =
+          enumSym && (this.typeFqnBySymbolId.get(enumSym.id) ?? this.strippedFqnBySymbolId.get(enumSym.id));
         if (ownFqn) {
           return { fqn: ownFqn };
         }
@@ -3495,7 +3601,7 @@ export class Assembler {
     }
     const target = type.isTypeReference() ? type.getTarget() : type;
     const tsym = target.getSymbol() ?? sym;
-    const ownFqn = this.typeFqnBySymbolId.get(tsym.id);
+    const ownFqn = this.typeFqnBySymbolId.get(tsym.id) ?? this.strippedFqnBySymbolId.get(tsym.id);
     if (ownFqn) {
       return { fqn: ownFqn };
     }

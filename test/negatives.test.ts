@@ -37,7 +37,6 @@ const NOT_PORTED_YET = new Set([
   'neg.inheritance-property-changes-mutability.to-mutable.ts',
   'neg.inheritance-property-changes-mutability.to-readonly.ts',
   'neg.override-changes-visibility.ts',
-  'neg.stripped-deprecated.ts',
 ]);
 
 expect.addSnapshotSerializer({
