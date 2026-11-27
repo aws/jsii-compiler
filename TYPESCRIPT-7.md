@@ -37,3 +37,18 @@ need the TypeScript 6.0 printer.
 
 **Who is affected:** nobody at runtime. Debuggers and stack-trace tools read both maps. Only tools that compare the
 bytes of the source maps see a difference.
+## The `strict` rule set reports removed options differently
+
+**What differs:** `jsii` on TypeScript 6.0 has a rule set for the options TypeScript 6.0 deprecates (`target: es5`,
+`module: amd`, `moduleResolution: node`, `downlevelIteration`, `baseUrl`, `esModuleInterop: false`, ...). The TypeScript
+7 compiler does not have it. These options still fail `strict` validation, but with the general rules: an option
+TypeScript 7 removed is an `Unexpected field`, and a removed `target` or `module` is not among the allowed values.
+`jsii rules strict` no longer lists the `must not be` entries for them. `esModuleInterop`,
+`allowSyntheticDefaultImports` and `alwaysStrict` are still allowed as `true`.
+
+**Why it cannot match:** TypeScript 7 removed these options and reports each one itself (TS5102, TS5108). The rule set
+only repeated that check with other words.
+
+**Who is affected:** tools that parse the JSII4000 text or the `jsii rules` output. The same configurations pass and
+fail as before.
+
