@@ -279,7 +279,7 @@ export class Assembler {
     const moduleSymbol = this.checker.getSymbolAtLocation(entrySf);
     const moduleExports = this._exportsOfModule(moduleSymbol);
 
-    this._registerModuleExports(moduleExports);
+    this._registerModuleExports(moduleExports, moduleSymbol.declarations?.[0]?.path);
 
     for (const { name, sym, decl, fqn } of this.exported) {
       this._visitNode(name, sym, decl, fqn);
@@ -749,17 +749,25 @@ export class Assembler {
       .map(({ e }) => e);
   }
 
-  private _registerModuleExports(moduleExports: any[]): void {
+  private _registerModuleExports(moduleExports: any[], entryPath?: string): void {
     const { SyntaxKind, SymbolFlags } = this.ts;
     const candidates = new Map<
       unknown,
-      Array<{ name: string; prefix: string; moduleDir: string; sym: any; aliasDeclH?: any; seq: number }>
+      Array<{
+        name: string;
+        prefix: string;
+        moduleDir: string;
+        moduleFile?: string;
+        sym: any;
+        aliasDeclH?: any;
+        seq: number;
+      }>
     >();
     const visitedModules = new Set<string>();
     // The order in which exports are seen: the classic assembler visited (and registered) types in this order.
     let seq = 0;
 
-    const collect = (mExports: any[], prefix: string, moduleDir: string): void => {
+    const collect = (mExports: any[], prefix: string, moduleDir: string, moduleFile?: string): void => {
       for (const e of mExports) {
         const sym = this._resolveAlias(e);
         const declH = sym.declarations?.[0];
@@ -781,7 +789,7 @@ export class Assembler {
           // (strada's ExportSpecifier resolution lands on an ImportSpecifier,
           // which no _visitNode branch handles — silently dropped).
           const aliasDeclH = (e.flags & SymbolFlags.Alias) !== 0 ? e.declarations?.[0] : undefined;
-          candidates.get(sym.id)!.push({ name: e.name, prefix, moduleDir, sym, aliasDeclH, seq: seq++ });
+          candidates.get(sym.id)!.push({ name: e.name, prefix, moduleDir, moduleFile, sym, aliasDeclH, seq: seq++ });
         } else if (
           kind === SyntaxKind.SourceFile ||
           (sym.flags & SymbolFlags.ValueModule) !== 0 ||
@@ -813,13 +821,14 @@ export class Assembler {
           this.submoduleSymbols.set(subFqn, e);
           this.submodules[subFqn] = this._submoduleSpec(e, sym, kind === SyntaxKind.SourceFile);
           const subDir = path.dirname(sym.declarations?.[0]?.path ?? moduleDir);
-          collect(this._exportsOfModule(sym), subFqn, subDir);
+          const subFile = kind === SyntaxKind.SourceFile ? sym.declarations?.[0]?.path : undefined;
+          collect(this._exportsOfModule(sym), subFqn, subDir, subFile);
         } else {
           this._reportUnsupportedExport(sym, declH);
         }
       }
     };
-    collect(moduleExports, this.assemblyName, path.dirname(this.entry));
+    collect(moduleExports, this.assemblyName, path.dirname(this.entry), entryPath);
     this._validateSubmoduleConfigs();
 
     // FQN attribution: the *canonical* home of a type is the shortest module
@@ -842,6 +851,9 @@ export class Assembler {
           best = c;
         }
       }
+      // Classic: a file that is itself a (sub)module (`export * as ns from './file'`) gives its types that
+      // module's fqn, even when another module in the same directory exports them as well.
+      best = cands.find((c) => c.moduleFile != null && c.moduleFile === c.sym.declarations?.[0]?.path) ?? best;
       // Classic: a type is named after its declaration, also when it is exported under another name
       // (`export { X as Y }` gives `X`).
       const name = best.sym.name;
