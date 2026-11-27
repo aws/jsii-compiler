@@ -97,6 +97,7 @@ const project = new typescript.TypeScriptProject({
     },
     junitReporting: false,
   },
+  typecheckTests: true,
 
   buildWorkflow: false, // We have our own build workflow (need matrix test)
   release: false, // We have our own release workflow
@@ -168,15 +169,19 @@ project.package.addField('exports', {
 // Remove TypeScript devDependency (it's a direct/normal dependency here)
 project.deps.removeDependency('typescript');
 
-// Modernize ts-jest configuration
+// Run tests with swc instead of ts-jest. swc doesn't type-check, so the test suite is type-checked with `tsc` before
+// the tests run (see `typecheckTests`).
+project.deps.removeDependency('ts-jest');
+project.addDevDeps('@swc/core', '@swc/jest');
 if (project.jest?.config) {
   project.jest.config.transform ??= {};
   project.jest.config.transform['^.+\\.[t]sx?$'] = [
-    'ts-jest',
+    '@swc/jest',
     {
-      compiler: 'typescript',
-      tsconfig: 'test/tsconfig.json',
-      diagnostics: { ignoreCodes: ['TS151001'] },
+      jsc: {
+        parser: { syntax: 'typescript' },
+        target: 'es2023',
+      },
     },
   ];
 }
@@ -233,7 +238,10 @@ project.gitignore.addPatterns('/src/version.ts', '/jsii-outdir/', '/test/negativ
 project.gitignore.exclude('.DS_Store', '.lock');
 
 // Exclude negatives from tsconfig and eslint...
-project.tsconfigDev.addExclude('test/negatives/**/*.ts');
+// (paths in the test tsconfig are relative to test/)
+project.tsconfigDev.addExclude('negatives/**/*.ts');
+// The root tsconfig is composite, so the test project must list the src files that tests import
+project.tsconfigDev.addInclude('../src/**/*.ts');
 project.eslint?.addIgnorePattern('test/negatives/**/*.ts');
 
 // Customize ESLint rules

@@ -40,14 +40,13 @@
   ],
   "transform": {
     "^.+\\.[t]sx?$": [
-      "ts-jest",
+      "@swc/jest",
       {
-        "compiler": "typescript",
-        "tsconfig": "test/tsconfig.json",
-        "diagnostics": {
-          "ignoreCodes": [
-            "TS151001"
-          ]
+        "jsc": {
+          "parser": {
+            "syntax": "typescript"
+          },
+          "target": "es2023"
         }
       }
     ]
