@@ -1,5 +1,4 @@
-import { compileJsiiForTest } from '../../src/helpers';
-import { JsiiError } from '../../src/utils';
+import { compileJsiiForTest } from '../../src';
 
 describe('stripDeprecatedAllowListFile', () => {
   test('fails when the allow-list file does not exist', () => {
@@ -10,7 +9,7 @@ describe('stripDeprecatedAllowListFile', () => {
         stripDeprecated: true,
         stripDeprecatedAllowListFile: allowListFile,
       }),
-    ).toThrow(new JsiiError(`--strip-deprecated file not found: ${allowListFile}`));
+    ).toThrow(`--strip-deprecated file not found: ${allowListFile}`);
   });
 });
 
