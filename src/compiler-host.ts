@@ -193,7 +193,7 @@ export class CompilerHost {
     }
     return {
       program: project.program,
-      checker: project.checker,
+      checker: withMemoizedTypeAtLocation(project.checker),
       api: this.api,
       rootFileNames: project.parsedCommandLine.fileNames,
     };
@@ -214,4 +214,28 @@ export class CompilerHost {
       /* ignore */
     }
   }
+}
+
+/**
+ * The checker, with `getTypeAtLocation(node)` sent to the TypeScript 7 process
+ * once per node. Every call is a round trip, and the assembler asks for the type
+ * of the same node many times (aws-cdk-lib: 238k calls for 28k nodes). The API
+ * hands out one object per type id, so the cached answer is the object a new
+ * call would return.
+ */
+function withMemoizedTypeAtLocation(checker: any): any {
+  const types = new Map<string, any>();
+  const getTypeAtLocation = (node: any) => {
+    const id = node?.id;
+    if (typeof id !== 'string') {
+      return checker.getTypeAtLocation(node);
+    }
+    if (!types.has(id)) {
+      types.set(id, checker.getTypeAtLocation(node));
+    }
+    return types.get(id);
+  };
+  return new Proxy(checker, {
+    get: (target, prop) => (prop === 'getTypeAtLocation' ? getTypeAtLocation : Reflect.get(target, prop, target)),
+  });
 }
