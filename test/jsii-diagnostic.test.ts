@@ -145,7 +145,7 @@ describe('jsii diagnostics', () => {
       test('shows the code and the name of the diagnostic', () => {
         const formatted = plain(JsiiDiagnostic.JSII_0003_MISSING_README.createDetached().format(process.cwd()));
 
-        expect(formatted).toContain('JSII3: There is no "README.md" file.');
+        expect(formatted).toContain('JSII0003: There is no "README.md" file.');
         expect(formatted).toContain('[metadata/missing-readme]');
       });
 

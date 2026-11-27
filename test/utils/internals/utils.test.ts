@@ -87,7 +87,7 @@ describe('formatDiagnostic', () => {
   test('formats a jsii diagnostic with its code and name', () => {
     const formatted = stripAnsi(formatDiagnostic(detached(), process.cwd()));
 
-    expect(formatted).toContain('JSII3: There is no "README.md" file.');
+    expect(formatted).toContain('JSII0003: There is no "README.md" file.');
     expect(formatted).toContain('[metadata/missing-readme]');
   });
 

@@ -110,7 +110,7 @@ describe('Compiler configuration', () => {
         .replay()
         .filter((event) => event.categoryName === 'diagnostics')
         .map((event) => stripAnsi(event.data.join(' ')));
-      expect(logged).toEqual([expect.stringContaining('JSII3: There is no "README.md" file.')]);
+      expect(logged).toEqual([expect.stringContaining('JSII0003: There is no "README.md" file.')]);
     }, 25_000);
   });
 });
