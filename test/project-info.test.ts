@@ -286,6 +286,21 @@ describe('loadProjectInfo', () => {
       });
     });
 
+    test.each(['com.example.class', 'com.example.1abc'])(
+      'Java package component that is not a valid Java identifier (%s) is rejected',
+      (pkg) => {
+        expectProjectLoadError(/not a valid Java identifier/, (proj) => {
+          proj.jsii.targets.java = {
+            package: pkg,
+            maven: {
+              artifactId: 'asdf',
+              groupId: 'asdf',
+            },
+          };
+        });
+      },
+    );
+
     test('invalid Python module is rejected', () => {
       expectProjectLoadError(/contains non-identifier characters/, (proj) => {
         proj.jsii.targets.python = {
