@@ -3310,6 +3310,7 @@ export class Assembler {
     }
   }
 
+<<<<<<< HEAD
   private _warnAboutReservedWords(name: string, decl: any) {
     const reservingLanguages = isReservedName(name);
     if (reservingLanguages) {
@@ -3325,6 +3326,135 @@ export class Assembler {
         this.reservedWordReports.add(key);
       }
       this._report(JsiiDiagnostic.JSII_5018_RESERVED_WORD, node, name, reservingLanguages);
+=======
+/**
+ * Deferred processing that needs to happen in a second, ordered pass
+ */
+interface DeferredRecord {
+  /**
+   * The FQN of the type the action will be executed on
+   */
+  fqn: string;
+
+  /**
+   * Dependency FQNs of the types that need to be processed before analysis.
+   *
+   * All deferred analysis actions for the types listed here must be complete
+   * before this analysis action can run.
+   */
+  dependedFqns: string[];
+
+  /**
+   * Callback representing the action to run.
+   */
+  cb: () => void;
+}
+
+/**
+ * Return the last element from a list
+ */
+function last<T>(xs: T[]): T | undefined {
+  return xs.length > 0 ? xs[xs.length - 1] : undefined;
+}
+
+/**
+ * Apply a function to a value if it's not equal to undefined
+ */
+function apply<T, U>(x: T | undefined, fn: (x: T) => U | undefined): U | undefined {
+  return x !== undefined ? fn(x) : undefined;
+}
+
+/**
+ * Whether `member` re-declares `baseMember` with exactly the same shape, so
+ * that only its documentation differs. Such re-declarations can be represented
+ * in all target languages (C# needs the `new` modifier).
+ */
+function isIdenticalRedeclaration(
+  member: spec.Property | spec.Method,
+  baseMember: spec.Property | spec.Method,
+): boolean {
+  // Not `spec.isMethod`: it only tells methods from initializers and is true
+  // for properties too.
+  if (!spec.isProperty(member) && !spec.isProperty(baseMember)) {
+    const params = member.parameters ?? [];
+    const baseParams = baseMember.parameters ?? [];
+    return (
+      !!member.static === !!baseMember.static &&
+      !!member.async === !!baseMember.async &&
+      deepEqual(member.returns, baseMember.returns) &&
+      params.length === baseParams.length &&
+      params.every(
+        (param, i) =>
+          deepEqual(param.type, baseParams[i].type) &&
+          !!param.optional === !!baseParams[i].optional &&
+          !!param.variadic === !!baseParams[i].variadic,
+      )
+    );
+  }
+
+  if (spec.isProperty(member) && spec.isProperty(baseMember)) {
+    return (
+      !!member.static === !!baseMember.static &&
+      !!member.optional === !!baseMember.optional &&
+      !!member.immutable === !!baseMember.immutable &&
+      deepEqual(member.type, baseMember.type)
+    );
+  }
+
+  return false;
+}
+
+function typeMembers(jsiiType: spec.InterfaceType | spec.ClassType): {
+  [key: string]: spec.Property | spec.Method;
+} {
+  const ret: { [key: string]: spec.Property | spec.Method } = {};
+
+  for (const prop of jsiiType.properties ?? []) {
+    ret[prop.name] = prop;
+  }
+
+  for (const method of jsiiType.methods ?? []) {
+    ret[method.name ?? ''] = method;
+  }
+
+  return ret;
+}
+
+/**
+ * Whether or not the given name is conventionally an interface name
+ *
+ * It's an interface name if it starts with I and has another capital
+ * (so we don't mark IonicColumnProps as an interface).
+ */
+function isInterfaceName(name: string) {
+  return name.length >= 2 && name.startsWith('I') && name.charAt(1).toUpperCase() === name.charAt(1);
+}
+
+function getConstructor(type: ts.Type): ts.Symbol | undefined {
+  return type.symbol.members?.get(ts.InternalSymbolName.Constructor);
+}
+
+function cmpDesc<T>(a: T, b: T, desc: (x: T) => string): [string, string] | undefined {
+  const desc1 = desc(a);
+  const desc2 = desc(b);
+  return desc1 !== desc2 ? [desc1, desc2] : undefined;
+}
+
+function noEmptyDict<T>(xs: Record<string, T> | undefined): Record<string, T> | undefined {
+  if (xs == null || Object.keys(xs).length === 0) {
+    return undefined;
+  }
+  return xs;
+}
+
+function toDependencyClosure(assemblies: readonly spec.Assembly[]): {
+  [name: string]: spec.DependencyConfiguration;
+} {
+  const result: { [name: string]: spec.DependencyConfiguration } = {};
+  for (const assembly of assemblies) {
+    if (!assembly.targets) {
+      continue;
+>>>>>>> 073c97a (fix: compare re-declared interface properties as properties (#2998))
     }
   }
 
