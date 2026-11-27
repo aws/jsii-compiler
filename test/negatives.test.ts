@@ -8,10 +8,6 @@ import { formatDiagnostic } from '../src/utils';
 
 const SOURCE_DIR = path.join(__dirname, 'negatives');
 
-// @TODO(ts7): fixtures that expect jsii validation diagnostics which are not ported to the TypeScript 7 assembler
-// yet. The PR that ports a diagnostic removes the fixtures it makes pass from this list; the list ends up empty.
-const NOT_PORTED_YET = new Set<string>([]);
-
 expect.addSnapshotSerializer({
   test: (val) => typeof val === 'string',
   serialize: (val: string) => val,
@@ -22,8 +18,7 @@ for (const source of fs.readdirSync(SOURCE_DIR)) {
     continue;
   }
   const filePath = path.join(SOURCE_DIR, source);
-  const testOrSkip = NOT_PORTED_YET.has(source) ? test.skip : test;
-  testOrSkip(
+  test(
     source.replace(/neg\.(.+)\.ts/, '$1'),
     () => {
       const { strict, stripDeprecated } = _getPragmas(filePath);
