@@ -772,6 +772,9 @@ function readSourceFile(fileName: string): string | undefined {
 function collectTsDiagnostics(program: any): Diagnostic[] {
   const call = (name: string): any[] => (typeof program[name] === 'function' ? program[name]() ?? [] : []);
   const raw: any[] = [
+    // Like tsc: errors of the tsconfig file come first. Without them, an error TypeScript
+    // reports only there (such as TS18002) just skips the emit, as "TS0: emit pipeline failed".
+    ...call('getConfigFileParsingDiagnostics'),
     ...call('getProgramDiagnostics'),
     ...call('getGlobalDiagnostics'),
     ...call('getSyntacticDiagnostics'),
