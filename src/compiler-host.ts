@@ -236,6 +236,18 @@ export class CompilerHost {
 function withMemoizedTypeAtLocation(checker: any): any {
   const types = new Map<string, any>();
   const getTypeAtLocation = (node: any) => {
+    if (Array.isArray(node)) {
+      // An array of nodes is one request for the nodes not answered yet.
+      if (node.some((n) => typeof n?.id !== 'string')) {
+        return checker.getTypeAtLocation(node);
+      }
+      const missing = [...new Set(node.filter((n) => !types.has(n.id)))];
+      if (missing.length > 0) {
+        const fetched = checker.getTypeAtLocation(missing);
+        for (const [i, n] of missing.entries()) types.set(n.id, fetched[i]);
+      }
+      return node.map((n) => types.get(n.id));
+    }
     const id = node?.id;
     if (typeof id !== 'string') {
       return checker.getTypeAtLocation(node);
