@@ -1892,7 +1892,11 @@ export class Assembler {
     const process = (types: any[]): void => {
       for (const iface of types) {
         const s = iface.getSymbol?.() ?? iface.symbol;
-        const fqn = s && (this.typeFqnBySymbolId.get(s.id) ?? this._externalFqnOf(s));
+        const ownFqn = s && this.typeFqnBySymbolId.get(s.id);
+        const fqn = ownFqn ?? (s && this._externalFqnOf(s));
+        if (fqn && !ownFqn) {
+          this._checkPeerDependency(fqn, () => this._valueDeclarationOf(s));
+        }
         if (fqn) {
           if (!seen.has(fqn)) {
             seen.add(fqn);
@@ -1993,6 +1997,7 @@ export class Assembler {
   private _verifySupertypes(jsiiType: spec.ClassType | spec.InterfaceType): void {
     const declOf = (t: spec.Type) => this.relatedNodes.get(this.types[t.fqn]);
     this.deferred.push(() => {
+      this._checkSupertypePeerDependencies(jsiiType);
       if (spec.isClassType(jsiiType) && jsiiType.base != null) {
         const base = this._dereferenceType(jsiiType.base);
         if (base == null && this.unregisteredBaseDecls.has(jsiiType.fqn)) {
@@ -2028,6 +2033,44 @@ export class Assembler {
         }
       }
     });
+  }
+
+  /**
+   * JSII0005 for the supertypes the classic assembler looked up: the base classes of a class, up the chain, and the
+   * direct interfaces of a class or interface, at its declaration; and, for an interface, the interfaces of those
+   * bases, up the chain, with no location.
+   */
+  private _checkSupertypePeerDependencies(jsiiType: spec.ClassType | spec.InterfaceType): void {
+    const decl = () => this.relatedNodes.get(jsiiType);
+    if (spec.isClassType(jsiiType)) {
+      const seen = new Set<string>();
+      for (let fqn = jsiiType.base; fqn != null && !seen.has(fqn); ) {
+        seen.add(fqn);
+        this._checkPeerDependency(fqn, decl);
+        const base = this._dereferenceType(fqn);
+        fqn = base != null && spec.isClassType(base) ? base.base : undefined;
+      }
+    }
+    for (const fqn of jsiiType.interfaces ?? []) {
+      this._checkPeerDependency(fqn, decl);
+    }
+    if (spec.isInterfaceType(jsiiType)) {
+      const seen = new Set<string>();
+      const ancestors = (fqns: readonly string[] | undefined): void => {
+        for (const fqn of fqns ?? []) {
+          const base = this._dereferenceType(fqn);
+          if (base == null || !spec.isInterfaceType(base) || seen.has(fqn)) {
+            continue;
+          }
+          seen.add(fqn);
+          for (const ancestor of base.interfaces ?? []) {
+            this._checkPeerDependency(ancestor);
+          }
+          ancestors(base.interfaces);
+        }
+      };
+      ancestors(jsiiType.interfaces);
+    }
   }
 
   private _visitClass(sym: any, decl: any, jsiiType: any): void {
@@ -2073,7 +2116,11 @@ export class Assembler {
             }
             continue;
           }
-          const fqnRef = this.typeFqnBySymbolId.get(s.id) ?? this._externalFqnOf(s);
+          const ownFqnRef = this.typeFqnBySymbolId.get(s.id);
+          const fqnRef = ownFqnRef ?? this._externalFqnOf(s);
+          if (fqnRef && !ownFqnRef) {
+            this._checkPeerDependency(fqnRef, () => this._valueDeclarationOf(s));
+          }
           if (isExt) {
             if (fqnRef) {
               base.value ??= fqnRef;
@@ -2700,6 +2747,7 @@ export class Assembler {
       return;
     }
     this.deferred.push(() => {
+      this._checkPeerDependency(lastParamType.fqn, () => this.relatedNodes.get(parameters[parameters.length - 1]));
       const struct = this._dereferenceType(lastParamType.fqn);
       if (struct == null) {
         // Classic: the type of the last parameter is looked up "used in syntax".
@@ -2720,6 +2768,7 @@ export class Assembler {
           propNames.add(p.name);
         }
         for (const baseFqn of iface.interfaces ?? []) {
+          this._checkPeerDependency(baseFqn);
           const base = this._dereferenceType(baseFqn);
           if (base != null && spec.isInterfaceType(base) && !seen.has(baseFqn)) {
             seen.add(baseFqn);
@@ -2735,6 +2784,29 @@ export class Assembler {
         }
       }
     });
+  }
+
+  /**
+   * The classic `_dereference` check: a type of a dependency that the public API uses must come from a peer
+   * dependency (JSII0005). The classic assembler made it each time it looked such a type up, at the node of that
+   * look-up (`nodeOf`; none means no location). Duplicates collapse when the diagnostics are de-duplicated.
+   */
+  private _checkPeerDependency(fqn: string, nodeOf?: () => any): void {
+    const [assm] = fqn.split('.');
+    const { projectInfo } = this.options;
+    if (
+      assm === this.assemblyName ||
+      assm in projectInfo.peerDependencies ||
+      !projectInfo.dependencyClosure.some((dep) => dep.name === assm)
+    ) {
+      return;
+    }
+    this._report(JsiiDiagnostic.JSII_0005_MISSING_PEER_DEPENDENCY, nodeOf?.(), assm, fqn);
+  }
+
+  /** The value declaration of a symbol (a class or an enum has one, an interface does not). */
+  private _valueDeclarationOf(sym: any): any {
+    return sym.valueDeclaration?.resolve?.(this.project);
   }
 
   /** A type of this assembly or of a dependency, by fqn. */
@@ -3205,13 +3277,16 @@ export class Assembler {
     if (f & TypeFlags.EnumLike) {
       const s = type.getSymbol();
       const parent = s?.getParent();
-      const fqn =
-        s &&
-        (this.typeFqnBySymbolId.get(s.id) ??
-          this._externalFqnOf(s) ??
-          (parent && (this.typeFqnBySymbolId.get(parent.id) ?? this._externalFqnOf(parent))));
-      if (fqn) {
-        return { fqn };
+      for (const enumSym of s ? [s, parent] : []) {
+        const ownFqn = enumSym && this.typeFqnBySymbolId.get(enumSym.id);
+        if (ownFqn) {
+          return { fqn: ownFqn };
+        }
+        const externalFqn = enumSym && this._externalFqnOf(enumSym);
+        if (externalFqn) {
+          this._checkPeerDependency(externalFqn, () => this._valueDeclarationOf(enumSym));
+          return { fqn: externalFqn };
+        }
       }
     }
     if (f & TypeFlags.NonPrimitive) {
@@ -3316,9 +3391,14 @@ export class Assembler {
     }
     const target = type.isTypeReference() ? type.getTarget() : type;
     const tsym = target.getSymbol() ?? sym;
-    const fqn = this.typeFqnBySymbolId.get(tsym.id) ?? this._externalFqnOf(tsym);
-    if (fqn) {
-      return { fqn };
+    const ownFqn = this.typeFqnBySymbolId.get(tsym.id);
+    if (ownFqn) {
+      return { fqn: ownFqn };
+    }
+    const externalFqn = this._externalFqnOf(tsym);
+    if (externalFqn) {
+      this._checkPeerDependency(externalFqn, () => this._valueDeclarationOf(tsym));
+      return { fqn: externalFqn };
     }
     if ((tsym.flags & this.ts.SymbolFlags.TypeParameter) === 0) {
       return { fqn: this._unregisteredTypeFqn(type, tsym, declaration) };
@@ -3680,6 +3760,7 @@ export class Assembler {
             return;
           }
           validatedFqns[dir].add(ref.fqn);
+          this._checkPeerDependency(ref.fqn);
           const type = this._dereferenceType(ref.fqn);
           if (type != null && isDataType(type)) {
             for (const prop of type.properties ?? []) {
