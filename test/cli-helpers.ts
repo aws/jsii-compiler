@@ -62,10 +62,23 @@ export function makeCliProject(files: Record<string, string | null> = {}, pkgJso
  * wait for the (asynchronous) command handlers to complete.
  */
 export async function runCli(cwd: string, ...args: string[]): Promise<CliResult> {
+  return runCliWithEnv({}, cwd, ...args);
+}
+
+/**
+ * Like `runCli`, with changes to the environment variables the CLI sees. The CLI is run with the support policy
+ * information silenced (`JSII_SILENCE_SUPPORT_WARNING=1`), unless `env` says otherwise. A value of `undefined` removes
+ * the variable.
+ */
+export async function runCliWithEnv(
+  env: Record<string, string | undefined>,
+  cwd: string,
+  ...args: string[]
+): Promise<CliResult> {
   const originalArgv = process.argv;
   const originalCwd = process.cwd();
   const originalExitCode = process.exitCode;
-  const originalSilence = process.env.JSII_SILENCE_SUPPORT_WARNING;
+  const originalEnv = { ...process.env };
 
   let stdout = '';
   let stderr = '';
@@ -100,7 +113,13 @@ export async function runCli(cwd: string, ...args: string[]): Promise<CliResult>
 
   try {
     process.argv = ['node', 'jsii', ...args];
-    process.env.JSII_SILENCE_SUPPORT_WARNING = '1';
+    for (const [name, value] of Object.entries({ JSII_SILENCE_SUPPORT_WARNING: '1', ...env })) {
+      if (value === undefined) {
+        delete process.env[name];
+      } else {
+        process.env[name] = value;
+      }
+    }
     process.exitCode = undefined;
     process.chdir(cwd);
 
@@ -126,23 +145,24 @@ export async function runCli(cwd: string, ...args: string[]): Promise<CliResult>
     process.argv = originalArgv;
     process.chdir(originalCwd);
     process.exitCode = originalExitCode;
-    if (originalSilence === undefined) {
-      delete process.env.JSII_SILENCE_SUPPORT_WARNING;
-    } else {
-      process.env.JSII_SILENCE_SUPPORT_WARNING = originalSilence;
+    for (const name of Object.keys({ JSII_SILENCE_SUPPORT_WARNING: '1', ...env })) {
+      if (originalEnv[name] === undefined) {
+        delete process.env[name];
+      } else {
+        process.env[name] = originalEnv[name];
+      }
     }
   }
 }
 
 /**
  * A `yargs` mock factory that forwards everything to the actual `yargs`, but remembers the result of `parse()` so that
- * `runCli` can wait for it.
+ * `runCli` can wait for the (asynchronous) command handler to finish. The CLI does not expose that otherwise, and what
+ * it does is not changed.
  *
  * Usage: `jest.mock('yargs', () => mockYargsToTrackParse());`
- *
- * @param options.ignoreConflicts drops `conflicts()` declarations, to let a handler see options yargs would reject.
  */
-export function mockYargsToTrackParse(options: { readonly ignoreConflicts?: boolean } = {}) {
+export function mockYargsToTrackParse() {
   const wrap = (instance: any): any =>
     new Proxy(instance, {
       get(target, property) {
@@ -153,19 +173,10 @@ export function mockYargsToTrackParse(options: { readonly ignoreConflicts?: bool
         if (typeof value !== 'function') {
           return value;
         }
-        return (...originalArgs: unknown[]) => {
-          let callArgs = originalArgs;
-          if (property === 'command' && options.ignoreConflicts && typeof callArgs[2] === 'function') {
-            // The builder of a command receives its own yargs instance: make sure that one is wrapped, too.
-            const builder = callArgs[2] as (inner: any) => unknown;
-            callArgs = [...callArgs.slice(0, 2), (inner: any) => builder(wrap(inner)), ...callArgs.slice(3)];
-          }
-          if (property === 'conflicts' && options.ignoreConflicts) {
-            return wrap(target);
-          }
+        return (...args: unknown[]) => {
           let result;
           try {
-            result = value.apply(target, callArgs);
+            result = value.apply(target, args);
           } catch (error) {
             // A synchronous handler that throws makes parse() throw: record that as a rejected parse.
             if (property === 'parse') {
