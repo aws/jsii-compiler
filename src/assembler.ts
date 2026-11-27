@@ -442,7 +442,7 @@ export class Assembler {
     if (!/\{@link(code|plain)?\b/.test(rawComment)) {
       return comment;
     }
-    const linkRe = /\{@(link|linkcode|linkplain)([^}\n]*)\}/g;
+    const linkRe = /\{@(linkcode|linkplain|link)\b([^}\n]*)\}/g;
     let result = comment;
     let cursor = 0;
     let rawRendered = rawComment;
