@@ -285,6 +285,83 @@ class DeprecationError extends Error {
     `);
   });
 
+  // This documents current behavior, see https://github.com/aws/jsii-compiler/issues/3001
+  test('drops the comments at the end of a method body in the emitted JavaScript', () => {
+    const source = `
+      export class A {
+        public static method(): void {
+          /* A static method */
+        }
+        public withBody(): number {
+          // leading
+          return 1;
+          // after
+        }
+      }
+    `;
+
+    const without = compileJsiiForTest(source);
+    const withWarnings = compileJsiiForTest(source, undefined /* callback */, { addDeprecationWarnings: true });
+
+    expect(without.files['index.js']).toContain('/* A static method */');
+    expect(without.files['index.js']).toContain('// after');
+    expect(withWarnings.files['index.js']).toContain('// leading');
+    expect(withWarnings.files['index.js']).not.toContain('/* A static method */');
+    expect(withWarnings.files['index.js']).not.toContain('// after');
+  });
+
+  // This documents current behavior, see https://github.com/aws/jsii-compiler/issues/2949
+  // @TODO(ts7): main fails with JSII9997 here (https://github.com/aws/jsii-compiler/issues/2949); the TypeScript 7 compiler succeeds
+  test.skip('fails with JSII9997 for an enum with a deprecated member and a member whose name is a string literal', () => {
+    const result = compileJsiiForTest(
+      `
+        export enum E {
+          ON,
+          ${DEPRECATED}
+          OFF = 1,
+          'B' = 5,
+        }
+      `,
+      { captureDiagnostics: true },
+      { addDeprecationWarnings: true },
+    );
+
+    expect(result.type).toBe('failure');
+    expect(result.diagnostics.map((d) => `${d.messageText}`)).toEqual([
+      expect.stringContaining('Unknown error: Converting circular structure to JSON'),
+    ]);
+  });
+
+  // This documents current behavior, see https://github.com/aws/jsii-compiler/issues/2961
+  // A member that shares its value with another member (written differently, so JSII1004 does not apply) is
+  // dropped from the assembly, so the validator never sees it. This is also why the "collision with
+  // non-deprecated enum member" branch of the transform cannot be reached.
+  test('does not warn for a deprecated enum member whose value is shared with a non-deprecated member', () => {
+    const result = compileJsiiForTest(
+      `
+        export enum State {
+          ON = 1,
+
+          ${DEPRECATED}
+          LEGACY_ON = 0x1,
+
+          ${DEPRECATED}
+          OFF = 2,
+        }
+        `,
+      undefined /* callback */,
+      { addDeprecationWarnings: true },
+    );
+
+    const validator = jsFunction(result, 'testpkg_State', '.warnings.jsii');
+    expect(validator).toContain('print("testpkg.State#OFF", "Use something else")');
+    expect(validator).not.toContain('LEGACY_ON');
+    expect(result.assembly.types!['testpkg.State']).toHaveProperty('members', [
+      { name: 'ON' },
+      { name: 'OFF', docs: { deprecated: 'Use something else', stability: 'deprecated' } },
+    ]);
+  });
+
   test('generates calls for deprecated inherited properties', () => {
     const result = compileJsiiForTest(
       `

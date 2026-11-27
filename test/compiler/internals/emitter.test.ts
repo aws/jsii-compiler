@@ -1,4 +1,4 @@
-import { injectRtti, rttiSnippet } from '../src/emitter';
+import { injectRtti, rttiSnippet } from '../../../src/emitter';
 
 // Unit tests for the pure helpers of the emitter (runtime type information injection).
 
