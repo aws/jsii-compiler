@@ -2026,17 +2026,23 @@ export class Assembler {
               classDecl === decl &&
               !s.name.startsWith('__') &&
               !this._isInternal(s) &&
-              !this._isOwnSourceDecl(s) &&
-              (unnamedBaseRef ??= this._baseClassReference(decl)) != null &&
-              !spec.isNamedTypeReference(unnamedBaseRef)
+              !this._isOwnSourceDecl(s)
             ) {
-              // Classic: a base class that is neither hidden nor a named type (`extends Array<string>`) is reported
-              // and left out, not erased.
-              this._report(
-                JsiiDiagnostic.JSII_3006_TYPE_USED_AS_CLASS,
-                (s.valueDeclaration ?? s.declarations?.[0])?.resolve(this.project),
-                unnamedBaseRef,
-              );
+              // Classic: a base class from the standard library or a dependency that is not a jsii type is not erased.
+              // One that is not a named type (`extends Array<string>`) is reported here; a named one (`extends Error`)
+              // is not a jsii type either (JSII3001).
+              unnamedBaseRef ??= this._baseClassReference(decl);
+              if (
+                unnamedBaseRef != null &&
+                !spec.isNamedTypeReference(unnamedBaseRef) &&
+                !(spec.isPrimitiveTypeReference(unnamedBaseRef) && unnamedBaseRef.primitive === spec.PrimitiveType.Any)
+              ) {
+                this._report(
+                  JsiiDiagnostic.JSII_3006_TYPE_USED_AS_CLASS,
+                  (s.valueDeclaration ?? s.declarations?.[0])?.resolve(this.project),
+                  unnamedBaseRef,
+                );
+              }
             } else {
               const d0 = s.declarations?.[0]?.resolve(this.project);
               if (d0 && (d0.kind === SyntaxKind.ClassDeclaration || d0.kind === SyntaxKind.InterfaceDeclaration)) {
