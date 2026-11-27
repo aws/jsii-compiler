@@ -15,6 +15,7 @@ import { emitProject } from './emitter';
 import { JsiiDiagnostic } from './jsii-diagnostic';
 import * as literate from './literate';
 import { ProjectInfo } from './project-info';
+import { DeclarationsStripping, MergedDeclarationError } from './transforms/deprecated-remover';
 import { DeprecationWarningsInjector, WARNINGSCODE_FILE_NAME } from './transforms/deprecation-warnings';
 import { TypeScriptConfig, TypeScriptConfigValidationRuleSet } from './tsconfig';
 import { BASE_COMPILER_OPTIONS, convertForJson, convertForTsconfigFile } from './tsconfig/compiler-options';
@@ -697,6 +698,7 @@ export function buildProject(options: BuildProjectOptions): BuildProjectResult {
     let jsiiFailed = true;
     let deprecationWarnings: DeprecationWarningsInjector | undefined;
     let strippedClasses: readonly spec.ClassType[] | undefined;
+    let declarationsStripping: DeclarationsStripping | undefined;
     if (!project.program.getSourceFile(entry)) {
       settleTsDiagnostics();
       logFailure('Type model', undefined);
@@ -732,6 +734,7 @@ export function buildProject(options: BuildProjectOptions): BuildProjectResult {
         }
         assembly = assembled;
         strippedClasses = assembler.strippedClasses;
+        declarationsStripping = assembler.declarationsStripping;
         const jsiiDiagnostics = assembler.diagnostics;
 
         // Classic: the deprecation warnings are made when the type model has no errors, even when a use of a
@@ -795,8 +798,14 @@ export function buildProject(options: BuildProjectOptions): BuildProjectResult {
         deprecationWarnings,
         strippedClasses,
         emitResult: checkedEmit,
+        declarationsStripping,
       }));
     } catch (err) {
+      if (err instanceof MergedDeclarationError) {
+        // @TODO(NEXT): the classic compiler failed with this error (aws/jsii-compiler#3012). After 7.1's first
+        // release: do not fail (see MergedDeclarationError).
+        throw err;
+      }
       emitFailed = true;
       // With TypeScript errors, `noEmitOnError` skips the emit; those errors are already reported.
       // shortcut: any emit failure is silent then, even without `noEmitOnError`; tell them apart if one shows up.

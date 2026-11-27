@@ -36,6 +36,7 @@ import { Code, DiagnosticLocation, DiagnosticMessageFormatter, JsiiDiagnostic } 
 import * as literate from './literate';
 import { validateTargets, type ProjectInfo } from './project-info';
 import { isReservedName } from './reserved-words';
+import { DeclarationsStripping, HeritageReference, HeritageTransformation } from './transforms/deprecated-remover';
 import { isAllowedCovariantSubtype } from './type-analysis';
 import { compareUnionMembers, createTypeResolver, typeReferenceEqual, typeReferenceToString } from './type-reference';
 import { isBehavioralInterfaceType, isDataType, visitTypeReference } from './type-visitor';
@@ -239,6 +240,17 @@ export class Assembler {
    * names it, but a heritage clause erases it (see `strippedTypeSymIds`).
    */
   private readonly strippedFqnBySymbolId = new Map<unknown, string>();
+  /** The symbol id of each type dropped by --strip-deprecated, by fqn. */
+  private readonly strippedSymbolIdByFqn = new Map<string, unknown>();
+  /** The declarations (handles) of the types and members dropped by --strip-deprecated (classic `nodesToRemove`). */
+  private readonly strippedDeclarations: any[] = [];
+  /**
+   * With --strip-deprecated: the base class and interfaces of each class and interface as the classic assembler
+   * listed them before the deprecated-remover ran (stripped types are not erased there).
+   */
+  private readonly unstrippedHeritage = new Map<string, { base?: string; interfaces: string[] }>();
+  /** With --strip-deprecated: what to remove and rewrite in the emitted `.d.ts` files. */
+  public declarationsStripping?: DeclarationsStripping;
 
   /** The export symbol of each submodule, by submodule fqn (classic `_submodules` keys). */
   private readonly submoduleSymbols = new Map<string, any>();
@@ -334,11 +346,21 @@ export class Assembler {
       delete this.types[fqn];
     }
     const assembly = this._buildAssembly();
+    if (this.stripDeprecated) {
+      // Classic: the `.d.ts` files are still rewritten (imports and exports) when the deprecated-remover did not run.
+      this.declarationsStripping = { declarations: [], transformations: [] };
+    }
     // Classic: the validator runs on the finished assembly, and only when the
     // assembler itself reported no error.
     this.typeModelFailed = this._diagnostics.some((d) => d.category === DiagnosticCategory.Error);
     if (!this.typeModelFailed) {
       this._reportLeftoverUsesOfStrippedTypes(assembly);
+      if (this.stripDeprecated) {
+        this.declarationsStripping = {
+          declarations: this.strippedDeclarations.filter((d) => d != null),
+          transformations: this._heritageTransformations(assembly),
+        };
+      }
       const validator = new Validator(this.options.projectInfo, assembly, {
         nodeOf: (element) => this.relatedNodes.get(element),
         syntaxKind: this.ts.SyntaxKind,
@@ -348,6 +370,74 @@ export class Assembler {
       this._diagnostics.push(...validator.emit().diagnostics);
     }
     return assembly;
+  }
+
+  /**
+   * Classic `DeprecatedRemover.removeFrom`: how the heritage clauses of the `.d.ts` files change when a base class or
+   * interface is stripped, in the order the classic transformations were made (and applied).
+   */
+  private _heritageTransformations(assembly: spec.Assembly): HeritageTransformation[] {
+    const result: HeritageTransformation[] = [];
+    if (this.strippedTypeDecls.size === 0) {
+      return result;
+    }
+    const stripped = (fqn: string | undefined): fqn is string => fqn != null && this.strippedTypeDecls.has(fqn);
+    const reference = (fqn: string): HeritageReference => {
+      const type = assembly.types?.[fqn];
+      const declaration = type != null ? this.relatedNodes.get(type) : undefined;
+      return declaration != null ? { declaration } : { fqn };
+    };
+    for (const type of Object.values(assembly.types ?? {})) {
+      const target = this.relatedNodes.get(type);
+      const unstripped = this.unstrippedHeritage.get(type.fqn);
+      if (!spec.isClassOrInterfaceType(type) || target == null || unstripped == null) {
+        continue;
+      }
+      // For classes, stripped base classes are erased, and replaced by their own base class.
+      const additionalInterfaces = new Set<string>();
+      if (spec.isClassType(type) && stripped(unstripped.base)) {
+        let base: string | undefined = unstripped.base;
+        while (stripped(base)) {
+          for (const iface of this.unstrippedHeritage.get(base)?.interfaces ?? []) {
+            additionalInterfaces.add(iface);
+          }
+          base = this.unstrippedHeritage.get(base)?.base;
+        }
+        result.push(
+          base != null ? { kind: 'replaceBase', target, type: reference(base) } : { kind: 'removeBase', target },
+        );
+      }
+      // Stripped interfaces are erased, and replaced by their own interfaces.
+      if (!unstripped.interfaces.some(stripped) && additionalInterfaces.size === 0) {
+        continue;
+      }
+      const original = new Set(unstripped.interfaces);
+      const candidates = Array.from(new Set([...original, ...additionalInterfaces]));
+      while (candidates.length > 0) {
+        const candidate = candidates.pop()!;
+        if (!stripped(candidate)) {
+          if (!original.has(candidate)) {
+            result.push({ kind: 'addInterface', target, type: reference(candidate) });
+          }
+          continue;
+        }
+        if (original.has(candidate)) {
+          result.push({ kind: 'removeInterface', target, types: this._heritageTypesOf(target, candidate) });
+        }
+        candidates.push(...(this.unstrippedHeritage.get(candidate)?.interfaces ?? []));
+      }
+    }
+    return result;
+  }
+
+  /** The types in the heritage clauses of `decl` that are the stripped type `fqn`. */
+  private _heritageTypesOf(decl: any, fqn: string): any[] {
+    return (decl.heritageClauses ?? [])
+      .flatMap((clause: any) => clause.types)
+      .filter((t: any) => {
+        const s = this._heritageBaseSymbol(t);
+        return s != null && s.id === this.strippedSymbolIdByFqn.get(fqn);
+      });
   }
 
   /**
@@ -1287,6 +1377,8 @@ export class Assembler {
       if (!this.strippedFqnBySymbolId.has(sym.id)) {
         this.strippedFqnBySymbolId.set(sym.id, fqn);
       }
+      this.strippedSymbolIdByFqn.set(fqn, sym.id);
+      this.strippedDeclarations.push(sym.declarations?.[0]);
       if (strippedDecl?.kind === SyntaxKind.ClassDeclaration) {
         this.strippedClasses.push({
           assembly: this.assemblyName,
@@ -1784,6 +1876,7 @@ export class Assembler {
       }
       // The classic assembler does not hide enum members that are `@internal`, `_`-prefixed or `@jsii ignore`d.
       if (this._shouldStrip(msym, `${fqn}#${msym.name}`, jsiiType.docs?.stability)) {
+        this.strippedDeclarations.push(msym.declarations?.[0]);
         continue;
       }
       const member: any = { name: msym.name };
@@ -1854,7 +1947,11 @@ export class Assembler {
     jsiiType.kind = 'interface';
     const type = this.checker.getTypeAtLocation(decl);
     const baseTypes = type.getBaseTypes();
-    const { interfaces, erasedBases } = this._processBaseInterfaces(baseTypes);
+    const unstripped: string[] | undefined = this.stripDeprecated ? [] : undefined;
+    const { interfaces, erasedBases } = this._processBaseInterfaces(baseTypes, unstripped);
+    if (unstripped != null) {
+      this.unstrippedHeritage.set(jsiiType.fqn, { interfaces: unstripped });
+    }
     if (interfaces.length) {
       const rewrittenByStrip = erasedBases.some((b) => this.strippedTypeSymIds.has((b.getSymbol?.() ?? b.symbol)?.id));
       jsiiType.interfaces = rewrittenByStrip ? [...interfaces].sort() : interfaces;
@@ -2044,7 +2141,11 @@ export class Assembler {
    * `getBaseTypes()` alone under-reports for interfaces whose heritage goes
    * through erased/aliased/multi-`extends` chains — recursion fixes that.
    */
-  private _processBaseInterfaces(baseTypes?: any[]): { interfaces: string[]; erasedBases: any[] } {
+  /** With `unstripped`, also lists the interfaces as if no type was stripped (a stripped type is listed, not erased). */
+  private _processBaseInterfaces(
+    baseTypes?: any[],
+    unstripped?: string[],
+  ): { interfaces: string[]; erasedBases: any[] } {
     const erasedBases: any[] = [];
     const interfaces: string[] = [];
     const seen = new Set<string>();
@@ -2053,7 +2154,12 @@ export class Assembler {
       return { interfaces, erasedBases };
     }
 
-    const process = (types: any[]): void => {
+    const listUnstripped = (raw: string[] | undefined, fqn: string) => {
+      if (raw != null && !raw.includes(fqn)) {
+        raw.push(fqn);
+      }
+    };
+    const process = (types: any[], raw: string[] | undefined): void => {
       for (const iface of types) {
         const s = iface.getSymbol?.() ?? iface.symbol;
         const ownFqn = s && this.typeFqnBySymbolId.get(s.id);
@@ -2066,6 +2172,7 @@ export class Assembler {
             seen.add(fqn);
             interfaces.push(fqn);
           }
+          listUnstripped(raw, fqn);
           continue;
         }
         // Classic: a base that is neither hidden (internal, unexported, an anonymous type) nor a named type is not
@@ -2078,13 +2185,20 @@ export class Assembler {
               s.valueDeclaration?.resolve?.(this.project) ?? s.declarations?.[0]?.resolve(this.project),
               ref,
             );
-          } else if (!seen.has(ref.fqn)) {
-            // A named type that is not a jsii type stays a base (reported when it is looked up, JSII9002).
-            seen.add(ref.fqn);
-            interfaces.push(ref.fqn);
-            this.unregisteredInterfaceDecls.set(ref.fqn, s.valueDeclaration?.resolve?.(this.project));
+          } else {
+            listUnstripped(raw, ref.fqn);
+            if (!seen.has(ref.fqn)) {
+              // A named type that is not a jsii type stays a base (reported when it is looked up, JSII9002).
+              seen.add(ref.fqn);
+              interfaces.push(ref.fqn);
+              this.unregisteredInterfaceDecls.set(ref.fqn, s.valueDeclaration?.resolve?.(this.project));
+            }
           }
           continue;
+        }
+        const strippedFqn: string | undefined = s && this.strippedFqnBySymbolId.get(s.id);
+        if (strippedFqn != null) {
+          listUnstripped(raw, strippedFqn);
         }
         // Not an exported/foreign type: erase it and descend into its own bases,
         // so its public ancestors surface and its members get re-listed here.
@@ -2098,11 +2212,11 @@ export class Assembler {
         erasedBases.push(iface);
         const bases = iface.getBaseTypes?.();
         if (bases && bases.length) {
-          process(bases);
+          process(bases, strippedFqn != null ? undefined : raw);
         }
       }
     };
-    process(baseTypes);
+    process(baseTypes, unstripped);
     return { interfaces, erasedBases };
   }
 
@@ -2283,8 +2397,11 @@ export class Assembler {
     // The symbols of the class's own heritage clauses, for _validateHeritageClauses.
     const ownHeritageSymbols = new Map<any, any>();
     let unnamedBaseRef: any;
-    const collectHeritage = (classDecl: any): void => {
-      const deferredBases: any[] = [];
+    // With --strip-deprecated, the heritage as if no type was stripped: a stripped type is listed, not erased.
+    type Unstripped = { base?: string; interfaces: Set<string> };
+    const unstripped: Unstripped | undefined = this.stripDeprecated ? { interfaces: new Set() } : undefined;
+    const collectHeritage = (classDecl: any, raw: Unstripped | undefined): void => {
+      const deferredBases: Array<{ decl: any; raw?: Unstripped }> = [];
       for (const h of classDecl.heritageClauses ?? []) {
         const isExt = h.token === SyntaxKind.ExtendsKeyword && classDecl.kind !== SyntaxKind.InterfaceDeclaration;
         for (const t of h.types) {
@@ -2304,9 +2421,13 @@ export class Assembler {
           if (fqnRef && !ownFqnRef) {
             this._checkPeerDependency(fqnRef, () => this._valueDeclarationOf(s));
           }
+          const strippedFqn: string | undefined = this.strippedFqnBySymbolId.get(s.id);
           if (isExt) {
             if (fqnRef) {
               base.value ??= fqnRef;
+              if (raw) {
+                raw.base ??= fqnRef;
+              }
             } else if (
               classDecl === decl &&
               !s.name.startsWith('__') &&
@@ -2320,6 +2441,9 @@ export class Assembler {
               if (unnamedBaseRef != null && spec.isNamedTypeReference(unnamedBaseRef)) {
                 // A named type that is not a jsii type (`extends Error`, reported as JSII3001) stays the base class.
                 base.value ??= unnamedBaseRef.fqn;
+                if (raw) {
+                  raw.base ??= unnamedBaseRef.fqn;
+                }
                 this.unregisteredBaseDecls.set(
                   jsiiType.fqn,
                   (s.valueDeclaration ?? s.declarations?.[0])?.resolve(this.project),
@@ -2347,11 +2471,15 @@ export class Assembler {
                 }
                 erasedClassBases.push({ getSymbol: () => s, symbol: s });
                 erasedDecls.push(d0);
-                deferredBases.push(d0);
+                if (raw && strippedFqn) {
+                  raw.base ??= strippedFqn;
+                }
+                deferredBases.push({ decl: d0, raw: strippedFqn ? undefined : raw });
               }
             }
           } else if (fqnRef) {
             interfaces.add(fqnRef);
+            raw?.interfaces.add(fqnRef);
           } else if (!s.name.startsWith('__') && !this._isHiddenType(s) && !this._isLocalSourceDecl(s)) {
             // Classic: an implemented type that is neither hidden nor local is not erased. A named one stays an
             // interface (JSII9002 when it is looked up), another one is reported (JSII3005).
@@ -2359,6 +2487,7 @@ export class Assembler {
             const ref = this._typeReference(this.checker.getTypeAtLocation(t), undefined, undefined, undefined);
             if (spec.isNamedTypeReference(ref)) {
               interfaces.add(ref.fqn);
+              raw?.interfaces.add(ref.fqn);
               this.unregisteredInterfaceDecls.set(ref.fqn, s.valueDeclaration?.resolve?.(this.project));
             } else {
               this._report(
@@ -2373,17 +2502,37 @@ export class Assembler {
               if (this.strippedTypeSymIds.has(s.id)) {
                 interfacesRewrittenByStrip = true;
               }
+              if (strippedFqn) {
+                raw?.interfaces.add(strippedFqn);
+              }
               erasedClassBases.push({ getSymbol: () => s, symbol: s });
-              collectHeritage(d0);
+              collectHeritage(d0, strippedFqn ? undefined : raw);
             }
           }
         }
       }
       for (const d0 of deferredBases) {
-        collectHeritage(d0);
+        collectHeritage(d0.decl, d0.raw);
       }
     };
-    collectHeritage(decl);
+    collectHeritage(decl, unstripped);
+    if (unstripped != null && unstripped.base == null && (sym.declarations?.length ?? 0) > 1) {
+      // Classic: the base classes of a class include those an interface merged with it extends.
+      for (const handle of sym.declarations) {
+        if (handle.kind !== SyntaxKind.InterfaceDeclaration) {
+          continue;
+        }
+        for (const t of (handle.resolve(this.project)?.heritageClauses ?? []).flatMap((h: any) => h.types)) {
+          const s = this._heritageBaseSymbol(t);
+          if (s?.declarations?.[0]?.kind === SyntaxKind.ClassDeclaration) {
+            unstripped.base ??= this.strippedFqnBySymbolId.get(s.id) ?? this.typeFqnBySymbolId.get(s.id);
+          }
+        }
+      }
+    }
+    if (unstripped != null) {
+      this.unstrippedHeritage.set(jsiiType.fqn, { base: unstripped.base, interfaces: [...unstripped.interfaces] });
+    }
     this._validateHeritageClauses(decl, (t) => ownHeritageSymbols.get(t));
     this._verifySupertypes(jsiiType);
     // Classic: the member declarations of the class and of its erased base classes are checked in that order.
@@ -2617,6 +2766,7 @@ export class Assembler {
       // Stripping applies to the members the classic assembler listed on this type
       // (own and erased-base members), hence after the ownership check above.
       if (this._shouldStrip(p, `${jsiiType.fqn}#${p.name}`, jsiiType.docs?.stability)) {
+        this.strippedDeclarations.push(p.declarations?.[0]);
         if ((p.flags & SymbolFlags.Method) !== 0) {
           strippedMethods = true;
         } else {
@@ -2654,6 +2804,7 @@ export class Assembler {
           continue;
         }
         if (this._shouldStrip(sp, `${jsiiType.fqn}#${sp.name}`, jsiiType.docs?.stability)) {
+          this.strippedDeclarations.push(sp.declarations?.[0]);
           if ((sp.flags & SymbolFlags.Method) !== 0) {
             strippedMethods = true;
           } else {

@@ -13,8 +13,7 @@ function declarations(result: ReturnType<typeof strip>, file = 'index.d.ts') {
 }
 
 describe('deprecated interfaces in the inheritance chain', () => {
-  // @TODO(ts7): --strip-deprecated does not rewrite the emitted .d.ts/.js and reports no leftover-usage diagnostics on the TypeScript 7 compiler yet
-  test.skip('are replaced by the interfaces they extend', () => {
+  test('are replaced by the interfaces they extend', () => {
     const result = strip(`
       export interface IBase {}
       ${DEPRECATED}
@@ -47,8 +46,7 @@ describe('deprecated interfaces in the inheritance chain', () => {
     `);
   });
 
-  // @TODO(ts7): --strip-deprecated does not rewrite the emitted .d.ts/.js and reports no leftover-usage diagnostics on the TypeScript 7 compiler yet
-  test.skip('are replaced while preserving the other interfaces that were already declared', () => {
+  test('are replaced while preserving the other interfaces that were already declared', () => {
     const result = strip(`
       export interface IA {}
       export interface IB {}
@@ -78,8 +76,7 @@ describe('deprecated interfaces in the inheritance chain', () => {
     `);
   });
 
-  // @TODO(ts7): --strip-deprecated does not rewrite the emitted .d.ts/.js and reports no leftover-usage diagnostics on the TypeScript 7 compiler yet
-  test.skip('are removed when they do not extend anything', () => {
+  test('are removed when they do not extend anything', () => {
     const result = strip(`
       ${DEPRECATED}
       export interface IMid {}
@@ -99,8 +96,7 @@ describe('deprecated interfaces in the inheritance chain', () => {
     `);
   });
 
-  // @TODO(ts7): --strip-deprecated does not rewrite the emitted .d.ts/.js and reports no leftover-usage diagnostics on the TypeScript 7 compiler yet
-  test.skip('imports of the deprecated type are removed while other named imports are kept', () => {
+  test('imports of the deprecated type are removed while other named imports are kept', () => {
     const result = strip({
       'index.ts': `
         export * from './types';
@@ -127,8 +123,7 @@ describe('deprecated interfaces in the inheritance chain', () => {
 });
 
 describe('deprecated classes in the inheritance chain', () => {
-  // @TODO(ts7): --strip-deprecated does not rewrite the emitted .d.ts/.js and reports no leftover-usage diagnostics on the TypeScript 7 compiler yet
-  test.skip('are replaced by their base class', () => {
+  test('are replaced by their base class', () => {
     const result = strip(`
       export class Base {}
       ${DEPRECATED}
@@ -146,8 +141,7 @@ describe('deprecated classes in the inheritance chain', () => {
     `);
   });
 
-  // @TODO(ts7): --strip-deprecated does not rewrite the emitted .d.ts/.js and reports no leftover-usage diagnostics on the TypeScript 7 compiler yet
-  test.skip('are removed when they have no base class', () => {
+  test('are removed when they have no base class', () => {
     const result = strip(`
       ${DEPRECATED}
       export class Mid {}
@@ -197,8 +191,7 @@ describe('deprecated classes in the inheritance chain', () => {
       });
     });
 
-    // @TODO(ts7): --strip-deprecated does not rewrite the emitted .d.ts/.js and reports no leftover-usage diagnostics on the TypeScript 7 compiler yet
-    test.skip('get a synthetic import for the interface from the dependency', () => {
+    test('get a synthetic import for the interface from the dependency', () => {
       compileWithDependency((consumer) => {
         const dts = declarations(consumer);
         expect(dts).toContain('import * as foreign_1 from "foreign";');
@@ -208,8 +201,7 @@ describe('deprecated classes in the inheritance chain', () => {
 
     // This documents current behavior, see https://github.com/aws/jsii-compiler/issues/2957
     // The synthetic import for the replaced base class is never emitted, so "foreign_2" is undeclared.
-    // @TODO(ts7): --strip-deprecated does not rewrite the emitted .d.ts/.js and reports no leftover-usage diagnostics on the TypeScript 7 compiler yet
-    test.skip('do not get a synthetic import for the base class from the dependency', () => {
+    test('do not get a synthetic import for the base class from the dependency', () => {
       compileWithDependency((consumer) => {
         const dts = declarations(consumer);
         expect(dts).toContain('export declare class Leaf extends foreign_2.ForeignBase');
@@ -284,8 +276,7 @@ describe('leftover usage of deprecated types', () => {
 
 describe('a class merged with an interface', () => {
   // This documents current behavior, see https://github.com/aws/jsii-compiler/issues/3012
-  // @TODO(ts7): --strip-deprecated is not ported: main fails with "Expected a ClassDeclaration" (https://github.com/aws/jsii-compiler/issues/3012) (some rows may pass; the table is skipped as a whole)
-  test.skip.each([
+  test.each([
     [
       'a deprecated base class of the class',
       `
