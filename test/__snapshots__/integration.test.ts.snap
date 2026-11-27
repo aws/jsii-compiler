@@ -2677,10 +2677,10 @@ that the value set is of the expected type and throw otherwise.",
                 "union": {
                   "types": [
                     {
-                      "primitive": "string",
+                      "primitive": "number",
                     },
                     {
-                      "primitive": "number",
+                      "primitive": "string",
                     },
                     {
                       "fqn": "@scope/jsii-calc-lib.Number",
@@ -2705,10 +2705,10 @@ that the value set is of the expected type and throw otherwise.",
             "union": {
               "types": [
                 {
-                  "primitive": "string",
+                  "primitive": "number",
                 },
                 {
-                  "primitive": "number",
+                  "primitive": "string",
                 },
                 {
                   "fqn": "@scope/jsii-calc-lib.Number",
@@ -16877,10 +16877,10 @@ like.",
             "union": {
               "types": [
                 {
-                  "primitive": "string",
+                  "primitive": "number",
                 },
                 {
-                  "primitive": "number",
+                  "primitive": "string",
                 },
                 {
                   "fqn": "jsii-calc.AllTypes",
@@ -16905,10 +16905,10 @@ like.",
             "union": {
               "types": [
                 {
-                  "primitive": "string",
+                  "primitive": "number",
                 },
                 {
-                  "primitive": "number",
+                  "primitive": "string",
                 },
               ],
             },

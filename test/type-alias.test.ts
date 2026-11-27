@@ -44,7 +44,7 @@ test('type aliases with awaited and promise types', () => {
           name: 'flam',
           type: {
             union: {
-              types: [{ primitive: PrimitiveType.Number }, { primitive: PrimitiveType.Boolean }],
+              types: [{ primitive: PrimitiveType.Boolean }, { primitive: PrimitiveType.Number }],
             },
           },
         },
@@ -58,7 +58,7 @@ test('type aliases with awaited and promise types', () => {
         name: 'bam',
         type: {
           union: {
-            types: [{ primitive: PrimitiveType.Number }, { primitive: PrimitiveType.Boolean }],
+            types: [{ primitive: PrimitiveType.Boolean }, { primitive: PrimitiveType.Number }],
           },
         },
       },
