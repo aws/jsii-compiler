@@ -49,6 +49,84 @@ export function enumAsKebab(enumData: Record<string, string | number>): string[]
 }
 
 /**
+<<<<<<< HEAD
+=======
+ * The compilerOptions in the programmatic API are slightly differently than the format used in tsconfig.json
+ * This helper performs the necessary conversion from the programmatic API format the one used in tsconfig.json
+ *
+ * @param opt compilerOptions in programmatic API format
+ * @returns compilerOptions ready to be written on disk
+ */
+export function convertForJson(opt: ts.CompilerOptions): ts.CompilerOptions {
+  // TypeScript's config parser attaches internal `pathsBasePath` when `paths` is set;
+  // drop it so JSON serialization and tsconfig validation only see user-facing options.
+  const rest = { ...opt };
+  delete rest.pathsBasePath;
+
+  return {
+    ...rest,
+
+    // Drop the "lib." prefix and ".d.ts" suffix before writing up the tsconfig.json file
+    ...valueHelper('lib', opt.lib, convertLibForJson),
+
+    // Re-write the module, targets & jsx to be the JSON format instead of Programmatic API
+    ...enumHelper('importsNotUsedAsValues', opt.importsNotUsedAsValues, ts.ImportsNotUsedAsValues),
+    ...enumHelper('jsx', opt.jsx, ts.JsxEmit, Case.kebab),
+    ...enumHelper('module', opt.module, ts.ModuleKind),
+    ...enumHelper('moduleResolution', opt.moduleResolution, ts.ModuleResolutionKind),
+    ...enumHelper('moduleDetection', opt.moduleDetection, ts.ModuleDetectionKind),
+    ...enumHelper('target', opt.target, ts.ScriptTarget),
+
+    // rewrite newline to be the JSON format instead of Programmatic API
+    ...valueHelper('newLine', opt.newLine, convertNewLineForJson),
+  };
+}
+
+function valueHelper<T, U>(
+  name: string,
+  value: T | undefined,
+  converter: (value: T) => U,
+): {
+  [name: string]: U;
+} {
+  if (!value) {
+    return {};
+  }
+  return { [name]: converter(value) };
+}
+
+function enumHelper<T>(
+  name: string,
+  value: any,
+  enumObj: T,
+  converter?: (value: string) => string,
+): {
+  [name: string]: string;
+} {
+  if (!value) {
+    return {};
+  }
+  return { [name]: convertEnumToJson(value, enumObj, converter) };
+}
+
+/**
+ * Convert an internal enum value to what a user would write in tsconfig.json
+ * Possibly using a converter function to adjust casing.
+ * @param value The internal enum value
+ * @param enumObj The enum object to convert from
+ * @param converter The converter function, defaults to lowercase
+ * @returns The humanized version of the enum value
+ */
+export function convertEnumToJson<T>(
+  value: keyof T,
+  enumObj: T,
+  converter: (value: string) => string = (v) => v.toLowerCase(),
+): string {
+  return converter(enumObj[value] as any);
+}
+
+/**
+>>>>>>> 3b927fe (fix: drop internal pathsBasePath when converting compilerOptions for JSON (#3124))
  * Convert the internal lib strings to what a user would write in tsconfig.json
  * @param input The input libs array
  * @returns The humanized version lib array
