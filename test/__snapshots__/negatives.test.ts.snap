@@ -891,28 +891,32 @@ neg.redeclared-interface-member-method-narrowed.ts:8:1 - error JSII5015: Interfa
 `;
 
 exports[`redeclared-interface-member-narrowed 1`] = `
-neg.redeclared-interface-member-narrowed.ts:10:17 - error JSII5004: "jsii.IB#foo" changes the property type to "jsii.Subclass" when implementing jsii.IA. Change it to "jsii.Superclass" [language-compatibility/override-changes-property-type]
+neg.redeclared-interface-member-narrowed.ts:8:1 - error JSII5015: Interface "jsii.IB" re-declares member "foo" with a different type or signature. Re-declared members must match the inherited declaration exactly, as C# interfaces cannot narrow inherited members. [language-compatibility/redeclared-interface-member]
 
+ 8 export interface IB extends IA {
+   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 9   // Narrowing is valid TypeScript, but C# interfaces have no covariance.
+   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 10   readonly foo: Subclass;
-                   ~~~~~~~~
+   ~~~~~~~~~~~~~~~~~~~~~~~~~
+11 }
+   ~
 
-  neg.redeclared-interface-member-narrowed.ts:5:17
-    5   readonly foo: Superclass;
-                      ~~~~~~~~~~
-    The implemented declaration is here.
 
 `;
 
 exports[`redeclared-interface-member-required 1`] = `
-neg.redeclared-interface-member-required.ts:7:17 - error JSII5009: "jsii.B#foo" turns required when implementing jsii.A. Make it optional [language-compatibility/override-changes-prop-optional]
+neg.redeclared-interface-member-required.ts:5:1 - error JSII5015: Interface "jsii.B" re-declares member "foo" with a different type or signature. Re-declared members must match the inherited declaration exactly, as C# interfaces cannot narrow inherited members. [language-compatibility/redeclared-interface-member]
 
+5 export interface B extends A {
+  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+6   // Making an optional member required changes its shape.
+  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 7   readonly foo: string;
-                  ~~~~~~
+  ~~~~~~~~~~~~~~~~~~~~~~~
+8 }
+  ~
 
-  neg.redeclared-interface-member-required.ts:2:15
-    2   readonly foo?: string;
-                    ~
-    The implemented declaration is here.
 
 `;
 
