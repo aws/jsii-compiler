@@ -6,6 +6,17 @@
     "js",
     "json"
   ],
+  "collectCoverageFrom": [
+    "src/**/*.ts"
+  ],
+  "coverageThreshold": {
+    "global": {
+      "statements": 95,
+      "lines": 95,
+      "functions": 96.5,
+      "branches": 92.5
+    }
+  },
   "watchPathIgnorePatterns": [
     "<rootDir>/fixtures/\\..*",
     "<rootDir>/fixtures/node_modules",
