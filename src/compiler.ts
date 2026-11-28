@@ -775,22 +775,13 @@ export function buildProject(options: BuildProjectOptions): BuildProjectResult {
 
   const entry = deriveEntry(projectRoot, projectInfo, tscRootDir, tscOutDir);
 
-  // @TODO(NEXT): TS5074 is a main bug (lost `configFilePath`); TS7 and tsc build this config fine
-  // (aws/jsii-compiler#3025). After 7.1's first release: delete this block.
-  // The classic compiler handed a user tsconfig's options to TypeScript without the
-  // file they came from, so TypeScript rejected `incremental` without a
-  // `tsBuildInfoFile` (TS5074, an options error that also stops the emit).
   const programOptions = project.program.getCompilerOptions();
-  // (TS5074 is added to the diagnostics with the others, below.)
-  const incrementalWithoutBuildInfo =
-    !options.generatedTsconfig && programOptions.incremental && programOptions.tsBuildInfoFile == null;
 
   // The type check of the whole program and the emit are slow (TypeScript 7 does them in a process of its own, and
   // jsii only waits for it), and the assembler does not depend on them: a big project does both in a second process
-  // while it assembles, and collects the results when it needs them. Without TS5074 (that one stops the emit, which
-  // only this process knows).
+  // while it assembles, and collects the results when it needs them.
   const check =
-    !incrementalWithoutBuildInfo && project.rootFileNames.length >= MIN_FILES_FOR_BACKGROUND_CHECK
+    project.rootFileNames.length >= MIN_FILES_FOR_BACKGROUND_CHECK
       ? BackgroundCheck.start({
           packageDir: host.ts.packageDir,
           projectRoot,
@@ -834,17 +825,6 @@ export function buildProject(options: BuildProjectOptions): BuildProjectResult {
     const checked = check?.wait();
     tsDiagnostics = checked != null ? toDiagnostics(checked.diagnostics) : collectTsDiagnostics(project.program);
     checkedEmit = checked?.emit;
-    if (incrementalWithoutBuildInfo) {
-      tsDiagnostics = [
-        ...tsDiagnostics,
-        {
-          ...syntheticErrorDiagnostic(
-            "Option '--incremental' can only be specified using tsconfig, emitting to single file or when option '--tsBuildInfoFile' is specified.",
-          ),
-          code: 5074,
-        },
-      ];
-    }
     logFailure('Compilation', tsDiagnostics);
     tsHasErrors = tsDiagnostics.some((d) => d.category === DiagnosticCategory.Error);
     diagnostics.push(...tsDiagnostics);
@@ -953,7 +933,8 @@ export function buildProject(options: BuildProjectOptions): BuildProjectResult {
     let emitFailed = false;
     try {
       if (tsHasErrors && programOptions.noEmitOnError) {
-        // Errors TypeScript 7 does not know about (above) must stop the emit too.
+        // The emit would be skipped; asking TypeScript would only cost a request (and, after a check in the second
+        // process, a type check in this one).
         throw new Error('TypeScript emit was skipped');
       }
       ({ emittedFiles, diagnostics: emitDiagnostics } = emitProject(host.ts, project, {
