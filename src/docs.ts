@@ -340,9 +340,52 @@ function rejoinMultilineInlineLinks(comment: string, symbol: ts.Symbol): string 
         continue;
       }
       comment = rejoinTruncatedLinksFromParts(comment, jsdoc.comment);
+      comment = closeUnterminatedLinksFromParts(comment, jsdoc.comment);
     }
   }
 
+  return comment;
+}
+
+/**
+ * A `{@link}` that is never closed is cut at the line break by TypeScript. The `*` that starts the
+ * next JSDoc line then leaks into the text, and an unlabeled link takes the next line as its label.
+ *
+ * Close such links where TypeScript cut them and give the rest of the line back to the text.
+ */
+function closeUnterminatedLinksFromParts(comment: string, parts: readonly ts.JSDocComment[]): string {
+  let searchFrom = 0;
+  for (let i = 0; i < parts.length; i++) {
+    const part = parts[i];
+    if (!ts.isJSDocLinkLike(part)) {
+      continue;
+    }
+    const start = comment.indexOf('{@', searchFrom);
+    const end = start >= 0 ? comment.indexOf('}', start) : -1;
+    if (end < 0) {
+      break;
+    }
+    searchFrom = end + 1;
+
+    const source = part.getText();
+    const lineBreak = source.indexOf('\n');
+    const next = parts[i + 1];
+    const closedLater = next?.kind === ts.SyntaxKind.JSDocText && next.text.includes('}');
+    if (source.includes('}') || lineBreak < 0 || closedLater) {
+      continue;
+    }
+
+    const link = normalizeInlineLink(`${source.slice(0, lineBreak).trim()}}`);
+    const carried = source
+      .slice(lineBreak + 1)
+      .replace(/^\s*\*[ \t]?/gm, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+    const after = comment.slice(end + 1).replace(/^\s*\*[ \t]?/, ' ');
+    const replacement = carried ? `${link} ${carried}` : link;
+    comment = comment.slice(0, start) + replacement + after;
+    searchFrom = start + replacement.length;
+  }
   return comment;
 }
 
@@ -387,8 +430,14 @@ function formatInlineLinkFromSource(link: ts.JSDocLink | ts.JSDocLinkCode | ts.J
     .replace(/\r?\n\s*\*\s?/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
-  // Normalize `{@link URL|label}` and `{@link URL | label}` to `{@link URL | label}`.
-  return flattened.replace(/^\{@(link|linkcode|linkplain)\s+([^|]+?)\s*\|\s*/i, '{@$1 $2 | ').replace(/\s+}/, '}');
+  return normalizeInlineLink(flattened);
+}
+
+/**
+ * Normalize `{@link URL|label}` and `{@link URL | label}` to `{@link URL | label}`.
+ */
+function normalizeInlineLink(link: string): string {
+  return link.replace(/^\{@(link|linkcode|linkplain)\s+([^|]+?)\s*\|\s*/i, '{@$1 $2 | ').replace(/\s+}/, '}');
 }
 
 /**
