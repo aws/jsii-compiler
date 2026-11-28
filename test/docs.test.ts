@@ -586,8 +586,7 @@ describe('documentation errors (JSII7999)', () => {
     return diagnostics.filter((d) => (d as { jsiiCode?: number }).jsiiCode === 7999).map((d) => `${d.messageText}`);
   }
 
-  // @TODO(ts7): None
-  test.skip('unrecognized @stability value', () => {
+  test('unrecognized @stability value', () => {
     expect(
       documentationErrors(`
         /** @stability banana */
@@ -596,8 +595,7 @@ describe('documentation errors (JSII7999)', () => {
     ).toEqual(["Unrecognized @stability: 'banana'"]);
   });
 
-  // @TODO(ts7): expects a jsii validation diagnostic (JSII7999); re-enable with the port of the validator (some rows may pass; the table is skipped as a whole)
-  test.skip.each([
+  test.each([
     ['@stability stable', '@experimental'],
     ['@stability experimental', '@stable'],
     ['@experimental', '@stable'],
@@ -613,8 +611,7 @@ describe('documentation errors (JSII7999)', () => {
     ).toEqual(['Use only one of @stability, @experimental or @stable']);
   });
 
-  // @TODO(ts7): None
-  test.skip('@deprecated combined with another @stability', () => {
+  test('@deprecated combined with another @stability', () => {
     expect(
       documentationErrors(`
         /**
@@ -626,8 +623,7 @@ describe('documentation errors (JSII7999)', () => {
     ).toEqual(["@deprecated tag requires '@stability deprecated' or no @stability at all."]);
   });
 
-  // @TODO(ts7): None
-  test.skip('@deprecated without a reason', () => {
+  test('@deprecated without a reason', () => {
     expect(
       documentationErrors(`
         /** @deprecated */
@@ -636,8 +632,7 @@ describe('documentation errors (JSII7999)', () => {
     ).toEqual(['@deprecated tag needs a reason and/or suggested alternatives.']);
   });
 
-  // @TODO(ts7): None
-  test.skip('@example with code block fences', () => {
+  test('@example with code block fences', () => {
     expect(
       documentationErrors(`
         /**
