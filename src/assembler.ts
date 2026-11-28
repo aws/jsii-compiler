@@ -716,14 +716,17 @@ export class Assembler {
     // put a label that continues on the next JSDoc line back on one line. The TypeScript 7
     // rendering of such a link is broken, so the raw comment is used instead.
     let rejoined = false;
-    const rawComment = commentLines.join('\n').replace(/\{@(?:link|linkcode|linkplain)\b[^}]*\n[^}]*\}/g, (link) => {
+    const rawComment = commentLines.join('\n').replace(/\{@(?:link|linkcode|linkplain)\b[^{}]*\n[^{}]*\}/g, (link) => {
       rejoined = true;
       return link.replace(/\s*\n\s*/g, ' ').replace(/\s+\}$/, '}');
     });
     if (!/\{@link(code|plain)?\b/.test(rawComment)) {
       return comment;
     }
-    const linkRe = /\{@(linkcode|linkplain|link)\b([^}\n]*)\}/g;
+    // A link that is never closed ends at the line break (TypeScript 6 closed it there).
+    // @TODO(NEXT): main leaves the `*` of the next comment line in the text after such a link, and uses that line as the
+    // label of a link without one (https://github.com/aws/jsii-compiler/issues/3158). After 7.1's first release: report it.
+    const linkRe = /\{@(linkcode|linkplain|link)\b([^}\n]*)(\}|$)/gm;
     let result = comment;
     let cursor = 0;
     let rawRendered = rawComment;
@@ -747,7 +750,9 @@ export class Assembler {
       let classic: string;
       let modern: string;
       if (label) {
-        classic = `{@${kind} ${target} | ${label}}`;
+        // A link that is never closed ends at the line break, or at the end of the comment (with a space before `}`).
+        const atEnd = m[3] !== '}' && (m.index ?? 0) + m[0].length === rawComment.length;
+        classic = `{@${kind} ${target} | ${label}${atEnd ? ' ' : ''}}`;
       } else if (!nm || target.includes('://')) {
         classic = `{@${kind} ${target}}`;
       } else {
@@ -758,10 +763,23 @@ export class Assembler {
       }
       if (!nm) {
         modern = after;
+      } else if (m[3] !== '}' && label) {
+        // TypeScript 7 renders the label alone for a link that is never closed.
+        modern = label;
       } else {
         modern = `${nm[0].replace(/#/g, '.')}${after.slice(nm[0].length)}`;
       }
-      rawRendered = rawRendered.replace(m[0], classic);
+      // TypeScript 6 read the next line of a link without a label that is never closed as its label.
+      const continued =
+        m[3] !== '}' && !label ? /^\n([^\n{]+)\n?$/.exec(rawComment.slice((m.index ?? 0) + m[0].length)) : null;
+      if (continued != null && nm) {
+        rawRendered = rawRendered.replace(`${m[0]}${continued[0]}`, `{@${kind} ${target} | * ${continued[1].trim()}}`);
+        allFound = false;
+        continue;
+      }
+      // TypeScript 6 kept the `*` that starts the line after a link that is never closed.
+      const unclosedBeforeLineEnd = m[3] !== '}' && (m.index ?? 0) + m[0].length < rawComment.length;
+      rawRendered = rawRendered.replace(m[0], unclosedBeforeLineEnd ? `${classic} *` : classic);
       // Re-insert the braces where the TypeScript 7 rendering of this link is.
       const at = result.indexOf(modern, cursor);
       if (at < 0) {
