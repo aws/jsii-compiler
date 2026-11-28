@@ -26,6 +26,19 @@ ourselves.
 **Who is affected:** projects that rely on incremental rebuilds. Every build is a full build, so a rebuild is not faster.
 Nothing else changes, and clean scripts or `.gitignore` entries for the file do no harm.
 
+## `incremental` without `tsBuildInfoFile` builds
+
+**What differs:** a user tsconfig with `"incremental": true` and no `tsBuildInfoFile` builds, as it does with `tsc -p`.
+On `main`, `jsii` fails with `error TS5074: Option '--incremental' can only be specified using tsconfig, emitting to
+single file or when option '--tsBuildInfoFile' is specified.` and emits nothing.
+
+**Why it differs:** this is a `main` bug ([aws/jsii-compiler#3025](https://github.com/aws/jsii-compiler/issues/3025)):
+`jsii` on TypeScript 6.0 hands the options to TypeScript without the tsconfig they came from, so TypeScript rejects
+them. The TypeScript 7 compiler builds from the tsconfig itself. Copying the error would mean making it up. As above,
+no build info file is written.
+
+**Who is affected:** projects with such a tsconfig, which fail on `main` and build on TypeScript 7.
+
 ## Emitted source maps differ
 
 **What differs:** the inline source map in every emitted `.js` file comes from the TypeScript 7 emitter. It has no
