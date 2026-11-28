@@ -18,9 +18,8 @@ function notesOf(diagnostics: readonly JsiiDiagnostic[], code: number) {
   return diagnostic.relatedInformation.map((info) => ({
     message: info.messageText,
     file: path.basename(info.file!.fileName),
-    // @TODO(ts7): the diagnostics' `file` is jsii's own `DiagnosticSourceFile`, not a TypeScript 6 `SourceFileLike`.
-    line: ts.getLineAndCharacterOfPosition(info.file! as unknown as ts.SourceFileLike, info.start!).line + 1,
-    text: info.file!.text!.slice(info.start!, info.start! + info.length!),
+    line: ts.getLineAndCharacterOfPosition(info.file!, info.start!).line + 1,
+    text: info.file!.text.slice(info.start!, info.start! + info.length!),
   }));
 }
 

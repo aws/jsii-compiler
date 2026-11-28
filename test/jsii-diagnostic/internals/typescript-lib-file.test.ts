@@ -1,5 +1,5 @@
 import * as fc from 'fast-check';
-import { isTypeScriptLibFile, JsiiDiagnostic } from '../../../src/jsii-diagnostic';
+import { DiagnosticLocationFile, isTypeScriptLibFile, JsiiDiagnostic } from '../../../src/jsii-diagnostic';
 
 // The check it replaces. It is polynomial on long names, so it only runs on short ones here.
 const LIB_FILE_REGEX = /[\\/]typescript(-[^\\/]+)?[\\/]lib[\\/]lib\..+\.d\.ts$/;
@@ -59,7 +59,7 @@ describe(isTypeScriptLibFile, () => {
 
   test('keeps related information out of the TypeScript lib files', () => {
     const at = (fileName: string) => ({
-      file: { fileName, text: 'declare var Error: ErrorConstructor;' },
+      file: new DiagnosticLocationFile(fileName, 'declare var Error: ErrorConstructor;'),
       start: 0,
       length: 5,
     });

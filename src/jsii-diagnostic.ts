@@ -1,6 +1,6 @@
 import * as spec from '@jsii/spec';
 import { camel, constant, pascal } from 'case';
-import { Diagnostic, DiagnosticCategory, DiagnosticSourceFile } from './diagnostic';
+import { Diagnostic, DiagnosticCategory, DiagnosticSourceFile, getLineAndCharacterOfPosition } from './diagnostic';
 
 import { Violation } from './tsconfig/validator';
 import { JSII_DIAGNOSTICS_CODE, _formatDiagnostic } from './utils';
@@ -207,9 +207,21 @@ export class Code<T extends DiagnosticMessageFormatter = DiagnosticMessageFormat
  */
 /** A source range a diagnostic points at. */
 export interface DiagnosticLocation {
-  readonly file: DiagnosticSourceFile;
+  readonly file: DiagnosticLocationFile;
   readonly start: number;
   readonly length: number;
+}
+
+/**
+ * The file of a `DiagnosticLocation`: its text, and line lookup, like the classic compiler's `ts.SourceFile`
+ * (callers pass it to `ts.getLineAndCharacterOfPosition`).
+ */
+export class DiagnosticLocationFile implements DiagnosticSourceFile {
+  public constructor(public readonly fileName: string, public readonly text: string) {}
+
+  public getLineAndCharacterOfPosition(pos: number): { line: number; character: number } {
+    return getLineAndCharacterOfPosition(this.text, pos);
+  }
 }
 
 export class JsiiDiagnostic implements Diagnostic {
@@ -886,7 +898,7 @@ export class JsiiDiagnostic implements Diagnostic {
   public readonly jsiiCode: number;
   public readonly messageText: string;
 
-  public readonly file: DiagnosticSourceFile | undefined;
+  public readonly file: DiagnosticLocationFile | undefined;
   public readonly start: number | undefined;
   public readonly length: number | undefined;
 

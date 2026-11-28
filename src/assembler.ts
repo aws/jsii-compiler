@@ -34,7 +34,13 @@ import { TypeScriptApi, TypeScriptProject } from './compiler-host';
 import { DiagnosticCategory } from './diagnostic';
 import { Directives } from './directives';
 import { normalizeConfigPath } from './helpers';
-import { Code, DiagnosticLocation, DiagnosticMessageFormatter, JsiiDiagnostic } from './jsii-diagnostic';
+import {
+  Code,
+  DiagnosticLocation,
+  DiagnosticLocationFile,
+  DiagnosticMessageFormatter,
+  JsiiDiagnostic,
+} from './jsii-diagnostic';
 import * as literate from './literate';
 import { validateTargets, type ProjectInfo } from './project-info';
 import { isReservedName } from './reserved-words';
@@ -4816,7 +4822,7 @@ export class Assembler {
       return undefined;
     }
     const start: number = node.getStart(sf);
-    return { file: { fileName: sf.fileName, text: this._sourceTextOf(sf) }, start, length: node.end - start };
+    return { file: new DiagnosticLocationFile(sf.fileName, this._sourceTextOf(sf)), start, length: node.end - start };
   }
 
   /** The name node of a declaration, or the declaration itself when it has none. */
