@@ -100,7 +100,8 @@ export function readTypeScriptConfig(configPath: string): TypeScriptConfig {
     }
     throw e;
   }
-  // Like `tsc --showConfig`: TypeScript's errors for the tsconfig instead of its options.
+  // When TypeScript found errors in the tsconfig, throw them instead of returning its options, as
+  // `tsc --showConfig` does on TypeScript 6.
   if (result.errors.length > 0) {
     throw new TsconfigErrors(configPath, result.errors);
   }

@@ -155,11 +155,12 @@ export function emitProject(
     const jsRel = normalizeRel(path.relative(root, outPath));
     let classesHere = classesByJsRel.get(jsRel);
     if (!classesHere) {
-      // Fall back to basename matching ONLY when it is unambiguous (a single
-      // source file maps to this basename) and that file was not emitted where
-      // its path maps to (else this is another file with the same name, such as
-      // an `index.js` that only re-exports); otherwise skip, and say so when one
-      // of the files with this basename was not emitted where its path maps to.
+      // Fall back to matching by basename. Use the match only when one source
+      // file has this basename and that file was not emitted where its path
+      // maps to. If it was, this is another file with the same name, such as an
+      // `index.js` that only re-exports. Otherwise skip the file. Warn only when
+      // one of the files with this basename was not emitted where its path maps
+      // to, because only then can a class have been missed.
       const candidates = jsRelsByBasename.get(path.basename(name));
       if (candidates?.size === 1 && !emittedJsRels.has([...candidates][0])) {
         classesHere = classesByJsRel.get([...candidates][0]);

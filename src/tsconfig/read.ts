@@ -119,13 +119,14 @@ export class TsconfigErrors extends JsiiError {
 }
 
 /**
- * The options in the order the requested file lists them, then the others (from
- * `extends`, or added by the parser). The TypeScript 7 parser returns them sorted
- * by name; the rule sets report unexpected fields in the order of the options, and
- * the classic compiler kept the order of the file.
+ * Puts the options in the order the requested file lists them. The options that
+ * come from `extends`, or that the parser adds, follow in the order they arrive.
+ * The TypeScript 7 parser returns the options sorted by name. The rule sets report
+ * unexpected fields in the order of the options, and the classic compiler kept the
+ * order of the file.
  */
-// shortcut: options of an `extends` base come after the file's own (TS6 put them first, in the base's order); only
-// the order of several violations from different files differs. Upgrade if a user reports it.
+// shortcut: TypeScript 6 put the options of an `extends` base first, in the base's order; here they come last. This
+// only changes the order of several violations from different files. Upgrade if a user reports it.
 function inFileOrder(options: { [name: string]: unknown }, own: unknown): { [name: string]: unknown } {
   const ownNames = own != null && typeof own === 'object' ? Object.keys(own) : [];
   return Object.fromEntries(

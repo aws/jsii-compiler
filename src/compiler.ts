@@ -391,8 +391,8 @@ export class Compiler {
         );
       }
 
-      // validate the user provided config. With errors in it, TypeScript reports those with the build, like tsc,
-      // and the options it could read are not validated.
+      // Validate the user tsconfig only when TypeScript found no errors in it. The build reports those errors, as tsc
+      // does. Checking the rule set as well would report the same mistakes again as JSII4000.
       if (rules !== TypeScriptConfigValidationRuleSet.NONE && configErrors.length === 0) {
         const configName = path.relative(this.projectRoot, this.configPath);
         try {
@@ -936,8 +936,8 @@ export function buildProject(options: BuildProjectOptions): BuildProjectResult {
     let emitFailed = false;
     try {
       if (tsHasErrors && programOptions.noEmitOnError) {
-        // The emit would be skipped; asking TypeScript would only cost a request (and, after a check in the second
-        // process, a type check in this one).
+        // With TypeScript errors and `noEmitOnError`, TypeScript writes no files, so jsii does not call the emit. When
+        // the background check ran the type check, that call would type-check the program again in this process.
         throw new Error('TypeScript emit was skipped');
       }
       ({ emittedFiles, diagnostics: emitDiagnostics } = emitProject(host.ts, project, {
@@ -1008,7 +1008,11 @@ export function readSourceFile(fileName: string): string | undefined {
   }
 }
 
-/** Like tsc: errors of the tsconfig file come first. Without them, an error TypeScript reports only there (such as TS18002) just skips the emit, as "TS0: emit pipeline failed". */
+/**
+ * The program's diagnostics that are about the tsconfig file, reported first, as tsc does. TypeScript reports some
+ * errors, such as TS18002, only as tsconfig errors. They also stop the emit, so jsii must report them itself.
+ * Otherwise the build fails with "TS0: emit pipeline failed" and no reason.
+ */
 const CONFIG_DIAGNOSTICS = ['getConfigFileParsingDiagnostics', 'getProgramDiagnostics'];
 const ALL_DIAGNOSTICS = [
   ...CONFIG_DIAGNOSTICS,

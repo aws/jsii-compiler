@@ -1324,8 +1324,8 @@ export class Assembler {
         const kind = declH.kind;
         if ([SyntaxKind.ClassDeclaration, SyntaxKind.InterfaceDeclaration, SyntaxKind.EnumDeclaration].includes(kind)) {
           if (this._dependencyOfPath(declH.path ?? '') != null) {
-            // A type of a dependency: references to it point at the dependency, but a re-export of it is visited
-            // again as a type of this assembly (see foreignCandidates).
+            // A type of a dependency. References to it point at the dependency. A re-export of it is recorded in
+            // foreignCandidates, and visited again as a type of this assembly.
             const foreignAliasDeclH = (e.flags & SymbolFlags.Alias) !== 0 ? e.declarations?.[0] : undefined;
             foreignCandidates.push({ prefix, sym, aliasDeclH: foreignAliasDeclH, seq: seq++ });
             continue;
@@ -1556,7 +1556,7 @@ export class Assembler {
     }
   }
 
-  /** @param foreign a type of a dependency (references to it do not resolve to this entry) */
+  /** @param foreign whether the type belongs to a dependency. References to such a type do not resolve to this entry. */
   private _registerType(sym: any, name: string, fqn: string, foreign = false): void {
     const { SyntaxKind } = this.ts;
     const isFirst = !this.typeFqnBySymbolId.has(sym.id);
@@ -1725,9 +1725,9 @@ export class Assembler {
   }
 
   /**
-   * Classes without their own constructor take the initializer of their base type (base types first, so chains of
-   * such classes resolve). The classic assembler did that while it assembled, so the checks that run afterwards (such
-   * as `_validateTypesAgainstPositions`) see these initializers.
+   * Gives each class without its own constructor the initializer of its base type. Base types get theirs first, so
+   * a chain of such classes resolves. The classic assembler did this while it assembled, so later checks, such as
+   * `_validateTypesAgainstPositions`, see these initializers.
    */
   private _resolveInheritedInitializers(): void {
     const assembly = { name: this.assemblyName, types: this.types } as unknown as spec.Assembly;

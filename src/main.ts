@@ -256,7 +256,7 @@ enum OPTION_GROUP {
           }
         } catch (e: unknown) {
           if (e instanceof TsconfigErrors) {
-            // Like `tsc --showConfig`: TypeScript's errors for the tsconfig, and a failure.
+            // Print TypeScript's errors for the tsconfig and fail, as `tsc --showConfig` does on TypeScript 6.
             for (const diagnostic of e.diagnostics) {
               utils.logDiagnostic(toDiagnostic(diagnostic, readSourceFile), process.cwd());
             }
