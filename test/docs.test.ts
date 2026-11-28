@@ -506,7 +506,7 @@ test('renders {@link} labels in @deprecated and @see as {@link target | label}',
 });
 
 // ----------------------------------------------------------------------
-test('keeps the label of a {@link} that is never closed', () => {
+test('closes a {@link} that is never closed at the line break', () => {
   const assembly = compile(`
     /**
      * See {@link Foo | label
@@ -514,12 +514,23 @@ test('keeps the label of a {@link} that is never closed', () => {
      */
     export class Foo {
     }
+
+    /**
+     * See {@link Foo
+     * which continues.
+     *
+     * Then {@link Foo | intact} and {@link Foo
+     * again.
+     */
+    export class Bar {
+    }
   `);
 
-  // TypeScript closes the link at the line break, the remaining text is left as is
-  expect(assembly.types!['testpkg.Foo'].docs!.summary).toMatch(
-    /^See \{@link Foo \| label\}\s+\* which continues without closing\.$/,
-  );
+  expect(assembly.types!['testpkg.Foo'].docs!.summary).toBe('See {@link Foo | label} which continues without closing.');
+  expect(assembly.types!['testpkg.Bar'].docs).toMatchObject({
+    summary: 'See {@link Foo} which continues.',
+    remarks: 'Then {@link Foo | intact} and {@link Foo} again.',
+  });
 });
 
 // ----------------------------------------------------------------------
