@@ -2,10 +2,10 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSyn
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import * as log4js from 'log4js';
+import * as ts from 'typescript';
 
 import { makeProjectInfo } from './make-project-info';
-import { Compiler, EmitResult } from '../../../src/compiler';
-import { DiagnosticCategory } from '../../../src/diagnostic';
+import { Compiler } from '../../../src/compiler';
 import { stripAnsi } from '../../../src/utils';
 
 /**
@@ -81,25 +81,24 @@ describe('Compiler configuration', () => {
     const result = compiler.emit();
 
     expect(result.diagnostics).toContainEqual(
-      expect.objectContaining({ category: DiagnosticCategory.Error, code: 5033 }),
+      expect.objectContaining({ category: ts.DiagnosticCategory.Error, code: 5033 }),
     );
   });
 
-  // @TODO(ts7): `--watch` is not supported by the TypeScript 7 compiler yet.
-  describe.skip('"watch" mode', () => {
+  describe('"watch" mode', () => {
     test('logs jsii diagnostics of each compilation', async () => {
       rmSync(join(sourceDir, 'README.md'));
       const compiler = new Compiler({ projectInfo: makeProjectInfo(sourceDir, 'index.d.ts') });
 
-      let compiled!: (result: EmitResult) => void;
-      const firstCompilation = new Promise<EmitResult>((resolve) => {
+      let compiled!: (result: ts.EmitResult) => void;
+      const firstCompilation = new Promise<ts.EmitResult>((resolve) => {
         compiled = resolve;
       });
-      const watch = await (compiler as any).watch({
+      const watch = await compiler.watch({
         nonBlocking: true,
         reportDiagnostics: () => undefined,
         reportWatchStatus: () => undefined,
-        compilationComplete: (emitResult: EmitResult) => compiled(emitResult),
+        compilationComplete: (emitResult) => compiled(emitResult),
       });
       try {
         expect((await firstCompilation).emitSkipped).toBe(false);

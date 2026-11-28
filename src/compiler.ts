@@ -34,9 +34,6 @@ export interface CompilerOptions {
   projectInfo: ProjectInfo;
   /**
    * Whether the compiler should watch for changes or just compile once.
-   *
-   * Watch mode is not available on the TypeScript 7 backend; setting this to
-   * `true` makes `emit()` fail with an explicit error.
    */
   watch?: boolean;
   /** Whether to detect and generate TypeScript project references */
@@ -86,6 +83,26 @@ export interface EmitResult {
   readonly emittedFiles?: readonly string[];
 }
 
+/** Handle to stop watching. */
+export interface WatchHandle {
+  close(): void;
+}
+
+export interface NonBlockingWatchOptions {
+  /** Return a handle instead of never resolving. */
+  readonly nonBlocking: true;
+  /** Receives the TypeScript diagnostics of each compilation (default: logged). jsii's own are always logged. */
+  readonly reportDiagnostics?: (diagnostic: Diagnostic) => void;
+  /** Receives the watch status messages (default: printed). */
+  readonly reportWatchStatus?: (diagnostic: Diagnostic) => void;
+  /** Called after each compilation. */
+  readonly compilationComplete?: (emitResult: EmitResult) => void;
+}
+
+function defaultWatchStatusReporter(diagnostic: Diagnostic) {
+  console.log(`[${new Date().toLocaleTimeString()}] ${flattenDiagnosticMessageText(diagnostic.messageText)}\n`);
+}
+
 /**
  * Compiles a jsii project with the TypeScript 7 programmatic API.
  *
@@ -123,18 +140,12 @@ export class Compiler {
 
   /**
    * Compiles the configured project once.
-   */
-  /**
-   * Compiles the configured project once.
    *
    * @param files can be specified to override the standard source code location
    *              logic (the generated tsconfig then lists exactly these files).
    *              Useful for example when testing "negatives".
    */
   public emit(...files: string[]): EmitResult {
-    if (this.options.watch) {
-      throw new utils.JsiiError('--watch is not supported by the TypeScript 7 based compiler', true);
-    }
     if (files.length > 0 && this.userProvidedTypeScriptConfig) {
       throw new utils.JsiiError('Explicit source files cannot be combined with a user-provided tsconfig');
     }
@@ -182,6 +193,95 @@ export class Compiler {
       diagnostics: sortAndDeduplicateDiagnostics(diagnostics),
       emittedFiles: result.emittedFiles,
     };
+  }
+
+  /**
+   * Watches for file-system changes and dynamically recompiles the project as needed. In non-blocking mode, this
+   * returns a handle to stop watching.
+   *
+   * @internal
+   */
+  public async watch(opts: NonBlockingWatchOptions): Promise<WatchHandle>;
+  /**
+   * Watches for file-system changes and dynamically recompiles the project as needed. In blocking mode, this results
+   * in a never-resolving promise.
+   */
+  public async watch(): Promise<never>;
+  public async watch(opts?: NonBlockingWatchOptions): Promise<WatchHandle | never> {
+    const reportStatus = opts?.reportWatchStatus ?? defaultWatchStatusReporter;
+    const status = (code: number, messageText: string) =>
+      reportStatus({
+        category: DiagnosticCategory.Message,
+        code,
+        messageText,
+        file: undefined,
+        start: undefined,
+        length: undefined,
+      });
+
+    const compile = () => {
+      const startTime = Date.now();
+      const emitResult = this.emit();
+
+      for (const diag of emitResult.diagnostics) {
+        if (diag.code === JSII_DIAGNOSTICS_CODE || opts?.reportDiagnostics == null) {
+          utils.logDiagnostic(diag, this.projectRoot);
+        } else {
+          opts.reportDiagnostics(diag);
+        }
+      }
+
+      console.log(
+        utils.formatCompilationSummary(emitResult.diagnostics, emitResult.emitSkipped, Date.now() - startTime),
+      );
+
+      const errors = emitResult.diagnostics.filter((d) => d.category === DiagnosticCategory.Error).length;
+      status(errors === 1 ? 6193 : 6194, `Found ${errors} error${errors === 1 ? '' : 's'}. Watching for file changes.`);
+      opts?.compilationComplete?.(emitResult);
+    };
+
+    status(6031, 'Starting compilation in watch mode...');
+    compile();
+
+    // shortcut: watches every .ts/.tsx/.mts/.cts file under the project root except declaration files (those are
+    // emitted), plus a user-provided tsconfig; main watches exactly the files of the program. Upgrade when
+    // `CompilerHost` can report the program's files.
+    const isWatched = (file: string) =>
+      !file.split(path.sep).includes('node_modules') &&
+      ((/\.(?:[cm]?ts|tsx)$/.test(file) && !/\.d\.[cm]?ts$/.test(file)) ||
+        (this.userProvidedTypeScriptConfig && path.resolve(this.projectRoot, file) === this.configPath));
+
+    let timer: NodeJS.Timeout | undefined;
+    const watcher = fs.watch(this.projectRoot, { recursive: true }, (_event, file) => {
+      if (file == null || !isWatched(file)) {
+        return;
+      }
+      // Coalesce bursts of changes, like TypeScript does.
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        status(6032, 'File change detected. Starting incremental compilation...');
+        try {
+          compile();
+        } catch (e) {
+          if (!(e instanceof utils.JsiiError)) {
+            throw e;
+          }
+          LOG.error(e.message);
+        }
+      }, 250);
+    });
+    const handle: WatchHandle = {
+      close: () => {
+        clearTimeout(timer);
+        watcher.close();
+      },
+    };
+
+    if (opts?.nonBlocking) {
+      return handle;
+    }
+    // In blocking mode, returns a never-resolving promise.
+    return new Promise<never>(() => null);
   }
 
   private configureTypeScript(): TypeScriptConfig {

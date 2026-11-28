@@ -170,7 +170,7 @@ enum OPTION_GROUP {
           });
 
           const startTime = Date.now();
-          const emitResult = compiler.emit();
+          const emitResult = argv.watch ? await compiler.watch() : compiler.emit();
 
           const allDiagnostics = [...projectInfoDiagnostics, ...emitResult.diagnostics];
 
