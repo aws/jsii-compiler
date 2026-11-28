@@ -1,12 +1,18 @@
 import { Code } from '../../../src/jsii-diagnostic';
 
 describe('Code registration', () => {
-  // This documents current behavior, see https://github.com/aws/jsii-compiler/issues/2947
-  // The constructor checks `code in Code.byCode`, which looks at the properties of the Map that holds the diagnostics,
-  // not at its entries. Only a code that is the name of such a property (which a number never is) is rejected.
-  test('rejects a code that is a property of the registry', () => {
-    expect(() => Code.error({ code: 'size' as any, name: 'test-only/code-as-property', formatter: () => 'x' })).toThrow(
-      'Attempted to create two instances of Code with code size',
+  test('rejects a duplicate code', () => {
+    Code.error({ code: 987101, name: 'test-only/registry-duplicate-code', formatter: () => 'x' });
+
+    expect(() => Code.error({ code: 987101, name: 'test-only/registry-other-name', formatter: () => 'x' })).toThrow(
+      'Attempted to create two instances of Code with code 987101',
     );
+  });
+
+  test('accepts a code that is a property name of the registry', () => {
+    // `in` used to look at the properties of the Map rather than at its entries, so this threw.
+    expect(() =>
+      Code.error({ code: 'size' as any, name: 'test-only/code-as-property', formatter: () => 'x' }),
+    ).not.toThrow();
   });
 });
