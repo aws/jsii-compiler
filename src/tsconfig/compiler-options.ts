@@ -49,6 +49,84 @@ export function enumAsKebab(enumData: Record<string, string | number>): string[]
 }
 
 /**
+<<<<<<< HEAD
+=======
+ * The compilerOptions in the programmatic API are slightly differently than the format used in tsconfig.json
+ * This helper performs the necessary conversion from the programmatic API format the one used in tsconfig.json
+ *
+ * @param opt compilerOptions in programmatic API format
+ * @returns compilerOptions ready to be written on disk
+ */
+export function convertForJson(opt: ts.CompilerOptions): ts.CompilerOptions {
+  // TypeScript's config parser attaches internal `pathsBasePath` when `paths` is set;
+  // drop it so JSON serialization and tsconfig validation only see user-facing options.
+  const rest = { ...opt };
+  delete rest.pathsBasePath;
+
+  return {
+    ...rest,
+
+    // Drop the "lib." prefix and ".d.ts" suffix before writing up the tsconfig.json file
+    ...valueHelper('lib', opt.lib, convertLibForJson),
+
+    // Re-write the module, targets & jsx to be the JSON format instead of Programmatic API
+    ...enumHelper('importsNotUsedAsValues', opt.importsNotUsedAsValues, ts.ImportsNotUsedAsValues),
+    ...valueHelper('jsx', opt.jsx, convertJsxForJson),
+    ...enumHelper('module', opt.module, ts.ModuleKind),
+    ...enumHelper('moduleResolution', opt.moduleResolution, ts.ModuleResolutionKind),
+    ...enumHelper('moduleDetection', opt.moduleDetection, ts.ModuleDetectionKind),
+    ...valueHelper('target', opt.target, convertScriptTargetForJson),
+
+    // rewrite newline to be the JSON format instead of Programmatic API
+    ...valueHelper('newLine', opt.newLine, convertNewLineForJson),
+  };
+}
+
+function valueHelper<T, U>(
+  name: string,
+  value: T | undefined,
+  converter: (value: T) => U,
+): {
+  [name: string]: U;
+} {
+  if (!value) {
+    return {};
+  }
+  return { [name]: converter(value) };
+}
+
+function enumHelper<T>(
+  name: string,
+  value: any,
+  enumObj: T,
+  converter?: (value: string) => string,
+): {
+  [name: string]: string;
+} {
+  if (!value) {
+    return {};
+  }
+  return { [name]: convertEnumToJson(value, enumObj, converter) };
+}
+
+/**
+ * Convert an internal enum value to what a user would write in tsconfig.json
+ * Possibly using a converter function to adjust casing.
+ * @param value The internal enum value
+ * @param enumObj The enum object to convert from
+ * @param converter The converter function, defaults to lowercase
+ * @returns The humanized version of the enum value
+ */
+export function convertEnumToJson<T>(
+  value: keyof T,
+  enumObj: T,
+  converter: (value: string) => string = (v) => v.toLowerCase(),
+): string {
+  return converter(enumObj[value] as any);
+}
+
+/**
+>>>>>>> a40b157 (fix(tsconfig): write jsx and target using their tsconfig spellings (#2990) (#3169))
  * Convert the internal lib strings to what a user would write in tsconfig.json
  * @param input The input libs array
  * @returns The humanized version lib array
@@ -75,6 +153,7 @@ export function convertNewLineForJson(newLine: 0 | 1): string {
 }
 
 /**
+<<<<<<< HEAD
  * Converts compiler options as TypeScript's config parser returns them (enum
  * values as numbers, `lib` as file names) to the form a user writes in
  * `tsconfig.json`, which is the form the rule sets are written against. Values
@@ -130,4 +209,74 @@ function enumName(
   }
   const name = loadTypeScriptApi()[kind][value];
   return typeof name === 'string' ? converter(name) : value;
+=======
+ * This is annoying - the values expected in the tsconfig.json file are not
+ * the same as the enum constant names, or their values. So we need this
+ * function to map the "compiler API version" to the "tsconfig.json version"
+ *
+ * @param jsx the compiler form of the jsx configuration
+ *
+ * @return the equivalent value to put in tsconfig.json
+ */
+export function convertJsxForJson(jsx: ts.JsxEmit): string {
+  switch (jsx) {
+    case ts.JsxEmit.None:
+      return 'none';
+    case ts.JsxEmit.Preserve:
+      return 'preserve';
+    case ts.JsxEmit.React:
+      return 'react';
+    case ts.JsxEmit.ReactNative:
+      return 'react-native';
+    case ts.JsxEmit.ReactJSX:
+      return 'react-jsx';
+    case ts.JsxEmit.ReactJSXDev:
+      return 'react-jsxdev';
+  }
+}
+
+/**
+ * This is annoying - the values expected in the tsconfig.json file are not
+ * the same as the enum constant names, or their values. So we need this
+ * function to map the "compiler API version" to the "tsconfig.json version"
+ *
+ * @param target the compiler form of the target configuration
+ *
+ * @return the equivalent value to put in tsconfig.json
+ */
+export function convertScriptTargetForJson(target: ts.ScriptTarget): string {
+  switch (target) {
+    case ts.ScriptTarget.ES3:
+      return 'es3';
+    case ts.ScriptTarget.ES5:
+      return 'es5';
+    case ts.ScriptTarget.ES2015:
+      return 'es2015';
+    case ts.ScriptTarget.ES2016:
+      return 'es2016';
+    case ts.ScriptTarget.ES2017:
+      return 'es2017';
+    case ts.ScriptTarget.ES2018:
+      return 'es2018';
+    case ts.ScriptTarget.ES2019:
+      return 'es2019';
+    case ts.ScriptTarget.ES2020:
+      return 'es2020';
+    case ts.ScriptTarget.ES2021:
+      return 'es2021';
+    case ts.ScriptTarget.ES2022:
+      return 'es2022';
+    case ts.ScriptTarget.ES2023:
+      return 'es2023';
+    case ts.ScriptTarget.ES2024:
+      return 'es2024';
+    // `ESNext` and `Latest` are the same target; `Latest` is the name the
+    // reverse mapping of the enum returns, but users write `esnext`.
+    case ts.ScriptTarget.ESNext:
+    case ts.ScriptTarget.Latest:
+      return 'esnext';
+    default:
+      return ts.ScriptTarget[target].toLowerCase();
+  }
+>>>>>>> a40b157 (fix(tsconfig): write jsx and target using their tsconfig spellings (#2990) (#3169))
 }
