@@ -9,7 +9,7 @@ import * as log4js from 'log4js';
 import { Assembler } from './assembler';
 import { BackgroundCheck, BackgroundCheckResult, MIN_FILES_FOR_BACKGROUND_CHECK } from './background-check';
 import { findDependencyDirectory } from './common/find-utils';
-import { CompilerHost } from './compiler-host';
+import { CompilerHost, TypeScriptProject } from './compiler-host';
 import { Diagnostic, DiagnosticCategory, flattenDiagnosticMessageText } from './diagnostic';
 import { emitProject } from './emitter';
 import { JsiiDiagnostic } from './jsii-diagnostic';
@@ -118,6 +118,9 @@ export class Compiler {
   private readonly configDiagnostics: Diagnostic[] = [];
   private readonly configPath: string;
   private readonly projectRoot: string;
+  /** Set by {@link watch}: builds then list their {@link WatchInputs}. */
+  private watching = false;
+  private watchInputs: WatchInputs | undefined;
 
   public constructor(private readonly options: CompilerOptions) {
     if (options.generateTypeScriptConfig != null && options.typeScriptConfig != null) {
@@ -163,7 +166,9 @@ export class Compiler {
       addDeprecationWarnings: this.options.addDeprecationWarnings,
       compressAssembly: this.options.compressAssembly,
       failOnWarnings: this.options.failOnWarnings,
+      listWatchInputs: this.watching,
     });
+    this.watchInputs = result.watchInputs;
 
     // Some extra validation on the config.
     // Make sure that { "./.warnings.jsii.js": "./.warnings.jsii.js" } is in the set of
@@ -215,9 +220,108 @@ export class Compiler {
         length: undefined,
       });
 
+    // Like the TypeScript 6 watch program: a change of a file of the program or of the tsconfig (and its `extends`),
+    // or a new source file in a directory of the `include` patterns. Not the generated tsconfig: jsii writes it on
+    // every build.
+    let files = new Set<string>();
+    let directories: WatchInputs['directories'] = [];
+    let outputDirectories: readonly string[] = [];
+    let emitted = new Set<string>();
+    const isUnder = (file: string, dir: string) => {
+      const rel = path.relative(dir, file);
+      return rel !== '' && !rel.startsWith('..') && !path.isAbsolute(rel);
+    };
+    const isChange = (event: string, file: string) => {
+      if (files.has(file)) {
+        return true;
+      }
+      // A new (or removed) file: TypeScript's wildcard directory watch looks at files it could include, and skips
+      // the build's own output.
+      if (event !== 'rename' || !/\.(?:[cm]?ts|tsx)$/.test(file) || emitted.has(file)) {
+        return false;
+      }
+      if (outputDirectories.some((d) => isUnder(file, d))) {
+        return false;
+      }
+      const source = file.replace(/\.d(\.[cm]?ts)$/, '$1');
+      if (source !== file && (files.has(source) || files.has(`${source}x`))) {
+        return false;
+      }
+      return directories.some(
+        (d) =>
+          (d.recursive ? isUnder(file, d.path) : path.dirname(file) === d.path) &&
+          !path.relative(d.path, file).split(path.sep).includes('node_modules'),
+      );
+    };
+
+    let timer: NodeJS.Timeout | undefined;
+    const onEvent = (dir: string) => (event: string, name: string | Buffer | null) => {
+      if (name == null || !isChange(event, path.resolve(dir, name.toString()))) {
+        return;
+      }
+      // Coalesce bursts of changes, like TypeScript does.
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        status(6032, 'File change detected. Starting incremental compilation...');
+        try {
+          compile();
+        } catch (e) {
+          if (!(e instanceof utils.JsiiError)) {
+            throw e;
+          }
+          LOG.error(e.message);
+        }
+      }, 250);
+    };
+
+    // The project root is watched first, so a change made during the first compilation is not missed. Directories
+    // outside of it (dependencies, an `include` or `extends` there) are watched once the program is known.
+    const root = path.resolve(this.projectRoot);
+    // A watched directory that goes away ends its watcher; that is not an error of the build.
+    const watchDirectory = (dir: string, recursive: boolean) =>
+      fs.watch(dir, { recursive }, onEvent(dir)).on('error', () => undefined);
+    const watchers = new Map<string, fs.FSWatcher>([[`${root}\0true`, watchDirectory(root, true)]]);
+    const watchDirectories = () => {
+      const wanted = new Map<string, boolean>();
+      for (const d of directories) {
+        if (!isUnder(d.path, root) && d.path !== root) {
+          wanted.set(d.path, wanted.get(d.path) || d.recursive);
+        }
+      }
+      for (const file of files) {
+        const dir = path.dirname(file);
+        if (!isUnder(file, root) && !wanted.has(dir)) {
+          wanted.set(dir, false);
+        }
+      }
+      for (const [dir, recursive] of wanted) {
+        const key = `${dir}\0${recursive}`;
+        if (!watchers.has(key) && fs.existsSync(dir)) {
+          watchers.set(key, watchDirectory(dir, recursive));
+        }
+      }
+      for (const [key, watcher] of watchers) {
+        const [dir, recursive] = key.split('\0');
+        if (dir !== root && wanted.get(dir) !== (recursive === 'true')) {
+          watcher.close();
+          watchers.delete(key);
+        }
+      }
+    };
+
     const compile = () => {
       const startTime = Date.now();
+      this.watching = true;
       const emitResult = this.emit();
+      const inputs = this.watchInputs;
+      if (inputs != null) {
+        const generated = this.userProvidedTypeScriptConfig ? undefined : path.resolve(this.configPath);
+        files = new Set(inputs.files.filter((f) => f !== generated));
+        directories = inputs.directories;
+        outputDirectories = inputs.outputDirectories;
+        watchDirectories();
+      }
+      emitted = new Set((emitResult.emittedFiles ?? []).map((f) => path.resolve(f)));
 
       for (const diag of emitResult.diagnostics) {
         if (diag.code === JSII_DIAGNOSTICS_CODE || opts?.reportDiagnostics == null) {
@@ -236,41 +340,16 @@ export class Compiler {
       opts?.compilationComplete?.(emitResult);
     };
 
-    // shortcut: watches every .ts/.tsx/.mts/.cts file under the project root except declaration files (those are
-    // emitted), plus a user-provided tsconfig; main watches exactly the files of the program. Upgrade when
-    // `CompilerHost` can report the program's files.
-    const isWatched = (file: string) =>
-      !file.split(path.sep).includes('node_modules') &&
-      ((/\.(?:[cm]?ts|tsx)$/.test(file) && !/\.d\.[cm]?ts$/.test(file)) ||
-        (this.userProvidedTypeScriptConfig && path.resolve(this.projectRoot, file) === this.configPath));
-
-    let timer: NodeJS.Timeout | undefined;
-    const watcher = fs.watch(this.projectRoot, { recursive: true }, (_event, file) => {
-      if (file == null || !isWatched(file)) {
-        return;
-      }
-      // Coalesce bursts of changes, like TypeScript does.
-      clearTimeout(timer);
-      timer = setTimeout(() => {
-        status(6032, 'File change detected. Starting incremental compilation...');
-        try {
-          compile();
-        } catch (e) {
-          if (!(e instanceof utils.JsiiError)) {
-            throw e;
-          }
-          LOG.error(e.message);
-        }
-      }, 250);
-    });
     const handle: WatchHandle = {
       close: () => {
         clearTimeout(timer);
-        watcher.close();
+        for (const watcher of watchers.values()) {
+          watcher.close();
+        }
+        watchers.clear();
       },
     };
 
-    // The watcher is started first, so a change made during the first compilation is not missed.
     status(6031, 'Starting compilation in watch mode...');
     try {
       compile();
@@ -546,6 +625,8 @@ export interface BuildProjectOptions {
   readonly compressAssembly?: boolean;
   /** Treat warnings as errors when deciding whether to log the "prevented the JSII assembly" error. */
   readonly failOnWarnings?: boolean;
+  /** Whether to return the {@link WatchInputs} of the program (for watch mode). */
+  readonly listWatchInputs?: boolean;
 }
 
 export interface BuildProjectResult {
@@ -554,6 +635,49 @@ export interface BuildProjectResult {
   readonly emittedFiles: string[];
   readonly emitSkipped: boolean;
   readonly diagnostics: readonly Diagnostic[];
+  /** With `listWatchInputs`. */
+  readonly watchInputs?: WatchInputs;
+}
+
+/** What a change of makes watch mode build again (absolute paths). */
+export interface WatchInputs {
+  /** The source files of the program, the tsconfig and the files it `extends`. */
+  readonly files: readonly string[];
+  /** The directories of the `include` patterns: a new source file there is a change. */
+  readonly directories: ReadonlyArray<{ readonly path: string; readonly recursive: boolean }>;
+  /** Where the build writes its output (`outDir`, `declarationDir`): new files there are not changes. */
+  readonly outputDirectories: readonly string[];
+}
+
+/**
+ * The inputs of a program for watch mode, like those the TypeScript 6 watch program watches.
+ *
+ * shortcut: the `include` patterns are those of the tsconfig itself (or `**` / `*` when it has neither `include` nor
+ * `files`), not ones it inherits from an `extends` base; read the bases' patterns if that comes up.
+ */
+function watchInputs(project: TypeScriptProject): WatchInputs {
+  const program = project.program;
+  const options = program.getCompilerOptions();
+  const configFileNames: readonly string[] = program.getConfigFileNames();
+  const configDir = configFileNames.length > 0 ? path.dirname(configFileNames[0]) : program.getCurrentDirectory();
+  const raw = project.parsedCommandLine.raw ?? {};
+  const include: readonly string[] = raw.include ?? (raw.files == null ? ['**/*'] : []);
+  return {
+    files: [...program.getSourceFileNames(), ...configFileNames].map((f) => path.resolve(f)),
+    directories: include.map((pattern) => {
+      const segments = pattern.split(/[\\/]/);
+      const wildcard = segments.findIndex((s) => /[*?]/.test(s));
+      const base = wildcard < 0 ? segments.slice(0, -1) : segments.slice(0, wildcard);
+      const rest = wildcard < 0 ? [] : segments.slice(wildcard);
+      return {
+        path: path.resolve(configDir, ...base),
+        recursive: rest.length > 1 || rest.some((s) => s.includes('**')),
+      };
+    }),
+    outputDirectories: [options.outDir, options.declarationDir]
+      .filter((d): d is string => d != null)
+      .map((d) => path.resolve(configDir, d)),
+  };
 }
 
 /**
@@ -871,6 +995,7 @@ export function buildProject(options: BuildProjectOptions): BuildProjectResult {
       emittedFiles: failed ? [] : emittedFiles,
       emitSkipped: failed,
       diagnostics,
+      watchInputs: options.listWatchInputs ? watchInputs(project) : undefined,
     };
   } finally {
     if (process.env.JSII_TS7_TIMING) {

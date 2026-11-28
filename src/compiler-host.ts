@@ -156,6 +156,8 @@ export interface TypeScriptProject {
   readonly api: any;
   /** The root files of the configuration (`parsedCommandLine.fileNames`). */
   readonly rootFileNames: readonly string[];
+  /** The parsed configuration (`fileNames`, `options`, `raw`, ...). */
+  readonly parsedCommandLine: any;
 }
 
 /**
@@ -206,6 +208,7 @@ export class CompilerHost {
       checker: withMemoizedTypeAtLocation(project.checker),
       api: this.api,
       rootFileNames: project.parsedCommandLine.fileNames,
+      parsedCommandLine: project.parsedCommandLine,
     };
   }
 
