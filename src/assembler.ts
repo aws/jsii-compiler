@@ -200,6 +200,9 @@ export class Assembler {
   public typeModelFailed = false;
   private readonly submodules: Record<string, spec.Submodule> = {};
   private readonly typeFqnBySymbolId = new Map<unknown, string>();
+  /** What `_prefetchWalk` read ahead: the symbol an alias stands for, and the exports of a module, by symbol id. */
+  private readonly aliasedSymbols = new Map<unknown, any>();
+  private readonly exportsOfModules = new Map<unknown, any[]>();
   private readonly exported: RegisteredType[] = [];
   /** The position (see `_registerModuleExports`) at which each registered type is visited. */
   private readonly exportedSeq = new Map<RegisteredType, number>();
@@ -573,7 +576,7 @@ export class Assembler {
     const { SymbolFlags } = this.ts;
     let s = sym;
     while ((s.flags & SymbolFlags.Alias) !== 0) {
-      s = this.checker.getAliasedSymbol(s);
+      s = this.aliasedSymbols.get(s.id) ?? this.checker.getAliasedSymbol(s);
     }
     return s;
   }
@@ -1229,7 +1232,7 @@ export class Assembler {
     // @TODO(NEXT): this walk only reproduces the TypeScript 6 order so that `assembly.types` and the validators in
     // `.warnings.jsii.js` come out as on main; the order has no meaning of its own. After 7.1's first release, use
     // `checker.getExportsOfModule` as is and drop this method (outputs that follow the type order change once).
-    const exports: any[] = this.checker.getExportsOfModule(moduleSym);
+    const exports: any[] = this.exportsOfModules.get(moduleSym.id) ?? this.checker.getExportsOfModule(moduleSym);
     const rank = new Map<string, number>();
     const visited = new Set<unknown>();
     const visit = (sym: any): void => {
@@ -1318,6 +1321,7 @@ export class Assembler {
     // The submodule (its export symbol) each symbol exported by a submodule belongs to, for JSII3003.
     const submoduleOfSymbol = new Map<unknown, any>();
     const collect = (mExports: any[], prefix: string, moduleDir: string, moduleFile?: string, ns?: any): void => {
+      this._prefetchWalk(mExports);
       for (const e of mExports) {
         if (ns != null) {
           this._registerSubmoduleSymbol(submoduleOfSymbol, e, ns);
@@ -1494,6 +1498,7 @@ export class Assembler {
     // Batch-prefetch docs for all candidate type symbols (used by the
     // isInternal/shouldStrip checks inside _registerType).
     this._prefetchDocs(registrations.map((r) => r.sym));
+    this._prefetchNestedTypes(registrations.map((r) => r.sym));
     // Register canonical fqns first (references resolve to the first registration of a symbol), then visit the
     // types in the order their exports were seen; nested types stay right after their parent.
     for (const r of registrations) {
@@ -1563,6 +1568,91 @@ export class Assembler {
   }
 
   /** @param foreign whether the type belongs to a dependency. References to such a type do not resolve to this entry. */
+  /**
+   * Read ahead what walking the exports of a module asks for, one batch for each kind of read: the symbol each alias
+   * stands for, then the exports of each module among them (the list `_exportsOfModule` starts from, and the table the
+   * walk of its `export *` declarations reads). `_resolveAlias` and `_exportsOfModule` find the answers in their
+   * caches, and ask as before for what was not read ahead.
+   */
+  private _prefetchWalk(exports: any[]): void {
+    const { SymbolFlags, SyntaxKind } = this.ts;
+    const { api } = this.project;
+    try {
+      const aliases = exports.filter((e) => (e.flags & SymbolFlags.Alias) !== 0 && !this.aliasedSymbols.has(e.id));
+      if (aliases.length > 1) {
+        const targets = api.batch(...aliases.map((a) => this.checker.getAliasedSymbol.gen(a)));
+        for (const [i, a] of aliases.entries()) {
+          this.aliasedSymbols.set(a.id, targets[i]);
+        }
+      }
+      const modules = new Map<unknown, any>();
+      for (const e of exports) {
+        const target = this._resolveAlias(e);
+        const kind = target.declarations?.[0]?.kind;
+        if (
+          (kind === SyntaxKind.SourceFile ||
+            (target.flags & SymbolFlags.ValueModule) !== 0 ||
+            (target.flags & SymbolFlags.NamespaceModule) !== 0) &&
+          !this.exportsOfModules.has(target.id)
+        ) {
+          modules.set(target.id, target);
+        }
+      }
+      if (modules.size > 1) {
+        const all = [...modules.values()];
+        const answers = api.batch(...all.flatMap((m) => [this.checker.getExportsOfModule.gen(m), m.getExports.gen()]));
+        for (const [i, m] of all.entries()) {
+          this.exportsOfModules.set(m.id, answers[2 * i]);
+        }
+      }
+    } catch {
+      // shortcut: a failed batch reads nothing ahead; each answer is then asked for on its own, as before.
+    }
+  }
+
+  /** Whether a namespace is merged with the symbol: only then does it export types. */
+  private _hasNamespace(sym: any): boolean {
+    const { SymbolFlags } = this.ts;
+    return (sym.flags & (SymbolFlags.ValueModule | SymbolFlags.NamespaceModule)) !== 0;
+  }
+
+  /**
+   * Read ahead the exports and the docs of the types nested in the given types (the classes, interfaces and enums a
+   * namespace merged with a type exports), level by level, in a batch each, so `_registerType` finds them cached.
+   */
+  private _prefetchNestedTypes(types: any[]): void {
+    const { SymbolFlags, SyntaxKind } = this.ts;
+    const typeKinds = [SyntaxKind.ClassDeclaration, SyntaxKind.InterfaceDeclaration, SyntaxKind.EnumDeclaration];
+    const seen = new Set<unknown>();
+    let level = types.filter((t) => this._hasNamespace(t) && !seen.has(t.id) && seen.add(t.id));
+    try {
+      while (level.length > 0) {
+        for (let i = 0; i < level.length; i += PREFETCH_CHUNK) {
+          this.project.api.batch(...level.slice(i, i + PREFETCH_CHUNK).map((t) => t.getExports.gen()));
+        }
+        const next: any[] = [];
+        for (const t of level) {
+          for (const [, n] of t.getExports() ?? []) {
+            if (
+              (n.flags & SymbolFlags.Alias) === 0 &&
+              typeKinds.includes(n.declarations?.[0]?.kind) &&
+              !seen.has(n.id)
+            ) {
+              seen.add(n.id);
+              next.push(n);
+            }
+          }
+        }
+        for (let i = 0; i < next.length; i += PREFETCH_CHUNK) {
+          this._prefetchDocs(next.slice(i, i + PREFETCH_CHUNK));
+        }
+        level = next.filter((t) => this._hasNamespace(t));
+      }
+    } catch {
+      // shortcut: a failed batch reads nothing more ahead; each type is then read when it is registered, as before.
+    }
+  }
+
   private _registerType(sym: any, name: string, fqn: string, foreign = false): void {
     const { SyntaxKind } = this.ts;
     const isFirst = !this.typeFqnBySymbolId.has(sym.id);
@@ -1630,7 +1720,8 @@ export class Assembler {
     this.exported.push({ name, sym, decl, fqn });
 
     // nested exported types (namespaces on a class/interface), under every fqn of the type, like strada
-    const nested = sym.getExports?.();
+    // Only a type merged with a namespace exports types: the exports of any other type are its static members.
+    const nested = this._hasNamespace(sym) ? sym.getExports?.() : undefined;
     if (nested && nested.size) {
       for (const [, nsym0] of nested) {
         const nsym = this._resolveAlias(nsym0);
