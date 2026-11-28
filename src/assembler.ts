@@ -720,6 +720,8 @@ export class Assembler {
       return comment;
     }
     // A link that is never closed ends at the line break (TypeScript 6 closed it there).
+    // @TODO(NEXT): main leaves the `*` of the next comment line in the text after such a link, and uses that line as the
+    // label of a link without one (https://github.com/aws/jsii-compiler/issues/3158). After 7.1's first release: report it.
     const linkRe = /\{@(linkcode|linkplain|link)\b([^}\n]*)(\}|$)/gm;
     let result = comment;
     let cursor = 0;
