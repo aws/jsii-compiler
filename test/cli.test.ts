@@ -587,7 +587,7 @@ describe('current behavior that is reported as an issue', () => {
   });
 
   // https://github.com/aws/jsii-compiler/issues/2982
-  test('errors from parsing the tsconfig are dropped, and the entry point is reported as missing', async () => {
+  test('reports the TS18003 error of a tsconfig that matches no input files', async () => {
     const { include, exclude, ...config } = userTsconfig({ outDir: 'lib', rootDir: 'lib' });
     const dir = project(
       { 'tsconfig.json': JSON.stringify(config), 'lib/index.ts': 'export class Klass {}', 'index.ts': null },
@@ -597,8 +597,9 @@ describe('current behavior that is reported as an issue', () => {
     const result = await run(dir, '--tsconfig', 'tsconfig.json');
 
     expect(result.exitCode).toBe(1);
+    expect(result.stdout).toContain('TS18003');
+    expect(result.stdout).toContain('No inputs were found');
     expect(result.stdout).toContain('JSII0004: Could not find "main" file');
-    expect(result.stdout).not.toContain('TS18003');
   });
 
   // https://github.com/aws/jsii-compiler/issues/3144
