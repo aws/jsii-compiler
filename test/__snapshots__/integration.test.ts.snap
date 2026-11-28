@@ -3252,6 +3252,7 @@ after an "immediates" cycle.",
           "filename": "lib/indirect-implementation.ts",
           "line": 9,
         },
+        "protected": true,
       },
       "kind": "class",
       "locationInModule": {
