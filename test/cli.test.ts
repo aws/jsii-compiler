@@ -455,6 +455,24 @@ describe('jsii validate-tsconfig', () => {
     expect(result.stdout).toContain('"custom.json" is valid against rule set "strict"');
   });
 
+  // https://github.com/aws/jsii-compiler/issues/3144
+  test('reports an unknown rule set in package.json the way compile does', async () => {
+    const dir = project(
+      { 'tsconfig.json': JSON.stringify(userTsconfig()) },
+      { jsii: { targets: {}, validateTsconfig: 'bogus' } },
+    );
+    const error = '[ERROR] Invalid validateTsconfig "bogus", it must be one of strict, generated, minimal, off';
+
+    const validated = await runCli(dir, 'validate-tsconfig');
+    const compiled = await runCli(dir);
+
+    expect(validated.exitCode).toBe(-1);
+    expect(validated.stderr).toContain(error);
+    expect(validated.stderr).not.toContain('TypeError');
+    expect(compiled.exitCode).toBe(-1);
+    expect(compiled.stderr).toContain(error);
+  });
+
   test('fails when the configuration cannot be read', async () => {
     const dir = project();
 
@@ -599,24 +617,6 @@ describe('current behavior that is reported as an issue', () => {
     expect(result.exitCode).toBe(1);
     expect(result.stdout).toContain('JSII0004: Could not find "main" file');
     expect(result.stdout).not.toContain('TS18003');
-  });
-
-  // https://github.com/aws/jsii-compiler/issues/3144
-  test('validate-tsconfig crashes on an unknown rule set in package.json, where compile reports an error', async () => {
-    const dir = project(
-      { 'tsconfig.json': JSON.stringify(userTsconfig()) },
-      { jsii: { targets: {}, validateTsconfig: 'bogus' } },
-    );
-
-    const validated = await run(dir, 'validate-tsconfig');
-    const compiled = await run(dir);
-
-    expect(validated.exitCode).toBe(-1);
-    expect(validated.stderr).toContain("Error: TypeError: Cannot read properties of undefined (reading 'rules')");
-    expect(compiled.exitCode).toBe(-1);
-    expect(compiled.stderr).toContain(
-      '[ERROR] Invalid validateTsconfig "bogus", it must be one of strict, generated, minimal, off',
-    );
   });
 
   describe('tsconfig validation with "paths"', () => {

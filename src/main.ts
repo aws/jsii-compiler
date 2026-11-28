@@ -10,7 +10,7 @@ import * as yargs from 'yargs';
 
 import { Compiler } from './compiler';
 import { configureCategories, JsiiDiagnostic } from './jsii-diagnostic';
-import { loadProjectInfo } from './project-info';
+import { loadProjectInfo, validateTsconfigRuleSet } from './project-info';
 import { emitSupportPolicyInformation } from './support';
 import { TypeScriptConfigValidationRuleSet } from './tsconfig';
 import { formatRuleSet, RULE_SET_DESCRIPTIONS } from './tsconfig/rule-set-format';
@@ -229,9 +229,10 @@ enum OPTION_GROUP {
           const configPath = path.resolve(process.cwd(), tsconfigFile);
           const projectRoot = path.dirname(configPath);
           const configName = path.relative(projectRoot, configPath);
-          const ruleSet = (argv['rule-set'] ??
-            jsiiConfig?.validateTsconfig ??
-            TypeScriptConfigValidationRuleSet.STRICT) as TypeScriptConfigValidationRuleSet;
+          const ruleSet =
+            (argv['rule-set'] as TypeScriptConfigValidationRuleSet | undefined) ??
+            validateTsconfigRuleSet(jsiiConfig?.validateTsconfig) ??
+            TypeScriptConfigValidationRuleSet.STRICT;
 
           // Validation is disabled for the "off" rule set; mirror the compiler behavior.
           if (ruleSet === TypeScriptConfigValidationRuleSet.NONE) {
