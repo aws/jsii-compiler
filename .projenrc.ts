@@ -158,6 +158,8 @@ project.tryFindObjectFile('projenrc/tsconfig.json')?.patch(
   JsonPatch.add('/include/-', '../src/tsconfig/compiler-options.ts'),
   JsonPatch.add('/include/-', '../src/tsconfig/validator.ts'),
   JsonPatch.add('/include/-', '../src/tsconfig/rulesets/*.ts'),
+  JsonPatch.add('/include/-', '../src/compiler-host.ts'),
+  JsonPatch.add('/include/-', '../src/tsconfig/index.ts'),
 );
 
 // Don't show .gitignore'd files in the VSCode explorer
@@ -184,7 +186,6 @@ project.package.addField('exports', {
   ),
 });
 
-<<<<<<< HEAD
 // Code imports TypeScript as `#typescript`, so switching it back to the plain `typescript` package later only needs
 // a change here.
 project.package.addField('imports', {
@@ -200,7 +201,7 @@ project.addDevDeps('typescript@~6.0');
 // started: `npx projen` gets TypeScript 7, but `yarn build` and `yarn release` get TypeScript 6. Point every `tsc` step
 // at the TypeScript 7 binary so all of them compile with the same version.
 const TSC = 'node_modules/@typescript/native/bin/tsc';
-=======
+
 // Each base tsconfig sets the options its rule set requires, with the values of the tsconfig jsii generates.
 const generatedCompilerOptions = convertForJson(BASE_COMPILER_OPTIONS);
 for (const [name, ruleSet] of Object.entries(baseTsconfigs)) {
@@ -219,10 +220,6 @@ for (const [name, ruleSet] of Object.entries(baseTsconfigs)) {
     },
   });
 }
-
-// Remove TypeScript devDependency (it's a direct/normal dependency here)
-project.deps.removeDependency('typescript');
->>>>>>> 9fc4cac (feat(tsconfig): export base tsconfigs for the validation rule sets (#2940))
 
 // Run tests with swc instead of ts-jest. swc doesn't type-check, so the test suite is type-checked with `tsc` before
 // the tests run (see `typecheckTests`).

@@ -12,7 +12,9 @@
     "../src/case.ts",
     "../src/tsconfig/compiler-options.ts",
     "../src/tsconfig/validator.ts",
-    "../src/tsconfig/rulesets/*.ts"
+    "../src/tsconfig/rulesets/*.ts",
+    "../src/compiler-host.ts",
+    "../src/tsconfig/index.ts"
   ],
   "exclude": [
     "node_modules"
