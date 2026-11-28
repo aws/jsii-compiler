@@ -23,6 +23,11 @@ interface MatcherOptions {
    * @param allowed The list values that a matcher offers as definitely allowed.
    */
   hints?: (allowed: any[]) => void;
+  /**
+   * The data being validated, so a matcher can take other fields into account.
+   * Only set during validation, not when a rule set is described or probed for hints.
+   */
+  data?: { [field: string]: any };
 }
 
 export enum RuleType {
@@ -441,6 +446,7 @@ export class ObjectValidator {
           violationMessage = message;
         },
         hints: (allowed) => hints.push(...allowed),
+        data,
       });
 
       // Matchers phrase their message for a PASS rule, which reads backwards for a FAIL rule.
