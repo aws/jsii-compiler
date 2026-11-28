@@ -869,233 +869,11 @@ export class Assembler {
           dep,
           new Set(Object.keys(depJsii.types ?? {}).map((f) => f.slice(depJsii.name.length + 1))),
         );
-<<<<<<< HEAD
         const bySymbolId = new Map<string, string>();
         for (const [fqn, type] of Object.entries<any>(depJsii.types ?? {})) {
           this.externalTypeByFqn.set(fqn, type);
           if (typeof type.symbolId === 'string') {
             bySymbolId.set(type.symbolId, fqn);
-=======
-        erasedBases.push(base);
-        base = (base.getBaseTypes() ?? [])[0];
-      }
-      if (base && !base.symbol) {
-        const extendsClause = classDeclaration.heritageClauses?.find(
-          (clause) => clause.token === ts.SyntaxKind.ExtendsKeyword,
-        );
-        if (extendsClause) {
-          this._diagnostics.push(
-            JsiiDiagnostic.JSII_3004_INVALID_SUPERTYPE.create(extendsClause.types[0], extendsClause),
-          );
-        }
-        continue;
-      }
-      if (!base || isInternalSymbol(base.symbol)) {
-        // There is no exported base class to be found, pretend this class has no base class.
-        continue;
-      }
-
-      // eslint-disable-next-line no-await-in-loop
-      const ref = this._typeReference(
-        base,
-        type.symbol.valueDeclaration ?? type.symbol.declarations?.[0],
-        'base class',
-      );
-
-      if (!spec.isNamedTypeReference(ref)) {
-        this._diagnostics.push(
-          JsiiDiagnostic.JSII_3006_TYPE_USED_AS_CLASS.create(
-            base.symbol.valueDeclaration ?? base.symbol.declarations?.[0],
-            ref,
-          ),
-        );
-        continue;
-      }
-      this._deferUntilTypesAvailable(fqn, [ref], base.symbol.valueDeclaration, (deref) => {
-        if (!spec.isClassType(deref)) {
-          this._diagnostics.push(
-            JsiiDiagnostic.JSII_3006_TYPE_USED_AS_CLASS.create(
-              base.symbol.valueDeclaration ?? base.symbol.declarations?.[0],
-              ref,
-            ),
-          );
-        }
-      });
-      jsiiType.base = ref.fqn;
-    }
-
-    //
-    // base interfaces ("implements foo")
-
-    // collect all "implements" declarations from the current type and all
-    // erased base types (because otherwise we lose them, see jsii#487)
-    const implementsClauses = new Array<ts.HeritageClause>();
-    for (const heritage of [type, ...erasedBases].map(
-      (t) => (t.symbol.valueDeclaration as ts.ClassDeclaration).heritageClauses ?? [],
-    )) {
-      for (const clause of heritage) {
-        if (clause.token === ts.SyntaxKind.ExtendsKeyword) {
-          // Handled by `getBaseTypes`
-          continue;
-        } else if (clause.token !== ts.SyntaxKind.ImplementsKeyword) {
-          this._diagnostics.push(
-            JsiiDiagnostic.JSII_9998_UNSUPPORTED_NODE.create(
-              clause,
-              `Ignoring ${ts.SyntaxKind[clause.token]} heritage clause`,
-            ),
-          );
-          continue;
-        }
-
-        implementsClauses.push(clause);
-      }
-    }
-
-    // process all "implements" clauses
-    const allInterfaces = new Set<string>();
-    const baseInterfaces = implementsClauses.map((clause) =>
-      this._processBaseInterfaces(
-        fqn,
-        clause.types.map((t) => this._getTypeFromTypeNode(t)),
-      ),
-    );
-    for (const { interfaces } of baseInterfaces) {
-      for (const ifc of interfaces ?? []) {
-        allInterfaces.add(ifc.fqn);
-      }
-      if (interfaces) {
-        this._deferUntilTypesAvailable(jsiiType.fqn, interfaces, type.symbol.valueDeclaration, (...ifaces) => {
-          for (const iface of ifaces) {
-            if (spec.isInterfaceType(iface) && iface.datatype) {
-              this._diagnostics.push(
-                JsiiDiagnostic.JSII_3007_ILLEGAL_STRUCT_EXTENSION.create(
-                  type.symbol.valueDeclaration ?? type.symbol.declarations?.[0],
-                  jsiiType,
-                  iface,
-                ),
-              );
-            }
-          }
-        });
-      }
-    }
-
-    if (allInterfaces.size > 0) {
-      jsiiType.interfaces = Array.from(allInterfaces);
-    }
-
-    if (!type.isClass()) {
-      throw new Error('Oh no');
-    }
-
-    const allDeclarations: Array<{
-      decl: ts.Declaration;
-      type: ts.InterfaceType | ts.BaseType;
-    }> = (type.symbol.declarations ?? []).map((decl) => ({ decl, type }));
-
-    // Considering erased bases' declarations, too, so they are "blended in"
-    for (const base of erasedBases) {
-      allDeclarations.push(
-        ...(base.symbol.declarations ?? []).map((decl) => ({
-          decl,
-          type: base,
-        })),
-      );
-    }
-
-    for (const { decl, type: declaringType } of allDeclarations) {
-      const classDecl = decl as ts.ClassDeclaration | ts.InterfaceDeclaration;
-      if (!classDecl.members) {
-        continue;
-      }
-
-      for (const memberDecl of classDecl.members) {
-        if (ts.isSemicolonClassElement(memberDecl)) {
-          this._diagnostics.push(JsiiDiagnostic.JSII_9996_UNNECESSARY_TOKEN.create(memberDecl));
-          continue;
-        }
-
-        const member = ts.isConstructorDeclaration(memberDecl)
-          ? getConstructor(this._typeChecker.getTypeAtLocation(memberDecl.parent))
-          : ts.isIndexSignatureDeclaration(memberDecl)
-          ? type.symbol.members?.get(ts.InternalSymbolName.Index) ??
-            type.symbol.exports?.get(ts.InternalSymbolName.Index)
-          : this._typeChecker.getSymbolAtLocation(ts.getNameOfDeclaration(memberDecl) ?? memberDecl);
-
-        if (member && this._isPrivateOrInternal(member, memberDecl as ts.ClassElement)) {
-          continue;
-        }
-
-        if (ts.isIndexSignatureDeclaration(memberDecl)) {
-          // Index signatures (static or not) are not supported in the jsii type model.
-          this._diagnostics.push(
-            JsiiDiagnostic.JSII_1999_UNSUPPORTED.create(memberDecl, {
-              what: 'Index signatures',
-              suggestInternal: true,
-            }),
-          );
-          continue;
-        }
-
-        if (!(declaringType.symbol.getDeclarations() ?? []).find((d) => d === memberDecl.parent)) {
-          continue;
-        }
-
-        // constructors are handled later
-        if (ts.isConstructorDeclaration(memberDecl)) {
-          continue;
-        }
-
-        // eslint-disable-next-line no-await-in-loop
-        if (ts.isMethodDeclaration(memberDecl) || ts.isMethodSignature(memberDecl)) {
-          // eslint-disable-next-line no-await-in-loop
-          this._visitMethod(member!, jsiiType, ctx.replaceStability(jsiiType.docs?.stability), classDecl);
-        } else if (
-          ts.isPropertyDeclaration(memberDecl) ||
-          ts.isPropertySignature(memberDecl) ||
-          ts.isAccessor(memberDecl)
-        ) {
-          // eslint-disable-next-line no-await-in-loop
-          this._visitProperty(member!, jsiiType, ctx.replaceStability(jsiiType.docs?.stability), classDecl);
-        } else {
-          this._diagnostics.push(
-            JsiiDiagnostic.JSII_9998_UNSUPPORTED_NODE.create(
-              ts.getNameOfDeclaration(memberDecl) ?? memberDecl,
-              memberDecl.kind,
-            ),
-          );
-        }
-        /* eslint-enable no-await-in-loop */
-      }
-    }
-
-    const memberEmitContext = ctx.replaceStability(jsiiType.docs && jsiiType.docs.stability);
-
-    // Find the first defined constructor in this class, or it's erased bases
-    const constructor = [type, ...erasedBases].map(getConstructor).find((ctor) => ctor != null);
-    const ctorDeclaration = constructor && (constructor.declarations?.[0] as ts.ConstructorDeclaration | undefined);
-    if (constructor && ctorDeclaration) {
-      const signature = this._typeChecker.getSignatureFromDeclaration(ctorDeclaration);
-
-      if ((ts.getCombinedModifierFlags(ctorDeclaration) & ts.ModifierFlags.Private) === 0) {
-        jsiiType.initializer = {
-          locationInModule: this.declarationLocation(ctorDeclaration),
-          protected: (ts.getCombinedModifierFlags(ctorDeclaration) & ts.ModifierFlags.Protected) !== 0 || undefined,
-        };
-        if (signature) {
-          for (const param of signature.getParameters()) {
-            jsiiType.initializer.parameters = jsiiType.initializer.parameters ?? [];
-
-            const jsiiParam = // eslint-disable-next-line no-await-in-loop
-              this._toParameter(param, ctx.replaceStability(jsiiType.docs?.stability));
-
-            if (containsIntersection(jsiiParam.type)) {
-              this._diagnostics.push(JsiiDiagnostic.JSII_1010_INTERSECTION_NOT_IN_CTOR.create(param.declarations?.[0]));
-            }
-
-            jsiiType.initializer.parameters.push(jsiiParam);
-            jsiiType.initializer.variadic = jsiiType.initializer?.parameters?.some((p) => !!p.variadic) || undefined;
->>>>>>> 738e9cb (fix: preserve visibility of empty protected constructors (#3128))
           }
         }
         this.externalFqnBySymbolId.set(dep, bySymbolId);
@@ -2649,6 +2427,9 @@ export class Assembler {
     } else if (effectiveCtor) {
       const sig = this.checker.getSignatureFromDeclaration(effectiveCtor);
       const initializer: any = { locationInModule: this._locationOf(effectiveCtor) };
+      if ((effectiveCtor.modifiers ?? []).some((x: any) => x.kind === SyntaxKind.ProtectedKeyword)) {
+        initializer.protected = true;
+      }
       if (sig) {
         const params = sig.getParameters().map((p: any) => {
           const param = this._visitParameter(p);
@@ -2661,12 +2442,6 @@ export class Assembler {
           initializer.parameters = params;
           if (params.some((p: any) => p.variadic)) {
             initializer.variadic = true;
-          }
-          // strada quirk: `initializer.protected` is assigned inside its
-          // parameter loop, so a protected ZERO-parameter constructor does not
-          // get the flag. Reproduced bug-for-bug for parity.
-          if ((effectiveCtor.modifiers ?? []).some((x: any) => x.kind === SyntaxKind.ProtectedKeyword)) {
-            initializer.protected = true;
           }
         }
         this._verifyConsecutiveOptionals(effectiveCtor, initializer.parameters);
