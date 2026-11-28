@@ -250,6 +250,17 @@ describe('Object Validator', () => {
     );
   });
 
+  test('passes the validated object to matchers', () => {
+    const rules = new RuleSet();
+    rules.shouldPass('a', (_value, options) => options?.data?.b === true);
+    const validator = new ObjectValidator(rules, 'testData');
+
+    expect(() => validator.validate({ b: true })).not.toThrow();
+    expect(() => validator.validate({ b: false })).toThrow(
+      expect.objectContaining({ violations: [expect.objectContaining({ field: 'a' })] }),
+    );
+  });
+
   test('throws for non objects', () => {
     fc.assert(
       fc.property(fc.oneof(fc.anything({ maxDepth: 0 }), fc.array(fc.anything())), (data: any) => {
