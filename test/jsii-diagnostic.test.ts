@@ -191,7 +191,7 @@ describe('jsii diagnostics', () => {
     });
 
     // @TODO(ts7): passes a TypeScript 6 AST node; the TypeScript 7 JsiiDiagnostic takes a DiagnosticLocation, so main's
-    // test cannot type-check (https://github.com/aws/jsii-compiler/pull/2859)
+    // test cannot type-check (https://github.com/aws/jsii-compiler/issues/3171)
     test.skip('addRelatedInformation does not point into the TypeScript standard library', () => {
       const lib = ts.createSourceFile(
         '/node_modules/typescript/lib/lib.es5.d.ts',
@@ -207,7 +207,7 @@ describe('jsii diagnostics', () => {
     });
 
     // @TODO(ts7): passes a TypeScript 6 HeritageClause; the TypeScript 7 JSII3004 message takes a different argument,
-    // so main's test cannot type-check (https://github.com/aws/jsii-compiler/pull/2859)
+    // so main's test cannot type-check (https://github.com/aws/jsii-compiler/issues/3171)
     test.skip('JSII3004 describes an unexpected heritage clause token by its syntax kind', () => {
       const diagnostic = (JsiiDiagnostic.JSII_3004_INVALID_SUPERTYPE.createDetached as any)({
         token: ts.SyntaxKind.Identifier,
