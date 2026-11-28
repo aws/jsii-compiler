@@ -59,6 +59,12 @@ describe('formatConstraint()', () => {
     expect(formatConstraint(rule({ type: RuleType.PASS, values: undefined }))).toBe('any value');
   });
 
+  test('FAIL without hinted values rejects what the rule matches', () => {
+    expect(formatConstraint(rule({ type: RuleType.FAIL, values: undefined }))).toBe(
+      'must not be set to the matched value',
+    );
+  });
+
   test('null/undefined hints mean the option is not allowed', () => {
     expect(formatConstraint(rule({ type: RuleType.PASS, values: [undefined, null] }))).toBe('not allowed');
   });

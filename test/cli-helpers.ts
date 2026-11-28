@@ -1,3 +1,4 @@
+import * as cluster from 'node:cluster';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -79,6 +80,9 @@ export async function runCliWithEnv(
   const originalCwd = process.cwd();
   const originalExitCode = process.exitCode;
   const originalEnv = { ...process.env };
+  // Each fresh copy of log4js listens to the cluster messages. A real CLI loads it once, here it is loaded on every run,
+  // so the listeners are removed again. Otherwise Node.js warns about a possible memory leak in the middle of the output.
+  const originalClusterListeners = clusterEmitter().listeners('message');
 
   let stdout = '';
   let stderr = '';
@@ -141,6 +145,11 @@ export async function runCliWithEnv(
 
     return { exitCode: exitedWith ?? process.exitCode, stdout, stderr };
   } finally {
+    for (const listener of clusterEmitter().listeners('message')) {
+      if (!originalClusterListeners.includes(listener)) {
+        clusterEmitter().removeListener('message', listener as (...args: any[]) => void);
+      }
+    }
     for (const spy of spies) spy.mockRestore();
     process.argv = originalArgv;
     process.chdir(originalCwd);
@@ -153,6 +162,10 @@ export async function runCliWithEnv(
       }
     }
   }
+}
+
+function clusterEmitter(): NodeJS.EventEmitter {
+  return (cluster as any).default ?? cluster;
 }
 
 /**
