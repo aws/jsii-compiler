@@ -3,6 +3,7 @@ import * as path from 'node:path';
 import * as spec from '@jsii/spec';
 
 import { compileJsiiForTest, TestWorkspace } from '../../src/helpers';
+import { compileJsiiForDiagnostics } from '../compiler-helpers';
 
 const DEPENDENCY_SOURCE = `
   export class Foreign {
@@ -105,6 +106,50 @@ describe('dependency without typings', () => {
       expect(Object.keys(result.assembly.types ?? {})).toEqual(['testpkg.Klass']);
       expect(result.assembly.dependencyClosure).toEqual({ dependency: { targets: { js: { npm: 'dependency' } } } });
     }));
+});
+
+describe('an intersection of dependency interfaces', () => {
+  // The assembly of a dependency is trusted input. These tests give it an inheritance list that does not match its types.
+  // @TODO(ts7): the TypeScript 7 assembler does not check the inheritance list of a dependency's interfaces, so it
+  // reports no JSII9997 from allInterfacesRecursively()
+  test.skip.each([
+    { reason: 'is not in the assembly', base: 'dependency.Gone', error: 'unresolvable base' },
+    { reason: 'is not an interface', base: 'dependency.Klass', error: 'non-interface base' },
+  ])('fails with an internal error when a base interface $reason', ({ base, error }) =>
+    TestWorkspace.withWorkspace((ws) => {
+      ws.addDependency(
+        compileJsiiForTest(
+          `
+          export interface IBase {}
+          export interface IFirst extends IBase {}
+          export interface ISecond {}
+          export class Klass {}
+          `,
+          { packageJson: { name: 'dependency' } },
+        ),
+      );
+      updateAssembly(ws.dependencyDir('dependency'), (assembly) => {
+        (assembly.types!['dependency.IFirst'] as spec.InterfaceType).interfaces = [base];
+      });
+
+      const diagnostics = compileJsiiForDiagnostics(
+        `
+        import { IFirst, ISecond } from 'dependency';
+        export class Klass {
+          public method(_arg: IFirst & ISecond): void {}
+        }
+        `,
+        { compilationDirectory: ws.rootDirectory, packageJson: DEPENDS_ON_IT },
+      );
+
+      expect(diagnostics.map((d) => ({ code: d.jsiiCode, message: `${d.messageText}`.split('\n')[0] }))).toEqual([
+        {
+          code: 9997,
+          message: expect.stringContaining(`Impossible to have ${error} in allInterfacesRecursively()`),
+        },
+      ]);
+    }),
+  );
 });
 
 function updateAssembly(packageDir: string, update: (assembly: spec.Assembly) => void) {
