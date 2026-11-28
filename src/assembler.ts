@@ -42,7 +42,7 @@ import { DeclarationsStripping, HeritageReference, HeritageTransformation } from
 import { isAllowedCovariantSubtype } from './type-analysis';
 import { compareUnionMembers, createTypeResolver, typeReferenceEqual, typeReferenceToString } from './type-reference';
 import { isBehavioralInterfaceType, isDataType, visitTypeReference } from './type-visitor';
-import { parentFqn } from './utils';
+import { JsiiError, parentFqn } from './utils';
 import { Validator } from './validator';
 import { SHORT_VERSION, VERSION } from './version';
 import { parseWarningCodes, suppressInline } from './warnings';
@@ -316,7 +316,11 @@ export class Assembler {
     this.currentStability = options.defaultStability;
     this.stripDeprecated = !!options.stripDeprecated;
 
-    if (options.stripDeprecatedAllowListFile && fs.existsSync(options.stripDeprecatedAllowListFile)) {
+    if (this.stripDeprecated && options.stripDeprecatedAllowListFile) {
+      // Like the classic assembler: a missing allow-list fails the build.
+      if (!fs.existsSync(options.stripDeprecatedAllowListFile)) {
+        throw new JsiiError(`--strip-deprecated file not found: ${options.stripDeprecatedAllowListFile}`);
+      }
       this.stripAllowList = new Set(
         fs
           .readFileSync(options.stripDeprecatedAllowListFile, 'utf8')

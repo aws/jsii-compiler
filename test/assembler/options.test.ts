@@ -1,8 +1,7 @@
 import { compileJsiiForTest } from '../../src';
 
 describe('stripDeprecatedAllowListFile', () => {
-  // @TODO(ts7): the TypeScript 7 compiler does not check that the --strip-deprecated allow-list file exists
-  test.skip('fails when the allow-list file does not exist', () => {
+  test('fails when the allow-list file does not exist', () => {
     const allowListFile = '/this/file/does/not/exist.txt';
 
     expect(() =>
