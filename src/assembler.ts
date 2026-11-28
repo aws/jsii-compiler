@@ -201,13 +201,11 @@ export class Assembler {
    * The trace lines of the walk over the exports (entering and leaving a submodule or namespace, a type left out
    * for `@internal`), made while the types are registered and logged in the order of the types they surround.
    */
-  private readonly walkTrace: Array<{ pos: number; text?: string; replayOf?: string; internalOf?: string }> = [];
+  private readonly walkTrace: Array<{ pos: number; text: string }> = [];
   /** The member trace lines of the type being visited, in the order the classic assembler made them. */
   private memberTrace?: Array<{ order: number; text: string }>;
   private memberTraceOrder = 0;
   private registeringSeq = 0;
-  private visitLog?: Array<{ level: 'trace' | 'debug' | 'info'; text: string }>;
-  private readonly visitLogOf = new Map<RegisteredType, Array<{ level: 'trace' | 'debug' | 'info'; text: string }>>();
 
   // Perf caches: memoize per-symbol doc reads (each is an RPC), keyed by
   // the symbol's declaration coordinate (path:index), which is stable.
@@ -366,22 +364,18 @@ export class Assembler {
     this._registerModuleExports(moduleExports, moduleSymbol.declarations?.[0]?.path);
 
     this._prefetchMembersOfTypes();
-    const logging = LOG.isInfoEnabled();
-    try {
-      for (const entry of this.exported) {
-        this.visitLog = logging ? [] : undefined;
-        try {
-          this._visitNode(entry.name, entry.sym, entry.decl, entry.fqn);
-        } finally {
-          if (this.visitLog != null) {
-            this.visitLogOf.set(entry, this.visitLog);
-          }
-          this.visitLog = undefined;
-        }
+    // The lines of the walk over the exports recorded at a position come before the type visited at that position.
+    let walked = 0;
+    const logWalkUpTo = (pos: number) => {
+      for (; walked < this.walkTrace.length && this.walkTrace[walked].pos <= pos; walked++) {
+        LOG.trace(this.walkTrace[walked].text);
       }
-    } finally {
-      this._logVisits();
+    };
+    for (const entry of this.exported) {
+      logWalkUpTo(this.exportedSeq.get(entry) ?? 0);
+      this._visitNode(entry.name, entry.sym, entry.decl, entry.fqn);
     }
+    logWalkUpTo(Infinity);
 
     this._propagateDatatype();
 
@@ -1471,13 +1465,8 @@ export class Assembler {
           continue;
         }
         if (extraFqns.has(fqn)) {
-          // The classic assembler visited the type again for this export, with the same result; only its log is
-          // repeated here.
-          // @TODO(NEXT): this keeps the log of main, which visits a type once per export
-          // (https://github.com/aws/jsii-compiler/issues/3151). After 7.1's first release: log it once.
-          if (LOG.isInfoEnabled()) {
-            this.walkTrace.push({ pos: c.seq, replayOf: fqn });
-          }
+          // A type exported more than once under one fqn is visited once. Main visits it once per export, and logs
+          // it each time (https://github.com/aws/jsii-compiler/issues/3151); 7.1 deliberately does not (TYPESCRIPT-7.md).
           continue;
         }
         extraFqns.add(fqn);
@@ -1518,47 +1507,6 @@ export class Assembler {
     this.walkTrace.sort((x, y) => x.pos - y.pos);
   }
 
-  /**
-   * Print the lines of the visits (see `_log`) with those of the walk over the exports, in the order of the classic
-   * assembler: the lines recorded at a position come before the type visited at that position.
-   */
-  private _logVisits(): void {
-    let walked = 0;
-    const logWalkUpTo = (pos: number) => {
-      for (; walked < this.walkTrace.length && this.walkTrace[walked].pos <= pos; walked++) {
-        const { text, replayOf } = this.walkTrace[walked];
-        if (text != null) {
-          LOG.trace(text);
-        }
-        if (replayOf != null) {
-          // The type is exported again under the same fqn: the classic assembler visited it again, with the same lines.
-          for (const entry of this.exported) {
-            if (entry.fqn === replayOf || entry.fqn.startsWith(`${replayOf}.`)) {
-              this._printVisit(entry);
-            }
-          }
-          // A type left out for `@internal` is logged by the walk.
-          for (const other of this.walkTrace) {
-            if (other.internalOf === replayOf && other.text != null) {
-              LOG.trace(other.text);
-            }
-          }
-        }
-      }
-    };
-    for (const entry of this.exported) {
-      logWalkUpTo(this.exportedSeq.get(entry) ?? 0);
-      this._printVisit(entry);
-    }
-    logWalkUpTo(Infinity);
-  }
-
-  private _printVisit(entry: RegisteredType): void {
-    for (const { level, text } of this.visitLogOf.get(entry) ?? []) {
-      LOG[level](text);
-    }
-  }
-
   /** A line of the walk over the exports, in the namespace `prefix` (an fqn prefix) at position `pos`. */
   private _traceWalk(pos: number, what: string, prefix: string, name: string): void {
     if (LOG.isTraceEnabled()) {
@@ -1588,19 +1536,7 @@ export class Assembler {
     if (this.memberTrace != null) {
       this.memberTrace.push({ order: this.memberTraceOrder, text });
     } else {
-      this._log('trace', text);
-    }
-  }
-
-  /**
-   * Log a line made while a type is visited. The lines of each type are kept and printed once all types are
-   * visited, so that a type visited twice by the classic assembler can be logged twice (see `_registerModuleExports`).
-   */
-  private _log(level: 'trace' | 'debug' | 'info', text: string): void {
-    if (this.visitLog != null) {
-      this.visitLog.push({ level, text });
-    } else {
-      LOG[level](text);
+      LOG.trace(text);
     }
   }
 
@@ -1609,7 +1545,7 @@ export class Assembler {
     this.memberTrace = undefined;
     // A stable sort keeps the order of the lines of one member.
     for (const { text } of (lines ?? []).sort((x, y) => x.order - y.order)) {
-      this._log('trace', text);
+      LOG.trace(text);
     }
   }
 
@@ -1655,7 +1591,6 @@ export class Assembler {
         ];
         this.walkTrace.push({
           pos: this.registeringSeq,
-          internalOf: fqn,
           text: this._processingText(kind ?? 'class', fqn, sym.name),
         });
       }
@@ -2057,7 +1992,7 @@ export class Assembler {
     this._validateSubmoduleNameConflicts(name, fqn, decl);
     this._validateNoNamespaceInType(sym, decl, fqn);
     if (LOG.isInfoEnabled()) {
-      this._log('info', `Registering JSII ${chalk.magenta(jsiiType.kind)}: ${chalk.green(jsiiType.fqn)}`);
+      LOG.info(`Registering JSII ${chalk.magenta(jsiiType.kind)}: ${chalk.green(jsiiType.fqn)}`);
     }
     this.types[fqn] = jsiiType as spec.Type;
   }
@@ -2133,10 +2068,7 @@ export class Assembler {
     if (LOG.isTraceEnabled()) {
       // A single-valued enum is reduced to its only member by TypeScript, and the classic log used that symbol.
       const members = decl.members ?? [];
-      this._log(
-        'trace',
-        this._processingText('enum', fqn, members.length === 1 ? members[0].name?.text ?? sym.name : sym.name),
-      );
+      LOG.trace(this._processingText('enum', fqn, members.length === 1 ? members[0].name?.text ?? sym.name : sym.name));
     }
 
     this._assertNoDuplicateEnumValues(decl);
@@ -2254,7 +2186,7 @@ export class Assembler {
   private _visitInterface(sym: any, decl: any, name: string, jsiiType: any): void {
     jsiiType.kind = 'interface';
     if (LOG.isTraceEnabled()) {
-      this._log('trace', this._processingText('interface', jsiiType.fqn, sym.name));
+      LOG.trace(this._processingText('interface', jsiiType.fqn, sym.name));
     }
     const type = this.checker.getTypeAtLocation(decl);
     const baseTypes = type.getBaseTypes();
@@ -2688,7 +2620,7 @@ export class Assembler {
     const { SyntaxKind } = this.ts;
     jsiiType.kind = 'class';
     if (LOG.isTraceEnabled()) {
-      this._log('trace', this._processingText('class', jsiiType.fqn, sym.name));
+      LOG.trace(this._processingText('class', jsiiType.fqn, sym.name));
     }
     if (Case.pascal(sym.name) !== sym.name) {
       this._report(JsiiDiagnostic.JSII_8000_PASCAL_CASED_TYPE_NAMES, this._nameOrDeclaration(decl), sym.name);
@@ -2788,8 +2720,7 @@ export class Assembler {
                 }
                 if (LOG.isDebugEnabled()) {
                   this._traceIfPrivate(s);
-                  this._log(
-                    'debug',
+                  LOG.debug(
                     `Base class of ${chalk.green(jsiiType.fqn)} named ${chalk.green(
                       s.name,
                     )} is not exported, erasing it...`,
