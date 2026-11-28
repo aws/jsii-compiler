@@ -53,4 +53,17 @@ describe('JSII7999 documentation/documentation-error', () => {
       }),
     );
   });
+
+  test('is reported at the declaration of an interface with a malformed doc tag', () => {
+    const diagnostics = compileJsiiForDiagnostics(`
+      /** @stability unknown */
+      export interface IKlass {}
+    `);
+
+    const [diagnostic] = diagnostics.filter((d) => d.jsiiCode === 7999);
+    expect(diagnostic.messageText).toBe("Unrecognized @stability: 'unknown'");
+    expect(diagnostic.file!.text.slice(diagnostic.start!, diagnostic.start! + diagnostic.length!)).toBe(
+      'export interface IKlass {}',
+    );
+  });
 });

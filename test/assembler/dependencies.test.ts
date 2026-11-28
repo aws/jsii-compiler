@@ -107,6 +107,25 @@ describe('dependency without typings', () => {
     }));
 });
 
+describe('a dependency assembly without types', () => {
+  test('using a class that its declarations still have is reported as a type that is not exported', () =>
+    TestWorkspace.withWorkspace((ws) => {
+      ws.addDependency(compileJsiiForTest(DEPENDENCY_SOURCE, { packageJson: { name: 'dependency' } }));
+      // The "types" of an assembly are optional in the schema.
+      updateAssembly(ws.dependencyDir('dependency'), (assembly) => delete assembly.types);
+
+      const diagnostics = compileJsiiForDiagnostics(USES_FOREIGN, {
+        compilationDirectory: ws.rootDirectory,
+        packageJson: DEPENDS_ON_IT,
+      });
+
+      expect(diagnostics.filter((d) => d.jsiiCode > 3).map((d) => `JSII${d.jsiiCode}: ${d.messageText}`)).toEqual([
+        'JSII3002: Type "dependency.Foreign" cannot be used as a return type because it is not exported from dependency',
+        expect.stringMatching(/^JSII9002: Type "dependency\.Foreign" is part of the public API but not exported/),
+      ]);
+    }));
+});
+
 describe('an intersection of dependency interfaces', () => {
   // The assembly of a dependency is trusted input. These tests give it an inheritance list that does not match its types.
   test.each([

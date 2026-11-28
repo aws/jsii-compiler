@@ -1,5 +1,5 @@
 import { compileForDiagnostics } from './helpers';
-import { compileJsiiForTest } from '../../src';
+import { compileJsiiForTest, JsiiDiagnostic } from '../../src';
 
 // Broken re-exports are TypeScript errors. The assembler leaves reporting them to tsc.
 describe('re-exports that TypeScript cannot resolve', () => {
@@ -61,5 +61,40 @@ describe('a namespace declared before the class it is merged with', () => {
     ).toEqual([
       'TS2434: A namespace declaration cannot be located prior to a class or function with which it is merged.',
     ]);
+  });
+});
+
+describe('"export default" in the entry point', () => {
+  test('of an anonymous class registers a type named "default", which is reported', () => {
+    const result = compileJsiiForTest('export default class { public method() {} }', { captureDiagnostics: true });
+
+    const diagnostics = result.diagnostics.filter((d) => JsiiDiagnostic.isJsiiDiagnostic(d) && d.jsiiCode > 3);
+    expect(diagnostics.map((d) => `JSII${(d as JsiiDiagnostic).jsiiCode}: ${d.messageText}`)).toEqual([
+      expect.stringMatching(/^JSII5018: "default" is a reserved word in C#, Java, Go\./),
+      'JSII8000: Type names must be PascalCased. Rename "default" to "Default"',
+    ]);
+    // The class has no name, so the diagnostic is reported on the whole declaration.
+    const [pascalCase] = diagnostics.filter((d) => (d as JsiiDiagnostic).jsiiCode === 8000);
+    expect(pascalCase.file!.text.slice(pascalCase.start!, pascalCase.start! + pascalCase.length!)).toBe(
+      'export default class { public method() {} }',
+    );
+  });
+
+  test('of an anonymous class marked "@jsii ignore" does not export a type', () => {
+    const result = compileJsiiForTest('/** @jsii ignore */\nexport default class { public method() {} }');
+
+    expect(result.assembly.types ?? {}).toEqual({});
+  });
+
+  test('of a function is reported as unsupported, on the whole declaration', () => {
+    const result = compileJsiiForTest('export default function () { return 1; }', { captureDiagnostics: true });
+
+    const [unsupported] = result.diagnostics.filter((d) => JsiiDiagnostic.isJsiiDiagnostic(d) && d.jsiiCode === 9998);
+    expect(unsupported.messageText).toBe(
+      'Unsupported FunctionDeclaration node. This declaration will not be accessible from other languages.',
+    );
+    expect(unsupported.file!.text.slice(unsupported.start!, unsupported.start! + unsupported.length!)).toBe(
+      'export default function () { return 1; }',
+    );
   });
 });
