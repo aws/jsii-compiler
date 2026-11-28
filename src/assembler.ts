@@ -3677,8 +3677,10 @@ export class Assembler {
       // The TypeScript 7 checker already uses the `@param` text when the
       // parameter has no JSDoc of its own; the combination with an own comment,
       // and the fallback when the own JSDoc block only holds tags, are missing.
-      if (paramText && !ownText.includes(paramText.trim())) {
-        const combined = [ownText, paramText.trim()].filter(Boolean).join('\n');
+      // Without a JSDoc of its own, that text has its `{@link}` rendered as plain text: use the `@param` text itself.
+      const paramOnly = paramText != null && /\{@link/.test(paramText) && this._leadingJsDocBlock(decl) == null;
+      if (paramText && (paramOnly || !ownText.includes(paramText.trim()))) {
+        const combined = [paramOnly ? '' : ownText, paramText.trim()].filter(Boolean).join('\n');
         const { summary, remarks } = this._splitSummary(combined);
         delete d.remarks;
         if (remarks) {

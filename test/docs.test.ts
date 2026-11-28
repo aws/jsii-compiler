@@ -523,8 +523,7 @@ test('keeps the label of a {@link} that is never closed', () => {
 });
 
 // ----------------------------------------------------------------------
-// @TODO(ts7): the {@link} in the @param docs of a parameter property is not rendered like main yet
-test.skip('renders {@link} in docs of a property declared through a constructor parameter', () => {
+test('renders {@link} in docs of a property declared through a constructor parameter', () => {
   const assembly = compile(`
     export class Foo {
       /**
