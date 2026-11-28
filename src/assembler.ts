@@ -1735,46 +1735,31 @@ export class Assembler implements Emitter {
   }
 
   private assertNoDuplicateEnumValues(decl: ts.EnumDeclaration): void {
-    type EnumValue = {
-      name: string;
-      value: string;
-      decl: ts.DeclarationName | undefined;
-    };
+    // Compare the values, not the initializers: `1` and `0x1`, or an implicit `0` and `= 0`, are the same value, and
+    // TypeScript merges such members into one, so all but the first would be missing from the assembly.
+    const membersByValue = new Map<string | number, ts.EnumMember[]>();
+    for (const member of decl.members) {
+      const value = this._typeChecker.getConstantValue(member);
+      if (value === undefined) {
+        // Reported as JSII1012
+        continue;
+      }
+      const members = membersByValue.get(value) ?? [];
+      members.push(member);
+      membersByValue.set(value, members);
+    }
 
-    const enumValues = decl.members
-      .filter((m) => m.initializer)
-      .map((member): EnumValue => {
-        return {
-          value: member.initializer!.getText(),
-          name: member.name.getText(),
-          decl: ts.getNameOfDeclaration(member),
-        };
-      });
-
-    const hasDuplicateEnumValues = enumValues.some(
-      (val, _, arr) => arr.filter((e) => val.value === e.value).length > 1,
-    );
-
-    if (hasDuplicateEnumValues) {
-      const enumValueMap = enumValues.reduce<Record<string, EnumValue[]>>((acc, val) => {
-        if (!acc[val.value]) {
-          acc[val.value] = [];
+    for (const [value, members] of membersByValue) {
+      if (members.length > 1) {
+        const err = JsiiDiagnostic.JSII_1004_DUPLICATE_ENUM_VALUE.create(
+          members[0].name,
+          typeof value === 'string' ? `'${value}'` : `${value}`,
+          members.map((m) => m.name.getText()),
+        );
+        for (const member of members.slice(1)) {
+          err.addRelatedInformation(member.name, 'The conflicting declaration is here');
         }
-        acc[val.value].push(val);
-        return acc;
-      }, {});
-      for (const duplicateValue of Object.keys(enumValueMap)) {
-        if (enumValueMap[duplicateValue].length > 1) {
-          const err = JsiiDiagnostic.JSII_1004_DUPLICATE_ENUM_VALUE.create(
-            enumValueMap[duplicateValue][0].decl!,
-            duplicateValue,
-            enumValueMap[duplicateValue].map((v) => v.name),
-          );
-          for (let i = 1; i < enumValueMap[duplicateValue].length; i++) {
-            err.addRelatedInformation(enumValueMap[duplicateValue][i].decl!, 'The conflicting declaration is here');
-          }
-          this._diagnostics.push(err);
-        }
+        this._diagnostics.push(err);
       }
     }
   }

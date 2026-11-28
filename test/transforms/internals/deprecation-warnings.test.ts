@@ -50,10 +50,8 @@ describe('validators', () => {
 });
 
 describe('enums', () => {
-  // This documents current behavior, see https://github.com/aws/jsii-compiler/issues/2961
-  //
-  // The assembler can currently not produce an enum where two members have the same value (it silently drops one of
-  // them), so the assembly is built by hand here.
+  // The assembler rejects an enum where two members have the same value (JSII1004), so the assembly is built by hand
+  // here.
   test('deprecated members sharing their value with a non-deprecated member produce no warning', () => {
     const file = path.join(projectRoot, 'index.ts');
     fs.writeFileSync(file, 'export enum State { ON = 1, LEGACY_ON = 1, OFF = 2 }');
