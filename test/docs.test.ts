@@ -506,8 +506,7 @@ test('renders {@link} labels in @deprecated and @see as {@link target | label}',
 });
 
 // ----------------------------------------------------------------------
-// @TODO(ts7): TypeScript 7 renders a {@link} that is never closed differently ("See label ..."); match main
-test.skip('keeps the label of a {@link} that is never closed', () => {
+test('keeps the label of a {@link} that is never closed', () => {
   const assembly = compile(`
     /**
      * See {@link Foo | label
