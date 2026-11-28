@@ -2668,7 +2668,7 @@ export class Assembler implements Emitter {
 
     return (
       cmpDesc(a.abstract, b.abstract, (s) => (s ? 'abstract' : 'concrete')) ??
-      cmpDesc(a.async, b.async, (s) => (s ? 'async' : 'async')) ??
+      cmpDesc(a.async, b.async, (s) => (s ? 'async' : 'not async')) ??
       cmpDesc(a.protected, b.protected, (p) => (p ? 'protected' : 'public')) ??
       cmpDesc(a.variadic, b.variadic, (v) => (v ? 'variadic' : 'non-variadic')) ??
       cmpDesc(a.static, b.static, (s) => (s ? 'static' : 'instance member'))

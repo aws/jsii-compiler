@@ -93,6 +93,12 @@ describe('JSII1011 typescript-restriction/intersection-member-different', () => 
       b: 'member(x: string): void',
       reasons: ['parameter 1 variadic', 'parameter 1 not variadic'],
     },
+    {
+      what: 'a method being async',
+      a: 'member(): Promise<string>',
+      b: 'member(): string',
+      reasons: ['async', 'not async'],
+    },
   ])('is reported when the types disagree on $what', ({ a, b, reasons: [reasonA, reasonB] }) => {
     expect(compileIntersection(a, b)).toEqual([
       `JSII1011: Member member is different between types in a type intersection: IA (${reasonA}) and IB (${reasonB})`,
@@ -119,11 +125,6 @@ describe('JSII1011 typescript-restriction/intersection-member-different', () => 
       expect(compileIntersection(`readonly member: ${type}`, `readonly member: ${type}`)).toEqual([]);
     },
   );
-
-  // This documents current behavior, see https://github.com/aws/jsii-compiler/issues/2955
-  test('is not reported when the types disagree on a method being async', () => {
-    expect(compileIntersection('member(): Promise<string>', 'member(): string')).toEqual([]);
-  });
 });
 
 /**
