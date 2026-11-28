@@ -10,7 +10,8 @@ describe('re-exports that TypeScript cannot resolve', () => {
   });
 
   // This documents current behavior, see https://github.com/aws/jsii-compiler/issues/2952
-  // @TODO(ts7): the TypeScript 7 assembler reports no JSII9997 here
+  // @TODO(ts7): expects main's JSII9997 crash, which the TypeScript 7 assembler does not copy
+  // (https://github.com/aws/jsii-compiler/issues/2952)
   test.skip('"export * as ns from" a missing module also fails with JSII9997', () => {
     expect(compileForDiagnostics("export * as ns from './missing';")).toEqual([
       expect.stringMatching(/^JSII9997: Unknown error: Cannot read properties of undefined \(reading 'flags'\)/),
@@ -19,7 +20,8 @@ describe('re-exports that TypeScript cannot resolve', () => {
   });
 
   // This documents current behavior, see https://github.com/aws/jsii-compiler/issues/2952
-  // @TODO(ts7): the TypeScript 7 assembler reports no JSII9997 here
+  // @TODO(ts7): expects main's JSII9997 crash, which the TypeScript 7 assembler does not copy
+  // (https://github.com/aws/jsii-compiler/issues/2952)
   test.skip('"export * as ns from" a module specifier that is not a string also fails with JSII9997', () => {
     expect(compileForDiagnostics('export * as ns from specifier;')).toEqual([
       expect.stringMatching(/^JSII9997: Unknown error: Cannot read properties of undefined \(reading 'flags'\)/),
