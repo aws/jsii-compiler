@@ -1590,6 +1590,17 @@ export class Assembler {
         return;
       }
     }
+    // Classic: only a declaration with an `export` modifier is visited. A type exported only by `export { X }`, or
+    // declared in an ambient namespace without `export`, is left out.
+    // @TODO(NEXT): such a type is exported by the module but missing from the assembly, as on main
+    // (https://github.com/aws/jsii-compiler/issues/3157). After 7.1's first release: visit every exported type.
+    const decl = sym.declarations?.[0]?.resolve(this.project);
+    if (!decl) {
+      return;
+    }
+    if (!(decl.modifiers ?? []).some((m: any) => m.kind === SyntaxKind.ExportKeyword)) {
+      return;
+    }
     // Classic: types marked @internal (or @jsii ignore) are skipped. A type that only has an underscored name is
     // still visited (and reported as JSII8000), but it is hidden: references to it do not resolve to it.
     const hiddenByName = sym.name.startsWith('_');
@@ -1610,7 +1621,7 @@ export class Assembler {
     }
     if (this._shouldStrip(sym, fqn, this.defaultStability)) {
       this.strippedTypeSymIds.add(sym.id);
-      const strippedDecl = sym.declarations?.[0]?.resolve(this.project);
+      const strippedDecl = decl;
       this.strippedTypeDecls.set(fqn, strippedDecl);
       if (!this.strippedFqnBySymbolId.has(sym.id)) {
         this.strippedFqnBySymbolId.set(sym.id, fqn);
@@ -1627,10 +1638,6 @@ export class Assembler {
           locationInModule: this._locationOf(strippedDecl),
         });
       }
-    }
-    const decl = sym.declarations?.[0]?.resolve(this.project);
-    if (!decl) {
-      return;
     }
     // Classic: a stripped type is visited like any other (its diagnostics, its nested types), then removed from the
     // assembly; references to it do not resolve to it.
