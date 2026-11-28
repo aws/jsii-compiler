@@ -635,6 +635,7 @@ export function buildProject(options: BuildProjectOptions): BuildProjectResult {
     let declarationsStripping: DeclarationsStripping | undefined;
     if (!project.program.getSourceFile(entry)) {
       settleTsDiagnostics();
+      log4js.getLogger('jsii/assembler').debug('Skipping emit due to errors.');
       logFailure('Type model', undefined);
       diagnostics.push(missingEntryDiagnostic(entry, projectInfo, tscRootDir, tscOutDir));
     } else {
