@@ -129,9 +129,9 @@ describe('a dependency assembly without types', () => {
 describe('an intersection of dependency interfaces', () => {
   // The assembly of a dependency is trusted input. These tests give it an inheritance list that does not match its types.
   test.each([
-    { reason: 'is not in the assembly', base: 'dependency.Gone', error: 'unresolvable base' },
-    { reason: 'is not an interface', base: 'dependency.Klass', error: 'non-interface base' },
-  ])('fails with an internal error when a base interface $reason', ({ base, error }) =>
+    { reason: 'is not in the assembly', base: 'dependency.Gone' },
+    { reason: 'is not an interface', base: 'dependency.Klass' },
+  ])('compiles when a base interface $reason', ({ base }) =>
     TestWorkspace.withWorkspace((ws) => {
       ws.addDependency(
         compileJsiiForTest(
@@ -158,12 +158,8 @@ describe('an intersection of dependency interfaces', () => {
         { compilationDirectory: ws.rootDirectory, packageJson: DEPENDS_ON_IT },
       );
 
-      expect(diagnostics.map((d) => ({ code: d.jsiiCode, message: `${d.messageText}`.split('\n')[0] }))).toEqual([
-        {
-          code: 9997,
-          message: expect.stringContaining(`Impossible to have ${error} in allInterfacesRecursively()`),
-        },
-      ]);
+      // Codes 1 to 3 are the package.json and README warnings every test package gets.
+      expect(diagnostics.filter((d) => d.jsiiCode > 3).map((d) => `JSII${d.jsiiCode}: ${d.messageText}`)).toEqual([]);
     }),
   );
 });

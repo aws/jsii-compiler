@@ -2745,15 +2745,12 @@ export class Assembler implements Emitter {
       }
 
       for (const baseRef of int.interfaces ?? []) {
-        const base = this._dereference(baseRef, undefined, 'used-in-syntax');
-        if (!base) {
-          throw new Error('Impossible to have unresolvable base in allInterfacesRecursively()');
+        // A dependency assembly can list a base that is missing or is not an interface. That is not
+        // something the code being compiled can fix, so only follow the bases that resolve.
+        const base = this._dereference(baseRef, undefined, 'just-validating');
+        if (base && spec.isInterfaceType(base)) {
+          recurse.call(this, base);
         }
-        if (!spec.isInterfaceType(base)) {
-          throw new Error('Impossible to have non-interface base in allInterfacesRecursively()');
-        }
-
-        recurse.call(this, base);
       }
     }
   }
