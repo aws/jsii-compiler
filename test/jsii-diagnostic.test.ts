@@ -112,24 +112,28 @@ describe('jsii diagnostics', () => {
     });
 
     describe('registration of duplicates', () => {
-      // This documents current behavior, see https://github.com/aws/jsii-compiler/issues/2947
-      // The constructor checks `code in Code.byCode` (a Map), which is never true, so duplicates are silently accepted
-      // and replace the previously registered diagnostic.
-      test('a duplicate code or name is accepted and replaces the previous registration', () => {
-        const first = Code.error({ code: 987001, name: 'test-only/duplicate', formatter: () => 'first' });
-        const duplicate = Code.error({ code: 987001, name: 'test-only/duplicate', formatter: () => 'second' });
+      test('a duplicate code is rejected', () => {
+        Code.error({ code: 987001, name: 'test-only/duplicate-code', formatter: () => 'first' });
 
-        expect(duplicate).not.toBe(first);
-        expect(Code.lookup(987001)).toBe(duplicate);
-        expect(Code.lookup('test-only/duplicate')).toBe(duplicate);
+        const duplicate = () => Code.error({ code: 987001, name: 'test-only/other-name', formatter: () => 'second' });
+        expect(duplicate).toThrow('Attempted to create two instances of Code with code 987001');
+        expect(Code.lookup('test-only/other-name')).toBeUndefined();
       });
 
-      // This documents current behavior, see https://github.com/aws/jsii-compiler/issues/2947
-      // The name is looked up with `in` on a Map, so only the names of properties of the Map are rejected.
-      test('a name that is a property of the registry is rejected', () => {
-        expect(() => Code.error({ code: 987002, name: 'size', formatter: () => 'x' })).toThrow(
-          'Attempted to create two instances of Code with name size',
-        );
+      test('a duplicate name is rejected', () => {
+        Code.error({ code: 987002, name: 'test-only/duplicate-name', formatter: () => 'first' });
+
+        const duplicate = () =>
+          Code.error({ code: 987003, name: 'test-only/duplicate-name', formatter: () => 'second' });
+        expect(duplicate).toThrow('Attempted to create two instances of Code with name test-only/duplicate-name');
+        expect(Code.lookup(987003)).toBeUndefined();
+      });
+
+      test('a name that is a property of the registry is accepted', () => {
+        // `in` used to check the properties of the Map instead of its entries, so this name was rejected.
+        const code = Code.error({ code: 987004, name: 'size', formatter: () => 'x' });
+
+        expect(Code.lookup('size')).toBe(code);
       });
     });
   });

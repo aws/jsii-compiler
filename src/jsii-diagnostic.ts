@@ -138,10 +138,10 @@ export class Code<T extends DiagnosticMessageFormatter = DiagnosticMessageFormat
     this.#defaultCategory = defaultCategory;
     this.#formatter = formatter;
 
-    if (code in Code.byCode) {
+    if (Code.byCode.has(code)) {
       throw new Error(`Attempted to create two instances of ${this.constructor.name} with code ${code}`);
     }
-    if (name in Code.byName) {
+    if (Code.byName.has(name)) {
       throw new Error(`Attempted to create two instances of ${this.constructor.name} with name ${name}`);
     }
     Code.byCode.set(code, this);
