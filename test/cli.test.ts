@@ -493,6 +493,21 @@ describe('jsii validate-tsconfig', () => {
     expect(result.stdout).toContain(violation);
   });
 
+  test('the configuration file and --rule-set given on the command line win over package.json', async () => {
+    const dir = project(
+      {
+        'tsconfig.json': JSON.stringify(userTsconfig({ strict: false })),
+        'custom.json': JSON.stringify(userTsconfig()),
+      },
+      { jsii: { targets: {}, tsconfig: 'tsconfig.json', validateTsconfig: 'off' } },
+    );
+
+    const result = await runCli(dir, 'validate-tsconfig', 'custom.json', '--rule-set', 'minimal');
+
+    expect(result.exitCode).toBeUndefined();
+    expect(result.stdout).toContain('✨ "custom.json" is valid against rule set "minimal"');
+  });
+
   test('works without a package.json', async () => {
     const dir = project({ 'package.json': null, 'tsconfig.json': JSON.stringify(userTsconfig()) });
 
@@ -500,6 +515,55 @@ describe('jsii validate-tsconfig', () => {
 
     expect(result.exitCode).toBeUndefined();
     expect(result.stdout).toContain('is valid');
+  });
+});
+
+describe('colors', () => {
+  // ANSI escape sequences, such as "\u001b[91m" for red.
+  // eslint-disable-next-line no-control-regex
+  const ANSI = /\u001b\[[\d;]*m/;
+
+  /** Runs the CLI as if standard output and standard error were (or were not) a terminal. */
+  async function runCliOnTerminal(isTTY: boolean, cwd: string, ...args: string[]) {
+    const original = { stdout: process.stdout.isTTY, stderr: process.stderr.isTTY };
+    process.stdout.isTTY = isTTY;
+    process.stderr.isTTY = isTTY;
+    try {
+      return await runCli(cwd, ...args);
+    } finally {
+      process.stdout.isTTY = original.stdout;
+      process.stderr.isTTY = original.stderr;
+    }
+  }
+
+  const brokenProject = () => project({ 'index.ts': 'export class Klass { public method(): string { return 1; } }' });
+
+  test('are used for diagnostics and errors when the output is a terminal', async () => {
+    const result = await runCliOnTerminal(true, brokenProject());
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stdout).toContain('TS2322');
+    expect(result.stdout).toMatch(ANSI);
+    expect(result.stderr).toContain('Compilation errors prevented the JSII assembly from being created');
+    expect(result.stderr).toMatch(ANSI);
+  });
+
+  test('are used for the errors of the CLI when the output is a terminal', async () => {
+    const result = await runCliOnTerminal(true, project(), '--tsconfig', 'missing.json');
+
+    expect(result.exitCode).toBe(-1);
+    expect(result.stderr).toContain('\u001b[91m[ERROR]\u001b[39m Failed to load tsconfig at');
+  });
+
+  test('are not used when the output is not a terminal', async () => {
+    const compiled = await runCliOnTerminal(false, brokenProject());
+    const failed = await runCliOnTerminal(false, project(), '--tsconfig', 'missing.json');
+
+    expect(compiled.stdout).toContain('TS2322');
+    expect(compiled.stdout).not.toMatch(ANSI);
+    expect(compiled.stderr).not.toMatch(ANSI);
+    expect(failed.stderr).toContain('[ERROR] Failed to load tsconfig at');
+    expect(failed.stderr).not.toMatch(ANSI);
   });
 });
 
@@ -551,6 +615,24 @@ describe('current behavior that is reported as an issue', () => {
     expect(result.exitCode).toBe(1);
     expect(result.stdout).toContain('JSII0004: Could not find "main" file');
     expect(result.stdout).not.toContain('TS18003');
+  });
+
+  // https://github.com/aws/jsii-compiler/issues/3144
+  test('validate-tsconfig crashes on an unknown rule set in package.json, where compile reports an error', async () => {
+    const dir = project(
+      { 'tsconfig.json': JSON.stringify(userTsconfig()) },
+      { jsii: { targets: {}, validateTsconfig: 'bogus' } },
+    );
+
+    const validated = await run(dir, 'validate-tsconfig');
+    const compiled = await run(dir);
+
+    expect(validated.exitCode).toBe(-1);
+    expect(validated.stderr).toContain("Error: TypeError: Cannot read properties of undefined (reading 'rules')");
+    expect(compiled.exitCode).toBe(-1);
+    expect(compiled.stderr).toContain(
+      '[ERROR] Invalid validateTsconfig "bogus", it must be one of strict, generated, minimal, off',
+    );
   });
 
   describe('tsconfig validation with "paths"', () => {

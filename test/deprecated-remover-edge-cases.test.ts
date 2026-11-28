@@ -248,6 +248,22 @@ describe('leftover usage of deprecated types', () => {
     );
   });
 
+  test('is reported on the method when its return type is inferred', () => {
+    const [diagnostic] = leftoverDiagnostics(`
+      ${PRELUDE}
+      export class Klass {
+        public method() { return {} as IOld; }
+      }
+    `);
+
+    expect(diagnostic.messageText).toBe(
+      'Method has @deprecated type testpkg.IOld, and it is erased by --strip-deprecated.',
+    );
+    expect(diagnostic.file?.text.slice(diagnostic.start, diagnostic.start! + diagnostic.length!)).toBe(
+      'public method() { return {} as IOld; }',
+    );
+  });
+
   test('refers to the declaration of the deprecated type', () => {
     const [diagnostic] = leftoverDiagnostics(`
       ${PRELUDE}

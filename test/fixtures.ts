@@ -69,6 +69,14 @@ export interface LockOptions {
    * @default 120_000
    */
   readonly wait?: number;
+
+  /**
+   * The path of the lock file. Tests that exercise `Lock` itself can pass their own path, so they do not compete with
+   * the tests that use the fixtures.
+   *
+   * @default - the lock file in the fixtures directory
+   */
+  readonly lockFile?: string;
 }
 
 export class Lock {
@@ -80,25 +88,36 @@ export class Lock {
    *
    * @returns the acquired lock.
    */
-  public static acquire({ pollPeriod, stale = 120_000, wait = 120_000 }: LockOptions = {}): Promise<Lock> {
+  public static acquire({
+    pollPeriod,
+    stale = 120_000,
+    wait = 120_000,
+    lockFile = Lock.#DEFAULT_LOCKFILE,
+  }: LockOptions = {}): Promise<Lock> {
     return new Promise((ok, ko) => {
-      lock(Lock.#LOCKFILE, { pollPeriod, stale, wait }, (err) => {
+      lock(lockFile, { pollPeriod, stale, wait }, (err) => {
         if (err != null) {
           return ko(err);
         }
-        return ok(new Lock());
+        return ok(new Lock(lockFile));
       });
     });
   }
 
-  static readonly #LOCKFILE = join(FIXTURES_ROOT, '.lock');
+  static readonly #DEFAULT_LOCKFILE = join(FIXTURES_ROOT, '.lock');
+
+  readonly #lockFile: string;
+
+  private constructor(lockFile: string) {
+    this.#lockFile = lockFile;
+  }
 
   /**
    * Releases the resource that has been acquired by this lock.
    */
   public release(): Promise<void> {
     return new Promise<void>((ok, ko) =>
-      unlock(Lock.#LOCKFILE, (err) => {
+      unlock(this.#lockFile, (err) => {
         if (err != null) {
           return ko(err);
         }
