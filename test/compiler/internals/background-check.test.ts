@@ -68,6 +68,8 @@ beforeEach(() => {
 
 afterEach(() => {
   fs.rmSync(projectRoot, { recursive: true, force: true });
+  mockMinFiles = Infinity;
+  jest.restoreAllMocks();
 });
 
 function check(noEmitOnError: boolean) {
@@ -129,11 +131,6 @@ test('gives no result when the worker fails, so the build checks and emits in it
 
   expect(failing?.wait()).toBeUndefined();
   expect(fs.existsSync(path.join(projectRoot, 'out', 'a.js'))).toBe(false);
-});
-
-afterEach(() => {
-  mockMinFiles = Infinity;
-  jest.restoreAllMocks();
 });
 
 test('the emitted files are the same when the background check parses the emitted JavaScript', () => {
