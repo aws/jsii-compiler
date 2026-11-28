@@ -154,10 +154,6 @@ export class Compiler {
       failOnWarnings: this.options.failOnWarnings,
     });
 
-    if (!result.emitSkipped) {
-      LOG.info(`assembled ${result.typeCount} types, emitted ${result.emittedFiles.length} files`);
-    }
-
     // Some extra validation on the config.
     // Make sure that { "./.warnings.jsii.js": "./.warnings.jsii.js" } is in the set of
     // exports, if they are specified.
@@ -639,6 +635,7 @@ export function buildProject(options: BuildProjectOptions): BuildProjectResult {
     let declarationsStripping: DeclarationsStripping | undefined;
     if (!project.program.getSourceFile(entry)) {
       settleTsDiagnostics();
+      log4js.getLogger('jsii/assembler').debug('Skipping emit due to errors.');
       logFailure('Type model', undefined);
       diagnostics.push(missingEntryDiagnostic(entry, projectInfo, tscRootDir, tscOutDir));
     } else {
@@ -654,6 +651,7 @@ export function buildProject(options: BuildProjectOptions): BuildProjectResult {
         tscRootDir,
         tscOutDir,
         readme: loadReadme(projectRoot),
+        compressAssembly: options.compressAssembly,
       });
 
       let assembled: spec.Assembly | undefined;
