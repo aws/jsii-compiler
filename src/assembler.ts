@@ -284,6 +284,7 @@ export class Assembler {
 
   /** The export symbol of each submodule, by submodule fqn (classic `_submodules` keys). */
   private readonly submoduleSymbols = new Map<string, any>();
+  private submodulesByParent?: Map<string, any[]>;
   /** The declaration each type and member of the assembly was read from (classic `node-bindings`). */
   private readonly relatedNodes = new WeakMap<object, any>();
   /** What the type being converted by `_typeReference` is used for, for JSII3001/JSII3002 (classic `purpose`). */
@@ -2017,11 +2018,20 @@ export class Assembler {
    * Submodules may be renamed by `.jsiirc.json`; that is not considered.
    */
   private _validateSubmoduleNameConflicts(name: string, fqn: string, decl: any): void {
-    const typeFqnPrefix = parentFqn(fqn);
-    for (const [submoduleFqn, submodule] of this.submoduleSymbols) {
-      if (typeFqnPrefix !== parentFqn(submoduleFqn)) {
-        continue;
+    // The submodules are all registered before the first type is visited: index them by parent once, in their order.
+    if (this.submodulesByParent == null) {
+      this.submodulesByParent = new Map();
+      for (const [submoduleFqn, submodule] of this.submoduleSymbols) {
+        const parent = parentFqn(submoduleFqn);
+        const siblings = this.submodulesByParent.get(parent);
+        if (siblings) {
+          siblings.push(submodule);
+        } else {
+          this.submodulesByParent.set(parent, [submodule]);
+        }
       }
+    }
+    for (const submodule of this.submodulesByParent.get(parentFqn(fqn)) ?? []) {
       const candidates = Array.from(
         new Set([submodule.name, Case.camel(submodule.name), Case.pascal(submodule.name), Case.snake(submodule.name)]),
       );
