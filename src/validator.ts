@@ -434,6 +434,7 @@ function _defaultValidations(): ValidationFunction[] {
         );
         return;
       }
+      const liftedStruct = _liftedStructParameter(expectedParams);
       for (let i = 0; i < expectedParams.length; i++) {
         const expParam = expectedParams[i];
         const actParam = actualParams[i];
@@ -482,7 +483,34 @@ function _defaultValidations(): ValidationFunction[] {
             ),
           );
         }
+        // A parameter's name only matters if callers can pass it by keyword. Variadic parameters can't be
+        // (`*args` in Python), and the lifted struct parameter's own name never appears.
+        if (expParam.name !== actParam.name && !expParam.variadic && !actParam.variadic && expParam !== liftedStruct) {
+          diagnostic(
+            JsiiDiagnostic.JSII_5022_OVERRIDE_CHANGES_PARAM_NAME.create(
+              declarationName(actParamNode),
+              label,
+              action,
+              actParam,
+              expParam,
+            ).maybeAddRelatedInformation(declarationName(expParamNode), 'The implemented declaration is here.'),
+          );
+        }
       }
+    }
+
+    /**
+     * The parameter that is "lifted" in Python, if any: the last parameter, when it is a non-variadic struct.
+     * Python replaces it with keyword arguments for the struct's fields, so its own name never appears.
+     * Mirrors jsii-pacmak's `getliftedProp` (also the basis of JSII5017).
+     */
+    function _liftedStructParameter(parameters: readonly spec.Parameter[]): spec.Parameter | undefined {
+      const last = parameters[parameters.length - 1];
+      if (last == null || last.variadic || !spec.isNamedTypeReference(last.type)) {
+        return undefined;
+      }
+      const type = _dereference(last.type);
+      return type != null && spec.isInterfaceType(type) && type.datatype ? last : undefined;
     }
 
     function _assertPropertiesMatch(
