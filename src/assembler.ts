@@ -385,6 +385,7 @@ export class Assembler {
       check();
     }
 
+    this._resolveInheritedInitializers();
     this._validateTypesAgainstPositions();
 
     for (const fqn of this.strippedTypeDecls.keys()) {
@@ -1736,6 +1737,39 @@ export class Assembler {
   }
 
   /**
+   * Classes without their own constructor take the initializer of their base type (base types first, so chains of
+   * such classes resolve). The classic assembler did that while it assembled, so the checks that run afterwards (such
+   * as `_validateTypesAgainstPositions`) see these initializers.
+   */
+  private _resolveInheritedInitializers(): void {
+    const assembly = { name: this.assemblyName, types: this.types } as unknown as spec.Assembly;
+    const dereference = createTypeResolver(assembly, [
+      ...this.options.projectInfo.dependencyClosure,
+      ...this.externalAssemblies.values(),
+    ]);
+    const resolveInitializer = (fqn: string, seen = new Set<string>()): void => {
+      const type = this.types[fqn] as spec.ClassType | undefined;
+      if (type == null || !this.inheritsInitializer.has(fqn) || seen.has(fqn)) {
+        return;
+      }
+      seen.add(fqn);
+      this.inheritsInitializer.delete(fqn);
+      if (type.base != null && this.inheritsInitializer.has(type.base)) {
+        resolveInitializer(type.base, seen);
+      }
+      const baseType = type.base != null ? (dereference(type.base) as spec.ClassType | undefined) : undefined;
+      if (baseType?.initializer != null) {
+        (type as any).initializer = JSON.parse(JSON.stringify(baseType.initializer));
+      } else {
+        delete (type as any).initializer;
+      }
+    };
+    for (const fqn of [...this.inheritsInitializer]) {
+      resolveInitializer(fqn);
+    }
+  }
+
+  /**
    * Records the inheritance relationships of members and the jsii features the
    * assembly uses, then returns the sorted feature list (or `undefined` when
    * there is none; classic `_assemblyFeatures`).
@@ -1828,29 +1862,6 @@ export class Assembler {
       }
       return result;
     };
-
-    // Initializers of classes without their own constructor: copy the base type's
-    // (base types first, so chains of such classes resolve).
-    const resolveInitializer = (fqn: string, seen = new Set<string>()): void => {
-      const type = this.types[fqn] as spec.ClassType | undefined;
-      if (type == null || !this.inheritsInitializer.has(fqn) || seen.has(fqn)) {
-        return;
-      }
-      seen.add(fqn);
-      this.inheritsInitializer.delete(fqn);
-      if (type.base != null && this.inheritsInitializer.has(type.base)) {
-        resolveInitializer(type.base, seen);
-      }
-      const baseType = type.base != null ? (dereference(type.base) as spec.ClassType | undefined) : undefined;
-      if (baseType?.initializer != null) {
-        (type as any).initializer = JSON.parse(JSON.stringify(baseType.initializer));
-      } else {
-        delete (type as any).initializer;
-      }
-    };
-    for (const fqn of [...this.inheritsInitializer]) {
-      resolveInitializer(fqn);
-    }
 
     const methodCovariant = (actual: spec.Method, expected: spec.Method) =>
       !same(actual.returns, expected.returns) &&
@@ -2873,7 +2884,7 @@ export class Assembler {
     } else if (jsiiType.base) {
       // Classic: a class without its own constructor takes the initializer
       // recorded for its base type (own or foreign), verbatim. Resolved once all
-      // types are assembled, see _finalizeInheritance.
+      // types are assembled, see _resolveInheritedInitializers.
       this.inheritsInitializer.add(jsiiType.fqn);
     } else {
       // Classic: `{ docs: ctx.stability && { stability } }` with the package-level context.
