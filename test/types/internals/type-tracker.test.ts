@@ -37,13 +37,19 @@ describe('TypeTracker', () => {
     expect(members.Green.initializer?.getText()).toBe('"green"');
   });
 
-  test('throws if an enum member is not named by an identifier', () => {
+  test('returns an enum member named by a string literal under its text', () => {
     const tracker = new TypeTracker();
-    tracker.registerEnum('lib.Quoted', enumDeclaration('enum Quoted { "QUOTED" = 1 }'));
+    tracker.registerEnum('lib.Quoted', enumDeclaration('enum Quoted { PLAIN = 0, "QUOTED" = 1 }'));
 
-    // This documents current behavior, see https://github.com/aws/jsii-compiler/issues/2949
-    // The intended error ("Expected identifier, got ...") is masked by a TypeError thrown by
-    // JSON.stringify(), because AST nodes are circular structures.
-    expect(() => tracker.getEnumMembers('lib.Quoted')).toThrow('Converting circular structure to JSON');
+    expect(Object.keys(tracker.getEnumMembers('lib.Quoted'))).toEqual(['PLAIN', 'QUOTED']);
+  });
+
+  test('throws a readable error for an enum member with a computed name', () => {
+    const tracker = new TypeTracker();
+    tracker.registerEnum('lib.Computed', enumDeclaration('enum Computed { ["A"] = 1 }'));
+
+    expect(() => tracker.getEnumMembers('lib.Computed')).toThrow(
+      'Expected an identifier or a string literal, got ComputedPropertyName',
+    );
   });
 });

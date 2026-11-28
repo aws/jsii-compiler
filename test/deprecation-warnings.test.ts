@@ -359,8 +359,7 @@ class DeprecationError extends Error {
     expect(withWarnings.files['index.js']).not.toContain('// after');
   });
 
-  // This documents current behavior, see https://github.com/aws/jsii-compiler/issues/2949
-  test('fails with JSII9997 for an enum with a deprecated member and a member whose name is a string literal', () => {
+  test('generates functions for an enum with a deprecated member and a member whose name is a string literal', () => {
     const result = compileJsiiForTest(
       `
         export enum E {
@@ -370,14 +369,14 @@ class DeprecationError extends Error {
           'B' = 5,
         }
       `,
-      { captureDiagnostics: true },
+      undefined /* callback */,
       { addDeprecationWarnings: true },
     );
 
-    expect(result.type).toBe('failure');
-    expect(result.diagnostics.map((d) => `${d.messageText}`)).toEqual([
-      expect.stringContaining('Unknown error: Converting circular structure to JSON'),
-    ]);
+    expect(jsFunction(result, 'testpkg_E', '.warnings.jsii')).toContain('if (p === 1)');
+    expect(jsFunction(result, 'testpkg_E', '.warnings.jsii')).toContain(
+      'print("testpkg.E#OFF", "Use something else");',
+    );
   });
 
   // This documents current behavior, see https://github.com/aws/jsii-compiler/issues/2961
