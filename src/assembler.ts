@@ -2619,6 +2619,9 @@ export class Assembler {
     } else if (effectiveCtor) {
       const sig = this.checker.getSignatureFromDeclaration(effectiveCtor);
       const initializer: any = { locationInModule: this._locationOf(effectiveCtor) };
+      if ((effectiveCtor.modifiers ?? []).some((x: any) => x.kind === SyntaxKind.ProtectedKeyword)) {
+        initializer.protected = true;
+      }
       if (sig) {
         const params = sig.getParameters().map((p: any) => {
           const param = this._visitParameter(p);
@@ -2631,12 +2634,6 @@ export class Assembler {
           initializer.parameters = params;
           if (params.some((p: any) => p.variadic)) {
             initializer.variadic = true;
-          }
-          // strada quirk: `initializer.protected` is assigned inside its
-          // parameter loop, so a protected ZERO-parameter constructor does not
-          // get the flag. Reproduced bug-for-bug for parity.
-          if ((effectiveCtor.modifiers ?? []).some((x: any) => x.kind === SyntaxKind.ProtectedKeyword)) {
-            initializer.protected = true;
           }
         }
         this._verifyConsecutiveOptionals(effectiveCtor, initializer.parameters);
