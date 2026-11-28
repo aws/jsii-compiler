@@ -87,8 +87,13 @@ export function convertNewLineForJson(newLine: 0 | 1): string {
 // @TODO(NEXT): `esnext` and `react-jsx(dev)` get wrong names, as on main (aws/jsii-compiler#2990). After 7.1's first
 // release: name them as tsconfig.json spells them (`esnext`, `react-jsx`, `react-jsxdev`).
 export function convertForJson(opt: CompilerOptionsJson): CompilerOptionsJson {
+  // TypeScript's config parser attaches internal `pathsBasePath` when `paths` is set;
+  // drop it so JSON serialization and tsconfig validation only see user-facing options.
+  const rest = { ...opt };
+  delete rest.pathsBasePath;
+
   return {
-    ...opt,
+    ...rest,
     // `lib.es2022.d.ts` -> `es2022`
     ...convertHelper('lib', opt.lib, (lib) =>
       Array.isArray(lib) ? lib.map((l) => (typeof l === 'string' ? l.replace(/^lib\.(.*)\.d\.ts$/, '$1') : l)) : lib,
