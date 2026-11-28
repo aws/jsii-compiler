@@ -77,11 +77,11 @@ export function convertForJson(opt: ts.CompilerOptions): ts.CompilerOptions {
 
     // Re-write the module, targets & jsx to be the JSON format instead of Programmatic API
     ...enumHelper('importsNotUsedAsValues', opt.importsNotUsedAsValues, ts.ImportsNotUsedAsValues),
-    ...enumHelper('jsx', opt.jsx, ts.JsxEmit, Case.kebab),
+    ...valueHelper('jsx', opt.jsx, convertJsxForJson),
     ...enumHelper('module', opt.module, ts.ModuleKind),
     ...enumHelper('moduleResolution', opt.moduleResolution, ts.ModuleResolutionKind),
     ...enumHelper('moduleDetection', opt.moduleDetection, ts.ModuleDetectionKind),
-    ...enumHelper('target', opt.target, ts.ScriptTarget),
+    ...valueHelper('target', opt.target, convertScriptTargetForJson),
 
     // rewrite newline to be the JSON format instead of Programmatic API
     ...valueHelper('newLine', opt.newLine, convertNewLineForJson),
@@ -155,5 +155,76 @@ export function convertNewLineForJson(newLine: ts.NewLineKind): string {
       return 'crlf';
     case ts.NewLineKind.LineFeed:
       return 'lf';
+  }
+}
+
+/**
+ * This is annoying - the values expected in the tsconfig.json file are not
+ * the same as the enum constant names, or their values. So we need this
+ * function to map the "compiler API version" to the "tsconfig.json version"
+ *
+ * @param jsx the compiler form of the jsx configuration
+ *
+ * @return the equivalent value to put in tsconfig.json
+ */
+export function convertJsxForJson(jsx: ts.JsxEmit): string {
+  switch (jsx) {
+    case ts.JsxEmit.None:
+      return 'none';
+    case ts.JsxEmit.Preserve:
+      return 'preserve';
+    case ts.JsxEmit.React:
+      return 'react';
+    case ts.JsxEmit.ReactNative:
+      return 'react-native';
+    case ts.JsxEmit.ReactJSX:
+      return 'react-jsx';
+    case ts.JsxEmit.ReactJSXDev:
+      return 'react-jsxdev';
+  }
+}
+
+/**
+ * This is annoying - the values expected in the tsconfig.json file are not
+ * the same as the enum constant names, or their values. So we need this
+ * function to map the "compiler API version" to the "tsconfig.json version"
+ *
+ * @param target the compiler form of the target configuration
+ *
+ * @return the equivalent value to put in tsconfig.json
+ */
+export function convertScriptTargetForJson(target: ts.ScriptTarget): string {
+  switch (target) {
+    case ts.ScriptTarget.ES3:
+      return 'es3';
+    case ts.ScriptTarget.ES5:
+      return 'es5';
+    case ts.ScriptTarget.ES2015:
+      return 'es2015';
+    case ts.ScriptTarget.ES2016:
+      return 'es2016';
+    case ts.ScriptTarget.ES2017:
+      return 'es2017';
+    case ts.ScriptTarget.ES2018:
+      return 'es2018';
+    case ts.ScriptTarget.ES2019:
+      return 'es2019';
+    case ts.ScriptTarget.ES2020:
+      return 'es2020';
+    case ts.ScriptTarget.ES2021:
+      return 'es2021';
+    case ts.ScriptTarget.ES2022:
+      return 'es2022';
+    case ts.ScriptTarget.ES2023:
+      return 'es2023';
+    case ts.ScriptTarget.ES2024:
+      return 'es2024';
+    // `ESNext` and `Latest` are the same target; `Latest` is the name the
+    // reverse mapping of the enum returns, but users write `esnext`.
+    case ts.ScriptTarget.ESNext:
+    case ts.ScriptTarget.Latest:
+      return 'esnext';
+    default:
+      return ts.ScriptTarget[target].toLowerCase();
   }
 }
