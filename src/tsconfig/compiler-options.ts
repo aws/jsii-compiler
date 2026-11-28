@@ -75,10 +75,11 @@ export function convertNewLineForJson(newLine: 0 | 1): string {
 }
 
 /**
- * Converts compiler options as TypeScript's config parser returns them (enum
- * values as numbers, `lib` as file names) to the form a user writes in
- * `tsconfig.json`, which is the form the rule sets are written against. Values
- * already in that form (such as {@link BASE_COMPILER_OPTIONS}) are kept.
+ * Converts compiler options from the form TypeScript's config parser returns to
+ * the form a user writes in `tsconfig.json`, which the rule sets are written
+ * against. The parser gives enum values as numbers and `lib` entries as file
+ * names. Values already in the `tsconfig.json` form, such as those of
+ * {@link BASE_COMPILER_OPTIONS}, are kept.
  *
  * Like the classic compiler, enum values are named after their TypeScript enum
  * member: lower case, or kebab case for `jsx`. That gives `target: "latest"` for
@@ -107,7 +108,7 @@ export function convertForJson(opt: CompilerOptionsJson): CompilerOptionsJson {
   };
 }
 
-/** Converts the value of one option; like the classic compiler, a falsy value (`module: 0`) is kept as it is. */
+/** Converts the value of one option. Like the classic compiler, it keeps a falsy value, such as `module: 0`, as it is. */
 function convertHelper(name: string, value: unknown, converter: (value: unknown) => unknown): CompilerOptionsJson {
   if (!value) {
     return {};
@@ -116,9 +117,9 @@ function convertHelper(name: string, value: unknown, converter: (value: unknown)
 }
 
 /**
- * The name of the TypeScript 7 enum member for a numeric value (`NewLineKind`
- * names are `CRLF` and `LF`). Other values are kept. TypeScript 7 has no `ES5`
- * target, but its parser still takes `target: "es5"` (value 1): the caller names it.
+ * The name of the TypeScript 7 enum member for a numeric value. Other values are
+ * kept. TypeScript 7 has no `ES5` target, but its parser still takes
+ * `target: "es5"` and returns 1, so the caller names that value itself.
  */
 function enumName(
   value: unknown,
