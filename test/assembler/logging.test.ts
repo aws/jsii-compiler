@@ -19,8 +19,7 @@ describe('assembler logging', () => {
     });
   });
 
-  // @TODO(ts7): the TypeScript 7 assembler does not log "Registering JSII ..." for each type
-  test.skip('traces each declaration it processes, and logs each registered type', () => {
+  test('traces each declaration it processes, and logs each registered type', () => {
     compileJsiiForTest({
       'index.ts': `
         export * as sub from './sub';
