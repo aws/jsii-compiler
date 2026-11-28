@@ -15,9 +15,10 @@ import { emitProject } from './emitter';
 import { JsiiDiagnostic } from './jsii-diagnostic';
 import * as literate from './literate';
 import { ProjectInfo } from './project-info';
+import { DeclarationsStripping, MergedDeclarationError } from './transforms/deprecated-remover';
 import { DeprecationWarningsInjector, WARNINGSCODE_FILE_NAME } from './transforms/deprecation-warnings';
 import { TypeScriptConfig, TypeScriptConfigValidationRuleSet } from './tsconfig';
-import { BASE_COMPILER_OPTIONS, convertForJson, convertForTsconfigFile } from './tsconfig/compiler-options';
+import { BASE_COMPILER_OPTIONS, convertForJson } from './tsconfig/compiler-options';
 import { parseTsconfigJson, readTypeScriptConfigFile, TsconfigReadError } from './tsconfig/read';
 import { TypeScriptConfigValidator } from './tsconfig/tsconfig-validator';
 import { ValidationError } from './tsconfig/validator';
@@ -33,9 +34,6 @@ export interface CompilerOptions {
   projectInfo: ProjectInfo;
   /**
    * Whether the compiler should watch for changes or just compile once.
-   *
-   * Watch mode is not available on the TypeScript 7 backend; setting this to
-   * `true` makes `emit()` fail with an explicit error.
    */
   watch?: boolean;
   /** Whether to detect and generate TypeScript project references */
@@ -85,6 +83,26 @@ export interface EmitResult {
   readonly emittedFiles?: readonly string[];
 }
 
+/** Handle to stop watching. */
+export interface WatchHandle {
+  close(): void;
+}
+
+export interface NonBlockingWatchOptions {
+  /** Return a handle instead of never resolving. */
+  readonly nonBlocking: true;
+  /** Receives the TypeScript diagnostics of each compilation (default: logged). jsii's own are always logged. */
+  readonly reportDiagnostics?: (diagnostic: Diagnostic) => void;
+  /** Receives the watch status messages (default: printed). */
+  readonly reportWatchStatus?: (diagnostic: Diagnostic) => void;
+  /** Called after each compilation. */
+  readonly compilationComplete?: (emitResult: EmitResult) => void;
+}
+
+function defaultWatchStatusReporter(diagnostic: Diagnostic) {
+  console.log(`[${new Date().toLocaleTimeString()}] ${flattenDiagnosticMessageText(diagnostic.messageText)}\n`);
+}
+
 /**
  * Compiles a jsii project with the TypeScript 7 programmatic API.
  *
@@ -122,18 +140,12 @@ export class Compiler {
 
   /**
    * Compiles the configured project once.
-   */
-  /**
-   * Compiles the configured project once.
    *
    * @param files can be specified to override the standard source code location
    *              logic (the generated tsconfig then lists exactly these files).
    *              Useful for example when testing "negatives".
    */
   public emit(...files: string[]): EmitResult {
-    if (this.options.watch) {
-      throw new utils.JsiiError('--watch is not supported by the TypeScript 7 based compiler', true);
-    }
     if (files.length > 0 && this.userProvidedTypeScriptConfig) {
       throw new utils.JsiiError('Explicit source files cannot be combined with a user-provided tsconfig');
     }
@@ -146,17 +158,12 @@ export class Compiler {
       projectInfo: this.options.projectInfo,
       tsconfigFileName: this.configFileName,
       generatedTsconfig: !this.userProvidedTypeScriptConfig,
-      userTsconfig: this.userProvidedTypeScriptConfig ? this.tsconfig : undefined,
       stripDeprecated: this.options.stripDeprecated,
       stripDeprecatedAllowListFile: this.options.stripDeprecatedAllowListFile,
       addDeprecationWarnings: this.options.addDeprecationWarnings,
       compressAssembly: this.options.compressAssembly,
       failOnWarnings: this.options.failOnWarnings,
     });
-
-    if (!result.emitSkipped) {
-      LOG.info(`assembled ${result.typeCount} types, emitted ${result.emittedFiles.length} files`);
-    }
 
     // Some extra validation on the config.
     // Make sure that { "./.warnings.jsii.js": "./.warnings.jsii.js" } is in the set of
@@ -184,14 +191,107 @@ export class Compiler {
     };
   }
 
+  /**
+   * Watches for file-system changes and dynamically recompiles the project as needed. In non-blocking mode, this
+   * returns a handle to stop watching.
+   *
+   * @internal
+   */
+  public async watch(opts: NonBlockingWatchOptions): Promise<WatchHandle>;
+  /**
+   * Watches for file-system changes and dynamically recompiles the project as needed. In blocking mode, this results
+   * in a never-resolving promise.
+   */
+  public async watch(): Promise<never>;
+  public async watch(opts?: NonBlockingWatchOptions): Promise<WatchHandle | never> {
+    const reportStatus = opts?.reportWatchStatus ?? defaultWatchStatusReporter;
+    const status = (code: number, messageText: string) =>
+      reportStatus({
+        category: DiagnosticCategory.Message,
+        code,
+        messageText,
+        file: undefined,
+        start: undefined,
+        length: undefined,
+      });
+
+    const compile = () => {
+      const startTime = Date.now();
+      const emitResult = this.emit();
+
+      for (const diag of emitResult.diagnostics) {
+        if (diag.code === JSII_DIAGNOSTICS_CODE || opts?.reportDiagnostics == null) {
+          utils.logDiagnostic(diag, this.projectRoot);
+        } else {
+          opts.reportDiagnostics(diag);
+        }
+      }
+
+      console.log(
+        utils.formatCompilationSummary(emitResult.diagnostics, emitResult.emitSkipped, Date.now() - startTime),
+      );
+
+      const errors = emitResult.diagnostics.filter((d) => d.category === DiagnosticCategory.Error).length;
+      status(errors === 1 ? 6193 : 6194, `Found ${errors} error${errors === 1 ? '' : 's'}. Watching for file changes.`);
+      opts?.compilationComplete?.(emitResult);
+    };
+
+    // shortcut: watches every .ts/.tsx/.mts/.cts file under the project root except declaration files (those are
+    // emitted), plus a user-provided tsconfig; main watches exactly the files of the program. Upgrade when
+    // `CompilerHost` can report the program's files.
+    const isWatched = (file: string) =>
+      !file.split(path.sep).includes('node_modules') &&
+      ((/\.(?:[cm]?ts|tsx)$/.test(file) && !/\.d\.[cm]?ts$/.test(file)) ||
+        (this.userProvidedTypeScriptConfig && path.resolve(this.projectRoot, file) === this.configPath));
+
+    let timer: NodeJS.Timeout | undefined;
+    const watcher = fs.watch(this.projectRoot, { recursive: true }, (_event, file) => {
+      if (file == null || !isWatched(file)) {
+        return;
+      }
+      // Coalesce bursts of changes, like TypeScript does.
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        status(6032, 'File change detected. Starting incremental compilation...');
+        try {
+          compile();
+        } catch (e) {
+          if (!(e instanceof utils.JsiiError)) {
+            throw e;
+          }
+          LOG.error(e.message);
+        }
+      }, 250);
+    });
+    const handle: WatchHandle = {
+      close: () => {
+        clearTimeout(timer);
+        watcher.close();
+      },
+    };
+
+    // The watcher is started first, so a change made during the first compilation is not missed.
+    status(6031, 'Starting compilation in watch mode...');
+    try {
+      compile();
+    } catch (e) {
+      handle.close();
+      throw e;
+    }
+
+    if (opts?.nonBlocking) {
+      return handle;
+    }
+    // In blocking mode, returns a never-resolving promise.
+    return new Promise<never>(() => null);
+  }
+
   private configureTypeScript(): TypeScriptConfig {
     if (this.userProvidedTypeScriptConfig) {
       let config: TypeScriptConfig;
+      let configErrors: readonly unknown[];
       try {
-        // @TODO(NEXT): paths and `extends` of a --tsconfig in a subdirectory resolve against the project root, not the
-        // file's own directory as tsc does (aws/jsii-compiler#2991). After 7.1's first release: drop the
-        // `projectRoot` argument.
-        config = readTypeScriptConfigFile(this.configPath, this.projectRoot);
+        ({ config, errors: configErrors } = readTypeScriptConfigFile(this.configPath));
       } catch (e) {
         if (!(e instanceof TsconfigReadError)) {
           throw e;
@@ -209,8 +309,9 @@ export class Compiler {
         );
       }
 
-      // validate the user provided config
-      if (rules !== TypeScriptConfigValidationRuleSet.NONE) {
+      // validate the user provided config. With errors in it, TypeScript reports those with the build, like tsc,
+      // and the options it could read are not validated.
+      if (rules !== TypeScriptConfigValidationRuleSet.NONE && configErrors.length === 0) {
         const configName = path.relative(this.projectRoot, this.configPath);
         try {
           const validator = new TypeScriptConfigValidator(rules);
@@ -438,11 +539,6 @@ export interface BuildProjectOptions {
    * A generated config may be amended with an inferred `rootDir`.
    */
   readonly generatedTsconfig?: boolean;
-  /**
-   * The user-provided tsconfig as TypeScript's parser read it: `extends` resolved, bases that
-   * cannot be read, parsed or that are circular skipped, rejected options left out.
-   */
-  readonly userTsconfig?: TypeScriptConfig;
   readonly stripDeprecated?: boolean;
   readonly stripDeprecatedAllowListFile?: string;
   /** Whether to write `.warnings.jsii.js` (`--add-deprecation-warnings`). */
@@ -481,45 +577,6 @@ function deriveEntry(projectRoot: string, projectInfo: ProjectInfo, rootDir?: st
   return path.resolve(projectRoot, mainFile);
 }
 
-/**
- * Config file errors for parts of the tsconfig that jsii skips when it reads it, like
- * the classic compiler: a broken `extends` base (unreadable TS5083, circular TS18000,
- * or errors in the base file) and compiler options TypeScript rejects (unknown
- * TS5023/TS5025, wrong type TS5024, bad value TS6046, command line only TS6266).
- */
-// @TODO(NEXT): TS7 reports these tsconfig errors like tsc does; jsii hides them to match TS6-based main, which never
-// saw them (aws/jsii-compiler#2982, #2991, #3029). After 7.1's first release: report the program's config file
-// diagnostics and drop this set, `hasSkippedConfigErrors` and `flattenTsconfig`.
-const SKIPPED_CONFIG_ERRORS = new Set([5083, 18000, 5023, 5024, 5025, 6046, 6266]);
-
-function hasSkippedConfigErrors(program: any, tsconfigPath: string): boolean {
-  const errors: any[] = program.getConfigFileParsingDiagnostics?.() ?? [];
-  return errors.some(
-    (d) =>
-      SKIPPED_CONFIG_ERRORS.has(d.code) ||
-      (d.fileName != null && path.resolve(d.fileName) !== path.resolve(tsconfigPath)),
-  );
-}
-
-/**
- * A tsconfig text for a configuration TypeScript's parser already resolved: its
- * options (path options are absolute; `pathsBasePath` is internal, so `paths` are
- * made absolute against it instead) and its source files.
- */
-function flattenTsconfig(config: TypeScriptConfig): string {
-  const { pathsBasePath, ...compilerOptions } = convertForTsconfigFile(config.compilerOptions) as any;
-  if (compilerOptions.paths != null && compilerOptions.baseUrl == null && pathsBasePath != null) {
-    compilerOptions.paths = Object.fromEntries(
-      Object.entries(compilerOptions.paths as Record<string, string[]>).map(([k, v]) => [
-        k,
-        v.map((p) => path.posix.resolve(pathsBasePath, p)),
-      ]),
-    );
-  }
-  // `include` holds the parsed file names, as with the classic compiler.
-  return JSON.stringify({ files: config.include ?? [], compilerOptions });
-}
-
 /** The program reports config paths as absolute paths; record them relative to the project, like the classic compiler. */
 function relativeConfigPath(projectRoot: string, configPath: string | undefined): string | undefined {
   return configPath != null && path.isAbsolute(configPath) ? path.relative(projectRoot, configPath) : configPath;
@@ -555,20 +612,6 @@ export function buildProject(options: BuildProjectOptions): BuildProjectResult {
   let project = host.getProject();
   // The program's own diagnostics (options and config): the type check is the slow part (see `check` below).
   let tsDiagnostics = collectTsDiagnostics(project.program, CONFIG_DIAGNOSTICS);
-  let tsconfigText: string | undefined;
-
-  // The classic compiler built from the options it read itself and never saw the
-  // config file errors of a broken `extends` (missing, unparseable or circular
-  // base) or of options TypeScript rejects. TypeScript 7 reports those and then
-  // skips the emit. Build such a project from the configuration jsii read instead,
-  // which skips the broken bases and the rejected options.
-  if (options.userTsconfig != null && hasSkippedConfigErrors(project.program, host.tsconfigPath)) {
-    host.close();
-    tsconfigText = flattenTsconfig(options.userTsconfig);
-    host = CompilerHost.open(options.projectRoot, options.tsconfigFileName, tsconfigText);
-    project = host.getProject();
-    tsDiagnostics = collectTsDiagnostics(project.program, CONFIG_DIAGNOSTICS);
-  }
 
   // TypeScript 7 no longer infers `rootDir` from the common directory of the
   // sources when `outDir` is set (TS5011). The classic compiler relied on that
@@ -583,7 +626,6 @@ export function buildProject(options: BuildProjectOptions): BuildProjectResult {
       tsconfig.compilerOptions = { ...tsconfig.compilerOptions, rootDir: inferred };
       fs.writeFileSync(tsconfigPath, JSON.stringify(tsconfig, null, 2), 'utf8');
       host.close();
-      tsconfigText = undefined;
       host = CompilerHost.open(options.projectRoot, options.tsconfigFileName);
       project = host.getProject();
       tsDiagnostics = collectTsDiagnostics(project.program, CONFIG_DIAGNOSTICS);
@@ -629,7 +671,6 @@ export function buildProject(options: BuildProjectOptions): BuildProjectResult {
           packageDir: host.ts.packageDir,
           projectRoot,
           tsconfigPath: host.tsconfigPath,
-          tsconfigText,
           errorCategory: DiagnosticCategory.Error,
           categories: Object.values(DiagnosticCategory).filter((c): c is number => typeof c === 'number'),
           noEmitOnError: !!programOptions.noEmitOnError,
@@ -697,8 +738,10 @@ export function buildProject(options: BuildProjectOptions): BuildProjectResult {
     let jsiiFailed = true;
     let deprecationWarnings: DeprecationWarningsInjector | undefined;
     let strippedClasses: readonly spec.ClassType[] | undefined;
+    let declarationsStripping: DeclarationsStripping | undefined;
     if (!project.program.getSourceFile(entry)) {
       settleTsDiagnostics();
+      log4js.getLogger('jsii/assembler').debug('Skipping emit due to errors.');
       logFailure('Type model', undefined);
       diagnostics.push(missingEntryDiagnostic(entry, projectInfo, tscRootDir, tscOutDir));
     } else {
@@ -714,6 +757,7 @@ export function buildProject(options: BuildProjectOptions): BuildProjectResult {
         tscRootDir,
         tscOutDir,
         readme: loadReadme(projectRoot),
+        compressAssembly: options.compressAssembly,
       });
 
       let assembled: spec.Assembly | undefined;
@@ -732,6 +776,7 @@ export function buildProject(options: BuildProjectOptions): BuildProjectResult {
         }
         assembly = assembled;
         strippedClasses = assembler.strippedClasses;
+        declarationsStripping = assembler.declarationsStripping;
         const jsiiDiagnostics = assembler.diagnostics;
 
         // Classic: the deprecation warnings are made when the type model has no errors, even when a use of a
@@ -795,8 +840,14 @@ export function buildProject(options: BuildProjectOptions): BuildProjectResult {
         deprecationWarnings,
         strippedClasses,
         emitResult: checkedEmit,
+        declarationsStripping,
       }));
     } catch (err) {
+      if (err instanceof MergedDeclarationError) {
+        // @TODO(NEXT): the classic compiler failed with this error (aws/jsii-compiler#3012). After 7.1's first
+        // release: do not fail (see MergedDeclarationError).
+        throw err;
+      }
       emitFailed = true;
       // With TypeScript errors, `noEmitOnError` skips the emit; those errors are already reported.
       // shortcut: any emit failure is silent then, even without `noEmitOnError`; tell them apart if one shows up.
@@ -840,7 +891,7 @@ export function buildProject(options: BuildProjectOptions): BuildProjectResult {
 }
 
 /** The text of a file a diagnostic points into, if it can be read. */
-function readSourceFile(fileName: string): string | undefined {
+export function readSourceFile(fileName: string): string | undefined {
   try {
     return fs.readFileSync(fileName, 'utf8');
   } catch {

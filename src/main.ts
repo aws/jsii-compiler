@@ -8,11 +8,12 @@ import * as log4js from 'log4js';
 import * as yargs from 'yargs';
 import { version as tsVersion } from '#typescript/package.json';
 
-import { Compiler } from './compiler';
+import { Compiler, readSourceFile, toDiagnostic } from './compiler';
 import { configureCategories, JsiiDiagnostic } from './jsii-diagnostic';
 import { loadProjectInfo } from './project-info';
 import { emitSupportPolicyInformation } from './support';
 import { TypeScriptConfigValidationRuleSet } from './tsconfig';
+import { TsconfigErrors } from './tsconfig/read';
 import { formatRuleSet, RULE_SET_DESCRIPTIONS } from './tsconfig/rule-set-format';
 import { validateTypeScriptConfigFile } from './tsconfig/tsconfig-validator';
 import * as utils from './utils';
@@ -169,7 +170,7 @@ enum OPTION_GROUP {
           });
 
           const startTime = Date.now();
-          const emitResult = compiler.emit();
+          const emitResult = argv.watch ? await compiler.watch() : compiler.emit();
 
           const allDiagnostics = [...projectInfoDiagnostics, ...emitResult.diagnostics];
 
@@ -254,7 +255,13 @@ enum OPTION_GROUP {
             console.log(`✨ "${configName}" is valid against rule set "${ruleSet}"`);
           }
         } catch (e: unknown) {
-          if (e instanceof utils.JsiiError) {
+          if (e instanceof TsconfigErrors) {
+            // Like `tsc --showConfig`: TypeScript's errors for the tsconfig, and a failure.
+            for (const diagnostic of e.diagnostics) {
+              utils.logDiagnostic(toDiagnostic(diagnostic, readSourceFile), process.cwd());
+            }
+            process.exitCode = 1;
+          } else if (e instanceof utils.JsiiError) {
             const LOG = log4js.getLogger(utils.CLI_LOGGER);
             LOG.error(e.message);
             process.exitCode = -1;

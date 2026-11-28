@@ -85,8 +85,7 @@ describe('Compiler configuration', () => {
     );
   });
 
-  // @TODO(ts7): `--watch` is not supported by the TypeScript 7 compiler yet.
-  describe.skip('"watch" mode', () => {
+  describe('"watch" mode', () => {
     test('logs jsii diagnostics of each compilation', async () => {
       rmSync(join(sourceDir, 'README.md'));
       const compiler = new Compiler({ projectInfo: makeProjectInfo(sourceDir, 'index.d.ts') });
@@ -95,11 +94,11 @@ describe('Compiler configuration', () => {
       const firstCompilation = new Promise<EmitResult>((resolve) => {
         compiled = resolve;
       });
-      const watch = await (compiler as any).watch({
+      const watch = await compiler.watch({
         nonBlocking: true,
         reportDiagnostics: () => undefined,
         reportWatchStatus: () => undefined,
-        compilationComplete: (emitResult: EmitResult) => compiled(emitResult),
+        compilationComplete: (emitResult) => compiled(emitResult),
       });
       try {
         expect((await firstCompilation).emitSkipped).toBe(false);

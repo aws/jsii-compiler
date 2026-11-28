@@ -63,35 +63,58 @@ function stripJsonComments(text: string): string {
   return out.replace(/,(\s*[}\]])/g, '$1');
 }
 
+/** A tsconfig as TypeScript's config parser reads it, with the errors it found. */
+export interface TsconfigReadResult {
+  readonly config: TypeScriptConfig;
+  /**
+   * TypeScript's errors for the tsconfig and the files it `extends`: unknown
+   * options, bad values, a base that cannot be found, read or parsed, circular
+   * `extends`. Not "no inputs" (TS18002, TS18003): those are about the source files.
+   */
+  readonly errors: readonly any[];
+}
+
+/** "The 'files' list in config file is empty" and "No inputs were found in config file". */
+const NO_INPUTS_ERRORS = new Set([18002, 18003]);
+
 /**
- * Reads a `tsconfig.json` file with TypeScript's own config parser, like the
- * classic compiler did with `ts.readConfigFile` and `ts.parseJsonConfigFileContent`:
- * `extends` is resolved, path options are absolute, and the compiler options
- * are in TypeScript's form (enum values as numbers; `convertForJson` gives the
- * JSON form the rule sets validate). The config file errors of the parse (a
- * broken `extends` base, options TypeScript rejects) are ignored, as the classic
- * compiler did; TypeScript leaves such bases and options out of the result.
+ * Reads a `tsconfig.json` file with TypeScript's own config parser, like `tsc`:
+ * `extends` is resolved, path options are absolute (relative to the file's own
+ * directory), and the compiler options are in TypeScript's form (enum values as
+ * numbers; `convertForJson` gives the JSON form the rule sets validate).
+ * TypeScript leaves rejected options and broken `extends` bases out of the
+ * result, and reports them in `errors`.
  *
- * @param baseDir the directory that relative paths, `extends` and `${configDir}`
- *                are resolved against (default: the directory of the file). The
- *                compiler passes the project root, as the classic one did, even
- *                for a config in a subdirectory.
+ * @throws {@link TsconfigReadError} when the file itself cannot be read or parsed
  */
-export function readTypeScriptConfigFile(configPath: string, baseDir?: string): TypeScriptConfig {
+export function readTypeScriptConfigFile(configPath: string): TsconfigReadResult {
   const absolutePath = path.resolve(configPath);
-  const configDirectory = baseDir ?? path.dirname(absolutePath);
-  const api = new (loadTypeScriptApi().API)({ cwd: configDirectory });
+  const api = new (loadTypeScriptApi().API)({ cwd: path.dirname(absolutePath) });
   try {
-    const { config, error } = api.readConfigFile(absolutePath);
+    // `parseConfigFile` fails for a file it cannot read; `readConfigFile` reports why, like the classic compiler.
+    const { error } = api.readConfigFile(absolutePath);
     if (error != null) {
       throw new TsconfigReadError(absolutePath, error);
     }
-    const parsed = api.parseJsonConfigFileContent(config ?? {}, { configDirectory });
+    // Parsed from the file, so that the errors point into it.
+    const parsed = api.parseConfigFile(absolutePath);
     // the tsconfig parser adds this in, but it is not an expected compilerOption
     const { configFilePath: _configFilePath, ...options } = parsed.options;
-    return { compilerOptions: inFileOrder(options, parsed.raw?.compilerOptions), include: parsed.fileNames };
+    return {
+      config: { compilerOptions: inFileOrder(options, parsed.raw?.compilerOptions), include: parsed.fileNames },
+      errors: parsed.errors.filter((d: any) => !NO_INPUTS_ERRORS.has(d.code)),
+    };
   } finally {
     api.close();
+  }
+}
+
+/** A tsconfig with errors TypeScript reports for it (see {@link TsconfigReadResult.errors}). */
+export class TsconfigErrors extends JsiiError {
+  public constructor(public readonly configPath: string, public readonly diagnostics: readonly any[]) {
+    super(`The tsconfig at "${configPath}" has errors: ${diagnostics.map((d) => d.text).join('; ')}`);
+    // JsiiError sets its own prototype; restore this one so `instanceof TsconfigErrors` works.
+    Object.setPrototypeOf(this, TsconfigErrors.prototype);
   }
 }
 

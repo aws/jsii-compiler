@@ -15,6 +15,7 @@ import * as spec from '@jsii/spec';
 import * as log4js from 'log4js';
 
 import { TypeScriptApi, TypeScriptProject } from './compiler-host';
+import { DeclarationsStripper, DeclarationsStripping } from './transforms/deprecated-remover';
 import { DeprecationWarningsInjector } from './transforms/deprecation-warnings';
 import { EmittedFile, pairClasses, prependStatements, rewrittenBodyEdits } from './transforms/emitted-js';
 import { rttiInsertions } from './transforms/runtime-info';
@@ -38,6 +39,8 @@ export interface EmitProjectOptions {
   readonly strippedClasses?: readonly spec.ClassType[];
   /** The result of `program.emit()` when it already ran (see `BackgroundCheck`). */
   readonly emitResult?: { emitSkipped?: boolean; emittedFiles?: string[]; diagnostics: readonly any[] };
+  /** What --strip-deprecated removes from the `.d.ts` files. */
+  readonly declarationsStripping?: DeclarationsStripping;
 }
 
 export interface EmitProjectResult {
@@ -103,6 +106,22 @@ export function emitProject(
   }
 
   const emittedFiles: string[] = [];
+  const stripper =
+    options.declarationsStripping && new DeclarationsStripper(ts, project, options.declarationsStripping);
+  // The `.ts` file each `.d.ts` is emitted for (relative to root, normalized).
+  const tsFileByDtsRel = new Map(
+    stripper != null
+      ? project.rootFileNames
+          .filter((f) => !/\.d\.ts$/.test(f))
+          .map((f) => [
+            sourceRelToJsRel(normalizeRel(path.relative(root, f)), options.outDir, options.rootDir).replace(
+              /\.js$/,
+              '.d.ts',
+            ),
+            f,
+          ])
+      : [],
+  );
 
   // Whole-project emit (see the function docblock for why this is one RPC).
   // `program.emit()` writes to the host filesystem and returns
@@ -127,7 +146,11 @@ export function emitProject(
     emittedFiles.push(outPath);
 
     if (!/\.js$/.test(name)) {
-      continue; // non-JS (d.ts / maps): already written by the server, nothing to do
+      const tsFile = tsFileByDtsRel.get(normalizeRel(path.relative(root, outPath)));
+      if (tsFile != null) {
+        stripper?.apply(outPath, tsFile);
+      }
+      continue; // non-JS (d.ts / maps): already written by the server, nothing else to do
     }
     const jsRel = normalizeRel(path.relative(root, outPath));
     let classesHere = classesByJsRel.get(jsRel);
@@ -135,11 +158,12 @@ export function emitProject(
       // Fall back to basename matching ONLY when it is unambiguous (a single
       // source file maps to this basename) and that file was not emitted where
       // its path maps to (else this is another file with the same name, such as
-      // an `index.js` that only re-exports); otherwise skip and say so.
+      // an `index.js` that only re-exports); otherwise skip, and say so when one
+      // of the files with this basename was not emitted where its path maps to.
       const candidates = jsRelsByBasename.get(path.basename(name));
       if (candidates?.size === 1 && !emittedJsRels.has([...candidates][0])) {
         classesHere = classesByJsRel.get([...candidates][0]);
-      } else if (candidates && candidates.size > 1) {
+      } else if (candidates && candidates.size > 1 && [...candidates].some((c) => !emittedJsRels.has(c))) {
         LOG.warn(
           `ts backend: skipping rtti injection for ${jsRel} (ambiguous basename across ${candidates.size} files)`,
         );

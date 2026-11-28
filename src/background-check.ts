@@ -25,8 +25,6 @@ export interface BackgroundCheckOptions {
   readonly packageDir: string;
   readonly projectRoot: string;
   readonly tsconfigPath: string;
-  /** The content of the tsconfig, when it is not the file's. */
-  readonly tsconfigText?: string;
   /** `DiagnosticCategory` values of jsii: of an error, and all of them (others are errors too). */
   readonly errorCategory: number;
   readonly categories: readonly number[];
@@ -79,12 +77,8 @@ function runWorker(data: BackgroundCheckOptions & WorkerData): void {
   try {
     /* eslint-disable @typescript-eslint/no-require-imports, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment */
     api = new (require(`${data.packageDir}/dist/api/sync/api.js`).API)({ cwd: data.projectRoot });
-    const fileSystem =
-      data.tsconfigText != null
-        ? require(`${data.packageDir}/dist/api/fs.js`).createFileSystemLayer([[data.tsconfigPath, data.tsconfigText]])
-        : undefined;
     /* eslint-enable @typescript-eslint/no-require-imports, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment */
-    const snapshot = api.createSnapshot({ openProjects: [data.tsconfigPath], fileSystem });
+    const snapshot = api.createSnapshot({ openProjects: [data.tsconfigPath] });
     const program = snapshot.getConfiguredProject(data.tsconfigPath).program;
     const call = (name: string): any[] => (typeof program[name] === 'function' ? program[name]() ?? [] : []);
     const diagnostics = [
