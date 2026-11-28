@@ -87,4 +87,28 @@ describe('validate-tsconfig CLI defaults', () => {
     expect(result.status).toBe(0);
     expect(result.stdout).toContain('valid');
   });
+
+  // https://github.com/aws/jsii-compiler/issues/2992
+  test('allows "paths" without failing on internal "pathsBasePath"', () => {
+    writeFileSync(
+      join(workdir, 'tsconfig.json'),
+      JSON.stringify({
+        compilerOptions: {
+          strict: true,
+          target: 'es2022',
+          lib: ['es2022'],
+          module: 'node16',
+          esModuleInterop: true,
+          skipLibCheck: true,
+          noEmitOnError: true,
+          declaration: true,
+          paths: { '@x/*': ['./lib/*'] },
+        },
+      }),
+    );
+
+    const result = run('tsconfig.json', '--rule-set', 'strict');
+    expect(result.stdout).not.toContain('pathsBasePath');
+    expect(result.status).toBe(0);
+  });
 });
