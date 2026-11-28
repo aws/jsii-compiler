@@ -294,6 +294,11 @@ export class Assembler {
   private readonly dependencySubmodules = new Map<string, Map<unknown, string>>();
   /** The declaration of a base class that is not a jsii type (`extends Error`), by class fqn, for JSII9002. */
   private readonly unregisteredBaseDecls = new Map<string, any>();
+  /**
+   * The symbol of a base class from a dependency, by class fqn, for JSII9002 when the dependency's assembly does not
+   * have it (its declaration is only read then).
+   */
+  private readonly externalBaseSymbols = new Map<string, any>();
   /** The value declaration of an implemented or extended type that is not a jsii type, by fqn, for JSII9002. */
   private readonly unregisteredInterfaceDecls = new Map<string, any>();
   /**
@@ -1164,10 +1169,13 @@ export class Assembler {
         return fqn;
       }
     }
-    // Fallback for assemblies without symbolIds: the submodule that exports the type, else a top-level type of that
-    // name (classic `_submoduleMap` of the dependency, then `fallbackFqn`).
+    // Fallback: the submodule that exports the type, else a top-level type of that name (classic `_submoduleMap` of
+    // the dependency, then `fallbackFqn`). Like the classic compiler, a type of a submodule is named after the
+    // submodule even when the dependency's assembly does not list it (the validator reports JSII9001 then).
+    // shortcut: the classic compiler looked at the submodule before the symbolId; both give the same fqn unless the
+    // assembly is inconsistent. Look at the submodule first if that ever matters.
     const submodule = this._dependencySubmodules(dep).get(sym.id);
-    if (submodule != null && this.externalDeps.get(dep)!.has(`${submodule}.${sym.name}`.slice(dep.length + 1))) {
+    if (submodule != null) {
       return `${submodule}.${sym.name}`;
     }
     if (this.externalDeps.get(dep)!.has(sym.name)) {
@@ -2543,12 +2551,16 @@ export class Assembler {
       this._checkSupertypePeerDependencies(jsiiType);
       if (spec.isClassType(jsiiType) && jsiiType.base != null) {
         const base = this._dereferenceType(jsiiType.base);
-        if (base == null && this.unregisteredBaseDecls.has(jsiiType.fqn)) {
+        const externalBase = this.externalBaseSymbols.get(jsiiType.fqn);
+        if (base == null && (this.unregisteredBaseDecls.has(jsiiType.fqn) || externalBase != null)) {
           // Classic: the base class is looked up "used in syntax", for the base class check and, without a
-          // constructor of its own, for the inherited initializer.
+          // constructor of its own, for the inherited initializer. A dependency's type its assembly does not have
+          // is not found either.
           this._report(
             JsiiDiagnostic.JSII_9002_UNRESOLVEABLE_TYPE,
-            this.unregisteredBaseDecls.get(jsiiType.fqn),
+            externalBase != null
+              ? this._valueDeclarationOf(externalBase)
+              : this.unregisteredBaseDecls.get(jsiiType.fqn),
             jsiiType.base,
           );
           if (this.inheritsInitializer.has(jsiiType.fqn)) {
@@ -2566,6 +2578,12 @@ export class Assembler {
           // an interface) and by the struct checks (at the type's own declaration).
           if (this.unregisteredInterfaceDecls.has(fqn)) {
             this._report(JsiiDiagnostic.JSII_9002_UNRESOLVEABLE_TYPE, this.unregisteredInterfaceDecls.get(fqn), fqn);
+          } else if (spec.isInterfaceType(jsiiType) && !fqn.startsWith(`${this.assemblyName}.`)) {
+            // Classic: a dependency's type its assembly does not have is also looked up by the intersection check of
+            // an interface, at the interface's value declaration (none).
+            // shortcut: no location even for an interface merged with a value; find its value declaration if that
+            // ever matters.
+            this._report(JsiiDiagnostic.JSII_9002_UNRESOLVEABLE_TYPE, undefined, fqn);
           }
           this._report(JsiiDiagnostic.JSII_9002_UNRESOLVEABLE_TYPE, this.relatedNodes.get(jsiiType), fqn);
           continue;
@@ -2679,6 +2697,9 @@ export class Assembler {
           const strippedFqn: string | undefined = this.strippedFqnBySymbolId.get(s.id);
           if (isExt) {
             if (fqnRef) {
+              if (classDecl === decl && !ownFqnRef && base.value == null) {
+                this.externalBaseSymbols.set(jsiiType.fqn, s);
+              }
               base.value ??= fqnRef;
               if (raw) {
                 raw.base ??= fqnRef;
