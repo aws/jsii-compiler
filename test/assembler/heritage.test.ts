@@ -44,7 +44,8 @@ describe('JSII3005 type-model/type-used-as-interface', () => {
 });
 
 describe('unresolvable heritage clauses', () => {
-  // @TODO(ts7): expects a jsii validation diagnostic (JSII3005, or JSII9997 for an unresolvable heritage clause); re-enable with the port of the validator
+  // @TODO(ts7): expects main's JSII9997 crash, which the TypeScript 7 assembler does not copy
+  // (https://github.com/aws/jsii-compiler/issues/3166)
   test.skip('a class implementing an unknown type fails with JSII9997', () => {
     expect(compileForDiagnostics('export class Klass implements Unknown {}')).toEqual([
       expect.stringMatching(
