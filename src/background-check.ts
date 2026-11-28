@@ -12,9 +12,12 @@
  * ---------------------------------------------------------------------------
  */
 import * as fs from 'node:fs';
+import * as os from 'node:os';
 import * as path from 'node:path';
 import { isMainThread, MessageChannel, receiveMessageOnPort, Worker, workerData } from 'node:worker_threads';
 import * as log4js from 'log4js';
+import { loadTypeScriptApi } from './compiler-host';
+import { jsClassIndices, withoutSourceMapComment } from './transforms/emitted-js';
 
 /** Below this many files, starting the worker's TypeScript process costs more time than the background check saves. */
 // shortcut: a fixed size. Measure again when the start-up cost of that process, about 0.3s, changes.
@@ -36,7 +39,22 @@ export interface BackgroundCheckResult {
   /** The program's diagnostics: config file, options, global, syntactic and semantic, in this order. */
   readonly diagnostics: any[];
   /** The result of `program.emit()`. It is absent when the emit did not run, because of errors and `noEmitOnError`. */
-  readonly emit?: { emitSkipped?: boolean; emittedFiles?: string[]; diagnostics: any[] };
+  readonly emit?: {
+    emitSkipped?: boolean;
+    emittedFiles?: string[];
+    diagnostics: any[];
+    /**
+     * The encoded `createSourceFile` result of an emitted `.js` file, when the worker parsed that exact text (see
+     * `withoutSourceMapComment`) already. The caller parses the file itself otherwise.
+     */
+    parsedJs?: (jsFile: string, text: string) => ParsedJs | undefined;
+  };
+}
+
+/** The encoded `createSourceFile` result of an emitted `.js` file, and the node indices of its classes. */
+export interface ParsedJs {
+  readonly bytes: Uint8Array;
+  readonly jsClassIndices: readonly number[];
 }
 
 const LOG = log4js.getLogger('jsii/background-check');
@@ -104,6 +122,16 @@ function runWorker(data: BackgroundCheckOptions & WorkerData): void {
     message = { diagnostics, emit };
   } catch (error: any) {
     message = { error: String(error?.stack ?? error) };
+  }
+  data.port.postMessage(message);
+  Atomics.store(data.done, 0, 1);
+  Atomics.notify(data.done, 0);
+  try {
+    if (message.emit != null && !message.emit.emitSkipped) {
+      parseEmittedJs(api, data, message.emit.emittedFiles ?? []);
+    }
+  } catch {
+    /* the build parses the remaining files itself */
   } finally {
     try {
       api?.close();
@@ -111,9 +139,45 @@ function runWorker(data: BackgroundCheckOptions & WorkerData): void {
       /* the process is gone */
     }
   }
-  data.port.postMessage(message);
-  Atomics.store(data.done, 0, 1);
-  Atomics.notify(data.done, 0);
+}
+
+/**
+ * While the build still assembles, parse the emitted `.js` files that the emit post-pass parses (those with classes),
+ * in the order it visits them, and send each encoded result over. The build stops this once it no longer needs them.
+ */
+function parseEmittedJs(api: any, data: BackgroundCheckOptions & WorkerData, emittedFiles: readonly string[]): void {
+  const { SyntaxKind } = loadTypeScriptApi();
+  try {
+    // This work only matters if it is ahead of the assembler: let the assembler's processes have the CPUs first.
+    os.setPriority(api.client.channel.child.pid, 10);
+  } catch {
+    /* keep the priority */
+  }
+  for (const name of emittedFiles) {
+    if (Atomics.load(data.done, 2) !== 0) {
+      return;
+    }
+    if (!/\.js$/.test(name)) {
+      continue;
+    }
+    const jsFile = path.resolve(data.projectRoot, name);
+    const text = withoutSourceMapComment(fs.readFileSync(jsFile, 'utf8'));
+    if (!/\bclass\b/.test(text)) {
+      continue;
+    }
+    const retained = api.createSourceFile(jsFile, text);
+    let buffer: ArrayBuffer;
+    let classes: number[];
+    try {
+      const view: DataView = retained.sourceFile.view;
+      buffer = new ArrayBuffer(view.byteLength);
+      new Uint8Array(buffer).set(new Uint8Array(view.buffer, view.byteOffset, view.byteLength));
+      classes = jsClassIndices(retained.sourceFile, SyntaxKind);
+    } finally {
+      retained.dispose();
+    }
+    data.port.postMessage({ jsFile, text, bytes: new Uint8Array(buffer), jsClassIndices: classes }, [buffer]);
+  }
 }
 
 interface WorkerData {
@@ -131,7 +195,8 @@ export class BackgroundCheck {
   /** Start it. Returns `undefined` when no worker can be started: do the work in this process then. */
   public static start(options: BackgroundCheckOptions): BackgroundCheck | undefined {
     try {
-      const done = new Int32Array(new SharedArrayBuffer(8));
+      // [finished, started, stop parsing]
+      const done = new Int32Array(new SharedArrayBuffer(12));
       const { port1, port2 } = new MessageChannel();
       const data: BackgroundCheckOptions & WorkerData = {
         ...options,
@@ -161,6 +226,9 @@ export class BackgroundCheck {
   }
 
   private result?: BackgroundCheckResult | null;
+  /** The emitted `.js` files the worker parsed, until the emit post-pass takes them. */
+  private readonly parsed = new Map<string, ParsedJs & { text: string }>();
+  private stopped = false;
 
   private constructor(
     private readonly worker: Worker,
@@ -171,7 +239,8 @@ export class BackgroundCheck {
   /**
    * Waits for the results. By the time this is called, this thread has nothing else
    * to do. Returns `undefined` when the worker failed; the caller then does the work
-   * in its own process.
+   * in its own process. After an emit, the worker goes on parsing the emitted `.js`
+   * files (`parsedJs`) until the next call, which stops it.
    */
   public wait(): BackgroundCheckResult | undefined {
     if (this.result === undefined) {
@@ -194,10 +263,40 @@ export class BackgroundCheck {
       if (this.result == null) {
         LOG.debug(`the worker failed, checking and emitting in this process: ${message?.error ?? reason}`);
       }
+      if (this.result?.emit != null && !this.result.emit.emitSkipped) {
+        // The worker goes on parsing the emitted `.js` files for the emit post-pass; a later call stops it.
+        this.result.emit.parsedJs = (jsFile, text) => this.parsedJs(jsFile, text);
+        return this.result;
+      }
+    }
+    this.stop();
+    return this.result ?? undefined;
+  }
+
+  /** The encoded parse of an emitted `.js` file, if the worker sent it for this exact text. */
+  private parsedJs(jsFile: string, text: string): ParsedJs | undefined {
+    if (!this.stopped) {
+      for (
+        let next = receiveMessageOnPort(this.port as any);
+        next != null;
+        next = receiveMessageOnPort(this.port as any)
+      ) {
+        this.parsed.set(next.message.jsFile, next.message);
+      }
+    }
+    const entry = this.parsed.get(jsFile);
+    this.parsed.delete(jsFile);
+    return entry?.text === text ? entry : undefined;
+  }
+
+  private stop(): void {
+    if (!this.stopped) {
+      this.stopped = true;
+      Atomics.store(this.done, 2, 1);
       void this.worker.terminate();
       this.port.close();
+      this.parsed.clear();
     }
-    return this.result ?? undefined;
   }
 }
 
