@@ -29,9 +29,16 @@ export interface EmittedFile {
  * hold the same classes in the same order (only ambient classes are not
  * emitted), which is checked by name. Returns `undefined` when they differ.
  */
-export function pairClasses(tsSource: any, jsSource: any, k: any): EmittedFile['classes'] | undefined {
+export function pairClasses(
+  tsSource: any,
+  jsSource: any,
+  k: any,
+  jsClassesAt?: readonly number[],
+): EmittedFile['classes'] | undefined {
   const tsClasses = classDeclarations(tsSource, k, true);
-  const jsClasses = classDeclarations(jsSource, k, false);
+  const jsClasses =
+    jsClassesAt?.map((index) => ({ node: jsSource.getOrCreateNodeAtIndex(index) })) ??
+    classDeclarations(jsSource, k, false);
   if (
     tsClasses.length !== jsClasses.length ||
     tsClasses.some((c, i) => className(c.node, k) !== className(jsClasses[i].node, k))
@@ -389,4 +396,23 @@ export function skipWhitespace(text: string, offset: number): number {
 
 export function normalizeRel(p: string): string {
   return p.split(path.sep).join('/');
+}
+
+/**
+ * An emitted `.js` file without its trailing `//# sourceMappingURL=` comment, the text the emitted `.js` is parsed
+ * from. An inline source map is most of the text (aws-cdk-lib: 167 of the 227 MB parsed), and it is trivia after the
+ * last statement, so the nodes and positions the edits use are the same without it, and it does not cross the channel
+ * to the TypeScript 7 process and back.
+ */
+export function withoutSourceMapComment(jsText: string): string {
+  const mapComment = /\n\/\/# sourceMappingURL=[^\n]*\s*$/.exec(jsText);
+  return mapComment != null ? jsText.slice(0, mapComment.index) : jsText;
+}
+
+/**
+ * The classes of an emitted `.js` file that `pairClasses` pairs, as node indices of that file: the background check
+ * finds them in its parse of the file, and `pairClasses` takes the same nodes from the same encoded parse.
+ */
+export function jsClassIndices(jsSource: any, k: any): number[] {
+  return classDeclarations(jsSource, k, false).map((c) => c.node.index);
 }

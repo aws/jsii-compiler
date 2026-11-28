@@ -14,10 +14,17 @@ import * as path from 'node:path';
 import * as spec from '@jsii/spec';
 import * as log4js from 'log4js';
 
+import type { ParsedJs } from './background-check';
 import { TypeScriptApi, TypeScriptProject } from './compiler-host';
 import { DeclarationsStripper, DeclarationsStripping } from './transforms/deprecated-remover';
 import { DeprecationWarningsInjector } from './transforms/deprecation-warnings';
-import { EmittedFile, pairClasses, prependStatements, rewrittenBodyEdits } from './transforms/emitted-js';
+import {
+  EmittedFile,
+  pairClasses,
+  prependStatements,
+  rewrittenBodyEdits,
+  withoutSourceMapComment,
+} from './transforms/emitted-js';
 import { rttiInsertions } from './transforms/runtime-info';
 import { insertIntoEmittedJs, Insertion } from './transforms/source-map';
 
@@ -38,7 +45,13 @@ export interface EmitProjectOptions {
    */
   readonly strippedClasses?: readonly spec.ClassType[];
   /** The result of `program.emit()` when it already ran (see `BackgroundCheck`). */
-  readonly emitResult?: { emitSkipped?: boolean; emittedFiles?: string[]; diagnostics: readonly any[] };
+  readonly emitResult?: {
+    emitSkipped?: boolean;
+    emittedFiles?: string[];
+    diagnostics: readonly any[];
+    /** An emitted `.js` file the background check already parsed (see `BackgroundCheckResult`). */
+    parsedJs?: (jsFile: string, text: string) => ParsedJs | undefined;
+  };
   /** What --strip-deprecated removes from the `.d.ts` files. */
   readonly declarationsStripping?: DeclarationsStripping;
 }
@@ -204,10 +217,12 @@ function addToEmittedJs(
 ): string {
   const tsFile = path.resolve(options.projectRoot, classesHere[0].relSrc);
   const tsSource = project.program.getSourceFile(tsFile);
-  const retained = tsSource != null ? parseEmittedJs(project, jsFile, jsText) : undefined;
+  const retained =
+    tsSource != null ? parseEmittedJs(project, jsFile, jsText, options.emitResult?.parsedJs, tsSource) : undefined;
   try {
     const jsSource = retained?.sourceFile;
-    const classes = jsSource != null ? pairClasses(tsSource, jsSource, ts.SyntaxKind) : undefined;
+    const classes =
+      jsSource != null ? pairClasses(tsSource, jsSource, ts.SyntaxKind, retained?.jsClassIndices) : undefined;
     if (classes == null) {
       LOG.warn(`ts backend: the classes of ${jsFile} do not match ${tsFile}; rtti appended, no deprecation warnings`);
       const js = options.deprecationWarnings ? withRewrittenBodies(ts, project, jsFile, jsText) : jsText;
@@ -267,15 +282,27 @@ function withRewrittenBodies(ts: TypeScriptApi, project: TypeScriptProject, jsFi
 }
 
 /**
- * Parse an emitted `.js` file without its trailing `//# sourceMappingURL=`
- * comment. An inline source map is most of the text (aws-cdk-lib: 167 of the
- * 227 MB parsed), and it is trivia after the last statement, so the nodes and
- * positions the edits use are the same without it, and it does not cross the
- * channel to the TypeScript 7 process and back.
+ * Parse an emitted `.js` file without its trailing `//# sourceMappingURL=` comment (see `withoutSourceMapComment`).
+ * When the background check already parsed that text (`parsedJs`), its encoded result is decoded here instead, like
+ * the API decodes the result of its own `createSourceFile` (`sourceFileOfProgram` is any source file of this API, for
+ * the class to decode with). The JS AST only serves to read positions, so it needs no lease.
  */
-function parseEmittedJs(project: TypeScriptProject, jsFile: string, jsText: string): any {
-  const mapComment = /\n\/\/# sourceMappingURL=[^\n]*\s*$/.exec(jsText);
-  return project.api.createSourceFile(jsFile, mapComment != null ? jsText.slice(0, mapComment.index) : jsText);
+function parseEmittedJs(
+  project: TypeScriptProject,
+  jsFile: string,
+  jsText: string,
+  parsedJs?: (jsFile: string, text: string) => ParsedJs | undefined,
+  sourceFileOfProgram?: any,
+): { sourceFile: any; jsClassIndices?: readonly number[]; dispose(): void } {
+  const text = withoutSourceMapComment(jsText);
+  const parsed = sourceFileOfProgram != null ? parsedJs?.(jsFile, text) : undefined;
+  if (parsed != null) {
+    const api: any = project.api;
+    const RemoteSourceFile = sourceFileOfProgram.constructor;
+    const sourceFile = new RemoteSourceFile(parsed.bytes, api.decoder, api.client.getTimingCollector(), api);
+    return { sourceFile, jsClassIndices: parsed.jsClassIndices, dispose() {} };
+  }
+  return project.api.createSourceFile(jsFile, text);
 }
 
 /** Normalize a relative path for use as a map key (posix separators). */
