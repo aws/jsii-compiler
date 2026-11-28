@@ -1,7 +1,6 @@
-import * as ts from 'typescript';
 import { DiagnosticCategory } from 'typescript';
 
-import { Code, configureCategories, JsiiDiagnostic } from '../src';
+import { Code, compileJsiiForTest, configureCategories, JsiiDiagnostic } from '../src';
 
 describe('jsii diagnostics', () => {
   describe('configureCategories', () => {
@@ -161,8 +160,25 @@ describe('jsii diagnostics', () => {
     });
 
     test('can be recognized with isJsiiDiagnostic', () => {
+      // A jsii diagnostic (JSII3001) and a plain TypeScript diagnostic (TS2322) from the same compilation.
+      const { diagnostics } = compileJsiiForTest(
+        `
+          export class Klass {
+            public readonly bad: number = 'not a number';
+            public method(): void {}
+            public method(): void {}
+          }
+          export interface Struct { readonly a: string }
+          export const value: Struct = { a: 1 };
+        `,
+        { captureDiagnostics: true },
+      );
+      const typescript = diagnostics.filter((d) => !JsiiDiagnostic.isJsiiDiagnostic(d));
+      const jsii = diagnostics.filter(JsiiDiagnostic.isJsiiDiagnostic);
+
+      expect(typescript.map((d) => d.code)).toContain(2322);
+      expect(jsii.length).toBeGreaterThan(0);
       expect(JsiiDiagnostic.isJsiiDiagnostic(detached())).toBe(true);
-      expect(JsiiDiagnostic.isJsiiDiagnostic({ category: 1, code: 1, file: undefined } as ts.Diagnostic)).toBe(false);
     });
 
     test('addRelatedInformationIf ignores an undefined node', () => {
@@ -179,15 +195,7 @@ describe('jsii diagnostics', () => {
       expect(diagnostic.relatedInformation).toEqual([]);
     });
 
-    test('maybeAddRelatedInformation adds related information for a node', () => {
-      const source = ts.createSourceFile('index.ts', 'export class Klass {}', ts.ScriptTarget.Latest, true);
-      const diagnostic = detached();
-
-      diagnostic.maybeAddRelatedInformation(source.statements[0], 'the class is here');
-
-      expect(diagnostic.relatedInformation).toEqual([
-        expect.objectContaining({ messageText: 'the class is here', jsiiCode: 9999 }),
-      ]);
-    });
+    // maybeAddRelatedInformation with a real node is covered by test/diagnostics/related-information.test.ts
+    // ('JSII5005 ... points to the method that is overridden').
   });
 });
