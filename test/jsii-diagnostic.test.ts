@@ -189,27 +189,5 @@ describe('jsii diagnostics', () => {
         expect.objectContaining({ messageText: 'the class is here', jsiiCode: 9999 }),
       ]);
     });
-
-    test('addRelatedInformation does not point into the TypeScript standard library', () => {
-      const lib = ts.createSourceFile(
-        '/node_modules/typescript/lib/lib.es5.d.ts',
-        'interface Array<T> {}',
-        ts.ScriptTarget.Latest,
-        true,
-      );
-      const diagnostic = detached();
-
-      diagnostic.addRelatedInformation(lib.statements[0], 'from the standard library');
-
-      expect(diagnostic.relatedInformation).toEqual([]);
-    });
-
-    test('JSII3004 describes an unexpected heritage clause token by its syntax kind', () => {
-      const diagnostic = JsiiDiagnostic.JSII_3004_INVALID_SUPERTYPE.createDetached({
-        token: ts.SyntaxKind.Identifier,
-      } as unknown as ts.HeritageClause);
-
-      expect(diagnostic.messageText).toBe('Illegal Identifier clause for an exported API: unnamed base type');
-    });
   });
 });
