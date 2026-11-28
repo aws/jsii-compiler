@@ -537,7 +537,8 @@ describe('current behavior that is reported as an issue', () => {
   });
 
   // https://github.com/aws/jsii-compiler/issues/2982
-  // @TODO(ts7): the TypeScript 7 compiler reports the tsconfig parse error (TS18003) that main drops
+  // @TODO(ts7): the TypeScript 7 compiler reports the tsconfig parse error (TS18003) that main drops, by design
+  // (https://github.com/aws/jsii-compiler/issues/2982, https://github.com/aws/jsii-compiler/pull/3116)
   test.skip('errors from parsing the tsconfig are dropped, and the entry point is reported as missing', async () => {
     const { include, exclude, ...config } = userTsconfig({ outDir: 'lib', rootDir: 'lib' });
     const dir = project(

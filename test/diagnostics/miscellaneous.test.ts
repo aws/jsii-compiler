@@ -83,7 +83,8 @@ describe('JSII9003 miscellaneous/unresolveable-module', () => {
 
 describe('JSII9997 miscellaneous/unknown-error', () => {
   // This documents current behavior, see https://github.com/aws/jsii-compiler/issues/2943
-  // @TODO(ts7): expects a jsii validation diagnostic (JSII9000-JSII9003, JSII9997); re-enable with the port of the validator
+  // @TODO(ts7): expects main's JSII9997 crash, which the TypeScript 7 assembler does not copy
+  // (https://github.com/aws/jsii-compiler/issues/2943)
   test.skip('is reported (with no source location) when a class extends a constructor-typed interface value', () => {
     const diagnostics = compileJsiiForDiagnostics(`
       export interface IFoo { readonly x: string }
@@ -100,7 +101,8 @@ describe('JSII9997 miscellaneous/unknown-error', () => {
   });
 
   // This documents current behavior, see https://github.com/aws/jsii-compiler/issues/2943
-  // @TODO(ts7): expects a jsii validation diagnostic (JSII9000-JSII9003, JSII9997); re-enable with the port of the validator
+  // @TODO(ts7): expects main's JSII9997 crash, which the TypeScript 7 assembler does not copy
+  // (https://github.com/aws/jsii-compiler/issues/2943)
   test.skip('is reported (with no source location) when a class without a constructor extends a constructor-typed interface value, and other types come first', () => {
     // The unrelated interface changes the order in which the compiler checks the types.
     const diagnostics = compileJsiiForDiagnostics(`
