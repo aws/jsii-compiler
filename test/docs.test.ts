@@ -506,8 +506,7 @@ test('renders {@link} labels in @deprecated and @see as {@link target | label}',
 });
 
 // ----------------------------------------------------------------------
-// @TODO(ts7): TypeScript 7 renders a {@link} that is never closed differently ("See label ..."); match main
-test.skip('keeps the label of a {@link} that is never closed', () => {
+test('keeps the label of a {@link} that is never closed', () => {
   const assembly = compile(`
     /**
      * See {@link Foo | label
@@ -524,8 +523,7 @@ test.skip('keeps the label of a {@link} that is never closed', () => {
 });
 
 // ----------------------------------------------------------------------
-// @TODO(ts7): the {@link} in the @param docs of a parameter property is not rendered like main yet
-test.skip('renders {@link} in docs of a property declared through a constructor parameter', () => {
+test('renders {@link} in docs of a property declared through a constructor parameter', () => {
   const assembly = compile(`
     export class Foo {
       /**
@@ -586,8 +584,7 @@ describe('documentation errors (JSII7999)', () => {
     return diagnostics.filter((d) => (d as { jsiiCode?: number }).jsiiCode === 7999).map((d) => `${d.messageText}`);
   }
 
-  // @TODO(ts7): None
-  test.skip('unrecognized @stability value', () => {
+  test('unrecognized @stability value', () => {
     expect(
       documentationErrors(`
         /** @stability banana */
@@ -596,8 +593,7 @@ describe('documentation errors (JSII7999)', () => {
     ).toEqual(["Unrecognized @stability: 'banana'"]);
   });
 
-  // @TODO(ts7): expects a jsii validation diagnostic (JSII7999); re-enable with the port of the validator (some rows may pass; the table is skipped as a whole)
-  test.skip.each([
+  test.each([
     ['@stability stable', '@experimental'],
     ['@stability experimental', '@stable'],
     ['@experimental', '@stable'],
@@ -613,8 +609,7 @@ describe('documentation errors (JSII7999)', () => {
     ).toEqual(['Use only one of @stability, @experimental or @stable']);
   });
 
-  // @TODO(ts7): None
-  test.skip('@deprecated combined with another @stability', () => {
+  test('@deprecated combined with another @stability', () => {
     expect(
       documentationErrors(`
         /**
@@ -626,8 +621,7 @@ describe('documentation errors (JSII7999)', () => {
     ).toEqual(["@deprecated tag requires '@stability deprecated' or no @stability at all."]);
   });
 
-  // @TODO(ts7): None
-  test.skip('@deprecated without a reason', () => {
+  test('@deprecated without a reason', () => {
     expect(
       documentationErrors(`
         /** @deprecated */
@@ -636,8 +630,7 @@ describe('documentation errors (JSII7999)', () => {
     ).toEqual(['@deprecated tag needs a reason and/or suggested alternatives.']);
   });
 
-  // @TODO(ts7): None
-  test.skip('@example with code block fences', () => {
+  test('@example with code block fences', () => {
     expect(
       documentationErrors(`
         /**
@@ -671,8 +664,7 @@ describe('@example followed by an unrecognized tag', () => {
   // This documents current behavior, see https://github.com/aws/jsii-compiler/issues/2950
   // The unrecognized tag is absorbed back into the example, but its text is rendered as "[object Object]"
   // and the code that follows it is lost.
-  // @TODO(ts7): the TypeScript 7 compiler drops the text of an unrecognized tag after @example
-  test.skip('renders the tag text as "[object Object]"', () => {
+  test('renders the tag text as "[object Object]"', () => {
     const assembly = compile(`
       /**
        * Summary.

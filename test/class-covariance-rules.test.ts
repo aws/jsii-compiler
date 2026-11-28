@@ -105,8 +105,7 @@ describe('allowed, with other differences', () => {
 });
 
 describe('not allowed, although TypeScript allows it (it compares the shape of types)', () => {
-  // @TODO(ts7): expects a jsii validation diagnostic (override and re-declaration rules, JSII5xxx); re-enable with the port of the validator
-  test.skip('a required property in place of an optional one', () => {
+  test('a required property in place of an optional one', () => {
     expect(
       compileJsiiForErrors(`
         export class Sup {}
@@ -116,8 +115,7 @@ describe('not allowed, although TypeScript allows it (it compares the shape of t
     ).toEqual(['"testpkg.B#p" turns required when overriding testpkg.A. Make it optional']);
   });
 
-  // @TODO(ts7): expects a jsii validation diagnostic (override and re-declaration rules, JSII5xxx); re-enable with the port of the validator
-  test.skip('an interface that does not extend the interface it is compared to', () => {
+  test('an interface that does not extend the interface it is compared to', () => {
     expect(
       compileJsiiForErrors(`
         export interface IA {}
@@ -130,8 +128,7 @@ describe('not allowed, although TypeScript allows it (it compares the shape of t
     ]);
   });
 
-  // @TODO(ts7): expects a jsii validation diagnostic (override and re-declaration rules, JSII5xxx); re-enable with the port of the validator
-  test.skip('an interface instead of a class', () => {
+  test('an interface instead of a class', () => {
     expect(
       compileJsiiForErrors(`
         export class Klass {}
@@ -144,8 +141,7 @@ describe('not allowed, although TypeScript allows it (it compares the shape of t
     ]);
   });
 
-  // @TODO(ts7): expects a jsii validation diagnostic (override and re-declaration rules, JSII5xxx); re-enable with the port of the validator
-  test.skip('a class that implements an interface that does not extend the interface it is compared to', () => {
+  test('a class that implements an interface that does not extend the interface it is compared to', () => {
     expect(
       compileJsiiForErrors(`
         export interface IA {}
@@ -188,8 +184,7 @@ describe('types from a dependency', () => {
     expect(overrideWithForeignTypes('ForeignDerived')).toEqual([]);
   });
 
-  // @TODO(ts7): expects a jsii validation diagnostic (override and re-declaration rules, JSII5xxx); re-enable with the port of the validator
-  test.skip('cannot be changed to an unrelated class', () => {
+  test('cannot be changed to an unrelated class', () => {
     expect(overrideWithForeignTypes('Other')).toEqual([
       '"testpkg.B#m" changes the return type to "testpkg.Other" when overriding testpkg.A. Change it to "dependency.ForeignBase"',
     ]);
@@ -197,29 +192,25 @@ describe('types from a dependency', () => {
 });
 
 describe('not allowed', () => {
-  // @TODO(ts7): expects a jsii validation diagnostic (override and re-declaration rules, JSII5xxx); re-enable with the port of the validator
-  test.skip('returning a value where the overridden method returns nothing', () => {
+  test('returning a value where the overridden method returns nothing', () => {
     expect(overrideReturning('void', 'string')).toEqual([
       '"testpkg.B#m" changes the return type to "string" when overriding testpkg.A. Change it to "void"',
     ]);
   });
 
-  // @TODO(ts7): expects a jsii validation diagnostic (override and re-declaration rules, JSII5xxx); re-enable with the port of the validator
-  test.skip('an array of an unrelated class', () => {
+  test('an array of an unrelated class', () => {
     expect(overrideReturning('Sup[]', 'Other[]')).toEqual([
       '"testpkg.B#m" changes the return type to "array<testpkg.Other>" when overriding testpkg.A. Change it to "array<testpkg.Sup>"',
     ]);
   });
 
-  // @TODO(ts7): expects a jsii validation diagnostic (override and re-declaration rules, JSII5xxx); re-enable with the port of the validator
-  test.skip('a map of a subclass', () => {
+  test('a map of a subclass', () => {
     expect(overrideReturning('Record<string, Sup>', 'Record<string, Sub>')).toEqual([
       '"testpkg.B#m" changes the return type to "map<testpkg.Sub>" when overriding testpkg.A. Change it to "map<testpkg.Sup>"',
     ]);
   });
 
-  // @TODO(ts7): expects a jsii validation diagnostic (override and re-declaration rules, JSII5xxx); re-enable with the port of the validator
-  test.skip('a narrower union', () => {
+  test('a narrower union', () => {
     expect(overrideReturning('Sup | string', 'Sup')).toEqual([
       '"testpkg.B#m" changes the return type to "testpkg.Sup" when overriding testpkg.A. Change it to "string | testpkg.Sup"',
     ]);
@@ -228,22 +219,19 @@ describe('not allowed', () => {
     ]);
   });
 
-  // @TODO(ts7): expects a jsii validation diagnostic (override and re-declaration rules, JSII5xxx); re-enable with the port of the validator
-  test.skip('a different primitive', () => {
+  test('a different primitive', () => {
     expect(overrideReturning('string | number', 'string')).toEqual([
       '"testpkg.B#m" changes the return type to "string" when overriding testpkg.A. Change it to "number | string"',
     ]);
   });
 
-  // @TODO(ts7): expects a jsii validation diagnostic (override and re-declaration rules, JSII5xxx); re-enable with the port of the validator
-  test.skip('an unrelated class instead of an interface', () => {
+  test('an unrelated class instead of an interface', () => {
     expect(overrideReturning('IBase', 'Other')).toEqual([
       '"testpkg.B#m" changes the return type to "testpkg.Other" when overriding testpkg.A. Change it to "testpkg.IBase"',
     ]);
   });
 
-  // @TODO(ts7): expects a jsii validation diagnostic (override and re-declaration rules, JSII5xxx); re-enable with the port of the validator
-  test.skip('a class that does not extend the overridden class, even when it has the same shape', () => {
+  test('a class that does not extend the overridden class, even when it has the same shape', () => {
     expect(
       compileJsiiForErrors(`
         export class X {}

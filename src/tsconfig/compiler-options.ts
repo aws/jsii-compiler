@@ -82,11 +82,10 @@ export function convertNewLineForJson(newLine: 0 | 1): string {
  *
  * Like the classic compiler, enum values are named after their TypeScript enum
  * member: lower case, or kebab case for `jsx`. That gives `target: "latest"` for
- * `esnext` and `jsx: "react-js-x"` for `react-jsx` (aws/jsii-compiler#2990); a file
- * jsii writes uses {@link convertForTsconfigFile} instead.
+ * `esnext` and `jsx: "react-js-x"` for `react-jsx` (aws/jsii-compiler#2990).
  */
 // @TODO(NEXT): `esnext` and `react-jsx(dev)` get wrong names, as on main (aws/jsii-compiler#2990). After 7.1's first
-// release: use the spelling of convertForTsconfigFile here as well.
+// release: name them as tsconfig.json spells them (`esnext`, `react-jsx`, `react-jsxdev`).
 export function convertForJson(opt: CompilerOptionsJson): CompilerOptionsJson {
   // TypeScript's config parser attaches internal `pathsBasePath` when `paths` is set;
   // drop it so JSON serialization and tsconfig validation only see user-facing options.
@@ -106,22 +105,6 @@ export function convertForJson(opt: CompilerOptionsJson): CompilerOptionsJson {
     ...convertHelper('target', opt.target, (v) => (v === 1 ? 'es5' : enumName(v, 'ScriptTarget'))),
     ...convertHelper('newLine', opt.newLine, (v) => enumName(v, 'NewLineKind')),
   };
-}
-
-/**
- * {@link convertForJson} with the values `tsc` accepts in a `tsconfig.json` file,
- * for a tsconfig that jsii writes from parsed options.
- */
-export function convertForTsconfigFile(opt: CompilerOptionsJson): CompilerOptionsJson {
-  const ts = loadTypeScriptApi();
-  const out = convertForJson(opt);
-  if (opt.target === ts.ScriptTarget.ESNext) {
-    out.target = 'esnext';
-  }
-  if (opt.jsx === ts.JsxEmit.ReactJSX || opt.jsx === ts.JsxEmit.ReactJSXDev) {
-    out.jsx = opt.jsx === ts.JsxEmit.ReactJSX ? 'react-jsx' : 'react-jsxdev';
-  }
-  return out;
 }
 
 /** Converts the value of one option; like the classic compiler, a falsy value (`module: 0`) is kept as it is. */

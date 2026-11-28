@@ -23,7 +23,9 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as zlib from 'node:zlib';
 import * as spec from '@jsii/spec';
+import chalk from 'chalk';
 import deepEqual from 'fast-deep-equal';
+import * as log4js from 'log4js';
 
 import * as Case from './case';
 import { findDependencyDirectory } from './common/find-utils';
@@ -36,13 +38,16 @@ import { Code, DiagnosticLocation, DiagnosticMessageFormatter, JsiiDiagnostic } 
 import * as literate from './literate';
 import { validateTargets, type ProjectInfo } from './project-info';
 import { isReservedName } from './reserved-words';
+import { DeclarationsStripping, HeritageReference, HeritageTransformation } from './transforms/deprecated-remover';
 import { isAllowedCovariantSubtype } from './type-analysis';
 import { compareUnionMembers, createTypeResolver, typeReferenceEqual, typeReferenceToString } from './type-reference';
 import { isBehavioralInterfaceType, isDataType, visitTypeReference } from './type-visitor';
-import { parentFqn } from './utils';
+import { JsiiError, parentFqn } from './utils';
 import { Validator } from './validator';
 import { SHORT_VERSION, VERSION } from './version';
 import { parseWarningCodes, suppressInline } from './warnings';
+
+const LOG = log4js.getLogger('jsii/assembler');
 
 export interface AssemblerOptions {
   /** package.json contents of the package being assembled. */
@@ -69,6 +74,8 @@ export interface AssemblerOptions {
    */
   readonly tscRootDir?: string;
   readonly tscOutDir?: string;
+  /** Whether the assembly is compressed (only for the log line; the file is written by the compiler). */
+  readonly compressAssembly?: boolean;
 }
 
 interface RegisteredType {
@@ -156,6 +163,13 @@ function compareMembers(l: any, r: any): number {
   return key(l).localeCompare(key(r));
 }
 
+/** Member trace lines of the constructor (parameters, then parameter properties) come after those of the other members. */
+const CONSTRUCTOR_TRACE_ORDER = 1e15;
+const PARAMETER_PROPERTY_TRACE_ORDER = 2e15;
+
+/** How many nodes or symbols go into one request when the assembler reads ahead for the whole project. */
+const PREFETCH_CHUNK = 5000;
+
 export class Assembler {
   private readonly ts: TypeScriptApi;
   private readonly checker: any;
@@ -181,6 +195,19 @@ export class Assembler {
   private readonly submodules: Record<string, spec.Submodule> = {};
   private readonly typeFqnBySymbolId = new Map<unknown, string>();
   private readonly exported: RegisteredType[] = [];
+  /** The position (see `_registerModuleExports`) at which each registered type is visited. */
+  private readonly exportedSeq = new Map<RegisteredType, number>();
+  /**
+   * The trace lines of the walk over the exports (entering and leaving a submodule or namespace, a type left out
+   * for `@internal`), made while the types are registered and logged in the order of the types they surround.
+   */
+  private readonly walkTrace: Array<{ pos: number; text?: string; replayOf?: string; internalOf?: string }> = [];
+  /** The member trace lines of the type being visited, in the order the classic assembler made them. */
+  private memberTrace?: Array<{ order: number; text: string }>;
+  private memberTraceOrder = 0;
+  private registeringSeq = 0;
+  private visitLog?: Array<{ level: 'trace' | 'debug' | 'info'; text: string }>;
+  private readonly visitLogOf = new Map<RegisteredType, Array<{ level: 'trace' | 'debug' | 'info'; text: string }>>();
 
   // Perf caches: memoize per-symbol doc reads (each is an RPC), keyed by
   // the symbol's declaration coordinate (path:index), which is stable.
@@ -239,6 +266,17 @@ export class Assembler {
    * names it, but a heritage clause erases it (see `strippedTypeSymIds`).
    */
   private readonly strippedFqnBySymbolId = new Map<unknown, string>();
+  /** The symbol id of each type dropped by --strip-deprecated, by fqn. */
+  private readonly strippedSymbolIdByFqn = new Map<string, unknown>();
+  /** The declarations (handles) of the types and members dropped by --strip-deprecated (classic `nodesToRemove`). */
+  private readonly strippedDeclarations: any[] = [];
+  /**
+   * With --strip-deprecated: the base class and interfaces of each class and interface as the classic assembler
+   * listed them before the deprecated-remover ran (stripped types are not erased there).
+   */
+  private readonly unstrippedHeritage = new Map<string, { base?: string; interfaces: string[] }>();
+  /** With --strip-deprecated: what to remove and rewrite in the emitted `.d.ts` files. */
+  public declarationsStripping?: DeclarationsStripping;
 
   /** The export symbol of each submodule, by submodule fqn (classic `_submodules` keys). */
   private readonly submoduleSymbols = new Map<string, any>();
@@ -278,7 +316,11 @@ export class Assembler {
     this.currentStability = options.defaultStability;
     this.stripDeprecated = !!options.stripDeprecated;
 
-    if (options.stripDeprecatedAllowListFile && fs.existsSync(options.stripDeprecatedAllowListFile)) {
+    if (this.stripDeprecated && options.stripDeprecatedAllowListFile) {
+      // Like the classic assembler: a missing allow-list fails the build.
+      if (!fs.existsSync(options.stripDeprecatedAllowListFile)) {
+        throw new JsiiError(`--strip-deprecated file not found: ${options.stripDeprecatedAllowListFile}`);
+      }
       this.stripAllowList = new Set(
         fs
           .readFileSync(options.stripDeprecatedAllowListFile, 'utf8')
@@ -316,10 +358,29 @@ export class Assembler {
     const moduleSymbol = this.checker.getSymbolAtLocation(entrySf);
     const moduleExports = this._exportsOfModule(moduleSymbol);
 
+    if (LOG.isTraceEnabled()) {
+      LOG.trace(
+        `Processing source file: ${chalk.blue(path.relative(this.options.projectInfo.projectRoot, this.entry))}`,
+      );
+    }
     this._registerModuleExports(moduleExports, moduleSymbol.declarations?.[0]?.path);
 
-    for (const { name, sym, decl, fqn } of this.exported) {
-      this._visitNode(name, sym, decl, fqn);
+    this._prefetchMembersOfTypes();
+    const logging = LOG.isInfoEnabled();
+    try {
+      for (const entry of this.exported) {
+        this.visitLog = logging ? [] : undefined;
+        try {
+          this._visitNode(entry.name, entry.sym, entry.decl, entry.fqn);
+        } finally {
+          if (this.visitLog != null) {
+            this.visitLogOf.set(entry, this.visitLog);
+          }
+          this.visitLog = undefined;
+        }
+      }
+    } finally {
+      this._logVisits();
     }
 
     this._propagateDatatype();
@@ -328,26 +389,121 @@ export class Assembler {
       check();
     }
 
+    this._resolveInheritedInitializers();
     this._validateTypesAgainstPositions();
 
     for (const fqn of this.strippedTypeDecls.keys()) {
       delete this.types[fqn];
     }
     const assembly = this._buildAssembly();
+    if (this.stripDeprecated) {
+      // Classic: the `.d.ts` files are still rewritten (imports and exports) when the deprecated-remover did not run.
+      this.declarationsStripping = { declarations: [], transformations: [] };
+    }
     // Classic: the validator runs on the finished assembly, and only when the
     // assembler itself reported no error.
     this.typeModelFailed = this._diagnostics.some((d) => d.category === DiagnosticCategory.Error);
-    if (!this.typeModelFailed) {
+    if (this.typeModelFailed) {
+      LOG.debug('Skipping emit due to errors.');
+    } else {
       this._reportLeftoverUsesOfStrippedTypes(assembly);
+      if (this.stripDeprecated) {
+        this.declarationsStripping = {
+          declarations: this.strippedDeclarations.filter((d) => d != null),
+          transformations: this._heritageTransformations(assembly),
+        };
+      }
       const validator = new Validator(this.options.projectInfo, assembly, {
         nodeOf: (element) => this.relatedNodes.get(element),
         syntaxKind: this.ts.SyntaxKind,
         create: (code, node, ...args) => this._createDiagnostic(code, node, ...args),
         location: (node) => this._diagnosticLocation(node),
       });
-      this._diagnostics.push(...validator.emit().diagnostics);
+      const validation = validator.emit();
+      this._diagnostics.push(...validation.diagnostics);
+      // Classic: the features the validator detected are added to the assembly's.
+      for (const feature of validation.usedFeatures ?? []) {
+        this.usedFeatures.add(feature);
+      }
+      assembly.usedFeatures = this.usedFeatures.size > 0 ? Array.from(this.usedFeatures).sort() : undefined;
+      // The compiler writes the assembly file right after this returns, unless the validator reported an error.
+      if (!validation.diagnostics.some((d) => d.category === DiagnosticCategory.Error)) {
+        LOG.trace(
+          `${this.options.compressAssembly ? 'Zipping' : 'Emitting'} assembly: ${chalk.blue(
+            path.join(this.options.projectInfo.projectRoot, spec.SPEC_FILE_NAME),
+          )}`,
+        );
+      }
     }
     return assembly;
+  }
+
+  /**
+   * Classic `DeprecatedRemover.removeFrom`: how the heritage clauses of the `.d.ts` files change when a base class or
+   * interface is stripped, in the order the classic transformations were made (and applied).
+   */
+  private _heritageTransformations(assembly: spec.Assembly): HeritageTransformation[] {
+    const result: HeritageTransformation[] = [];
+    if (this.strippedTypeDecls.size === 0) {
+      return result;
+    }
+    const stripped = (fqn: string | undefined): fqn is string => fqn != null && this.strippedTypeDecls.has(fqn);
+    const reference = (fqn: string): HeritageReference => {
+      const type = assembly.types?.[fqn];
+      const declaration = type != null ? this.relatedNodes.get(type) : undefined;
+      return declaration != null ? { declaration } : { fqn };
+    };
+    for (const type of Object.values(assembly.types ?? {})) {
+      const target = this.relatedNodes.get(type);
+      const unstripped = this.unstrippedHeritage.get(type.fqn);
+      if (!spec.isClassOrInterfaceType(type) || target == null || unstripped == null) {
+        continue;
+      }
+      // For classes, stripped base classes are erased, and replaced by their own base class.
+      const additionalInterfaces = new Set<string>();
+      if (spec.isClassType(type) && stripped(unstripped.base)) {
+        let base: string | undefined = unstripped.base;
+        while (stripped(base)) {
+          for (const iface of this.unstrippedHeritage.get(base)?.interfaces ?? []) {
+            additionalInterfaces.add(iface);
+          }
+          base = this.unstrippedHeritage.get(base)?.base;
+        }
+        result.push(
+          base != null ? { kind: 'replaceBase', target, type: reference(base) } : { kind: 'removeBase', target },
+        );
+      }
+      // Stripped interfaces are erased, and replaced by their own interfaces.
+      if (!unstripped.interfaces.some(stripped) && additionalInterfaces.size === 0) {
+        continue;
+      }
+      const original = new Set(unstripped.interfaces);
+      const candidates = Array.from(new Set([...original, ...additionalInterfaces]));
+      while (candidates.length > 0) {
+        const candidate = candidates.pop()!;
+        if (!stripped(candidate)) {
+          if (!original.has(candidate)) {
+            result.push({ kind: 'addInterface', target, type: reference(candidate) });
+          }
+          continue;
+        }
+        if (original.has(candidate)) {
+          result.push({ kind: 'removeInterface', target, types: this._heritageTypesOf(target, candidate) });
+        }
+        candidates.push(...(this.unstrippedHeritage.get(candidate)?.interfaces ?? []));
+      }
+    }
+    return result;
+  }
+
+  /** The types in the heritage clauses of `decl` that are the stripped type `fqn`. */
+  private _heritageTypesOf(decl: any, fqn: string): any[] {
+    return (decl.heritageClauses ?? [])
+      .flatMap((clause: any) => clause.types)
+      .filter((t: any) => {
+        const s = this._heritageBaseSymbol(t);
+        return s != null && s.id === this.strippedSymbolIdByFqn.get(fqn);
+      });
   }
 
   /**
@@ -560,14 +716,17 @@ export class Assembler {
     // put a label that continues on the next JSDoc line back on one line. The TypeScript 7
     // rendering of such a link is broken, so the raw comment is used instead.
     let rejoined = false;
-    const rawComment = commentLines.join('\n').replace(/\{@(?:link|linkcode|linkplain)\b[^}]*\n[^}]*\}/g, (link) => {
+    const rawComment = commentLines.join('\n').replace(/\{@(?:link|linkcode|linkplain)\b[^{}]*\n[^{}]*\}/g, (link) => {
       rejoined = true;
       return link.replace(/\s*\n\s*/g, ' ').replace(/\s+\}$/, '}');
     });
     if (!/\{@link(code|plain)?\b/.test(rawComment)) {
       return comment;
     }
-    const linkRe = /\{@(linkcode|linkplain|link)\b([^}\n]*)\}/g;
+    // A link that is never closed ends at the line break (TypeScript 6 closed it there).
+    // @TODO(NEXT): main leaves the `*` of the next comment line in the text after such a link, and uses that line as the
+    // label of a link without one (https://github.com/aws/jsii-compiler/issues/3158). After 7.1's first release: report it.
+    const linkRe = /\{@(linkcode|linkplain|link)\b([^}\n]*)(\}|$)/gm;
     let result = comment;
     let cursor = 0;
     let rawRendered = rawComment;
@@ -591,7 +750,9 @@ export class Assembler {
       let classic: string;
       let modern: string;
       if (label) {
-        classic = `{@${kind} ${target} | ${label}}`;
+        // A link that is never closed ends at the line break, or at the end of the comment (with a space before `}`).
+        const atEnd = m[3] !== '}' && (m.index ?? 0) + m[0].length === rawComment.length;
+        classic = `{@${kind} ${target} | ${label}${atEnd ? ' ' : ''}}`;
       } else if (!nm || target.includes('://')) {
         classic = `{@${kind} ${target}}`;
       } else {
@@ -602,10 +763,23 @@ export class Assembler {
       }
       if (!nm) {
         modern = after;
+      } else if (m[3] !== '}' && label) {
+        // TypeScript 7 renders the label alone for a link that is never closed.
+        modern = label;
       } else {
         modern = `${nm[0].replace(/#/g, '.')}${after.slice(nm[0].length)}`;
       }
-      rawRendered = rawRendered.replace(m[0], classic);
+      // TypeScript 6 read the next line of a link without a label that is never closed as its label.
+      const continued =
+        m[3] !== '}' && !label ? /^\n([^\n{]+)\n?$/.exec(rawComment.slice((m.index ?? 0) + m[0].length)) : null;
+      if (continued != null && nm) {
+        rawRendered = rawRendered.replace(`${m[0]}${continued[0]}`, `{@${kind} ${target} | * ${continued[1].trim()}}`);
+        allFound = false;
+        continue;
+      }
+      // TypeScript 6 kept the `*` that starts the line after a link that is never closed.
+      const unclosedBeforeLineEnd = m[3] !== '}' && (m.index ?? 0) + m[0].length < rawComment.length;
+      rawRendered = rawRendered.replace(m[0], unclosedBeforeLineEnd ? `${classic} *` : classic);
       // Re-insert the braces where the TypeScript 7 rendering of this link is.
       const at = result.indexOf(modern, cursor);
       if (at < 0) {
@@ -779,6 +953,39 @@ export class Assembler {
     }
     for (const [i, t] of todo.entries()) {
       this._typeOfSymbolAtCache.set(t.key, results[i]);
+    }
+  }
+
+  /**
+   * Read the type, the members and the member docs of all exported classes and interfaces in a few large requests
+   * before they are visited, instead of a few requests per type. `_visitMembers` then finds them in the caches it
+   * reads anyway (the checker's type cache, the members cached on each type, `_jsDocTags` and `_docComment`).
+   */
+  private _prefetchMembersOfTypes(): void {
+    const { SyntaxKind } = this.ts;
+    const decls = this.exported
+      .map((e) => e.decl)
+      .filter((d) => d?.kind === SyntaxKind.ClassDeclaration || d?.kind === SyntaxKind.InterfaceDeclaration);
+    const members = new Set<any>();
+    try {
+      for (let i = 0; i < decls.length; i += PREFETCH_CHUNK) {
+        const types: any[] = this.checker.getTypeAtLocation(decls.slice(i, i + PREFETCH_CHUNK));
+        const memberLists: any[][] = this.project.api.batch(
+          ...types.map((t) => this.checker.getPropertiesOfType.gen(t)),
+        );
+        for (const list of memberLists) {
+          for (const m of list ?? []) {
+            members.add(m);
+          }
+        }
+      }
+    } catch {
+      // shortcut: a failed request reads nothing more ahead; each type is then read when it is visited, as before.
+      return;
+    }
+    const all = [...members];
+    for (let i = 0; i < all.length; i += PREFETCH_CHUNK) {
+      this._prefetchDocs(all.slice(i, i + PREFETCH_CHUNK));
     }
   }
 
@@ -1102,6 +1309,8 @@ export class Assembler {
         seq: number;
       }>
     >();
+    // Types of a dependency that a module re-exports, by export: the classic assembler visited them as its own.
+    const foreignCandidates: Array<{ prefix: string; sym: any; aliasDeclH?: any; seq: number }> = [];
     const visitedModules = new Set<string>();
     // The order in which exports are seen: the classic assembler visited (and registered) types in this order.
     let seq = 0;
@@ -1121,7 +1330,11 @@ export class Assembler {
         const kind = declH.kind;
         if ([SyntaxKind.ClassDeclaration, SyntaxKind.InterfaceDeclaration, SyntaxKind.EnumDeclaration].includes(kind)) {
           if (this._dependencyOfPath(declH.path ?? '') != null) {
-            continue; // peer-dependency type: referenced externally, not owned
+            // A type of a dependency: references to it point at the dependency, but a re-export of it is visited
+            // again as a type of this assembly (see foreignCandidates).
+            const foreignAliasDeclH = (e.flags & SymbolFlags.Alias) !== 0 ? e.declarations?.[0] : undefined;
+            foreignCandidates.push({ prefix, sym, aliasDeclH: foreignAliasDeclH, seq: seq++ });
+            continue;
           }
           if (!candidates.has(sym.id)) {
             candidates.set(sym.id, []);
@@ -1171,11 +1384,27 @@ export class Assembler {
             continue;
           }
           visitedModules.add(key);
-          this.submoduleSymbols.set(subFqn, e);
-          this.submodules[subFqn] = this._submoduleSpec(e, sym, kind === SyntaxKind.SourceFile);
+          // Classic: a dependency re-exported as a namespace (`export * as ns from 'dependency'`) is no submodule.
+          if (kind !== SyntaxKind.SourceFile || this._dependencyOfPath(declH.path ?? '') == null) {
+            this.submoduleSymbols.set(subFqn, e);
+            this.submodules[subFqn] = this._submoduleSpec(e, sym, kind === SyntaxKind.SourceFile);
+          }
           const subDir = path.dirname(sym.declarations?.[0]?.path ?? moduleDir);
           const subFile = kind === SyntaxKind.SourceFile ? sym.declarations?.[0]?.path : undefined;
+          const isSubmodule = kind === SyntaxKind.SourceFile;
+          this._traceWalk(
+            seq,
+            isSubmodule ? 'Entering submodule: ' : 'Entering namespace: ',
+            prefix,
+            isSubmodule ? sym.name : e.name,
+          );
           collect(this._exportsOfModule(sym), subFqn, subDir, subFile, e);
+          this._traceWalk(
+            seq,
+            isSubmodule ? 'Leaving submodule: ' : 'Leaving namespace:  ',
+            prefix,
+            isSubmodule ? sym.name : e.name,
+          );
         } else {
           this._reportUnsupportedExport(sym, declH);
         }
@@ -1191,7 +1420,16 @@ export class Assembler {
     // re-export, e.g. aws_docdb re-exporting aws_rds.CaCertificate) gets a full
     // duplicate type entry under each such fqn — strada emits one entry per
     // namespace visit.
-    const registrations: Array<{ sym: any; name: string; fqn: string; seq: number }> = [];
+    const registrations: Array<{ sym: any; name: string; fqn: string; seq: number; foreign?: boolean }> = [];
+    const visitedByStrada = (aliasDeclH: any): boolean => {
+      if (aliasDeclH == null) {
+        return true;
+      }
+      if (aliasDeclH.kind !== SyntaxKind.ExportSpecifier) {
+        return false;
+      }
+      return aliasDeclH.resolve(this.project)?.parent?.parent?.moduleSpecifier != null;
+    };
     for (const [, cands] of candidates) {
       let best = cands[0];
       let bestLen = -1;
@@ -1218,7 +1456,7 @@ export class Assembler {
       const extraFqns = new Set<string>([bestFqn]);
       for (const c of cands) {
         const fqn = `${c.prefix}.${name}`;
-        if (extraFqns.has(fqn)) {
+        if (c === best) {
           continue;
         }
         // strada visits every export of every module, so each module that exports the type (directly, through
@@ -1229,18 +1467,33 @@ export class Assembler {
         // the fqns, and re-exporting through a local import drops the entry for no reason. After 7.1's first
         // release, keep one entry per type at its canonical fqn and treat every re-export (with or without a
         // module specifier) the same way.
-        if (c.aliasDeclH != null) {
-          if (c.aliasDeclH.kind !== SyntaxKind.ExportSpecifier) {
-            continue;
+        if (!visitedByStrada(c.aliasDeclH)) {
+          continue;
+        }
+        if (extraFqns.has(fqn)) {
+          // The classic assembler visited the type again for this export, with the same result; only its log is
+          // repeated here.
+          // @TODO(NEXT): this keeps the log of main, which visits a type once per export
+          // (https://github.com/aws/jsii-compiler/issues/3151). After 7.1's first release: log it once.
+          if (LOG.isInfoEnabled()) {
+            this.walkTrace.push({ pos: c.seq, replayOf: fqn });
           }
-          const aliasDecl = c.aliasDeclH.resolve(this.project);
-          const exportDeclNode = aliasDecl?.parent?.parent;
-          if (exportDeclNode?.moduleSpecifier == null) {
-            continue;
-          }
+          continue;
         }
         extraFqns.add(fqn);
         registrations.push({ sym: c.sym, name, fqn, seq: c.seq });
+      }
+    }
+    // Classic: a type of a dependency that a module re-exports (`export * from 'dependency'`, `export { X } from
+    // 'dependency'`) is visited as a type of this assembly, under that module's fqn. References still point at the
+    // dependency.
+    // @TODO(NEXT): the assembly declares the dependency's type a second time, as on main
+    // (https://github.com/aws/jsii-compiler/issues/2951). After 7.1's first release: leave re-exported dependency
+    // types out of the assembly.
+    for (const c of foreignCandidates) {
+      const fqn = `${c.prefix}.${c.sym.name}`;
+      if (visitedByStrada(c.aliasDeclH) && !registrations.some((r) => r.fqn === fqn)) {
+        registrations.push({ sym: c.sym, name: c.sym.name, fqn, seq: c.seq, foreign: true });
       }
     }
     // Batch-prefetch docs for all candidate type symbols (used by the
@@ -1248,22 +1501,127 @@ export class Assembler {
     this._prefetchDocs(registrations.map((r) => r.sym));
     // Register canonical fqns first (references resolve to the first registration of a symbol), then visit the
     // types in the order their exports were seen; nested types stay right after their parent.
-    const seqOf = new Map<unknown, number>();
     for (const r of registrations) {
       const start = this.exported.length;
-      this._registerType(r.sym, r.name, r.fqn);
+      this.registeringSeq = r.seq;
+      this._registerType(r.sym, r.name, r.fqn, r.foreign);
       for (const entry of this.exported.slice(start)) {
-        seqOf.set(entry, r.seq);
+        this.exportedSeq.set(entry, r.seq);
       }
     }
     const visitOrder = this.exported
       .map((entry, index) => ({ entry, index }))
-      .sort((x, y) => (seqOf.get(x.entry) ?? 0) - (seqOf.get(y.entry) ?? 0) || x.index - y.index)
+      .sort((x, y) => (this.exportedSeq.get(x.entry) ?? 0) - (this.exportedSeq.get(y.entry) ?? 0) || x.index - y.index)
       .map(({ entry }) => entry);
     this.exported.splice(0, this.exported.length, ...visitOrder);
+    // The walk is logged by position (a stable sort keeps the order the lines were made in).
+    this.walkTrace.sort((x, y) => x.pos - y.pos);
   }
 
-  private _registerType(sym: any, name: string, fqn: string): void {
+  /**
+   * Print the lines of the visits (see `_log`) with those of the walk over the exports, in the order of the classic
+   * assembler: the lines recorded at a position come before the type visited at that position.
+   */
+  private _logVisits(): void {
+    let walked = 0;
+    const logWalkUpTo = (pos: number) => {
+      for (; walked < this.walkTrace.length && this.walkTrace[walked].pos <= pos; walked++) {
+        const { text, replayOf } = this.walkTrace[walked];
+        if (text != null) {
+          LOG.trace(text);
+        }
+        if (replayOf != null) {
+          // The type is exported again under the same fqn: the classic assembler visited it again, with the same lines.
+          for (const entry of this.exported) {
+            if (entry.fqn === replayOf || entry.fqn.startsWith(`${replayOf}.`)) {
+              this._printVisit(entry);
+            }
+          }
+          // A type left out for `@internal` is logged by the walk.
+          for (const other of this.walkTrace) {
+            if (other.internalOf === replayOf && other.text != null) {
+              LOG.trace(other.text);
+            }
+          }
+        }
+      }
+    };
+    for (const entry of this.exported) {
+      logWalkUpTo(this.exportedSeq.get(entry) ?? 0);
+      this._printVisit(entry);
+    }
+    logWalkUpTo(Infinity);
+  }
+
+  private _printVisit(entry: RegisteredType): void {
+    for (const { level, text } of this.visitLogOf.get(entry) ?? []) {
+      LOG[level](text);
+    }
+  }
+
+  /** A line of the walk over the exports, in the namespace `prefix` (an fqn prefix) at position `pos`. */
+  private _traceWalk(pos: number, what: string, prefix: string, name: string): void {
+    if (LOG.isTraceEnabled()) {
+      const namespace = prefix.slice(this.assemblyName.length + 1);
+      this.walkTrace.push({
+        pos,
+        text: `${what}${chalk.cyan([...(namespace ? namespace.split('.') : []), name].join('.'))}`,
+      });
+    }
+  }
+
+  /** The line logged when a type is visited: its namespace (the fqn between the assembly and the type) and name. */
+  private _processingText(kind: string, fqn: string, name: string): string {
+    const namespace = fqn
+      .slice(this.assemblyName.length + 1)
+      .split('.')
+      .slice(0, -1)
+      .join('.');
+    return `Processing ${kind}: ${chalk.gray(namespace)}.${chalk.cyan(name)}`;
+  }
+
+  /**
+   * Log a line about a member of the type being visited. The classic assembler visited the members in the order of
+   * their declarations, then the constructor; they are logged in that order once the type is done (`_flushMemberTrace`).
+   */
+  private _traceMember(text: string): void {
+    if (this.memberTrace != null) {
+      this.memberTrace.push({ order: this.memberTraceOrder, text });
+    } else {
+      this._log('trace', text);
+    }
+  }
+
+  /**
+   * Log a line made while a type is visited. The lines of each type are kept and printed once all types are
+   * visited, so that a type visited twice by the classic assembler can be logged twice (see `_registerModuleExports`).
+   */
+  private _log(level: 'trace' | 'debug' | 'info', text: string): void {
+    if (this.visitLog != null) {
+      this.visitLog.push({ level, text });
+    } else {
+      LOG[level](text);
+    }
+  }
+
+  private _flushMemberTrace(): void {
+    const lines = this.memberTrace;
+    this.memberTrace = undefined;
+    // A stable sort keeps the order of the lines of one member.
+    for (const { text } of (lines ?? []).sort((x, y) => x.order - y.order)) {
+      this._log('trace', text);
+    }
+  }
+
+  /** Log that a symbol is private (or a non-exported type), as the classic check for private or internal symbols. */
+  private _traceIfPrivate(sym: any): void {
+    if (LOG.isTraceEnabled() && this._isPrivateType(sym)) {
+      this._traceMember(`${chalk.cyan(sym.name)} is marked "private", or is an unexported type declaration`);
+    }
+  }
+
+  /** @param foreign a type of a dependency (references to it do not resolve to this entry) */
+  private _registerType(sym: any, name: string, fqn: string, foreign = false): void {
     const { SyntaxKind } = this.ts;
     const isFirst = !this.typeFqnBySymbolId.has(sym.id);
     if (!isFirst) {
@@ -1274,19 +1632,44 @@ export class Assembler {
         return;
       }
     }
+    // Classic: only a declaration with an `export` modifier is visited. A type exported only by `export { X }`, or
+    // declared in an ambient namespace without `export`, is left out.
+    // @TODO(NEXT): such a type is exported by the module but missing from the assembly, as on main
+    // (https://github.com/aws/jsii-compiler/issues/3157). After 7.1's first release: visit every exported type.
+    const decl = sym.declarations?.[0]?.resolve(this.project);
+    if (!decl) {
+      return;
+    }
+    if (!(decl.modifiers ?? []).some((m: any) => m.kind === SyntaxKind.ExportKeyword)) {
+      return;
+    }
     // Classic: types marked @internal (or @jsii ignore) are skipped. A type that only has an underscored name is
     // still visited (and reported as JSII8000), but it is hidden: references to it do not resolve to it.
     const hiddenByName = sym.name.startsWith('_');
-    if (this._jsDocTags(sym).some((t: any) => t.name === 'internal') || this._isIgnored(sym)) {
+    const internal = this._jsDocTags(sym).some((t: any) => t.name === 'internal');
+    if (internal || this._isIgnored(sym)) {
+      if (internal && LOG.isTraceEnabled()) {
+        // The classic visitor logged the type before it found the tag.
+        const kind = { [SyntaxKind.EnumDeclaration]: 'enum', [SyntaxKind.InterfaceDeclaration]: 'interface' }[
+          sym.declarations?.[0]?.kind as number
+        ];
+        this.walkTrace.push({
+          pos: this.registeringSeq,
+          internalOf: fqn,
+          text: this._processingText(kind ?? 'class', fqn, sym.name),
+        });
+      }
       return;
     }
     if (this._shouldStrip(sym, fqn, this.defaultStability)) {
       this.strippedTypeSymIds.add(sym.id);
-      const strippedDecl = sym.declarations?.[0]?.resolve(this.project);
+      const strippedDecl = decl;
       this.strippedTypeDecls.set(fqn, strippedDecl);
       if (!this.strippedFqnBySymbolId.has(sym.id)) {
         this.strippedFqnBySymbolId.set(sym.id, fqn);
       }
+      this.strippedSymbolIdByFqn.set(fqn, sym.id);
+      this.strippedDeclarations.push(sym.declarations?.[0]);
       if (strippedDecl?.kind === SyntaxKind.ClassDeclaration) {
         this.strippedClasses.push({
           assembly: this.assemblyName,
@@ -1298,13 +1681,9 @@ export class Assembler {
         });
       }
     }
-    const decl = sym.declarations?.[0]?.resolve(this.project);
-    if (!decl) {
-      return;
-    }
     // Classic: a stripped type is visited like any other (its diagnostics, its nested types), then removed from the
     // assembly; references to it do not resolve to it.
-    if (isFirst && !hiddenByName && !this.strippedTypeSymIds.has(sym.id)) {
+    if (isFirst && !foreign && !hiddenByName && !this.strippedTypeSymIds.has(sym.id)) {
       this.typeFqnBySymbolId.set(sym.id, fqn);
     }
     this.exported.push({ name, sym, decl, fqn });
@@ -1323,7 +1702,7 @@ export class Assembler {
             nDeclH.kind,
           )
         ) {
-          this._registerType(nsym, nsym.name, `${fqn}.${nsym.name}`);
+          this._registerType(nsym, nsym.name, `${fqn}.${nsym.name}`, foreign);
         }
       }
     }
@@ -1407,6 +1786,39 @@ export class Assembler {
           );
         }
       }
+    }
+  }
+
+  /**
+   * Classes without their own constructor take the initializer of their base type (base types first, so chains of
+   * such classes resolve). The classic assembler did that while it assembled, so the checks that run afterwards (such
+   * as `_validateTypesAgainstPositions`) see these initializers.
+   */
+  private _resolveInheritedInitializers(): void {
+    const assembly = { name: this.assemblyName, types: this.types } as unknown as spec.Assembly;
+    const dereference = createTypeResolver(assembly, [
+      ...this.options.projectInfo.dependencyClosure,
+      ...this.externalAssemblies.values(),
+    ]);
+    const resolveInitializer = (fqn: string, seen = new Set<string>()): void => {
+      const type = this.types[fqn] as spec.ClassType | undefined;
+      if (type == null || !this.inheritsInitializer.has(fqn) || seen.has(fqn)) {
+        return;
+      }
+      seen.add(fqn);
+      this.inheritsInitializer.delete(fqn);
+      if (type.base != null && this.inheritsInitializer.has(type.base)) {
+        resolveInitializer(type.base, seen);
+      }
+      const baseType = type.base != null ? (dereference(type.base) as spec.ClassType | undefined) : undefined;
+      if (baseType?.initializer != null) {
+        (type as any).initializer = JSON.parse(JSON.stringify(baseType.initializer));
+      } else {
+        delete (type as any).initializer;
+      }
+    };
+    for (const fqn of [...this.inheritsInitializer]) {
+      resolveInitializer(fqn);
     }
   }
 
@@ -1503,29 +1915,6 @@ export class Assembler {
       }
       return result;
     };
-
-    // Initializers of classes without their own constructor: copy the base type's
-    // (base types first, so chains of such classes resolve).
-    const resolveInitializer = (fqn: string, seen = new Set<string>()): void => {
-      const type = this.types[fqn] as spec.ClassType | undefined;
-      if (type == null || !this.inheritsInitializer.has(fqn) || seen.has(fqn)) {
-        return;
-      }
-      seen.add(fqn);
-      this.inheritsInitializer.delete(fqn);
-      if (type.base != null && this.inheritsInitializer.has(type.base)) {
-        resolveInitializer(type.base, seen);
-      }
-      const baseType = type.base != null ? (dereference(type.base) as spec.ClassType | undefined) : undefined;
-      if (baseType?.initializer != null) {
-        (type as any).initializer = JSON.parse(JSON.stringify(baseType.initializer));
-      } else {
-        delete (type as any).initializer;
-      }
-    };
-    for (const fqn of [...this.inheritsInitializer]) {
-      resolveInitializer(fqn);
-    }
 
     const methodCovariant = (actual: spec.Method, expected: spec.Method) =>
       !same(actual.returns, expected.returns) &&
@@ -1667,6 +2056,9 @@ export class Assembler {
     this.relatedNodes.set(jsiiType, decl);
     this._validateSubmoduleNameConflicts(name, fqn, decl);
     this._validateNoNamespaceInType(sym, decl, fqn);
+    if (LOG.isInfoEnabled()) {
+      this._log('info', `Registering JSII ${chalk.magenta(jsiiType.kind)}: ${chalk.green(jsiiType.fqn)}`);
+    }
     this.types[fqn] = jsiiType as spec.Type;
   }
 
@@ -1738,6 +2130,14 @@ export class Assembler {
   private _visitEnum(sym: any, decl: any, fqn: string, jsiiType: any): void {
     const { SyntaxKind } = this.ts;
     jsiiType.kind = 'enum';
+    if (LOG.isTraceEnabled()) {
+      // A single-valued enum is reduced to its only member by TypeScript, and the classic log used that symbol.
+      const members = decl.members ?? [];
+      this._log(
+        'trace',
+        this._processingText('enum', fqn, members.length === 1 ? members[0].name?.text ?? sym.name : sym.name),
+      );
+    }
 
     this._assertNoDuplicateEnumValues(decl);
     const constModifier = (decl.modifiers ?? []).find((mod: any) => mod.kind === SyntaxKind.ConstKeyword);
@@ -1784,6 +2184,7 @@ export class Assembler {
       }
       // The classic assembler does not hide enum members that are `@internal`, `_`-prefixed or `@jsii ignore`d.
       if (this._shouldStrip(msym, `${fqn}#${msym.name}`, jsiiType.docs?.stability)) {
+        this.strippedDeclarations.push(msym.declarations?.[0]);
         continue;
       }
       const member: any = { name: msym.name };
@@ -1852,9 +2253,16 @@ export class Assembler {
 
   private _visitInterface(sym: any, decl: any, name: string, jsiiType: any): void {
     jsiiType.kind = 'interface';
+    if (LOG.isTraceEnabled()) {
+      this._log('trace', this._processingText('interface', jsiiType.fqn, sym.name));
+    }
     const type = this.checker.getTypeAtLocation(decl);
     const baseTypes = type.getBaseTypes();
-    const { interfaces, erasedBases } = this._processBaseInterfaces(baseTypes);
+    const unstripped: string[] | undefined = this.stripDeprecated ? [] : undefined;
+    const { interfaces, erasedBases } = this._processBaseInterfaces(baseTypes, unstripped);
+    if (unstripped != null) {
+      this.unstrippedHeritage.set(jsiiType.fqn, { interfaces: unstripped });
+    }
     if (interfaces.length) {
       const rewrittenByStrip = erasedBases.some((b) => this.strippedTypeSymIds.has((b.getSymbol?.() ?? b.symbol)?.id));
       jsiiType.interfaces = rewrittenByStrip ? [...interfaces].sort() : interfaces;
@@ -1880,7 +2288,9 @@ export class Assembler {
       }
     }
 
+    this.memberTrace = LOG.isTraceEnabled() ? [] : undefined;
     this._visitMembers(sym, decl, jsiiType, true, erasedBases);
+    this._flushMemberTrace();
 
     // datatype (struct) — same sequence as the classic Assembler:
     //   1. an interface with no methods starts as a datatype;
@@ -2044,7 +2454,11 @@ export class Assembler {
    * `getBaseTypes()` alone under-reports for interfaces whose heritage goes
    * through erased/aliased/multi-`extends` chains — recursion fixes that.
    */
-  private _processBaseInterfaces(baseTypes?: any[]): { interfaces: string[]; erasedBases: any[] } {
+  /** With `unstripped`, also lists the interfaces as if no type was stripped (a stripped type is listed, not erased). */
+  private _processBaseInterfaces(
+    baseTypes?: any[],
+    unstripped?: string[],
+  ): { interfaces: string[]; erasedBases: any[] } {
     const erasedBases: any[] = [];
     const interfaces: string[] = [];
     const seen = new Set<string>();
@@ -2053,7 +2467,12 @@ export class Assembler {
       return { interfaces, erasedBases };
     }
 
-    const process = (types: any[]): void => {
+    const listUnstripped = (raw: string[] | undefined, fqn: string) => {
+      if (raw != null && !raw.includes(fqn)) {
+        raw.push(fqn);
+      }
+    };
+    const process = (types: any[], raw: string[] | undefined): void => {
       for (const iface of types) {
         const s = iface.getSymbol?.() ?? iface.symbol;
         const ownFqn = s && this.typeFqnBySymbolId.get(s.id);
@@ -2066,6 +2485,7 @@ export class Assembler {
             seen.add(fqn);
             interfaces.push(fqn);
           }
+          listUnstripped(raw, fqn);
           continue;
         }
         // Classic: a base that is neither hidden (internal, unexported, an anonymous type) nor a named type is not
@@ -2078,13 +2498,20 @@ export class Assembler {
               s.valueDeclaration?.resolve?.(this.project) ?? s.declarations?.[0]?.resolve(this.project),
               ref,
             );
-          } else if (!seen.has(ref.fqn)) {
-            // A named type that is not a jsii type stays a base (reported when it is looked up, JSII9002).
-            seen.add(ref.fqn);
-            interfaces.push(ref.fqn);
-            this.unregisteredInterfaceDecls.set(ref.fqn, s.valueDeclaration?.resolve?.(this.project));
+          } else {
+            listUnstripped(raw, ref.fqn);
+            if (!seen.has(ref.fqn)) {
+              // A named type that is not a jsii type stays a base (reported when it is looked up, JSII9002).
+              seen.add(ref.fqn);
+              interfaces.push(ref.fqn);
+              this.unregisteredInterfaceDecls.set(ref.fqn, s.valueDeclaration?.resolve?.(this.project));
+            }
           }
           continue;
+        }
+        const strippedFqn: string | undefined = s && this.strippedFqnBySymbolId.get(s.id);
+        if (strippedFqn != null) {
+          listUnstripped(raw, strippedFqn);
         }
         // Not an exported/foreign type: erase it and descend into its own bases,
         // so its public ancestors surface and its members get re-listed here.
@@ -2095,14 +2522,15 @@ export class Assembler {
           }
           visitedErased.add(s.id);
         }
+        this._traceIfPrivate(s);
         erasedBases.push(iface);
         const bases = iface.getBaseTypes?.();
         if (bases && bases.length) {
-          process(bases);
+          process(bases, strippedFqn != null ? undefined : raw);
         }
       }
     };
-    process(baseTypes);
+    process(baseTypes, unstripped);
     return { interfaces, erasedBases };
   }
 
@@ -2259,6 +2687,9 @@ export class Assembler {
   private _visitClass(sym: any, decl: any, jsiiType: any): void {
     const { SyntaxKind } = this.ts;
     jsiiType.kind = 'class';
+    if (LOG.isTraceEnabled()) {
+      this._log('trace', this._processingText('class', jsiiType.fqn, sym.name));
+    }
     if (Case.pascal(sym.name) !== sym.name) {
       this._report(JsiiDiagnostic.JSII_8000_PASCAL_CASED_TYPE_NAMES, this._nameOrDeclaration(decl), sym.name);
     }
@@ -2283,8 +2714,11 @@ export class Assembler {
     // The symbols of the class's own heritage clauses, for _validateHeritageClauses.
     const ownHeritageSymbols = new Map<any, any>();
     let unnamedBaseRef: any;
-    const collectHeritage = (classDecl: any): void => {
-      const deferredBases: any[] = [];
+    // With --strip-deprecated, the heritage as if no type was stripped: a stripped type is listed, not erased.
+    type Unstripped = { base?: string; interfaces: Set<string> };
+    const unstripped: Unstripped | undefined = this.stripDeprecated ? { interfaces: new Set() } : undefined;
+    const collectHeritage = (classDecl: any, raw: Unstripped | undefined): void => {
+      const deferredBases: Array<{ decl: any; raw?: Unstripped }> = [];
       for (const h of classDecl.heritageClauses ?? []) {
         const isExt = h.token === SyntaxKind.ExtendsKeyword && classDecl.kind !== SyntaxKind.InterfaceDeclaration;
         for (const t of h.types) {
@@ -2304,9 +2738,13 @@ export class Assembler {
           if (fqnRef && !ownFqnRef) {
             this._checkPeerDependency(fqnRef, () => this._valueDeclarationOf(s));
           }
+          const strippedFqn: string | undefined = this.strippedFqnBySymbolId.get(s.id);
           if (isExt) {
             if (fqnRef) {
               base.value ??= fqnRef;
+              if (raw) {
+                raw.base ??= fqnRef;
+              }
             } else if (
               classDecl === decl &&
               !s.name.startsWith('__') &&
@@ -2320,6 +2758,9 @@ export class Assembler {
               if (unnamedBaseRef != null && spec.isNamedTypeReference(unnamedBaseRef)) {
                 // A named type that is not a jsii type (`extends Error`, reported as JSII3001) stays the base class.
                 base.value ??= unnamedBaseRef.fqn;
+                if (raw) {
+                  raw.base ??= unnamedBaseRef.fqn;
+                }
                 this.unregisteredBaseDecls.set(
                   jsiiType.fqn,
                   (s.valueDeclaration ?? s.declarations?.[0])?.resolve(this.project),
@@ -2345,13 +2786,26 @@ export class Assembler {
                 ) {
                   interfacesRewrittenByStrip = true;
                 }
+                if (LOG.isDebugEnabled()) {
+                  this._traceIfPrivate(s);
+                  this._log(
+                    'debug',
+                    `Base class of ${chalk.green(jsiiType.fqn)} named ${chalk.green(
+                      s.name,
+                    )} is not exported, erasing it...`,
+                  );
+                }
                 erasedClassBases.push({ getSymbol: () => s, symbol: s });
                 erasedDecls.push(d0);
-                deferredBases.push(d0);
+                if (raw && strippedFqn) {
+                  raw.base ??= strippedFqn;
+                }
+                deferredBases.push({ decl: d0, raw: strippedFqn ? undefined : raw });
               }
             }
           } else if (fqnRef) {
             interfaces.add(fqnRef);
+            raw?.interfaces.add(fqnRef);
           } else if (!s.name.startsWith('__') && !this._isHiddenType(s) && !this._isLocalSourceDecl(s)) {
             // Classic: an implemented type that is neither hidden nor local is not erased. A named one stays an
             // interface (JSII9002 when it is looked up), another one is reported (JSII3005).
@@ -2359,6 +2813,7 @@ export class Assembler {
             const ref = this._typeReference(this.checker.getTypeAtLocation(t), undefined, undefined, undefined);
             if (spec.isNamedTypeReference(ref)) {
               interfaces.add(ref.fqn);
+              raw?.interfaces.add(ref.fqn);
               this.unregisteredInterfaceDecls.set(ref.fqn, s.valueDeclaration?.resolve?.(this.project));
             } else {
               this._report(
@@ -2373,17 +2828,38 @@ export class Assembler {
               if (this.strippedTypeSymIds.has(s.id)) {
                 interfacesRewrittenByStrip = true;
               }
+              if (strippedFqn) {
+                raw?.interfaces.add(strippedFqn);
+              }
+              this._traceIfPrivate(s);
               erasedClassBases.push({ getSymbol: () => s, symbol: s });
-              collectHeritage(d0);
+              collectHeritage(d0, strippedFqn ? undefined : raw);
             }
           }
         }
       }
       for (const d0 of deferredBases) {
-        collectHeritage(d0);
+        collectHeritage(d0.decl, d0.raw);
       }
     };
-    collectHeritage(decl);
+    collectHeritage(decl, unstripped);
+    if (unstripped != null && unstripped.base == null && (sym.declarations?.length ?? 0) > 1) {
+      // Classic: the base classes of a class include those an interface merged with it extends.
+      for (const handle of sym.declarations) {
+        if (handle.kind !== SyntaxKind.InterfaceDeclaration) {
+          continue;
+        }
+        for (const t of (handle.resolve(this.project)?.heritageClauses ?? []).flatMap((h: any) => h.types)) {
+          const s = this._heritageBaseSymbol(t);
+          if (s?.declarations?.[0]?.kind === SyntaxKind.ClassDeclaration) {
+            unstripped.base ??= this.strippedFqnBySymbolId.get(s.id) ?? this.typeFqnBySymbolId.get(s.id);
+          }
+        }
+      }
+    }
+    if (unstripped != null) {
+      this.unstrippedHeritage.set(jsiiType.fqn, { base: unstripped.base, interfaces: [...unstripped.interfaces] });
+    }
     this._validateHeritageClauses(decl, (t) => ownHeritageSymbols.get(t));
     this._verifySupertypes(jsiiType);
     // Classic: the member declarations of the class and of its erased base classes are checked in that order.
@@ -2409,6 +2885,8 @@ export class Assembler {
     }
 
     // initializer (constructor)
+    this.memberTrace = LOG.isTraceEnabled() ? [] : undefined;
+    this.memberTraceOrder = CONSTRUCTOR_TRACE_ORDER;
     // Classic: the first constructor declared by the class or by one of its
     // erased base classes (in erasure order).
     const findCtor = (d: any) => d.members?.find((m: any) => m.kind === SyntaxKind.Constructor);
@@ -2459,7 +2937,7 @@ export class Assembler {
     } else if (jsiiType.base) {
       // Classic: a class without its own constructor takes the initializer
       // recorded for its base type (own or foreign), verbatim. Resolved once all
-      // types are assembled, see _finalizeInheritance.
+      // types are assembled, see _resolveInheritedInitializers.
       this.inheritsInitializer.add(jsiiType.fqn);
     } else {
       // Classic: `{ docs: ctx.stability && { stability } }` with the package-level context.
@@ -2471,6 +2949,7 @@ export class Assembler {
     }
 
     this._visitMembers(sym, decl, jsiiType, false, erasedClassBases);
+    this._flushMemberTrace();
     this._verifyNoStaticMixing(jsiiType, decl);
   }
 
@@ -2577,15 +3056,62 @@ export class Assembler {
       }
     }
 
+    // The classic order of the member trace lines: the declarations of the type, then of its erased bases.
+    const ownerIds = LOG.isTraceEnabled()
+      ? [sym, ...erasedBases.map((b) => b.getSymbol?.() ?? b.symbol)].flatMap((s) =>
+          (s?.declarations ?? []).map((h: any) => h.resolve(this.project)?.id),
+        )
+      : [];
+    const traceOrderOf = (memberDecl: any): number =>
+      memberDecl.kind === SyntaxKind.Parameter
+        ? PARAMETER_PROPERTY_TRACE_ORDER + memberDecl.pos
+        : ownerIds.indexOf(memberDecl.parent?.id) * 1e12 + memberDecl.pos;
+
+    // The classic check for private members comes before the one for internal members.
+    const traceSkipped = (member: any): void => {
+      const memberDecl = this.memberTrace != null ? member.declarations?.[0]?.resolve(this.project) : undefined;
+      if (memberDecl != null) {
+        this.memberTraceOrder = traceOrderOf(memberDecl);
+        this._traceIfPrivate(member);
+      }
+    };
+    if (this.memberTrace != null && !isInterface) {
+      for (const owner of [sym, ...erasedBases.map((b) => b.getSymbol?.() ?? b.symbol)]) {
+        for (const handle of owner?.declarations ?? []) {
+          for (const member of handle.kind === SyntaxKind.InterfaceDeclaration
+            ? []
+            : handle.resolve(this.project)?.members ?? []) {
+            // Members the type checker does not list: private constructors and `#private` members.
+            const privateName =
+              member.kind === SyntaxKind.Constructor &&
+              (member.modifiers ?? []).some((x: any) => x.kind === SyntaxKind.PrivateKeyword)
+                ? '__constructor'
+                : member.name?.kind === SyntaxKind.PrivateIdentifier
+                ? member.name.text
+                : undefined;
+            if (privateName != null) {
+              this.memberTraceOrder = traceOrderOf(member);
+              this._traceMember(`${chalk.cyan(privateName)} is marked "private", or is an unexported type declaration`);
+            }
+          }
+        }
+      }
+    }
+
     for (const p of instanceProps) {
       if (this._isInternal(p)) {
+        traceSkipped(p);
         continue;
       }
       const pDecl = p.declarations?.[0]?.resolve(this.project);
       if (!pDecl) {
         continue;
       }
+      if (this.memberTrace != null) {
+        this.memberTraceOrder = traceOrderOf(pDecl);
+      }
       if ((pDecl.modifiers ?? []).some((x: any) => x.kind === SyntaxKind.PrivateKeyword)) {
+        this._traceIfPrivate(p);
         continue;
       }
       const isParamProp = pDecl.kind === SyntaxKind.Parameter;
@@ -2617,6 +3143,7 @@ export class Assembler {
       // Stripping applies to the members the classic assembler listed on this type
       // (own and erased-base members), hence after the ownership check above.
       if (this._shouldStrip(p, `${jsiiType.fqn}#${p.name}`, jsiiType.docs?.stability)) {
+        this.strippedDeclarations.push(p.declarations?.[0]);
         if ((p.flags & SymbolFlags.Method) !== 0) {
           strippedMethods = true;
         } else {
@@ -2650,10 +3177,15 @@ export class Assembler {
 
     if (!isInterface) {
       for (const sp of staticPropsForPrefetch) {
-        if (sp.name === 'prototype' || this._isInternal(sp)) {
+        if (sp.name === 'prototype') {
+          continue;
+        }
+        if (this._isInternal(sp)) {
+          traceSkipped(sp);
           continue;
         }
         if (this._shouldStrip(sp, `${jsiiType.fqn}#${sp.name}`, jsiiType.docs?.stability)) {
+          this.strippedDeclarations.push(sp.declarations?.[0]);
           if ((sp.flags & SymbolFlags.Method) !== 0) {
             strippedMethods = true;
           } else {
@@ -2677,7 +3209,11 @@ export class Assembler {
             continue;
           }
         }
+        if (this.memberTrace != null) {
+          this.memberTraceOrder = traceOrderOf(spDecl);
+        }
         if ((spDecl.modifiers ?? []).some((x: any) => x.kind === SyntaxKind.PrivateKeyword)) {
+          this._traceIfPrivate(sp);
           continue;
         }
         const member =
@@ -2691,11 +3227,74 @@ export class Assembler {
       }
     }
 
+    if (this.memberTrace != null) {
+      this._traceDroppedRedeclarations(erasedBases, jsiiType, props, methods, traceOrderOf);
+    }
+
     if (props.length || strippedProps) {
       jsiiType.properties = props.sort(compareMembers);
     }
     if (methods.length || strippedMethods) {
       jsiiType.methods = methods.sort(compareMembers);
+    }
+  }
+
+  /**
+   * The classic assembler visited the members of the erased bases too, and dropped those a closer type declared
+   * under the same name (an override): only the log lines are made here, the members themselves are not visited.
+   */
+  private _traceDroppedRedeclarations(
+    erasedBases: any[],
+    jsiiType: any,
+    props: any[],
+    methods: any[],
+    traceOrderOf: (memberDecl: any) => number,
+  ): void {
+    const { SyntaxKind } = this.ts;
+    const kinds = {
+      method: [SyntaxKind.MethodDeclaration, SyntaxKind.MethodSignature],
+      property: [
+        SyntaxKind.PropertyDeclaration,
+        SyntaxKind.PropertySignature,
+        SyntaxKind.GetAccessor,
+        SyntaxKind.SetAccessor,
+      ],
+    };
+    for (const base of erasedBases) {
+      for (const handle of (base.getSymbol?.() ?? base.symbol)?.declarations ?? []) {
+        if (jsiiType.kind === 'class' && handle.kind === SyntaxKind.InterfaceDeclaration) {
+          continue; // the classic assembler blended in only the members of erased base classes
+        }
+        for (const member of handle.resolve(this.project)?.members ?? []) {
+          const what = kinds.method.includes(member.kind)
+            ? 'method'
+            : kinds.property.includes(member.kind)
+            ? 'property'
+            : '';
+          const msym = what && member.name ? this.checker.getSymbolAtLocation(member.name) : undefined;
+          if (msym == null || msym.declarations?.[0]?.resolve(this.project)?.id !== member.id) {
+            continue; // not a member, or the second declaration of an accessor
+          }
+          if (this._isInternal(msym) || this._isPrivateType(msym)) {
+            continue;
+          }
+          const isStatic = (member.modifiers ?? []).some((m: any) => m.kind === SyntaxKind.StaticKeyword);
+          const kept = (what === 'method' ? methods : props).find(
+            (m) => m.name === msym.name && (m.static ?? false) === isStatic,
+          );
+          if (kept == null || this.relatedNodes.get(kept)?.id === member.id) {
+            continue;
+          }
+          this.memberTraceOrder = traceOrderOf(member);
+          this._traceMember(`Processing ${what}: ${chalk.green(jsiiType.fqn)}#${chalk.cyan(msym.name)}`);
+          if (what === 'method') {
+            for (const param of this.checker.getSignatureFromDeclaration(member)?.getParameters() ?? []) {
+              this._traceMember(`Processing parameter: ${chalk.cyan(param.name)}`);
+            }
+          }
+          this._traceMember(`Dropping re-declaration of ${chalk.green(jsiiType.fqn)}#${chalk.cyan(msym.name)}`);
+        }
+      }
     }
   }
 
@@ -2885,6 +3484,9 @@ export class Assembler {
 
   private _visitMethod(msym: any, decl: any, isStatic: boolean, jsiiType: any, declaringTypeDecl: any): any {
     const { SyntaxKind } = this.ts;
+    if (LOG.isTraceEnabled()) {
+      this._traceMember(`Processing method: ${chalk.green(jsiiType.fqn)}#${chalk.cyan(msym.name)}`);
+    }
     const sig = this._signatureCache.has(decl.id)
       ? this._signatureCache.get(decl.id)
       : this.checker.getSignatureFromDeclaration(decl);
@@ -3021,6 +3623,9 @@ export class Assembler {
 
   private _visitProperty(psym: any, decl: any, isStatic: boolean, jsiiType: any, declaringTypeDecl: any): any {
     const { SyntaxKind } = this.ts;
+    if (LOG.isTraceEnabled()) {
+      this._traceMember(`Processing property: ${chalk.green(jsiiType.fqn)}#${chalk.cyan(psym.name)}`);
+    }
     if (!this._validateMemberName('property', psym, decl, jsiiType, declaringTypeDecl)) {
       return undefined;
     }
@@ -3072,8 +3677,10 @@ export class Assembler {
       // The TypeScript 7 checker already uses the `@param` text when the
       // parameter has no JSDoc of its own; the combination with an own comment,
       // and the fallback when the own JSDoc block only holds tags, are missing.
-      if (paramText && !ownText.includes(paramText.trim())) {
-        const combined = [ownText, paramText.trim()].filter(Boolean).join('\n');
+      // Without a JSDoc of its own, that text has its `{@link}` rendered as plain text: use the `@param` text itself.
+      const paramOnly = paramText != null && /\{@link/.test(paramText) && this._leadingJsDocBlock(decl) == null;
+      if (paramText && (paramOnly || !ownText.includes(paramText.trim()))) {
+        const combined = [paramOnly ? '' : ownText, paramText.trim()].filter(Boolean).join('\n');
         const { summary, remarks } = this._splitSummary(combined);
         delete d.remarks;
         if (remarks) {
@@ -3120,6 +3727,9 @@ export class Assembler {
   }
 
   private _visitParameter(prm: any): any {
+    if (LOG.isTraceEnabled()) {
+      this._traceMember(`Processing parameter: ${chalk.cyan(prm.name)}`);
+    }
     const decl = prm.declarations?.[0]?.resolve(this.project);
     this._warnAboutReservedWords(prm.name, decl);
     const t = decl ? this._typeOfSymbolAt(prm, decl) : undefined;
@@ -4073,6 +4683,69 @@ export class Assembler {
   }
 
   /**
+   * Classic `reabsorbExampleTags`: the tags after an `@example` that jsii does not know are put back in the example,
+   * as `@name` followed by the tag's text parts converted to a string (an array of objects, or `undefined` without a
+   * text), which is why such an example reads "@name[object Object]" (https://github.com/aws/jsii-compiler/issues/2950).
+   * @TODO(NEXT): this keeps that rendering of main. After 7.1's first release: keep the text of the tag, or leave the tag out
+   * of the example.
+   */
+  private _reabsorbExampleTags(tags: any[]): any[] {
+    const recognized = new Set([
+      'param',
+      'default',
+      'defaultValue',
+      'deprecated',
+      'returns',
+      'return',
+      'stable',
+      'experimental',
+      'see',
+      'subclassable',
+      'example',
+      'stability',
+      'struct',
+      'jsii',
+    ]);
+    const result = [...tags];
+    for (let i = 0; i < result.length; i++) {
+      if (result[i].name !== 'example') {
+        continue;
+      }
+      let example = result[i];
+      while (i + 1 < result.length && !recognized.has(result[i + 1].name)) {
+        const next = result[i + 1];
+        example = {
+          ...example,
+          text: `${typeof example.text === 'string' ? example.text : ''}@${next.name}${this._classicPartsOf(
+            next.text,
+          )}`,
+        };
+        result.splice(i + 1, 1);
+      }
+      result[i] = example;
+    }
+    return result;
+  }
+
+  /**
+   * What the text of a tag, an array of display parts in the classic compiler, became when it was converted to a string:
+   * "[object Object]" for each part, separated by commas. The parts are the text around the links, 3 for each link
+   * (2 without a name) and the space that separates the tag name from a link the text starts with.
+   */
+  private _classicPartsOf(text: string | undefined): string {
+    if (text == null) {
+      return 'undefined';
+    }
+    const chunks = text.split(/\{@(?:linkcode|linkplain|link)\b[^}]*\}/);
+    const links = [...text.matchAll(/\{@(?:linkcode|linkplain|link)\b([^}]*)\}/g)];
+    const parts =
+      chunks.filter((c) => c !== '').length +
+      links.reduce((n, l) => n + (l[1].trim() === '' ? 2 : 3), 0) +
+      (chunks[0] === '' && links.length > 0 ? 1 : 0);
+    return Array.from({ length: parts }, () => '[object Object]').join(',');
+  }
+
+  /**
    * `diagnose`: report the problems of the docs (JSII7999, JSII7001), which is wanted for the symbol being visited
    * but not when its docs are only read for documentation inheritance.
    */
@@ -4093,7 +4766,7 @@ export class Assembler {
     // left over becomes `docs.custom`. `@param` is handled with the parameter
     // itself and `@jsii` is internal-only; neither surfaces in the API docs.
     const tagValues = new Map<string, string>();
-    for (const tag of this._jsDocTags(sym)) {
+    for (const tag of this._reabsorbExampleTags(this._jsDocTags(sym))) {
       if (tag.name === 'param' || tag.name === 'jsii') {
         continue;
       }

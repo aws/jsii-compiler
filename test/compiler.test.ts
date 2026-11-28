@@ -88,8 +88,7 @@ describe(Compiler, () => {
       expect(() => validator.validate(tsconfig)).not.toThrow();
     });
 
-    // @TODO(ts7): `--watch` is not supported by the TypeScript 7 compiler yet
-    test.skip('"watch" mode', async () => {
+    test('"watch" mode', async () => {
       const sourceDir = mkdtempSync(join(tmpdir(), 'jsii-compiler-watch-mode-'));
 
       try {
@@ -110,15 +109,14 @@ describe(Compiler, () => {
           onWatchClosed = ok;
           onWatchFailed = ko;
         });
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- @TODO(ts7): watch mode is not ported to the TypeScript 7 compiler yet
-        const watch = await (compiler as any).watch({
+        const watch = await compiler.watch({
           nonBlocking: true,
           // Ignore diagnostics reporting (not to pollute test console output)
           reportDiagnostics: () => null,
           // Ignore watch status reporting (not to pollute test console output)
           reportWatchStatus: () => null,
           // Verify everything goes according to plan
-          compilationComplete: (emitResult: any) => {
+          compilationComplete: (emitResult) => {
             try {
               expect(emitResult.emitSkipped).toBeFalsy();
               const output = JSON.stringify(loadAssemblyFromPath(sourceDir));
@@ -401,8 +399,7 @@ describe(Compiler, () => {
       expect(result.emitSkipped).toBe(false);
     });
 
-    // @TODO(ts7): `--watch` is not supported by the TypeScript 7 compiler yet
-    test.skip('"watch" mode', async () => {
+    test('"watch" mode', async () => {
       writeFileSync(join(sourceDir, tsconfigPath), JSON.stringify(tsconfigForNode18Strict(), null, 2));
 
       try {
@@ -424,15 +421,14 @@ describe(Compiler, () => {
           onWatchClosed = ok;
           onWatchFailed = ko;
         });
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- @TODO(ts7): watch mode is not ported to the TypeScript 7 compiler yet
-        const watch = await (compiler as any).watch({
+        const watch = await compiler.watch({
           nonBlocking: true,
           // Ignore diagnostics reporting (not to pollute test console output)
           reportDiagnostics: () => null,
           // Ignore watch status reporting (not to pollute test console output)
           reportWatchStatus: () => null,
           // Verify everything goes according to plan
-          compilationComplete: (emitResult: any) => {
+          compilationComplete: (emitResult) => {
             try {
               expect(emitResult.emitSkipped).toBeFalsy();
               const output = JSON.stringify(loadAssemblyFromPath(sourceDir));
