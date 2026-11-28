@@ -9,9 +9,7 @@ import { compileJsiiForDiagnostics } from '../compiler-helpers';
 describe('JSII9001 type not found in the corresponding assembly', () => {
   // The assembler resolves types of a submodule from the submodules the dependency declares, without looking at the
   // dependency's types. So when the .jsii file lists the submodule but not the type, only the validator notices.
-  // @TODO(ts7): the TypeScript 7 assembler resolves the type from the dependency's types, and reports JSII3002 and
-  // JSII9002 for `dependency.Foreign` instead of JSII9001
-  test.skip('is reported when a dependency declares a submodule, but not the type that is used from it', () =>
+  test('is reported when a dependency declares a submodule, but not the type that is used from it', () =>
     TestWorkspace.withWorkspace((ws) => {
       ws.addDependency(
         compileJsiiForTest(
@@ -43,9 +41,7 @@ describe('JSII9001 type not found in the corresponding assembly', () => {
       ).toEqual([{ code: 9001, message: 'Type not found in the corresponding assembly: "dependency.sub.Foreign"' }]);
     }));
 
-  // @TODO(ts7): the TypeScript 7 assembler resolves the type from the dependency's types, and reports JSII3002 and
-  // JSII9002 for `dependency.Foreign` instead of JSII9001
-  test.skip('is reported when the assembly of the dependency has no types at all', () =>
+  test('is reported when the assembly of the dependency has no types at all', () =>
     TestWorkspace.withWorkspace((ws) => {
       ws.addDependency(
         compileJsiiForTest(
