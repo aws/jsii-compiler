@@ -148,6 +148,15 @@ describe('jsii diagnostics', () => {
         expect(formatted).toContain('[metadata/missing-readme]');
       });
 
+      test('formats a suggestion', () => {
+        const suggestion = detached();
+        expect(suggestion.category).toBe(DiagnosticCategory.Suggestion);
+
+        expect(plain(suggestion.format(process.cwd()))).toContain(
+          'JSII0001: A "description" field should be specified in "package.json"',
+        );
+      });
+
       test('does not show a name for a code that is not registered', () => {
         const unregistered = JsiiDiagnostic.JSII_0003_MISSING_README.createDetached();
         (unregistered as { jsiiCode: number }).jsiiCode = 99999;

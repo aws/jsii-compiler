@@ -87,7 +87,13 @@ export function _formatDiagnostic(diagnostic: ts.Diagnostic, projectRoot: string
     getNewLine: () => ts.sys.newLine,
   };
 
-  const message = ts.formatDiagnosticsWithColorAndContext([diagnostic], formatDiagnosticsHost);
+  // TypeScript refuses to format suggestions ("Should never get an Info diagnostic on the command line"),
+  // so format them as messages.
+  const formattable =
+    diagnostic.category === ts.DiagnosticCategory.Suggestion
+      ? { ...diagnostic, category: ts.DiagnosticCategory.Message }
+      : diagnostic;
+  const message = ts.formatDiagnosticsWithColorAndContext([formattable], formatDiagnosticsHost);
 
   if (!JsiiDiagnostic.isJsiiDiagnostic(diagnostic)) {
     return message;
