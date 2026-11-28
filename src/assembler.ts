@@ -1465,8 +1465,8 @@ export class Assembler {
           continue;
         }
         if (extraFqns.has(fqn)) {
-          // A type exported more than once under one fqn is visited once. Main visits it once per export, and logs
-          // it each time (https://github.com/aws/jsii-compiler/issues/3151); 7.1 deliberately does not (TYPESCRIPT-7.md).
+          // A type exported more than once under one fqn is visited once (main visits it once per export, and logs it
+          // each time: https://github.com/aws/jsii-compiler/issues/3151). Only the verbose log differs.
           continue;
         }
         extraFqns.add(fqn);
