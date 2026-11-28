@@ -29,8 +29,7 @@ describe('re-exports that TypeScript cannot resolve', () => {
 });
 
 describe('"export =" in the entry point', () => {
-  // @TODO(ts7): the TypeScript 7 assembler registers types for an `export =` namespace
-  test.skip('of a namespace with only a declaration exports no type', () => {
+  test('of a namespace with only a declaration exports no type', () => {
     const result = compileJsiiForTest('declare namespace ns { class A {} } export = ns;');
 
     expect(result.assembly.types ?? {}).toEqual({});

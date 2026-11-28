@@ -53,8 +53,7 @@ describe('dependencyClosure', () => {
 
 describe('re-exporting a dependency', () => {
   // This documents current behavior, see https://github.com/aws/jsii-compiler/issues/2951
-  // @TODO(ts7): the TypeScript 7 assembler does not copy the types of a re-exported dependency (https://github.com/aws/jsii-compiler/issues/2951) (some rows may pass; the table is skipped as a whole)
-  test.skip.each([
+  test.each([
     { statement: "export * from 'dependency';", copiedFqn: 'testpkg.Foreign' },
     { statement: "export * as dep from 'dependency';", copiedFqn: 'testpkg.dep.Foreign' },
   ])('"$statement" copies the dependency types into the assembly', ({ statement, copiedFqn }) =>
@@ -110,8 +109,8 @@ describe('dependency without typings', () => {
 
 describe('an intersection of dependency interfaces', () => {
   // The assembly of a dependency is trusted input. These tests give it an inheritance list that does not match its types.
-  // @TODO(ts7): the TypeScript 7 assembler does not check the inheritance list of a dependency's interfaces, so it
-  // reports no JSII9997 from allInterfacesRecursively()
+  // @TODO(ts7): expects main's JSII9997 internal error, which the TypeScript 7 assembler does not copy
+  // (https://github.com/aws/jsii-compiler/issues/3167)
   test.skip.each([
     { reason: 'is not in the assembly', base: 'dependency.Gone', error: 'unresolvable base' },
     { reason: 'is not an interface', base: 'dependency.Klass', error: 'non-interface base' },

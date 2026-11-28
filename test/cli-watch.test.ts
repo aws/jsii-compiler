@@ -20,8 +20,7 @@ async function eventually(condition: () => boolean, what: string, timeoutMs = 60
   }
 }
 
-// @TODO(ts7): the TypeScript 7 compiler does not support --watch yet (aws/jsii-compiler#3149)
-describe.skip('jsii --watch', () => {
+describe('jsii --watch', () => {
   let dir: string;
   let child: ReturnType<typeof spawn> | undefined;
   let output = '';

@@ -48,7 +48,7 @@ import { DeclarationsStripping, HeritageReference, HeritageTransformation } from
 import { isAllowedCovariantSubtype } from './type-analysis';
 import { compareUnionMembers, createTypeResolver, typeReferenceEqual, typeReferenceToString } from './type-reference';
 import { isBehavioralInterfaceType, isDataType, visitTypeReference } from './type-visitor';
-import { parentFqn } from './utils';
+import { JsiiError, parentFqn } from './utils';
 import { Validator } from './validator';
 import { SHORT_VERSION, VERSION } from './version';
 import { parseWarningCodes, suppressInline } from './warnings';
@@ -322,7 +322,11 @@ export class Assembler {
     this.currentStability = options.defaultStability;
     this.stripDeprecated = !!options.stripDeprecated;
 
-    if (options.stripDeprecatedAllowListFile && fs.existsSync(options.stripDeprecatedAllowListFile)) {
+    if (this.stripDeprecated && options.stripDeprecatedAllowListFile) {
+      // Like the classic assembler: a missing allow-list fails the build.
+      if (!fs.existsSync(options.stripDeprecatedAllowListFile)) {
+        throw new JsiiError(`--strip-deprecated file not found: ${options.stripDeprecatedAllowListFile}`);
+      }
       this.stripAllowList = new Set(
         fs
           .readFileSync(options.stripDeprecatedAllowListFile, 'utf8')
@@ -718,14 +722,17 @@ export class Assembler {
     // put a label that continues on the next JSDoc line back on one line. The TypeScript 7
     // rendering of such a link is broken, so the raw comment is used instead.
     let rejoined = false;
-    const rawComment = commentLines.join('\n').replace(/\{@(?:link|linkcode|linkplain)\b[^}]*\n[^}]*\}/g, (link) => {
+    const rawComment = commentLines.join('\n').replace(/\{@(?:link|linkcode|linkplain)\b[^{}]*\n[^{}]*\}/g, (link) => {
       rejoined = true;
       return link.replace(/\s*\n\s*/g, ' ').replace(/\s+\}$/, '}');
     });
     if (!/\{@link(code|plain)?\b/.test(rawComment)) {
       return comment;
     }
-    const linkRe = /\{@(linkcode|linkplain|link)\b([^}\n]*)\}/g;
+    // A link that is never closed ends at the line break (TypeScript 6 closed it there).
+    // @TODO(NEXT): main leaves the `*` of the next comment line in the text after such a link, and uses that line as the
+    // label of a link without one (https://github.com/aws/jsii-compiler/issues/3158). After 7.1's first release: report it.
+    const linkRe = /\{@(linkcode|linkplain|link)\b([^}\n]*)(\}|$)/gm;
     let result = comment;
     let cursor = 0;
     let rawRendered = rawComment;
@@ -749,7 +756,9 @@ export class Assembler {
       let classic: string;
       let modern: string;
       if (label) {
-        classic = `{@${kind} ${target} | ${label}}`;
+        // A link that is never closed ends at the line break, or at the end of the comment (with a space before `}`).
+        const atEnd = m[3] !== '}' && (m.index ?? 0) + m[0].length === rawComment.length;
+        classic = `{@${kind} ${target} | ${label}${atEnd ? ' ' : ''}}`;
       } else if (!nm || target.includes('://')) {
         classic = `{@${kind} ${target}}`;
       } else {
@@ -760,10 +769,23 @@ export class Assembler {
       }
       if (!nm) {
         modern = after;
+      } else if (m[3] !== '}' && label) {
+        // TypeScript 7 renders the label alone for a link that is never closed.
+        modern = label;
       } else {
         modern = `${nm[0].replace(/#/g, '.')}${after.slice(nm[0].length)}`;
       }
-      rawRendered = rawRendered.replace(m[0], classic);
+      // TypeScript 6 read the next line of a link without a label that is never closed as its label.
+      const continued =
+        m[3] !== '}' && !label ? /^\n([^\n{]+)\n?$/.exec(rawComment.slice((m.index ?? 0) + m[0].length)) : null;
+      if (continued != null && nm) {
+        rawRendered = rawRendered.replace(`${m[0]}${continued[0]}`, `{@${kind} ${target} | * ${continued[1].trim()}}`);
+        allFound = false;
+        continue;
+      }
+      // TypeScript 6 kept the `*` that starts the line after a link that is never closed.
+      const unclosedBeforeLineEnd = m[3] !== '}' && (m.index ?? 0) + m[0].length < rawComment.length;
+      rawRendered = rawRendered.replace(m[0], unclosedBeforeLineEnd ? `${classic} *` : classic);
       // Re-insert the braces where the TypeScript 7 rendering of this link is.
       const at = result.indexOf(modern, cursor);
       if (at < 0) {
@@ -1293,6 +1315,8 @@ export class Assembler {
         seq: number;
       }>
     >();
+    // Types of a dependency that a module re-exports, by export: the classic assembler visited them as its own.
+    const foreignCandidates: Array<{ prefix: string; sym: any; aliasDeclH?: any; seq: number }> = [];
     const visitedModules = new Set<string>();
     // The order in which exports are seen: the classic assembler visited (and registered) types in this order.
     let seq = 0;
@@ -1312,7 +1336,11 @@ export class Assembler {
         const kind = declH.kind;
         if ([SyntaxKind.ClassDeclaration, SyntaxKind.InterfaceDeclaration, SyntaxKind.EnumDeclaration].includes(kind)) {
           if (this._dependencyOfPath(declH.path ?? '') != null) {
-            continue; // peer-dependency type: referenced externally, not owned
+            // A type of a dependency: references to it point at the dependency, but a re-export of it is visited
+            // again as a type of this assembly (see foreignCandidates).
+            const foreignAliasDeclH = (e.flags & SymbolFlags.Alias) !== 0 ? e.declarations?.[0] : undefined;
+            foreignCandidates.push({ prefix, sym, aliasDeclH: foreignAliasDeclH, seq: seq++ });
+            continue;
           }
           if (!candidates.has(sym.id)) {
             candidates.set(sym.id, []);
@@ -1362,8 +1390,11 @@ export class Assembler {
             continue;
           }
           visitedModules.add(key);
-          this.submoduleSymbols.set(subFqn, e);
-          this.submodules[subFqn] = this._submoduleSpec(e, sym, kind === SyntaxKind.SourceFile);
+          // Classic: a dependency re-exported as a namespace (`export * as ns from 'dependency'`) is no submodule.
+          if (kind !== SyntaxKind.SourceFile || this._dependencyOfPath(declH.path ?? '') == null) {
+            this.submoduleSymbols.set(subFqn, e);
+            this.submodules[subFqn] = this._submoduleSpec(e, sym, kind === SyntaxKind.SourceFile);
+          }
           const subDir = path.dirname(sym.declarations?.[0]?.path ?? moduleDir);
           const subFile = kind === SyntaxKind.SourceFile ? sym.declarations?.[0]?.path : undefined;
           const isSubmodule = kind === SyntaxKind.SourceFile;
@@ -1395,7 +1426,16 @@ export class Assembler {
     // re-export, e.g. aws_docdb re-exporting aws_rds.CaCertificate) gets a full
     // duplicate type entry under each such fqn — strada emits one entry per
     // namespace visit.
-    const registrations: Array<{ sym: any; name: string; fqn: string; seq: number }> = [];
+    const registrations: Array<{ sym: any; name: string; fqn: string; seq: number; foreign?: boolean }> = [];
+    const visitedByStrada = (aliasDeclH: any): boolean => {
+      if (aliasDeclH == null) {
+        return true;
+      }
+      if (aliasDeclH.kind !== SyntaxKind.ExportSpecifier) {
+        return false;
+      }
+      return aliasDeclH.resolve(this.project)?.parent?.parent?.moduleSpecifier != null;
+    };
     for (const [, cands] of candidates) {
       let best = cands[0];
       let bestLen = -1;
@@ -1433,15 +1473,8 @@ export class Assembler {
         // the fqns, and re-exporting through a local import drops the entry for no reason. After 7.1's first
         // release, keep one entry per type at its canonical fqn and treat every re-export (with or without a
         // module specifier) the same way.
-        if (c.aliasDeclH != null) {
-          if (c.aliasDeclH.kind !== SyntaxKind.ExportSpecifier) {
-            continue;
-          }
-          const aliasDecl = c.aliasDeclH.resolve(this.project);
-          const exportDeclNode = aliasDecl?.parent?.parent;
-          if (exportDeclNode?.moduleSpecifier == null) {
-            continue;
-          }
+        if (!visitedByStrada(c.aliasDeclH)) {
+          continue;
         }
         if (extraFqns.has(fqn)) {
           // The classic assembler visited the type again for this export, with the same result; only its log is
@@ -1457,6 +1490,18 @@ export class Assembler {
         registrations.push({ sym: c.sym, name, fqn, seq: c.seq });
       }
     }
+    // Classic: a type of a dependency that a module re-exports (`export * from 'dependency'`, `export { X } from
+    // 'dependency'`) is visited as a type of this assembly, under that module's fqn. References still point at the
+    // dependency.
+    // @TODO(NEXT): the assembly declares the dependency's type a second time, as on main
+    // (https://github.com/aws/jsii-compiler/issues/2951). After 7.1's first release: leave re-exported dependency
+    // types out of the assembly.
+    for (const c of foreignCandidates) {
+      const fqn = `${c.prefix}.${c.sym.name}`;
+      if (visitedByStrada(c.aliasDeclH) && !registrations.some((r) => r.fqn === fqn)) {
+        registrations.push({ sym: c.sym, name: c.sym.name, fqn, seq: c.seq, foreign: true });
+      }
+    }
     // Batch-prefetch docs for all candidate type symbols (used by the
     // isInternal/shouldStrip checks inside _registerType).
     this._prefetchDocs(registrations.map((r) => r.sym));
@@ -1465,7 +1510,7 @@ export class Assembler {
     for (const r of registrations) {
       const start = this.exported.length;
       this.registeringSeq = r.seq;
-      this._registerType(r.sym, r.name, r.fqn);
+      this._registerType(r.sym, r.name, r.fqn, r.foreign);
       for (const entry of this.exported.slice(start)) {
         this.exportedSeq.set(entry, r.seq);
       }
@@ -1581,7 +1626,8 @@ export class Assembler {
     }
   }
 
-  private _registerType(sym: any, name: string, fqn: string): void {
+  /** @param foreign a type of a dependency (references to it do not resolve to this entry) */
+  private _registerType(sym: any, name: string, fqn: string, foreign = false): void {
     const { SyntaxKind } = this.ts;
     const isFirst = !this.typeFqnBySymbolId.has(sym.id);
     if (!isFirst) {
@@ -1591,6 +1637,17 @@ export class Assembler {
       if (this.typeFqnBySymbolId.get(sym.id) === fqn || this.exported.some((e) => e.fqn === fqn)) {
         return;
       }
+    }
+    // Classic: only a declaration with an `export` modifier is visited. A type exported only by `export { X }`, or
+    // declared in an ambient namespace without `export`, is left out.
+    // @TODO(NEXT): such a type is exported by the module but missing from the assembly, as on main
+    // (https://github.com/aws/jsii-compiler/issues/3157). After 7.1's first release: visit every exported type.
+    const decl = sym.declarations?.[0]?.resolve(this.project);
+    if (!decl) {
+      return;
+    }
+    if (!(decl.modifiers ?? []).some((m: any) => m.kind === SyntaxKind.ExportKeyword)) {
+      return;
     }
     // Classic: types marked @internal (or @jsii ignore) are skipped. A type that only has an underscored name is
     // still visited (and reported as JSII8000), but it is hidden: references to it do not resolve to it.
@@ -1612,7 +1669,7 @@ export class Assembler {
     }
     if (this._shouldStrip(sym, fqn, this.defaultStability)) {
       this.strippedTypeSymIds.add(sym.id);
-      const strippedDecl = sym.declarations?.[0]?.resolve(this.project);
+      const strippedDecl = decl;
       this.strippedTypeDecls.set(fqn, strippedDecl);
       if (!this.strippedFqnBySymbolId.has(sym.id)) {
         this.strippedFqnBySymbolId.set(sym.id, fqn);
@@ -1630,13 +1687,9 @@ export class Assembler {
         });
       }
     }
-    const decl = sym.declarations?.[0]?.resolve(this.project);
-    if (!decl) {
-      return;
-    }
     // Classic: a stripped type is visited like any other (its diagnostics, its nested types), then removed from the
     // assembly; references to it do not resolve to it.
-    if (isFirst && !hiddenByName && !this.strippedTypeSymIds.has(sym.id)) {
+    if (isFirst && !foreign && !hiddenByName && !this.strippedTypeSymIds.has(sym.id)) {
       this.typeFqnBySymbolId.set(sym.id, fqn);
     }
     this.exported.push({ name, sym, decl, fqn });
@@ -1655,7 +1708,7 @@ export class Assembler {
             nDeclH.kind,
           )
         ) {
-          this._registerType(nsym, nsym.name, `${fqn}.${nsym.name}`);
+          this._registerType(nsym, nsym.name, `${fqn}.${nsym.name}`, foreign);
         }
       }
     }
@@ -4631,6 +4684,69 @@ export class Assembler {
   }
 
   /**
+   * Classic `reabsorbExampleTags`: the tags after an `@example` that jsii does not know are put back in the example,
+   * as `@name` followed by the tag's text parts converted to a string (an array of objects, or `undefined` without a
+   * text), which is why such an example reads "@name[object Object]" (https://github.com/aws/jsii-compiler/issues/2950).
+   * @TODO(NEXT): this keeps that rendering of main. After 7.1's first release: keep the text of the tag, or leave the tag out
+   * of the example.
+   */
+  private _reabsorbExampleTags(tags: any[]): any[] {
+    const recognized = new Set([
+      'param',
+      'default',
+      'defaultValue',
+      'deprecated',
+      'returns',
+      'return',
+      'stable',
+      'experimental',
+      'see',
+      'subclassable',
+      'example',
+      'stability',
+      'struct',
+      'jsii',
+    ]);
+    const result = [...tags];
+    for (let i = 0; i < result.length; i++) {
+      if (result[i].name !== 'example') {
+        continue;
+      }
+      let example = result[i];
+      while (i + 1 < result.length && !recognized.has(result[i + 1].name)) {
+        const next = result[i + 1];
+        example = {
+          ...example,
+          text: `${typeof example.text === 'string' ? example.text : ''}@${next.name}${this._classicPartsOf(
+            next.text,
+          )}`,
+        };
+        result.splice(i + 1, 1);
+      }
+      result[i] = example;
+    }
+    return result;
+  }
+
+  /**
+   * What the text of a tag, an array of display parts in the classic compiler, became when it was converted to a string:
+   * "[object Object]" for each part, separated by commas. The parts are the text around the links, 3 for each link
+   * (2 without a name) and the space that separates the tag name from a link the text starts with.
+   */
+  private _classicPartsOf(text: string | undefined): string {
+    if (text == null) {
+      return 'undefined';
+    }
+    const chunks = text.split(/\{@(?:linkcode|linkplain|link)\b[^}]*\}/);
+    const links = [...text.matchAll(/\{@(?:linkcode|linkplain|link)\b([^}]*)\}/g)];
+    const parts =
+      chunks.filter((c) => c !== '').length +
+      links.reduce((n, l) => n + (l[1].trim() === '' ? 2 : 3), 0) +
+      (chunks[0] === '' && links.length > 0 ? 1 : 0);
+    return Array.from({ length: parts }, () => '[object Object]').join(',');
+  }
+
+  /**
    * `diagnose`: report the problems of the docs (JSII7999, JSII7001), which is wanted for the symbol being visited
    * but not when its docs are only read for documentation inheritance.
    */
@@ -4651,7 +4767,7 @@ export class Assembler {
     // left over becomes `docs.custom`. `@param` is handled with the parameter
     // itself and `@jsii` is internal-only; neither surfaces in the API docs.
     const tagValues = new Map<string, string>();
-    for (const tag of this._jsDocTags(sym)) {
+    for (const tag of this._reabsorbExampleTags(this._jsDocTags(sym))) {
       if (tag.name === 'param' || tag.name === 'jsii') {
         continue;
       }
