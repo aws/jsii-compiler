@@ -230,4 +230,3 @@ export function convertScriptTargetForJson(target: ts.ScriptTarget): string {
       return ts.ScriptTarget[target].toLowerCase();
   }
 }
-
