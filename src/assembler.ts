@@ -201,7 +201,7 @@ export class Assembler {
    * The trace lines of the walk over the exports (entering and leaving a submodule or namespace, a type left out
    * for `@internal`), made while the types are registered and logged in the order of the types they surround.
    */
-  private readonly walkTrace: Array<{ pos: number; text?: string; replayOf?: string }> = [];
+  private readonly walkTrace: Array<{ pos: number; text?: string; replayOf?: string; internalOf?: string }> = [];
   /** The member trace lines of the type being visited, in the order the classic assembler made them. */
   private memberTrace?: Array<{ order: number; text: string }>;
   private memberTraceOrder = 0;
@@ -1491,6 +1491,12 @@ export class Assembler {
               this._printVisit(entry);
             }
           }
+          // A type left out for `@internal` is logged by the walk.
+          for (const other of this.walkTrace) {
+            if (other.internalOf === replayOf && other.text != null) {
+              LOG.trace(other.text);
+            }
+          }
         }
       }
     };
@@ -1591,6 +1597,7 @@ export class Assembler {
         ];
         this.walkTrace.push({
           pos: this.registeringSeq,
+          internalOf: fqn,
           text: this._processingText(kind ?? 'class', fqn, sym.name),
         });
       }
