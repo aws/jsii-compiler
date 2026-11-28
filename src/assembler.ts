@@ -4628,6 +4628,69 @@ export class Assembler {
   }
 
   /**
+   * Classic `reabsorbExampleTags`: the tags after an `@example` that jsii does not know are put back in the example,
+   * as `@name` followed by the tag's text parts converted to a string (an array of objects, or `undefined` without a
+   * text), which is why such an example reads "@name[object Object]" (https://github.com/aws/jsii-compiler/issues/2950).
+   * @TODO(NEXT): this keeps that rendering of main. After 7.1's first release: keep the text of the tag, or leave the tag out
+   * of the example.
+   */
+  private _reabsorbExampleTags(tags: any[]): any[] {
+    const recognized = new Set([
+      'param',
+      'default',
+      'defaultValue',
+      'deprecated',
+      'returns',
+      'return',
+      'stable',
+      'experimental',
+      'see',
+      'subclassable',
+      'example',
+      'stability',
+      'struct',
+      'jsii',
+    ]);
+    const result = [...tags];
+    for (let i = 0; i < result.length; i++) {
+      if (result[i].name !== 'example') {
+        continue;
+      }
+      let example = result[i];
+      while (i + 1 < result.length && !recognized.has(result[i + 1].name)) {
+        const next = result[i + 1];
+        example = {
+          ...example,
+          text: `${typeof example.text === 'string' ? example.text : ''}@${next.name}${this._classicPartsOf(
+            next.text,
+          )}`,
+        };
+        result.splice(i + 1, 1);
+      }
+      result[i] = example;
+    }
+    return result;
+  }
+
+  /**
+   * What the text of a tag, an array of display parts in the classic compiler, became when it was converted to a string:
+   * "[object Object]" for each part, separated by commas. The parts are the text around the links, 3 for each link
+   * (2 without a name) and the space that separates the tag name from a link the text starts with.
+   */
+  private _classicPartsOf(text: string | undefined): string {
+    if (text == null) {
+      return 'undefined';
+    }
+    const chunks = text.split(/\{@(?:linkcode|linkplain|link)\b[^}]*\}/);
+    const links = [...text.matchAll(/\{@(?:linkcode|linkplain|link)\b([^}]*)\}/g)];
+    const parts =
+      chunks.filter((c) => c !== '').length +
+      links.reduce((n, l) => n + (l[1].trim() === '' ? 2 : 3), 0) +
+      (chunks[0] === '' && links.length > 0 ? 1 : 0);
+    return Array.from({ length: parts }, () => '[object Object]').join(',');
+  }
+
+  /**
    * `diagnose`: report the problems of the docs (JSII7999, JSII7001), which is wanted for the symbol being visited
    * but not when its docs are only read for documentation inheritance.
    */
@@ -4648,7 +4711,7 @@ export class Assembler {
     // left over becomes `docs.custom`. `@param` is handled with the parameter
     // itself and `@jsii` is internal-only; neither surfaces in the API docs.
     const tagValues = new Map<string, string>();
-    for (const tag of this._jsDocTags(sym)) {
+    for (const tag of this._reabsorbExampleTags(this._jsDocTags(sym))) {
       if (tag.name === 'param' || tag.name === 'jsii') {
         continue;
       }

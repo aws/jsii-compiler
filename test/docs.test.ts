@@ -671,8 +671,7 @@ describe('@example followed by an unrecognized tag', () => {
   // This documents current behavior, see https://github.com/aws/jsii-compiler/issues/2950
   // The unrecognized tag is absorbed back into the example, but its text is rendered as "[object Object]"
   // and the code that follows it is lost.
-  // @TODO(ts7): the TypeScript 7 compiler drops the text of an unrecognized tag after @example
-  test.skip('renders the tag text as "[object Object]"', () => {
+  test('renders the tag text as "[object Object]"', () => {
     const assembly = compile(`
       /**
        * Summary.
