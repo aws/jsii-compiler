@@ -262,6 +262,10 @@ export class Compiler {
       // Coalesce bursts of changes, like TypeScript does.
       clearTimeout(timer);
       timer = setTimeout(() => {
+        // The project directory was removed: there is nothing to build (and no place to write to).
+        if (!fs.existsSync(root)) {
+          return;
+        }
         status(6032, 'File change detected. Starting incremental compilation...');
         try {
           compile();
@@ -365,6 +369,16 @@ export class Compiler {
     if (opts?.nonBlocking) {
       return handle;
     }
+    // Stop when the process that started `jsii --watch` goes away (it is then given to another parent), so a
+    // watcher whose launcher was killed (as `tsx` is in tests) does not keep building. The classic compiler kept
+    // running.
+    const parent = process.ppid;
+    setInterval(() => {
+      if (process.ppid !== parent) {
+        handle.close();
+        process.exit();
+      }
+    }, 500).unref();
     // In blocking mode, returns a never-resolving promise.
     return new Promise<never>(() => null);
   }
@@ -919,14 +933,19 @@ export function buildProject(options: BuildProjectOptions): BuildProjectResult {
       }
     }
 
-    // Write the assembly first, with @jsii/spec's writer, so that the file is the
-    // same as the classic compiler writes, also in its compressed form.
+    // Write the assembly with @jsii/spec's writer, so that the file is the same as the classic compiler writes,
+    // also in its compressed form. It is written after the emit, while the classic compiler wrote it first.
+    // Once `.jsii` is on disk, the build writes no more files, so a tool that waits for `.jsii` (such as the
+    // `--watch` test) also sees the emitted `.js` and `.d.ts` files.
     // @TODO(NEXT): `.jsii` is written even when TypeScript reported errors, while the log says "Compilation errors
     // prevented the JSII assembly from being created" (aws/jsii-compiler#2980). After 7.1's first release: also
     // require `!tsHasErrors`.
-    if (assembly != null && !jsiiFailed) {
-      writeAssembly(projectRoot, fingerprint(assembly), { compress: options.compressAssembly ?? false });
-    }
+    const assemblyToWrite = assembly != null && !jsiiFailed ? fingerprint(assembly) : undefined;
+    const writeAssemblyFile = () => {
+      if (assemblyToWrite != null) {
+        writeAssembly(projectRoot, assemblyToWrite, { compress: options.compressAssembly ?? false });
+      }
+    };
 
     // Then emit the .js and .d.ts files, and add jsii's runtime type information to
     // the .js files. Like the classic compiler, the emit runs even after jsii errors.
@@ -955,6 +974,7 @@ export function buildProject(options: BuildProjectOptions): BuildProjectResult {
       if (err instanceof MergedDeclarationError) {
         // @TODO(NEXT): the classic compiler failed with this error (aws/jsii-compiler#3012). After 7.1's first
         // release: do not fail (see MergedDeclarationError).
+        writeAssemblyFile();
         throw err;
       }
       emitFailed = true;
@@ -966,6 +986,7 @@ export function buildProject(options: BuildProjectOptions): BuildProjectResult {
         diagnostics.push(syntheticErrorDiagnostic(`ts backend: emit pipeline failed: ${(err as Error).message}`));
       }
     }
+    writeAssemblyFile();
 
     // Like the classic compiler, report the diagnostics of the emit itself, such as TS5033 when an output file
     // cannot be written. An error among them fails the build.
