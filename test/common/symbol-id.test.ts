@@ -59,6 +59,15 @@ describe('symbolIdentifier', () => {
     expect(symbolIdentifier(project.checker, symbolOf(project, 'lib/index.ts', 'Foo'))).toBe('lib/index:Foo');
   });
 
+  test('is exported by the "jsii/common" entry point of the package', () => {
+    // package.json exports it there, so that tools can use it without loading the whole compiler.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const common: typeof import('../../src/common') = require('jsii/common');
+    const project = createProject({ 'package.json': '{}', 'lib/index.ts': 'export class Foo {}' });
+
+    expect(common.symbolIdentifier(project.checker, symbolOf(project, 'lib/index.ts', 'Foo'))).toBe('lib/index:Foo');
+  });
+
   test('identifies members with a # separator', () => {
     const project = createProject({
       'package.json': '{}',

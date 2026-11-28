@@ -17,6 +17,24 @@ describe('JSII2100 jsii-directive/struct-on-non-interface', () => {
   });
 });
 
+describe('@jsii with a list of directives', () => {
+  // Several directives can be given in one tag, separated by commas or new lines.
+  test('empty entries in the list are skipped', () => {
+    const source = '/** @jsii ignore,, */ export class Klass {}';
+
+    expect(compileJsiiForTest(source).assembly.types ?? {}).toEqual({});
+    const codes = compileJsiiForDiagnostics(source).map((d) => d.jsiiCode);
+    expect(codes).not.toContain(2000);
+    expect(codes).not.toContain(2999);
+  });
+
+  test('JSII2000 is reported when the list only has empty entries', () => {
+    const codes = compileJsiiForDiagnostics('/** @jsii , */ export class Klass {}').map((d) => d.jsiiCode);
+
+    expect(codes).toContain(2000);
+  });
+});
+
 describe('@jsii with inline {@link} tags in the comment', () => {
   function compileWithDirective(directive: string) {
     const diagnostics = compileJsiiForDiagnostics(`

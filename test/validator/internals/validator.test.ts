@@ -40,6 +40,16 @@ describe('type references', () => {
   });
 });
 
+describe('assemblies without types', () => {
+  // "types" is optional in the assembly schema.
+  test('an assembly without types is valid', () => {
+    const assembly = assemblyWith({});
+    delete assembly.types;
+
+    expect(validate(assembly)).toEqual([]);
+  });
+});
+
 describe('member names', () => {
   test('members without a name are skipped by the Java getter and setter checks', () => {
     // The spec requires a name, the validator still guards against its absence.

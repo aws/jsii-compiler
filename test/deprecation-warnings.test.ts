@@ -286,6 +286,54 @@ class DeprecationError extends Error {
     `);
   });
 
+  test('generates functions for enums with string values', () => {
+    const result = compileJsiiForTest(
+      `
+        export enum State {
+          ON = 'on',
+
+          ${DEPRECATED}
+          OFF = 'off'
+        }
+        `,
+      undefined /* callback */,
+      { addDeprecationWarnings: true },
+    );
+
+    expect(jsFunction(result, 'testpkg_State', '.warnings.jsii')).toMatchInlineSnapshot(`
+      "function testpkg_State(p) {
+              if (p == null)
+                  return;
+              visitedObjects.add(p);
+              try {
+                  if (p === "off")
+                      print("testpkg.State#OFF", "Use something else");
+              }
+              finally {
+                  visitedObjects.delete(p);
+              }
+          } "
+    `);
+  });
+
+  test('checks the structs of a union', () => {
+    const result = compileJsiiForTest(
+      `
+        export interface Inner {
+          ${DEPRECATED}
+          readonly old?: string;
+        }
+        export interface Outer {
+          readonly field?: Inner | string;
+        }
+        `,
+      undefined /* callback */,
+      { addDeprecationWarnings: true },
+    );
+
+    expect(jsFunction(result, 'testpkg_Outer', '.warnings.jsii')).toContain('testpkg_Inner(p.field)');
+  });
+
   // This documents current behavior, see https://github.com/aws/jsii-compiler/issues/3001
   test('drops the comments at the end of a method body in the emitted JavaScript', () => {
     const source = `

@@ -1,4 +1,6 @@
-import { DiagnosticLocation, JsiiDiagnostic } from './jsii-diagnostic';
+import * as fs from 'node:fs';
+
+import { DiagnosticLocation, DiagnosticLocationFile, JsiiDiagnostic } from './jsii-diagnostic';
 
 /**
  * The part of a TypeScript AST node that directives are read from. Both the
@@ -123,7 +125,20 @@ function jsDocTagsOf(node: DirectiveNode): readonly DirectiveJSDocTag[] {
 
 function locationOf(node: DirectiveNode, jsdocNode: DirectiveJSDocNode): DiagnosticLocation {
   const { fileName, text } = node.getSourceFile();
-  return { file: { fileName, text }, start: jsdocNode.pos, length: jsdocNode.end - jsdocNode.pos };
+  return {
+    file: new DiagnosticLocationFile(fileName, text ?? readText(fileName)),
+    start: jsdocNode.pos,
+    length: jsdocNode.end - jsdocNode.pos,
+  };
+}
+
+/** The text of a file without attached text, read from disk (as the formatter did), or none. */
+function readText(fileName: string): string {
+  try {
+    return fs.readFileSync(fileName, 'utf8');
+  } catch {
+    return '';
+  }
 }
 
 function getComments(tag: DirectiveJSDocTag): Comment[] {

@@ -9,6 +9,26 @@ const expectViolation = (expectedMessage: string, expected: any, actual: any) =>
   };
 };
 
+function assertOneOfFails(params?: fc.Parameters<[Array<string | number>]>) {
+  fc.assert(
+    fc.property(
+      fc.uniqueArray(fc.oneof(fc.string(), fc.integer(), fc.float()), {
+        minLength: 1,
+        // mimic what the matcher does: `includes` treats 0 and -0 as the same value
+        comparator: 'SameValueZero',
+      }),
+      (possible) => {
+        const allowed = possible.slice(0, -1);
+        const actual = possible.at(-1);
+        return !Match.oneOf(...allowed)(actual, {
+          reporter: expectViolation('Expected value to be one of', allowed, actual),
+        });
+      },
+    ),
+    params,
+  );
+}
+
 describe('Built-in matchers', () => {
   describe('Match.ANY', () => {
     test('pass', () => {
@@ -36,20 +56,18 @@ describe('Built-in matchers', () => {
       );
     });
     test('fail', () => {
-      fc.assert(
-        fc.property(
-          fc.uniqueArray(fc.oneof(fc.string(), fc.integer(), fc.float()), {
-            minLength: 1,
-          }),
-          (possible) => {
-            const allowed = possible.slice(0, -1);
-            const actual = possible.at(-1);
-            return !Match.oneOf(...allowed)(actual, {
-              reporter: expectViolation('Expected value to be one of', allowed, actual),
-            });
-          },
-        ),
-      );
+      assertOneOfFails();
+    });
+    // Matching uses `includes`, which treats 0 and -0 as the same value.
+    // See https://github.com/aws/jsii-compiler/issues/3075
+    test('treats 0 and -0 as the same value', () => {
+      expect(Match.oneOf(0)(-0)).toBe(true);
+      expect(Match.oneOf(-0)(0)).toBe(true);
+      expect(Match.oneOf(0, 1)(-0)).toBe(true);
+    });
+    test('fail does not flake on [0, -0]', () => {
+      // The seed and path of a run that used to fail on the counterexample [0, -0]
+      assertOneOfFails({ seed: 1816904244, path: '63:1:0:0' });
     });
   });
 
@@ -115,6 +133,14 @@ describe('Built-in matchers', () => {
         fc.property(
           fc.uniqueArray(arrayEl, {
             minLength: 1,
+            // mimic what the matcher does: loose equality, and objects only equal to themselves
+            comparator: (a, b) => {
+              try {
+                return Object.is(a, b) || a == b;
+              } catch {
+                return false;
+              }
+            },
           }),
           fc.array(arrayEl),
           (possible, actualBase) => {
