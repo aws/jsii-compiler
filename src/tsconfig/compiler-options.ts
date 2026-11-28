@@ -80,12 +80,9 @@ export function convertNewLineForJson(newLine: 0 | 1): string {
  * `tsconfig.json`, which is the form the rule sets are written against. Values
  * already in that form (such as {@link BASE_COMPILER_OPTIONS}) are kept.
  *
- * Like the classic compiler, enum values are named after their TypeScript enum
- * member: lower case, or kebab case for `jsx`. That gives `target: "latest"` for
- * `esnext` and `jsx: "react-js-x"` for `react-jsx` (aws/jsii-compiler#2990).
+ * Enum values are named after their TypeScript enum member in lower case,
+ * except `jsx` and `target`, which are written as tsconfig.json spells them.
  */
-// @TODO(NEXT): `esnext` and `react-jsx(dev)` get wrong names, as on main (aws/jsii-compiler#2990). After 7.1's first
-// release: name them as tsconfig.json spells them (`esnext`, `react-jsx`, `react-jsxdev`).
 export function convertForJson(opt: CompilerOptionsJson): CompilerOptionsJson {
   // TypeScript's config parser attaches internal `pathsBasePath` when `paths` is set;
   // drop it so JSON serialization and tsconfig validation only see user-facing options.
@@ -98,11 +95,11 @@ export function convertForJson(opt: CompilerOptionsJson): CompilerOptionsJson {
     ...convertHelper('lib', opt.lib, (lib) =>
       Array.isArray(lib) ? lib.map((l) => (typeof l === 'string' ? l.replace(/^lib\.(.*)\.d\.ts$/, '$1') : l)) : lib,
     ),
-    ...convertHelper('jsx', opt.jsx, (v) => enumName(v, 'JsxEmit', Case.kebab)),
+    ...convertHelper('jsx', opt.jsx, (v) => (typeof v === 'number' ? convertJsxForJson(v) : v)),
     ...convertHelper('module', opt.module, (v) => enumName(v, 'ModuleKind')),
     ...convertHelper('moduleResolution', opt.moduleResolution, (v) => enumName(v, 'ModuleResolutionKind')),
     ...convertHelper('moduleDetection', opt.moduleDetection, (v) => enumName(v, 'ModuleDetectionKind')),
-    ...convertHelper('target', opt.target, (v) => (v === 1 ? 'es5' : enumName(v, 'ScriptTarget'))),
+    ...convertHelper('target', opt.target, (v) => (typeof v === 'number' ? convertScriptTargetForJson(v) : v)),
     ...convertHelper('newLine', opt.newLine, (v) => enumName(v, 'NewLineKind')),
   };
 }
@@ -130,4 +127,45 @@ function enumName(
   }
   const name = loadTypeScriptApi()[kind][value];
   return typeof name === 'string' ? converter(name) : value;
+}
+
+/**
+ * The tsconfig.json spelling of a `jsx` value (the numeric `JsxEmit`). The enum
+ * member names don't kebab-case to it: `ReactJSX` is written `react-jsx`.
+ */
+export function convertJsxForJson(jsx: number): string {
+  switch (jsx) {
+    case 0:
+      return 'none';
+    case 1:
+      return 'preserve';
+    case 2:
+      return 'react';
+    case 3:
+      return 'react-native';
+    case 4:
+      return 'react-jsx';
+    case 5:
+      return 'react-jsxdev';
+    default:
+      return String(enumName(jsx, 'JsxEmit', Case.kebab));
+  }
+}
+
+/**
+ * The tsconfig.json spelling of a `target` value (the numeric `ScriptTarget`).
+ * TypeScript 7 has no `ES3` and `ES5` members, but its parser still takes them,
+ * and the enum names `ESNext` as `Latest`.
+ */
+export function convertScriptTargetForJson(target: number): string {
+  switch (target) {
+    case 0:
+      return 'es3';
+    case 1:
+      return 'es5';
+    case 99:
+      return 'esnext';
+    default:
+      return String(enumName(target, 'ScriptTarget'));
+  }
 }
