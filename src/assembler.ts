@@ -869,7 +869,15 @@ export class Assembler implements Emitter {
       // Note: the "ts.NamespaceExport" refers to the "export * as ns" part of
       // the statement only. We must refer to `node.parent` in order to be able
       // to access the module specifier ("from 'module'") part.
-      const symbol = this._typeChecker.getSymbolAtLocation(node.parent.moduleSpecifier!)!;
+      const moduleSpecifier = node.parent.moduleSpecifier;
+      const symbol =
+        moduleSpecifier != null && ts.isStringLiteral(moduleSpecifier)
+          ? this._typeChecker.getSymbolAtLocation(moduleSpecifier)
+          : undefined;
+      if (symbol == null) {
+        // A grammar error or an unresolvable module, as in _registerNamespaces. We'll let tsc report this for us.
+        return [];
+      }
 
       if (LOG.isTraceEnabled()) {
         LOG.trace(`Entering submodule: ${chalk.cyan([...context.namespace, symbol.name].join('.'))}`);
