@@ -943,8 +943,8 @@ export function buildProject(options: BuildProjectOptions): BuildProjectResult {
     // prevented the JSII assembly from being created" (aws/jsii-compiler#2980). After 7.1's first release: also
     // require `!tsHasErrors`.
     // The fingerprint and the file take about 2s for aws-cdk-lib, and the emit does not need them. So a worker thread
-    // makes them while this thread emits, and writes them into a directory of its own. After the emit, the files are
-    // moved into place.
+    // makes them while this thread emits, and writes them into a scratch directory in `node_modules/.cache/jsii`.
+    // After the emit, the files are renamed into place.
     if (assembly != null && !jsiiFailed) {
       assemblyWriter = AssemblyWriter.start(projectRoot, assembly, options.compressAssembly ?? false);
     }
@@ -1052,9 +1052,14 @@ interface AssemblyWriterData {
 }
 
 /**
- * Makes the fingerprint and writes the `.jsii` file of an assembly in a worker thread, while the build goes on. The
- * worker writes into a new directory next to the final file, and `finish` moves the files into place. When the worker
- * cannot start or fails, `finish` writes the assembly in this thread, so an error comes out as it always did.
+ * Makes the fingerprint and writes the `.jsii` file of an assembly in a worker thread, while the build goes on.
+ *
+ * The worker writes into a new scratch directory, `node_modules/.cache/jsii/write-<pid>-<random>` in the project root.
+ * There, git, `npm pack` and the `include` patterns of a tsconfig do not see it, and it is on the same file system as
+ * the project in the usual case. `finish` renames the files into the project root, so a reader sees either the old
+ * file or the new one. When the project has no `node_modules` directory, the worker cannot start, the worker fails, or
+ * a rename fails (for example because `node_modules` is on another file system), `finish` writes the assembly in this
+ * thread instead, so an error comes out as it always did.
  */
 class AssemblyWriter {
   public static start(projectRoot: string, assembly: spec.Assembly, compress: boolean): AssemblyWriter {
@@ -1067,8 +1072,16 @@ class AssemblyWriter {
       // cannot load. The worker then uses the compiled file in `lib/`, which is built before the tests run. When that
       // file does not exist, no worker starts.
       const file = __filename.endsWith('.ts') ? path.resolve(__dirname, '..', 'lib', 'compiler.js') : __filename;
-      if (Object.keys(assembly.types ?? {}).length >= MIN_TYPES_FOR_ASSEMBLY_WRITER && fs.existsSync(file)) {
-        writer.directory = fs.mkdtempSync(path.join(projectRoot, `${spec.SPEC_FILE_NAME}-`));
+      const nodeModules = path.join(projectRoot, 'node_modules');
+      if (
+        Object.keys(assembly.types ?? {}).length >= MIN_TYPES_FOR_ASSEMBLY_WRITER &&
+        fs.existsSync(file) &&
+        fs.existsSync(nodeModules)
+      ) {
+        const cache = path.join(nodeModules, '.cache', 'jsii');
+        fs.mkdirSync(cache, { recursive: true });
+        removeAbandonedScratchDirectories(cache);
+        writer.directory = fs.mkdtempSync(path.join(cache, `${SCRATCH_PREFIX}${process.pid}-`));
         const data: AssemblyWriterData = {
           kind: ASSEMBLY_WRITER_KIND,
           assembly,
@@ -1134,6 +1147,33 @@ class AssemblyWriter {
       fs.rmSync(this.directory, { recursive: true, force: true });
       this.directory = undefined;
     }
+  }
+}
+
+/** The scratch directories of the assembly writer are named `write-<pid>-<random>`. */
+const SCRATCH_PREFIX = 'write-';
+
+/**
+ * Removes the scratch directories of builds that no longer run, such as a build that was killed. A directory whose
+ * process still runs is kept: it may belong to another build of the same project.
+ */
+function removeAbandonedScratchDirectories(cache: string): void {
+  for (const name of fs.readdirSync(cache)) {
+    const pid = name.startsWith(SCRATCH_PREFIX) ? Number(name.slice(SCRATCH_PREFIX.length).split('-')[0]) : NaN;
+    if (!Number.isInteger(pid) || pid === process.pid || isRunning(pid)) {
+      continue;
+    }
+    fs.rmSync(path.join(cache, name), { recursive: true, force: true });
+  }
+}
+
+function isRunning(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error: any) {
+    // EPERM: the process runs, but belongs to another user.
+    return error?.code === 'EPERM';
   }
 }
 
