@@ -97,6 +97,7 @@ as `tsc --showConfig` does on TypeScript 6.0. On `main`, `jsii` drops these erro
 | `extends` a file that cannot be parsed | ignored, `✨ Successful` | `base.json:1:29 - error TS1109: Expression expected.` (with TS1005, TS1328, ...) |
 | Circular `extends` | ignored, `✨ Successful` | `error TS18000: Circularity detected while resolving configuration: {0}` |
 | A rejected option in a file the tsconfig `extends` | ignored, `✨ Successful` | `base.json:1:21 - error TS5023: Unknown compiler option 'bogus'.` |
+| Every input excluded (for example `outDir` equal to `rootDir`, so `include` matches nothing) | `error JSII0004: Could not find "main" file: <dir>/lib/index.ts` only | `error TS18003: No inputs were found in config file '<dir>/tsconfig.json'. ...` next to the JSII0004 |
 | `--tsconfig sub/tsconfig.json` with a relative `extends` or relative paths | resolved against the project root, so the base is not found and skipped | resolved against `sub/`, like `tsc` |
 
 With such errors, the rule set is not checked: the `JSII4000` violations for the options TypeScript could read come once
