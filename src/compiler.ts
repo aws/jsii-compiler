@@ -145,8 +145,8 @@ export class Compiler {
    * Compiles the configured project once.
    *
    * @param files can be specified to override the standard source code location
-   *              logic (the generated tsconfig then lists exactly these files).
-   *              Useful for example when testing "negatives".
+   *              logic. The generated tsconfig then lists exactly these files.
+   *              This is useful, for example, to test "negatives".
    */
   public emit(...files: string[]): EmitResult {
     if (files.length > 0 && this.userProvidedTypeScriptConfig) {
@@ -220,9 +220,9 @@ export class Compiler {
         length: undefined,
       });
 
-    // Like the TypeScript 6 watch program: a change of a file of the program or of the tsconfig (and its `extends`),
-    // or a new source file in a directory of the `include` patterns. Not the generated tsconfig: jsii writes it on
-    // every build.
+    // A rebuild starts on the same changes as in the TypeScript 6 watch program. These are a change of a file of the
+    // program, of the tsconfig or of a file it extends, and a new source file in a directory of the `include`
+    // patterns. A change of the generated tsconfig does not count, because jsii writes that file on every build.
     let files = new Set<string>();
     let directories: WatchInputs['directories'] = [];
     let outputDirectories: readonly string[] = [];
@@ -235,8 +235,8 @@ export class Compiler {
       if (files.has(file)) {
         return true;
       }
-      // A new (or removed) file: TypeScript's wildcard directory watch looks at files it could include, and skips
-      // the build's own output.
+      // A file that was added or removed counts when TypeScript could include it. TypeScript's wildcard directory
+      // watch does the same, and skips the files the build itself writes.
       if (event !== 'rename' || !/\.(?:[cm]?ts|tsx)$/.test(file) || emitted.has(file)) {
         return false;
       }
@@ -275,7 +275,8 @@ export class Compiler {
     };
 
     // The project root is watched first, so a change made during the first compilation is not missed. Directories
-    // outside of it (dependencies, an `include` or `extends` there) are watched once the program is known.
+    // outside of the project root, such as those of dependencies or of an `include` or `extends` there, are watched
+    // once the program is known.
     const root = path.resolve(this.projectRoot);
     // A watched directory that goes away ends its watcher; that is not an error of the build.
     const watchDirectory = (dir: string, recursive: boolean) =>
@@ -697,7 +698,7 @@ function deriveEntry(projectRoot: string, projectInfo: ProjectInfo, rootDir?: st
   let mainFile = dts.replace(/\.d\.ts(x?)$/, '.ts$1');
 
   if (outDir != null) {
-    // strip the outDir prefix, then prepend rootDir (if any)
+    // strip the outDir prefix, then prepend rootDir when there is one
     const rel = path.relative(outDir, mainFile);
     mainFile = rootDir != null ? path.join(rootDir, rel) : rel;
   }
@@ -711,7 +712,7 @@ function relativeConfigPath(projectRoot: string, configPath: string | undefined)
 
 /**
  * The diagnostic for an entry point that is not part of the program. When package.json's `types` is outside of tsc's
- * outDir, it can't be re-rooted from there, so report that (with where tsc puts the declarations) instead.
+ * outDir, it cannot be re-rooted from there. The diagnostic then says so, and where tsc puts the declarations.
  */
 function missingEntryDiagnostic(entry: string, projectInfo: ProjectInfo, rootDir?: string, outDir?: string) {
   const dts: string = projectInfo.types ?? 'index.d.ts';
@@ -737,7 +738,8 @@ export function buildProject(options: BuildProjectOptions): BuildProjectResult {
 
   let host = CompilerHost.open(options.projectRoot, options.tsconfigFileName);
   let project = host.getProject();
-  // The program's own diagnostics (options and config): the type check is the slow part (see `check` below).
+  // Only the diagnostics of the options and of the tsconfig, for now. The full type check is slow, and it runs later,
+  // in `settleTsDiagnostics`, or in the background check.
   let tsDiagnostics = collectTsDiagnostics(project.program, CONFIG_DIAGNOSTICS);
 
   // TypeScript 7 no longer infers `rootDir` from the common directory of the
@@ -780,9 +782,9 @@ export function buildProject(options: BuildProjectOptions): BuildProjectResult {
 
   const programOptions = project.program.getCompilerOptions();
 
-  // The type check of the whole program and the emit are slow (TypeScript 7 does them in a process of its own, and
-  // jsii only waits for it), and the assembler does not depend on them: a big project does both in a second process
-  // while it assembles, and collects the results when it needs them.
+  // The type check and the emit of the whole program are slow, and the assembler does not need their results. In a
+  // big project, the background check does both in a worker with its own TypeScript 7 process, while this process
+  // assembles. The build collects the results when it needs them.
   const check =
     project.rootFileNames.length >= MIN_FILES_FOR_BACKGROUND_CHECK
       ? BackgroundCheck.start({
@@ -819,7 +821,7 @@ export function buildProject(options: BuildProjectOptions): BuildProjectResult {
   let checkedEmit: BackgroundCheckResult['emit'];
   let settled = false;
   const diagnostics: Diagnostic[] = [];
-  /** Take the type check's results (from the second process when there is one) and report them first. */
+  /** Take the results of the type check, from the background check when one runs, and report them first. */
   const settleTsDiagnostics = () => {
     if (settled) {
       return;
@@ -917,9 +919,8 @@ export function buildProject(options: BuildProjectOptions): BuildProjectResult {
       }
     }
 
-    // Write the assembly first (the parity artifact), reusing @jsii/spec's writer
-    // so the on-disk format (incl. the compressed file-redirect variant) matches
-    // the strada path exactly.
+    // Write the assembly first, with @jsii/spec's writer, so that the file is the
+    // same as the classic compiler writes, also in its compressed form.
     // @TODO(NEXT): `.jsii` is written even when TypeScript reported errors, while the log says "Compilation errors
     // prevented the JSII assembly from being created" (aws/jsii-compiler#2980). After 7.1's first release: also
     // require `!tsHasErrors`.
@@ -927,17 +928,17 @@ export function buildProject(options: BuildProjectOptions): BuildProjectResult {
       writeAssembly(projectRoot, fingerprint(assembly), { compress: options.compressAssembly ?? false });
     }
 
-    // Then emit JS/d.ts and inject jsii rtti (post-emit pass). Like the classic
-    // compiler, the emit runs even after jsii errors. An emit failure fails the
-    // build (emitSkipped + a synthetic diagnostic); the assembly file is left on
-    // disk to aid debugging, but the exit status reflects the error.
+    // Then emit the .js and .d.ts files, and add jsii's runtime type information to
+    // the .js files. Like the classic compiler, the emit runs even after jsii errors.
+    // A failed emit fails the build with a diagnostic. The assembly file stays on
+    // disk to help debugging, but the exit code reports the error.
     let emittedFiles: string[] = [];
     let emitDiagnostics: readonly any[] = [];
     let emitFailed = false;
     try {
       if (tsHasErrors && programOptions.noEmitOnError) {
-        // With TypeScript errors and `noEmitOnError`, TypeScript writes no files, so jsii does not call the emit. When
-        // the background check ran the type check, that call would type-check the program again in this process.
+        // With TypeScript errors and `noEmitOnError`, TypeScript writes no files, so jsii does not call the emit. After
+        // a background check, that call makes TypeScript type-check the program again in this process.
         throw new Error('TypeScript emit was skipped');
       }
       ({ emittedFiles, diagnostics: emitDiagnostics } = emitProject(host.ts, project, {
@@ -966,8 +967,8 @@ export function buildProject(options: BuildProjectOptions): BuildProjectResult {
       }
     }
 
-    // Like the classic compiler, the diagnostics of the emit itself (TS5033 when an output file cannot be written)
-    // are reported, and an error among them fails the build.
+    // Like the classic compiler, report the diagnostics of the emit itself, such as TS5033 when an output file
+    // cannot be written. An error among them fails the build.
     const emitted = emitDiagnostics.map((d) => toDiagnostic(d, readSourceFile));
     logFailure('Compilation', emitted);
     diagnostics.push(...emitted);

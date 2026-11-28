@@ -1,14 +1,14 @@
 /*
  * ---------------------------------------------------------------------------
- * The type check and the emit of a project, in a second TypeScript 7 process
- * that runs while jsii assembles.
+ * The background check: the type check and the emit of a project, run by a
+ * worker thread with its own TypeScript 7 process while jsii assembles.
  *
- * jsii asks the TypeScript 7 process one question at a time and waits for each
- * answer, so that process is idle while jsii works on the answer, and the cores
- * of the machine with it. The type check of the whole program (the program's
- * diagnostics) and the emit do not depend on what the assembler learns, so a
- * worker thread runs them in a process of its own meanwhile, and the build
- * collects the results when it needs them.
+ * jsii asks its TypeScript 7 process one question at a time and waits for each
+ * answer. While jsii works on an answer, that process is idle, and so are the
+ * other cores of the machine. The type check of the whole program and the emit
+ * do not depend on what the assembler learns. So a worker thread runs them in
+ * a TypeScript process of its own meanwhile, and the build collects the results
+ * when it needs them.
  * ---------------------------------------------------------------------------
  */
 import * as fs from 'node:fs';
@@ -16,8 +16,8 @@ import * as path from 'node:path';
 import { isMainThread, MessageChannel, receiveMessageOnPort, Worker, workerData } from 'node:worker_threads';
 import * as log4js from 'log4js';
 
-/** Below this many files, starting a second TypeScript process costs more than the check takes. */
-// shortcut: a fixed size; measure when the fixed cost of the second process (about 0.3s) changes.
+/** Below this many files, starting the worker's TypeScript process costs more time than the background check saves. */
+// shortcut: a fixed size. Measure again when the start-up cost of that process, about 0.3s, changes.
 export const MIN_FILES_FOR_BACKGROUND_CHECK = 200;
 
 export interface BackgroundCheckOptions {
@@ -25,7 +25,7 @@ export interface BackgroundCheckOptions {
   readonly packageDir: string;
   readonly projectRoot: string;
   readonly tsconfigPath: string;
-  /** `DiagnosticCategory` values of jsii: of an error, and all of them (others are errors too). */
+  /** jsii's `DiagnosticCategory` value for an error, and all its values. A category that is not listed counts as an error. */
   readonly errorCategory: number;
   readonly categories: readonly number[];
   /** Whether errors skip the emit. */
@@ -35,7 +35,7 @@ export interface BackgroundCheckOptions {
 export interface BackgroundCheckResult {
   /** The program's diagnostics: config file, options, global, syntactic and semantic, in this order. */
   readonly diagnostics: any[];
-  /** The result of `program.emit()`; absent when it did not run (`noEmitOnError` and errors). */
+  /** The result of `program.emit()`. It is absent when the emit did not run, because of errors and `noEmitOnError`. */
   readonly emit?: { emitSkipped?: boolean; emittedFiles?: string[]; diagnostics: any[] };
 }
 
@@ -44,8 +44,8 @@ const LOG = log4js.getLogger('jsii/background-check');
 /** How long the worker has to start. */
 const START_TIMEOUT_MS = 10_000;
 /**
- * How long the build waits for a worker that started: a worker that dies (out of memory, killed) cannot be told
- * from a slow one while this thread is blocked.
+ * How long the build waits for a worker that started. While this thread is blocked, it cannot tell a worker that
+ * died, for example because it ran out of memory or was killed, from a slow one.
  */
 // shortcut: a fixed limit; make it a function of the size of the project if a slower build ever reaches it.
 const MAX_WAIT_MS = 30 * 60_000;
@@ -54,9 +54,10 @@ const MAX_WAIT_MS = 30 * 60_000;
 const WORKER_KIND = 'jsii-background-check';
 
 /**
- * The worker thread: what `compiler.ts` does with the program in the process it has
- * open (`collectTsDiagnostics`, then `program.emit()` unless errors skip it), with
- * plain values as results.
+ * The worker thread. It does what `compiler.ts` does with the program in its own
+ * TypeScript process: it collects the diagnostics like `collectTsDiagnostics`,
+ * then calls `program.emit()` unless errors and `noEmitOnError` skip it. The
+ * results are plain values.
  */
 function runWorker(data: BackgroundCheckOptions & WorkerData): void {
   Atomics.store(data.done, 1, 1);
@@ -139,8 +140,9 @@ export class BackgroundCheck {
         done,
         port: port2,
       };
-      // This file is the worker too. Run from sources (the tests) it is TypeScript, which a worker cannot load: use
-      // the compiled file next to them (`lib/`, built before the tests run), and none when it is not built.
+      // This file is also the worker's code. When the tests run it from the sources, it is TypeScript, which a worker
+      // cannot load. The worker then uses the compiled file in `lib/`, which is built before the tests run. When that
+      // file does not exist, no worker starts.
       const file = __filename.endsWith('.ts')
         ? path.resolve(__dirname, '..', 'lib', 'background-check.js')
         : __filename;
@@ -167,12 +169,14 @@ export class BackgroundCheck {
   ) {}
 
   /**
-   * Wait for the results (this thread has nothing else to do by then). `undefined`
-   * when the worker failed: do the work in this process then.
+   * Waits for the results. By the time this is called, this thread has nothing else
+   * to do. Returns `undefined` when the worker failed; the caller then does the work
+   * in its own process.
    */
   public wait(): BackgroundCheckResult | undefined {
     if (this.result === undefined) {
-      // The worker says it is running before it does anything: one that does not start would be waited for forever.
+      // The worker marks that it runs before it does anything else. So a worker that never starts is noticed
+      // after START_TIMEOUT_MS, and the build does not wait for it forever.
       let reason: string | undefined;
       for (let waited = 0; Atomics.load(this.done, 0) === 0; waited += 1000) {
         if (waited >= START_TIMEOUT_MS && Atomics.load(this.done, 1) === 0) {
