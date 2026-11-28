@@ -30,10 +30,16 @@ describe('jsii --watch', () => {
     output = '';
   });
 
-  afterEach(() => {
-    child?.kill('SIGKILL');
+  afterEach(async () => {
+    // Wait for the watcher to stop, so it does not write to the directory while it is removed.
+    if (child != null && child.exitCode == null && child.signalCode == null) {
+      const exited = new Promise((resolve) => child!.once('exit', resolve));
+      child.kill('SIGKILL');
+      await exited;
+    }
     child = undefined;
-    fs.rmSync(dir, { force: true, recursive: true });
+    // A process that tsx started for the watcher can still be finishing a write.
+    fs.rmSync(dir, { force: true, recursive: true, maxRetries: 10, retryDelay: 100 });
   });
 
   function start(flag: string) {
