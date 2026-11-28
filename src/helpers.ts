@@ -11,9 +11,9 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { PackageJson, loadAssemblyFromPath, writeAssembly } from '@jsii/spec';
 import * as spec from '@jsii/spec';
-import { Diagnostic, DiagnosticCategory } from 'typescript';
-
 import { Compiler, CompilerOptions } from './compiler';
+import { Diagnostic, DiagnosticCategory } from './diagnostic';
+
 import { loadProjectInfo, ProjectInfo } from './project-info';
 import { formatDiagnostic, JsiiError } from './utils';
 
@@ -24,6 +24,15 @@ export type MultipleSourceFiles = {
   'index.ts': string;
   [name: string]: string;
 };
+
+/**
+ * A diagnostic as returned by the helpers. Same as `Diagnostic`, except `file`
+ * is typed loosely so results stay assignable to the classic `ts.Diagnostic`
+ * that callers of these helpers used before TypeScript 7.
+ */
+export interface HelperDiagnostic extends Diagnostic {
+  readonly file: any;
+}
 
 /**
  * Assembly features supported by this compiler
@@ -89,7 +98,7 @@ export interface HelperCompilationResult {
   /**
    * Diagnostics that occurred during compilation
    */
-  readonly diagnostics: readonly Diagnostic[];
+  readonly diagnostics: readonly HelperDiagnostic[];
 }
 
 export interface HelperCompilationFailure {
@@ -100,7 +109,7 @@ export interface HelperCompilationFailure {
    *
    * Contains at least one error.
    */
-  readonly diagnostics: readonly Diagnostic[];
+  readonly diagnostics: readonly HelperDiagnostic[];
 }
 
 /**

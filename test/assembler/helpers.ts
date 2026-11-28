@@ -1,4 +1,5 @@
-import { Diagnostic, flattenDiagnosticMessageText } from 'typescript';
+import { flattenDiagnosticMessageText } from 'typescript';
+import { Diagnostic } from '../../src/diagnostic';
 import { compileJsiiForTest, TestCompilationOptions } from '../../src/helpers';
 import { JsiiDiagnostic } from '../../src/jsii-diagnostic';
 

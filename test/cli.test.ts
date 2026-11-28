@@ -340,7 +340,8 @@ describe('jsii compile', () => {
     // only when the output is at its most verbose.
     // This documents current behavior, see https://github.com/aws/jsii-compiler/issues/3002
     // Showing a suggestion makes the compiler crash.
-    test('shows suggestions only at the highest levels of verbosity, where they make the CLI crash', async () => {
+    // @TODO(ts7): main crashes here (https://github.com/aws/jsii-compiler/issues/3002); the TypeScript 7 compiler prints the suggestion
+    test.skip('shows suggestions only at the highest levels of verbosity, where they make the CLI crash', async () => {
       const quiet = await runCli(project({}, { description: undefined }));
       const verbose = await runCli(project({}, { description: undefined }), '-vvv');
 
@@ -464,12 +465,25 @@ describe('jsii validate-tsconfig', () => {
     expect(result.stderr).toContain('Failed to read tsconfig at');
   });
 
+  // TypeScript 7: TypeScript's errors for the tsconfig are reported, like tsc (main: ignored; see TYPESCRIPT-7.md)
+  test('fails with the TypeScript errors of the configuration', async () => {
+    const dir = project({ 'tsconfig.json': JSON.stringify(userTsconfig({ notAnOption: true })) });
+
+    const result = await runCli(dir, 'validate-tsconfig');
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stdout).toContain("error TS5023: Unknown compiler option 'notAnOption'.");
+  });
+
   // https://github.com/aws/jsii-compiler/issues/2987
   test.each([
-    [{ target: 'es5' }, 'target: Expected value not to be "es5", got: "es5"'],
-    [{ module: 'amd' }, 'module: Expected value not to be one of ["amd","umd","systemjs","none"], got: "amd"'],
+    [{ target: 'es5' }, 'target: Expected value to be one of ["es2022","es2023","esnext"], got: "es5"'],
+    [
+      { module: 'amd' },
+      'module: Expected value to be one of ["node16","node18","node20","nodenext","commonjs"], got: "amd"',
+    ],
     [{ noEmit: true }, 'noEmit: Expected value not to be true, got: true'],
-    [{ downlevelIteration: true }, 'downlevelIteration: Expected value to be absent, got true'],
+    [{ downlevelIteration: true }, 'downlevelIteration: Unexpected field, got: downlevelIteration'],
   ])('describes the violation of %j the way the rule reads', async (overrides, violation) => {
     const dir = project({ 'tsconfig.json': JSON.stringify(userTsconfig(overrides)) });
 
@@ -587,7 +601,9 @@ describe('current behavior that is reported as an issue', () => {
   });
 
   // https://github.com/aws/jsii-compiler/issues/2982
-  test('errors from parsing the tsconfig are dropped, and the entry point is reported as missing', async () => {
+  // @TODO(ts7): the TypeScript 7 compiler reports the tsconfig parse error (TS18003) that main drops, by design
+  // (https://github.com/aws/jsii-compiler/issues/2982, https://github.com/aws/jsii-compiler/pull/3116)
+  test.skip('errors from parsing the tsconfig are dropped, and the entry point is reported as missing', async () => {
     const { include, exclude, ...config } = userTsconfig({ outDir: 'lib', rootDir: 'lib' });
     const dir = project(
       { 'tsconfig.json': JSON.stringify(config), 'lib/index.ts': 'export class Klass {}', 'index.ts': null },
@@ -639,10 +655,12 @@ describe('current behavior that is reported as an issue', () => {
     });
 
     // https://github.com/aws/jsii-compiler/issues/2991
-    test('is resolved against the project root when compiling, so the base is not read', async () => {
+    // TypeScript 7: resolved against its own directory, like tsc (main: against the project root; see TYPESCRIPT-7.md)
+    test('is resolved against its own directory when compiling, so the base is read', async () => {
       const result = await run(project(files()), '--tsconfig', 'sub/tsconfig.json', '--validate-tsconfig', 'strict');
 
-      expect(result.exitCode).toBeUndefined();
+      expect(result.exitCode).toBe(-1);
+      expect(result.stdout).toContain('baseUrl: Unexpected field');
     });
 
     // https://github.com/aws/jsii-compiler/issues/2991
@@ -650,16 +668,18 @@ describe('current behavior that is reported as an issue', () => {
       const result = await run(project(files()), 'validate-tsconfig', 'sub/tsconfig.json');
 
       expect(result.exitCode).toBe(1);
-      expect(result.stdout).toContain('baseUrl: Expected value to be absent');
+      expect(result.stdout).toContain('baseUrl: Unexpected field');
     });
 
     // https://github.com/aws/jsii-compiler/issues/2991
-    test('passes the validation when the base does not exist', async () => {
+    // TypeScript 7: the build fails with TypeScript's error, like tsc (main: passes; see TYPESCRIPT-7.md)
+    test('fails the build when the base does not exist', async () => {
       const dir = project({ 'tsconfig.json': JSON.stringify({ extends: './nope.json', ...userTsconfig() }) });
 
       const result = await run(dir, '--tsconfig', 'tsconfig.json', '--validate-tsconfig', 'strict');
 
-      expect(result.exitCode).toBeUndefined();
+      expect(result.exitCode).toBe(1);
+      expect(result.stdout).toContain('error TS5083: Cannot read file');
     });
   });
 });

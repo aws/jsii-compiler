@@ -360,7 +360,8 @@ class DeprecationError extends Error {
   });
 
   // This documents current behavior, see https://github.com/aws/jsii-compiler/issues/2949
-  test('fails with JSII9997 for an enum with a deprecated member and a member whose name is a string literal', () => {
+  // @TODO(ts7): main fails with JSII9997 here (https://github.com/aws/jsii-compiler/issues/2949); the TypeScript 7 compiler succeeds
+  test.skip('fails with JSII9997 for an enum with a deprecated member and a member whose name is a string literal', () => {
     const result = compileJsiiForTest(
       `
         export enum E {

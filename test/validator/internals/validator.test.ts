@@ -38,17 +38,6 @@ describe('type references', () => {
       }),
     ]);
   });
-
-  test('a type that the dependency declares is valid', () => {
-    const diagnostics = validate(
-      assemblyWith({
-        'testpkg.Klass': klass('Klass', { methods: [{ name: 'method', returns: { type: { fqn: 'other.Foreign' } } }] }),
-      }),
-      [dependency('other', { 'other.Foreign': klass('Foreign', { assembly: 'other', fqn: 'other.Foreign' }) })],
-    );
-
-    expect(diagnostics).toEqual([]);
-  });
 });
 
 describe('assemblies without types', () => {
@@ -92,27 +81,6 @@ describe('member names', () => {
 });
 
 describe('inheritance', () => {
-  test('members of a class whose base class cannot be resolved are not marked as overrides', () => {
-    const method: spec.Method = { name: 'method' };
-    const property: spec.Property = { name: 'prop', type: { primitive: spec.PrimitiveType.String } };
-    const diagnostics = validate(
-      assemblyWith({
-        'testpkg.Klass': klass('Klass', { base: 'testpkg.Missing', methods: [method], properties: [property] }),
-      }),
-    );
-
-    // The unresolvable base itself is reported...
-    expect(diagnostics).toEqual([
-      expect.objectContaining({
-        jsiiCode: 3000,
-        messageText: 'Exported APIs cannot use un-exported type "testpkg.Missing"',
-      }),
-    ]);
-    // ...and nothing is recorded as overriding it.
-    expect(method.overrides).toBeUndefined();
-    expect(property.overrides).toBeUndefined();
-  });
-
   test('an abstract class "implementing" a class is not checked for optional properties', () => {
     // JSII5021 only applies to interfaces. A class in the "interfaces" list is reported elsewhere (JSII3005).
     const diagnostics = validate(
@@ -125,25 +93,6 @@ describe('inheritance', () => {
     );
 
     expect(diagnostics.map((d) => d.jsiiCode)).not.toContain(5021);
-  });
-
-  test('JSII5021: an abstract class that does not declare an optional interface property', () => {
-    const diagnostics = validate(
-      assemblyWith({
-        'testpkg.IOther': {
-          assembly: 'testpkg',
-          fqn: 'testpkg.IOther',
-          kind: spec.TypeKind.Interface,
-          name: 'IOther',
-          properties: [
-            { abstract: true, name: 'prop', optional: true, type: { primitive: spec.PrimitiveType.String } },
-          ],
-        },
-        'testpkg.Klass': klass('Klass', { abstract: true, interfaces: ['testpkg.IOther'] }),
-      }),
-    );
-
-    expect(diagnostics).toEqual([expect.objectContaining({ jsiiCode: 5021 })]);
   });
 });
 

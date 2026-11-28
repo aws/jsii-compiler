@@ -272,7 +272,7 @@ describe('leftover usage of deprecated types', () => {
       }
     `);
 
-    expect(diagnostic.relatedInformation?.map((info) => info.messageText)).toEqual([
+    expect((diagnostic as any).relatedInformation?.map((info: any) => info.messageText)).toEqual([
       'The @deprecated type is declared here',
     ]);
   });

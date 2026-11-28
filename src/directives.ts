@@ -1,5 +1,42 @@
-import * as ts from 'typescript';
-import { JsiiDiagnostic } from './jsii-diagnostic';
+import * as fs from 'node:fs';
+
+import { DiagnosticLocation, DiagnosticLocationFile, JsiiDiagnostic } from './jsii-diagnostic';
+
+/**
+ * The part of a TypeScript AST node that directives are read from. Both the
+ * nodes of the TypeScript 7 API and the nodes of the in-process TypeScript 6
+ * API (used by the tests) have this shape, so this module does not depend on
+ * either of them.
+ */
+export interface DirectiveNode {
+  getSourceFile(): { readonly fileName: string; readonly text?: string };
+}
+
+/** A JSDoc tag (`@internal`, `@jsii ...`), or a part of its comment. */
+export interface DirectiveJSDocNode {
+  /** Offset of the start of the node (the `@` of a tag). */
+  readonly pos: number;
+  /** Offset of the end of the node. */
+  readonly end: number;
+}
+
+/** A JSDoc tag. */
+export interface DirectiveJSDocTag extends DirectiveJSDocNode {
+  readonly tagName: { readonly text: string };
+  readonly comment?: string | readonly DirectiveJSDocCommentPart[];
+}
+
+/** A text or `{@link}` part of the comment of a JSDoc tag. */
+export interface DirectiveJSDocCommentPart extends DirectiveJSDocNode {
+  readonly text?: string;
+  /** Set on `{@link name text}`. */
+  readonly name?: { getText(sourceFile?: any): string; getSourceFile(): unknown };
+}
+
+/** The JSDoc data TypeScript attaches to declaration nodes. */
+interface JSDocContainer {
+  readonly jsDoc?: ReadonlyArray<{ readonly tags?: readonly DirectiveJSDocTag[] }>;
+}
 
 /**
  * TSDoc-style directives that can be attached to a symbol.
@@ -12,7 +49,7 @@ export class Directives {
    * @param onDiagnostic a callback invoked whenever a diagnostic message is
    *                     emitted when parsing directives.
    */
-  public static of(node: ts.Node, onDiagnostic: (diag: JsiiDiagnostic) => void): Directives {
+  public static of(node: DirectiveNode, onDiagnostic: (diag: JsiiDiagnostic) => void): Directives {
     const found = Directives.#CACHE.get(node);
     if (found != null) {
       return found;
@@ -23,20 +60,20 @@ export class Directives {
     return directives;
   }
 
-  static readonly #CACHE = new WeakMap<ts.Node, Directives>();
+  static readonly #CACHE = new WeakMap<DirectiveNode, Directives>();
 
   /** Whether the node has the `@internal` JSDoc tag. */
-  public readonly tsInternal?: ts.JSDocTag;
+  public readonly tsInternal?: DirectiveJSDocTag;
   /** Whether the node has the `@jsii ignore` directive set. */
-  public readonly ignore?: ts.JSDocComment | ts.JSDocTag;
+  public readonly ignore?: DirectiveJSDocNode;
   /** Whether the node has the `@jsii struct` directive set. */
-  public readonly struct?: ts.JSDocComment | ts.JSDocTag;
+  public readonly struct?: DirectiveJSDocNode;
   /** Suppression codes from `@jsii suppress <code>` directives. */
   public readonly suppressions: readonly string[] = [];
 
-  private constructor(node: ts.Node, onDiagnostic: (diag: JsiiDiagnostic) => void) {
+  private constructor(node: DirectiveNode, onDiagnostic: (diag: JsiiDiagnostic) => void) {
     const suppressions: string[] = [];
-    for (const tag of ts.getJSDocTags(node)) {
+    for (const tag of jsDocTagsOf(node)) {
       switch (tag.tagName.text) {
         case 'internal':
           this.tsInternal ??= tag;
@@ -44,7 +81,7 @@ export class Directives {
         case 'jsii':
           const comments = getComments(tag);
           if (comments.length === 0) {
-            onDiagnostic(JsiiDiagnostic.JSII_2000_MISSING_DIRECTIVE_ARGUMENT.create(tag));
+            onDiagnostic(JsiiDiagnostic.JSII_2000_MISSING_DIRECTIVE_ARGUMENT.create(locationOf(node, tag)));
             continue;
           }
           for (const { text, jsdocNode } of comments) {
@@ -61,7 +98,7 @@ export class Directives {
                 break;
               }
               default:
-                onDiagnostic(JsiiDiagnostic.JSII_2999_UNKNOWN_DIRECTIVE.create(jsdocNode, text));
+                onDiagnostic(JsiiDiagnostic.JSII_2999_UNKNOWN_DIRECTIVE.create(locationOf(node, jsdocNode), text));
                 break;
             }
           }
@@ -73,13 +110,51 @@ export class Directives {
   }
 }
 
-function getComments(tag: ts.JSDocTag): Comment[] {
+/**
+ * The JSDoc tags written on the node itself.
+ *
+ * shortcut: the TypeScript 6 `getJSDocTags` also returns the tags of the
+ * statement that holds a variable declaration, and similar cases for
+ * parameters and property assignments. jsii only reads directives from
+ * declarations that carry their own JSDoc block (classes, interfaces, enums,
+ * namespaces and their members), so those are not followed.
+ */
+function jsDocTagsOf(node: DirectiveNode): readonly DirectiveJSDocTag[] {
+  return ((node as JSDocContainer).jsDoc ?? []).flatMap((doc) => Array.from(doc.tags ?? []));
+}
+
+function locationOf(node: DirectiveNode, jsdocNode: DirectiveJSDocNode): DiagnosticLocation {
+  const { fileName, text } = node.getSourceFile();
+  return {
+    file: new DiagnosticLocationFile(fileName, text ?? readText(fileName)),
+    start: jsdocNode.pos,
+    length: jsdocNode.end - jsdocNode.pos,
+  };
+}
+
+/** The text of a file without attached text, read from disk (as the formatter did), or none. */
+function readText(fileName: string): string {
+  try {
+    return fs.readFileSync(fileName, 'utf8');
+  } catch {
+    return '';
+  }
+}
+
+function getComments(tag: DirectiveJSDocTag): Comment[] {
   if (tag.comment == null) {
     return [];
   }
 
-  if (typeof tag.comment === 'string') {
-    const text = tag.comment.trim();
+  let parts = tag.comment;
+  if (typeof parts !== 'string' && !parts.some((part) => part.name != null)) {
+    // TypeScript 6 returns the comment as a string when it has no `{@link}`; the
+    // TypeScript 7 API always returns the parts.
+    parts = parts.map((part) => part.text ?? '').join('');
+  }
+
+  if (typeof parts === 'string') {
+    const text = parts.trim();
     return text
       ? text.split(/[\n,]/).flatMap((line) => {
           line = line.trim();
@@ -88,27 +163,15 @@ function getComments(tag: ts.JSDocTag): Comment[] {
       : [];
   }
 
-  // Possible per the type signature in the compiler, however not sure in which conditions.
-  return tag.comment.flatMap((jsdocNode): Comment[] => {
-    let text: string;
-    switch (jsdocNode.kind) {
-      case ts.SyntaxKind.JSDocText:
-        text = jsdocNode.text;
-        break;
-      case ts.SyntaxKind.JSDocLink:
-      case ts.SyntaxKind.JSDocLinkCode:
-      case ts.SyntaxKind.JSDocLinkPlain:
-        text = jsdocNode.name
-          ? `${jsdocNode.name.getText(jsdocNode.name.getSourceFile())}: ${jsdocNode.text}`
-          : jsdocNode.text;
-        break;
-    }
-    text = text.trim();
+  return parts.flatMap((jsdocNode): Comment[] => {
+    const text = (
+      jsdocNode.name ? `${jsdocNode.name.getText(jsdocNode.name.getSourceFile())}: ${jsdocNode.text}` : jsdocNode.text
+    )?.trim();
     return text ? [{ text, jsdocNode }] : [];
   });
 }
 
 interface Comment {
   readonly text: string;
-  readonly jsdocNode: ts.JSDocComment | ts.JSDocTag;
+  readonly jsdocNode: DirectiveJSDocNode;
 }

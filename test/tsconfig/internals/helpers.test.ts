@@ -50,7 +50,8 @@ describe('fcTsconfig', () => {
     fc.assert(
       fc.property(
         fcTsconfig({ compilerArbs: { outDir: fc.constant('dist') }, watchArbs: { excludeFiles: fc.constant([]) } }),
-        (config) => config.watchOptions?.excludeFiles === undefined || config.watchOptions.excludeFiles.length === 0,
+        (config) =>
+          config.watchOptions?.excludeFiles == null || (config.watchOptions.excludeFiles as unknown[]).length === 0,
       ),
     );
   });

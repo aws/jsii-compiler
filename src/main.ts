@@ -5,14 +5,15 @@ import * as path from 'node:path';
 import * as util from 'node:util';
 import chalk from 'chalk';
 import * as log4js from 'log4js';
-import { version as tsVersion } from 'typescript/package.json';
 import * as yargs from 'yargs';
+import { version as tsVersion } from '#typescript/package.json';
 
-import { Compiler } from './compiler';
+import { Compiler, readSourceFile, toDiagnostic } from './compiler';
 import { configureCategories, JsiiDiagnostic } from './jsii-diagnostic';
 import { loadProjectInfo } from './project-info';
 import { emitSupportPolicyInformation } from './support';
 import { TypeScriptConfigValidationRuleSet } from './tsconfig';
+import { TsconfigErrors } from './tsconfig/read';
 import { formatRuleSet, RULE_SET_DESCRIPTIONS } from './tsconfig/rule-set-format';
 import { validateTypeScriptConfigFile } from './tsconfig/tsconfig-validator';
 import * as utils from './utils';
@@ -161,6 +162,7 @@ enum OPTION_GROUP {
             stripDeprecated: argv['strip-deprecated'] != null,
             stripDeprecatedAllowListFile: argv['strip-deprecated'],
             addDeprecationWarnings: argv['add-deprecation-warnings'],
+            watch: argv.watch,
             generateTypeScriptConfig: argv['generate-tsconfig'],
             typeScriptConfig,
             validateTypeScriptConfig,
@@ -253,7 +255,13 @@ enum OPTION_GROUP {
             console.log(`✨ "${configName}" is valid against rule set "${ruleSet}"`);
           }
         } catch (e: unknown) {
-          if (e instanceof utils.JsiiError) {
+          if (e instanceof TsconfigErrors) {
+            // Print TypeScript's errors for the tsconfig and fail, as `tsc --showConfig` does on TypeScript 6.
+            for (const diagnostic of e.diagnostics) {
+              utils.logDiagnostic(toDiagnostic(diagnostic, readSourceFile), process.cwd());
+            }
+            process.exitCode = 1;
+          } else if (e instanceof utils.JsiiError) {
             const LOG = log4js.getLogger(utils.CLI_LOGGER);
             LOG.error(e.message);
             process.exitCode = -1;

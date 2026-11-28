@@ -38,7 +38,7 @@
     },
     {
       "name": "@types/node",
-      "version": "^20",
+      "version": "^22",
       "type": "build"
     },
     {
@@ -140,11 +140,21 @@
       "type": "build"
     },
     {
+      "name": "typescript",
+      "version": "~6.0",
+      "type": "build"
+    },
+    {
       "name": "@jsii/check-node",
       "type": "runtime"
     },
     {
       "name": "@jsii/spec",
+      "type": "runtime"
+    },
+    {
+      "name": "@typescript/native",
+      "version": "npm:typescript@7.1.0-beta",
       "type": "runtime"
     },
     {
@@ -173,16 +183,7 @@
       "type": "runtime"
     },
     {
-      "name": "sort-json",
-      "type": "runtime"
-    },
-    {
       "name": "spdx-license-list",
-      "type": "runtime"
-    },
-    {
-      "name": "typescript",
-      "version": "~6.0",
       "type": "runtime"
     },
     {

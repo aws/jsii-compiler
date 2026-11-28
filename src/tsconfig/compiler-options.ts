@@ -1,13 +1,18 @@
-import * as ts from 'typescript';
 import * as Case from '../case';
+import type { CompilerOptionsJson } from './index';
+import { loadTypeScriptApi } from '../compiler-host';
 
-export const BASE_COMPILER_OPTIONS: ts.CompilerOptions = {
+/**
+ * The compiler options jsii always applies, in the JSON form they are written
+ * to the generated `tsconfig.json`.
+ */
+export const BASE_COMPILER_OPTIONS: CompilerOptionsJson = {
   alwaysStrict: true,
   declaration: true,
   esModuleInterop: true,
   incremental: true,
-  lib: ['lib.es2023.d.ts'],
-  module: ts.ModuleKind.Node20,
+  lib: ['es2023'],
+  module: 'node20',
   noEmitOnError: true,
   noFallthroughCasesInSwitch: true,
   noImplicitAny: true,
@@ -22,115 +27,25 @@ export const BASE_COMPILER_OPTIONS: ts.CompilerOptions = {
   strictNullChecks: true,
   strictPropertyInitialization: true,
   stripInternal: false,
-  target: ts.ScriptTarget.ES2023,
+  target: 'es2023',
 };
 
-/**
- * Helper function to convert a TS enum into a list of allowed values,
- * converting everything to camel case.
- * This is used for example for the watch options
- */
 export function enumAsCamel(enumData: Record<string, string | number>): string[] {
   return Object.keys(enumData)
     .filter((v) => isNaN(Number(v)))
     .map(Case.camel);
 }
 
-/**
- * Helper function to convert a TS enum into a list of allowed values,
- * converting everything to lower case.
- * This is used for example for the "target" compiler option
- */
 export function enumAsLower(enumData: Record<string, string | number>): string[] {
   return Object.keys(enumData)
     .filter((v) => isNaN(Number(v)) && v !== 'None')
     .map((v) => v.toLowerCase());
 }
 
-/**
- * Helper function to convert a TS enum into a list of allowed values,
- * converting everything to kebab case.
- * This is used for example for the "jsx" compiler option
- */
 export function enumAsKebab(enumData: Record<string, string | number>): string[] {
   return Object.keys(enumData)
     .filter((v) => isNaN(Number(v)) && v !== 'None')
     .map(Case.kebab);
-}
-
-/**
- * The compilerOptions in the programmatic API are slightly differently than the format used in tsconfig.json
- * This helper performs the necessary conversion from the programmatic API format the one used in tsconfig.json
- *
- * @param opt compilerOptions in programmatic API format
- * @returns compilerOptions ready to be written on disk
- */
-export function convertForJson(opt: ts.CompilerOptions): ts.CompilerOptions {
-  // TypeScript's config parser attaches internal `pathsBasePath` when `paths` is set;
-  // drop it so JSON serialization and tsconfig validation only see user-facing options.
-  const rest = { ...opt };
-  delete rest.pathsBasePath;
-
-  return {
-    ...rest,
-
-    // Drop the "lib." prefix and ".d.ts" suffix before writing up the tsconfig.json file
-    ...valueHelper('lib', opt.lib, convertLibForJson),
-
-    // Re-write the module, targets & jsx to be the JSON format instead of Programmatic API
-    ...enumHelper('importsNotUsedAsValues', opt.importsNotUsedAsValues, ts.ImportsNotUsedAsValues),
-    ...valueHelper('jsx', opt.jsx, convertJsxForJson),
-    ...enumHelper('module', opt.module, ts.ModuleKind),
-    ...enumHelper('moduleResolution', opt.moduleResolution, ts.ModuleResolutionKind),
-    ...enumHelper('moduleDetection', opt.moduleDetection, ts.ModuleDetectionKind),
-    ...valueHelper('target', opt.target, convertScriptTargetForJson),
-
-    // rewrite newline to be the JSON format instead of Programmatic API
-    ...valueHelper('newLine', opt.newLine, convertNewLineForJson),
-  };
-}
-
-function valueHelper<T, U>(
-  name: string,
-  value: T | undefined,
-  converter: (value: T) => U,
-): {
-  [name: string]: U;
-} {
-  if (!value) {
-    return {};
-  }
-  return { [name]: converter(value) };
-}
-
-function enumHelper<T>(
-  name: string,
-  value: any,
-  enumObj: T,
-  converter?: (value: string) => string,
-): {
-  [name: string]: string;
-} {
-  if (!value) {
-    return {};
-  }
-  return { [name]: convertEnumToJson(value, enumObj, converter) };
-}
-
-/**
- * Convert an internal enum value to what a user would write in tsconfig.json
- * Possibly using a converter function to adjust casing.
- * @param value The internal enum value
- * @param enumObj The enum object to convert from
- * @param converter The converter function, defaults to lowercase
- * @returns The humanized version of the enum value
- */
-export function convertEnumToJson<T>(
-  value: keyof T,
-  enumObj: T,
-  converter: (value: string) => string = (v) => v.toLowerCase(),
-): string {
-  return converter(enumObj[value] as any);
 }
 
 /**
@@ -143,90 +58,115 @@ export function convertLibForJson(input: string[]): string[] {
 }
 
 /**
- * This is annoying - the values expected in the tsconfig.json file are not
- * the same as the enum constant names, or their values. So we need this
- * function to map the "compiler API version" to the "tsconfig.json version"
+ * Map the "compiler API version" of the new line setting (the numeric value of
+ * the classic `ts.NewLineKind`) to the "tsconfig.json version".
  *
  * @param newLine the compiler form of the new line configuration
  *
  * @return the equivalent value to put in tsconfig.json
  */
-export function convertNewLineForJson(newLine: ts.NewLineKind): string {
+export function convertNewLineForJson(newLine: 0 | 1): string {
   switch (newLine) {
-    case ts.NewLineKind.CarriageReturnLineFeed:
+    case 0: // ts.NewLineKind.CarriageReturnLineFeed
       return 'crlf';
-    case ts.NewLineKind.LineFeed:
+    case 1: // ts.NewLineKind.LineFeed
       return 'lf';
   }
 }
 
 /**
- * This is annoying - the values expected in the tsconfig.json file are not
- * the same as the enum constant names, or their values. So we need this
- * function to map the "compiler API version" to the "tsconfig.json version"
+ * Converts compiler options from the form TypeScript's config parser returns to
+ * the form a user writes in `tsconfig.json`, which the rule sets are written
+ * against. The parser gives enum values as numbers and `lib` entries as file
+ * names. Values already in the `tsconfig.json` form, such as those of
+ * {@link BASE_COMPILER_OPTIONS}, are kept.
  *
- * @param jsx the compiler form of the jsx configuration
- *
- * @return the equivalent value to put in tsconfig.json
+ * Enum values are named after their TypeScript enum member in lower case,
+ * except `jsx` and `target`, which are written as tsconfig.json spells them.
  */
-export function convertJsxForJson(jsx: ts.JsxEmit): string {
+export function convertForJson(opt: CompilerOptionsJson): CompilerOptionsJson {
+  // TypeScript's config parser attaches internal `pathsBasePath` when `paths` is set;
+  // drop it so JSON serialization and tsconfig validation only see user-facing options.
+  const rest = { ...opt };
+  delete rest.pathsBasePath;
+
+  return {
+    ...rest,
+    // `lib.es2022.d.ts` -> `es2022`
+    ...convertHelper('lib', opt.lib, (lib) =>
+      Array.isArray(lib) ? lib.map((l) => (typeof l === 'string' ? l.replace(/^lib\.(.*)\.d\.ts$/, '$1') : l)) : lib,
+    ),
+    ...convertHelper('jsx', opt.jsx, (v) => (typeof v === 'number' ? convertJsxForJson(v) : v)),
+    ...convertHelper('module', opt.module, (v) => enumName(v, 'ModuleKind')),
+    ...convertHelper('moduleResolution', opt.moduleResolution, (v) => enumName(v, 'ModuleResolutionKind')),
+    ...convertHelper('moduleDetection', opt.moduleDetection, (v) => enumName(v, 'ModuleDetectionKind')),
+    ...convertHelper('target', opt.target, (v) => (typeof v === 'number' ? convertScriptTargetForJson(v) : v)),
+    ...convertHelper('newLine', opt.newLine, (v) => enumName(v, 'NewLineKind')),
+  };
+}
+
+/** Converts the value of one option. Like the classic compiler, it keeps a falsy value, such as `module: 0`, as it is. */
+function convertHelper(name: string, value: unknown, converter: (value: unknown) => unknown): CompilerOptionsJson {
+  if (!value) {
+    return {};
+  }
+  return { [name]: converter(value) };
+}
+
+/**
+ * The name of the TypeScript 7 enum member for a numeric value. Other values are
+ * kept. TypeScript 7 has no `ES5` target, but its parser still takes
+ * `target: "es5"` and returns 1, so the caller names that value itself.
+ */
+function enumName(
+  value: unknown,
+  kind: 'JsxEmit' | 'ModuleKind' | 'ModuleResolutionKind' | 'ModuleDetectionKind' | 'ScriptTarget' | 'NewLineKind',
+  converter = (v: string) => v.toLowerCase(),
+): unknown {
+  if (typeof value !== 'number') {
+    return value;
+  }
+  const name = loadTypeScriptApi()[kind][value];
+  return typeof name === 'string' ? converter(name) : value;
+}
+
+/**
+ * The tsconfig.json spelling of a `jsx` value (the numeric `JsxEmit`). The enum
+ * member names don't kebab-case to it: `ReactJSX` is written `react-jsx`.
+ */
+export function convertJsxForJson(jsx: number): string {
   switch (jsx) {
-    case ts.JsxEmit.None:
+    case 0:
       return 'none';
-    case ts.JsxEmit.Preserve:
+    case 1:
       return 'preserve';
-    case ts.JsxEmit.React:
+    case 2:
       return 'react';
-    case ts.JsxEmit.ReactNative:
+    case 3:
       return 'react-native';
-    case ts.JsxEmit.ReactJSX:
+    case 4:
       return 'react-jsx';
-    case ts.JsxEmit.ReactJSXDev:
+    case 5:
       return 'react-jsxdev';
+    default:
+      return String(enumName(jsx, 'JsxEmit', Case.kebab));
   }
 }
 
 /**
- * This is annoying - the values expected in the tsconfig.json file are not
- * the same as the enum constant names, or their values. So we need this
- * function to map the "compiler API version" to the "tsconfig.json version"
- *
- * @param target the compiler form of the target configuration
- *
- * @return the equivalent value to put in tsconfig.json
+ * The tsconfig.json spelling of a `target` value (the numeric `ScriptTarget`).
+ * TypeScript 7 has no `ES3` and `ES5` members, but its parser still takes them,
+ * and the enum names `ESNext` as `Latest`.
  */
-export function convertScriptTargetForJson(target: ts.ScriptTarget): string {
+export function convertScriptTargetForJson(target: number): string {
   switch (target) {
-    case ts.ScriptTarget.ES3:
+    case 0:
       return 'es3';
-    case ts.ScriptTarget.ES5:
+    case 1:
       return 'es5';
-    case ts.ScriptTarget.ES2015:
-      return 'es2015';
-    case ts.ScriptTarget.ES2016:
-      return 'es2016';
-    case ts.ScriptTarget.ES2017:
-      return 'es2017';
-    case ts.ScriptTarget.ES2018:
-      return 'es2018';
-    case ts.ScriptTarget.ES2019:
-      return 'es2019';
-    case ts.ScriptTarget.ES2020:
-      return 'es2020';
-    case ts.ScriptTarget.ES2021:
-      return 'es2021';
-    case ts.ScriptTarget.ES2022:
-      return 'es2022';
-    case ts.ScriptTarget.ES2023:
-      return 'es2023';
-    case ts.ScriptTarget.ES2024:
-      return 'es2024';
-    // `ESNext` and `Latest` are the same target; `Latest` is the name the
-    // reverse mapping of the enum returns, but users write `esnext`.
-    case ts.ScriptTarget.ESNext:
-    case ts.ScriptTarget.Latest:
+    case 99:
       return 'esnext';
     default:
-      return ts.ScriptTarget[target].toLowerCase();
+      return String(enumName(target, 'ScriptTarget'));
   }
 }

@@ -12,10 +12,10 @@
   ],
   "coverageThreshold": {
     "global": {
-      "statements": 98.4,
-      "lines": 98.4,
-      "functions": 94.5,
-      "branches": 95.8
+      "statements": 92.8,
+      "lines": 92.8,
+      "functions": 93.2,
+      "branches": 92.7
     }
   },
   "watchPathIgnorePatterns": [

@@ -1,5 +1,5 @@
 import * as log4js from 'log4js';
-import { Diagnostic, DiagnosticCategory } from 'typescript';
+import { Diagnostic, DiagnosticCategory } from '../../../src/diagnostic';
 
 import { JsiiDiagnostic } from '../../../src/jsii-diagnostic';
 import {

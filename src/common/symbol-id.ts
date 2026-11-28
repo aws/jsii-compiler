@@ -1,14 +1,13 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { Assembly } from '@jsii/spec';
-import * as ts from 'typescript';
 
 import { findUp } from './find-utils';
 
 /**
  * Additional options that may be provided to the symbolIdentifier.
  */
-interface SymbolIdOptions {
+export interface SymbolIdOptions {
   /**
    * The assembly that the symbol is found in.
    * This is used to provide the correct root directory
@@ -18,6 +17,41 @@ interface SymbolIdOptions {
    */
   readonly assembly?: Assembly;
 }
+
+/**
+ * The part of a TypeScript symbol `symbolIdentifier` needs.
+ *
+ * This is a structural type so that both the classic in-process `ts.Symbol`
+ * (as used by jsii-rosetta) and the symbol handles of the TypeScript 7
+ * programmatic API satisfy it.
+ */
+export interface SymbolIdSymbol {
+  /** The `SymbolFlags` bit set of the symbol. */
+  readonly flags: number;
+}
+
+/**
+ * The part of a TypeScript type checker `symbolIdentifier` needs.
+ *
+ * Structurally satisfied by the classic `ts.TypeChecker` and by the TypeScript 7
+ * `Checker`, so callers can keep passing whichever checker they drive.
+ */
+export interface SymbolIdChecker<S extends SymbolIdSymbol = SymbolIdSymbol> {
+  getAliasedSymbol(symbol: S): S;
+  getFullyQualifiedName(symbol: S): string;
+}
+
+/**
+ * The `SymbolFlags` values `symbolIdentifier` tests for. They are identical in
+ * the classic compiler and in the TypeScript 7 `typescript/ast` module, which
+ * lets this function stay independent from either package.
+ */
+const SYMBOL_FLAGS = {
+  Property: 4,
+  EnumMember: 8,
+  Method: 8192,
+  Alias: 2097152,
+} as const;
 
 /**
  * Return a symbol identifier for the given symbol
@@ -47,9 +81,9 @@ interface SymbolIdOptions {
  * Whoops ^_^ (this historical accident is why the format is similar to but
  * different from what the TS checker returns).
  */
-export function symbolIdentifier(
-  typeChecker: ts.TypeChecker,
-  sym: ts.Symbol | undefined,
+export function symbolIdentifier<S extends SymbolIdSymbol>(
+  typeChecker: SymbolIdChecker<S>,
+  sym: S | undefined,
   options: SymbolIdOptions = {},
 ): string | undefined {
   if (!sym) {
@@ -58,19 +92,13 @@ export function symbolIdentifier(
 
   // If this symbol happens to be an alias, resolve it first
   // eslint-disable-next-line no-bitwise
-  while ((sym.flags & ts.SymbolFlags.Alias) !== 0) {
+  while ((sym.flags & SYMBOL_FLAGS.Alias) !== 0) {
     sym = typeChecker.getAliasedSymbol(sym);
   }
 
   const isMember =
     // eslint-disable-next-line no-bitwise
-    (sym.flags &
-      // eslint-disable-next-line no-bitwise
-      (ts.SymbolFlags.Method |
-        // eslint-disable-next-line no-bitwise
-        ts.SymbolFlags.Property |
-        ts.SymbolFlags.EnumMember)) !==
-    0;
+    (sym.flags & (SYMBOL_FLAGS.Method | SYMBOL_FLAGS.Property | SYMBOL_FLAGS.EnumMember)) !== 0;
 
   const tsName = typeChecker.getFullyQualifiedName(sym);
 
@@ -94,7 +122,7 @@ export function symbolIdentifier(
 }
 
 class Helper {
-  public static for(typeChecker: ts.TypeChecker) {
+  public static for(typeChecker: object) {
     const cached = this.INSTANCES.get(typeChecker);
     if (cached != null) {
       return cached;
@@ -104,7 +132,7 @@ class Helper {
     return helper;
   }
 
-  private static readonly INSTANCES = new WeakMap<ts.TypeChecker, Helper>();
+  private static readonly INSTANCES = new WeakMap<object, Helper>();
 
   private readonly packageInfo = new Map<string, PackageInfo | undefined>();
 

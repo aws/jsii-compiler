@@ -44,7 +44,9 @@ describe('JSII3005 type-model/type-used-as-interface', () => {
 });
 
 describe('unresolvable heritage clauses', () => {
-  test('a class implementing an unknown type fails with JSII9997', () => {
+  // @TODO(ts7): expects main's JSII9997 crash, which the TypeScript 7 assembler does not copy
+  // (https://github.com/aws/jsii-compiler/issues/3166)
+  test.skip('a class implementing an unknown type fails with JSII9997', () => {
     expect(compileForDiagnostics('export class Klass implements Unknown {}')).toEqual([
       expect.stringMatching(
         /^JSII9997: Unknown error: Unable to resolve type: {2}Unknown\. This typically happens if something is wrong with your dependency closure\./,

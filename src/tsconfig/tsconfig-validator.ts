@@ -1,12 +1,11 @@
-import * as path from 'node:path';
-import * as ts from 'typescript';
 import { TypeScriptConfig, TypeScriptConfigValidationRuleSet } from '.';
 import { convertForJson } from './compiler-options';
-import { JsiiError } from '../utils';
+import { readTypeScriptConfigFile, TsconfigErrors, TsconfigReadError } from './read';
 import generated from './rulesets/generated.public';
 import minimal from './rulesets/minimal.public';
 import strict from './rulesets/strict.public';
 import { Match, ObjectValidator, RuleDescription, RuleSet, RuleType, ValidationError, Violation } from './validator';
+import { JsiiError } from '../utils';
 
 const RuleSets: {
   [name in TypeScriptConfigValidationRuleSet]: RuleSet;
@@ -84,28 +83,29 @@ export function describeRuleSet(ruleSet: TypeScriptConfigValidationRuleSet): Rul
  * the compiler does, so validation behaves identically to a real compilation.
  *
  * @param configPath the path to the tsconfig file to read
- * @throws {@link JsiiError} if the file cannot be read or parsed
+ * @throws {@link JsiiError} if the file cannot be read or parsed, {@link TsconfigErrors}
+ *         if TypeScript reports errors for it (such as an unknown option or a broken `extends`)
  * @returns the parsed TypeScript configuration
  */
 export function readTypeScriptConfig(configPath: string): TypeScriptConfig {
-  const absolutePath = path.resolve(configPath);
-  const { config, error } = ts.readConfigFile(absolutePath, ts.sys.readFile);
-  if (error) {
-    throw new JsiiError(
-      `Failed to read tsconfig at "${configPath}": ${ts.flattenDiagnosticMessageText(error.messageText, '\n')}`,
-    );
+  let result;
+  try {
+    result = readTypeScriptConfigFile(configPath);
+  } catch (e) {
+    if (e instanceof TsconfigReadError) {
+      // The classic wording names the path as given.
+      throw new JsiiError(
+        `Failed to read tsconfig at "${configPath}": ${e.diagnostic.text ?? e.diagnostic.messageText}`,
+      );
+    }
+    throw e;
   }
-
-  const basePath = path.dirname(absolutePath);
-  const extended = ts.parseJsonConfigFileContent(config, ts.sys, basePath);
-  // the tsconfig parser adds this in, but it is not an expected compilerOption
-  delete extended.options.configFilePath;
-
-  return {
-    compilerOptions: extended.options,
-    watchOptions: extended.watchOptions,
-    include: extended.fileNames,
-  };
+  // When TypeScript found errors in the tsconfig, throw them instead of returning its options, as
+  // `tsc --showConfig` does on TypeScript 6.
+  if (result.errors.length > 0) {
+    throw new TsconfigErrors(configPath, result.errors);
+  }
+  return result.config;
 }
 
 /**

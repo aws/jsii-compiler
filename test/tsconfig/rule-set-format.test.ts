@@ -80,7 +80,7 @@ describe('formatRuleSet()', () => {
   test('strict rejects unknown options and surfaces required + allowed values', () => {
     const out = formatRuleSet(TypeScriptConfigValidationRuleSet.STRICT);
     expect(out).toContain('other options: rejected');
-    expect(out).toMatch(/target\s+required; must be one of: es2022, es2023, esnext; must not be es5/);
+    expect(out).toMatch(/target\s+required; must be one of: es2022, es2023, esnext\n/);
   });
 
   test('dedupes identical overlapping constraints', () => {
