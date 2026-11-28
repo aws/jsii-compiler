@@ -1,6 +1,7 @@
 import * as crypto from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { isMainThread, Worker, workerData } from 'node:worker_threads';
 import * as spec from '@jsii/spec';
 import { writeAssembly } from '@jsii/spec';
 import chalk from 'chalk';
@@ -832,6 +833,7 @@ export function buildProject(options: BuildProjectOptions): BuildProjectResult {
   };
 
   let tsHasErrors = false;
+  let assemblyWriter: AssemblyWriter | undefined;
   let checkedEmit: BackgroundCheckResult['emit'];
   let settled = false;
   const diagnostics: Diagnostic[] = [];
@@ -940,11 +942,14 @@ export function buildProject(options: BuildProjectOptions): BuildProjectResult {
     // @TODO(NEXT): `.jsii` is written even when TypeScript reported errors, while the log says "Compilation errors
     // prevented the JSII assembly from being created" (aws/jsii-compiler#2980). After 7.1's first release: also
     // require `!tsHasErrors`.
-    const assemblyToWrite = assembly != null && !jsiiFailed ? fingerprint(assembly) : undefined;
+    // The fingerprint and the file take about 2s for aws-cdk-lib, and the emit does not need them. So a worker thread
+    // makes them while this thread emits, and writes them into a scratch directory in `node_modules/.cache/jsii`.
+    // After the emit, the files are renamed into place.
+    if (assembly != null && !jsiiFailed) {
+      assemblyWriter = AssemblyWriter.start(projectRoot, assembly, options.compressAssembly ?? false);
+    }
     const writeAssemblyFile = () => {
-      if (assemblyToWrite != null) {
-        writeAssembly(projectRoot, assemblyToWrite, { compress: options.compressAssembly ?? false });
-      }
+      assemblyWriter?.finish();
     };
 
     // Then emit the .js and .d.ts files, and add jsii's runtime type information to
@@ -1016,9 +1021,176 @@ export function buildProject(options: BuildProjectOptions): BuildProjectResult {
         );
       }
     }
+    assemblyWriter?.discard();
     check?.wait();
     host.close();
   }
+}
+
+/** What marks the `workerData` of the thread an `AssemblyWriter` starts. */
+const ASSEMBLY_WRITER_KIND = 'jsii-assembly-writer';
+/**
+ * Below this many types, the build writes the assembly itself: starting the worker makes it wait about 30 ms, and
+ * writing 1,000 types takes about 80 ms.
+ */
+// shortcut: a fixed size. Measure again when the start-up cost of the worker changes.
+const MIN_TYPES_FOR_ASSEMBLY_WRITER = 1_000;
+/** How long the build waits for the assembly writer to start, and to finish. */
+const START_TIMEOUT_MS = 10_000;
+const MAX_WAIT_MS = 10 * 60_000;
+
+interface AssemblyWriterData {
+  readonly kind: typeof ASSEMBLY_WRITER_KIND;
+  readonly assembly: spec.Assembly;
+  readonly directory: string;
+  readonly compress: boolean;
+  /**
+   * Set by the worker. The first element is 1 when it is done, the second is 1 when it wrote the files, and the third
+   * is 1 once it runs.
+   */
+  readonly done: Int32Array;
+}
+
+/**
+ * Makes the fingerprint and writes the `.jsii` file of an assembly in a worker thread, while the build goes on.
+ *
+ * The worker writes into a new scratch directory, `node_modules/.cache/jsii/write-<pid>-<random>` in the project root.
+ * There, git, `npm pack` and the `include` patterns of a tsconfig do not see it, and it is on the same file system as
+ * the project in the usual case. `finish` renames the files into the project root, so a reader sees either the old
+ * file or the new one. When the project has no `node_modules` directory, the worker cannot start, the worker fails, or
+ * a rename fails (for example because `node_modules` is on another file system), `finish` writes the assembly in this
+ * thread instead, so an error comes out as it always did.
+ */
+class AssemblyWriter {
+  public static start(projectRoot: string, assembly: spec.Assembly, compress: boolean): AssemblyWriter {
+    // Like the classic compiler, the fingerprint of an assembly is not part of what it hashes. `fingerprint` deletes
+    // it from the object the build returns, so the worker's copy has none either.
+    delete (assembly as any).fingerprint;
+    const writer = new AssemblyWriter(projectRoot, assembly, compress);
+    try {
+      // This file is also the worker's code. When the tests run it from the sources, it is TypeScript, which a worker
+      // cannot load. The worker then uses the compiled file in `lib/`, which is built before the tests run. When that
+      // file does not exist, no worker starts.
+      const file = __filename.endsWith('.ts') ? path.resolve(__dirname, '..', 'lib', 'compiler.js') : __filename;
+      const nodeModules = path.join(projectRoot, 'node_modules');
+      if (
+        Object.keys(assembly.types ?? {}).length >= MIN_TYPES_FOR_ASSEMBLY_WRITER &&
+        fs.existsSync(file) &&
+        fs.existsSync(nodeModules)
+      ) {
+        const cache = path.join(nodeModules, '.cache', 'jsii');
+        fs.mkdirSync(cache, { recursive: true });
+        removeAbandonedScratchDirectories(cache);
+        writer.directory = fs.mkdtempSync(path.join(cache, `${SCRATCH_PREFIX}${process.pid}-`));
+        const data: AssemblyWriterData = {
+          kind: ASSEMBLY_WRITER_KIND,
+          assembly,
+          directory: writer.directory,
+          compress,
+          done: writer.done,
+        };
+        writer.worker = new Worker(file, { workerData: data });
+        // The worker does not keep the process alive; the build waits for it.
+        writer.worker.unref();
+      }
+    } catch (error: any) {
+      LOG.debug(`the assembly writer did not start: ${String(error?.message ?? error)}`);
+      writer.discard();
+    }
+    return writer;
+  }
+
+  private worker?: Worker;
+  private directory?: string;
+  private readonly done = new Int32Array(new SharedArrayBuffer(12));
+
+  private constructor(
+    private readonly projectRoot: string,
+    private readonly assembly: spec.Assembly,
+    private readonly compress: boolean,
+  ) {}
+
+  /** Puts the `.jsii` file (and with `compress`, the `.jsii.gz` file it points to) into the project root. */
+  public finish(): void {
+    if (this.worker != null && this.directory != null) {
+      // A worker that does not run after START_TIMEOUT_MS, or is not done after MAX_WAIT_MS, is given up on.
+      for (let waited = 0; Atomics.load(this.done, 0) === 0; waited += 1000) {
+        if ((waited >= START_TIMEOUT_MS && Atomics.load(this.done, 2) === 0) || waited >= MAX_WAIT_MS) {
+          LOG.debug('the assembly writer did not finish; writing the assembly here');
+          break;
+        }
+        Atomics.wait(this.done, 0, 0, 1000);
+      }
+      if (Atomics.load(this.done, 1) === 1) {
+        try {
+          // `.jsii` last, so that a tool that finds it also finds the file it points to.
+          const names = this.compress ? [spec.SPEC_FILE_NAME_COMPRESSED, spec.SPEC_FILE_NAME] : [spec.SPEC_FILE_NAME];
+          for (const name of names) {
+            fs.renameSync(path.join(this.directory, name), path.join(this.projectRoot, name));
+          }
+          this.discard();
+          return;
+        } catch {
+          // The write below fails the same way, and reports the error as the build always did.
+        }
+      }
+    }
+    this.discard();
+    writeAssembly(this.projectRoot, fingerprint(this.assembly), { compress: this.compress });
+  }
+
+  /** Stops the worker and removes its directory. */
+  public discard(): void {
+    void this.worker?.terminate();
+    this.worker = undefined;
+    if (this.directory != null) {
+      fs.rmSync(this.directory, { recursive: true, force: true });
+      this.directory = undefined;
+    }
+  }
+}
+
+/** The scratch directories of the assembly writer are named `write-<pid>-<random>`. */
+const SCRATCH_PREFIX = 'write-';
+
+/**
+ * Removes the scratch directories of builds that no longer run, such as a build that was killed. A directory whose
+ * process still runs is kept: it may belong to another build of the same project.
+ */
+function removeAbandonedScratchDirectories(cache: string): void {
+  for (const name of fs.readdirSync(cache)) {
+    const pid = name.startsWith(SCRATCH_PREFIX) ? Number(name.slice(SCRATCH_PREFIX.length).split('-')[0]) : NaN;
+    if (!Number.isInteger(pid) || pid === process.pid || isRunning(pid)) {
+      continue;
+    }
+    fs.rmSync(path.join(cache, name), { recursive: true, force: true });
+  }
+}
+
+function isRunning(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error: any) {
+    // EPERM: the process runs, but belongs to another user.
+    return error?.code === 'EPERM';
+  }
+}
+
+function runAssemblyWriter(data: AssemblyWriterData): void {
+  Atomics.store(data.done, 2, 1);
+  try {
+    writeAssembly(data.directory, fingerprint(data.assembly), { compress: data.compress });
+    Atomics.store(data.done, 1, 1);
+  } catch {
+    // The build writes the assembly itself, and reports the error then.
+  }
+  Atomics.store(data.done, 0, 1);
+  Atomics.notify(data.done, 0);
+}
+
+if (!isMainThread && workerData?.kind === ASSEMBLY_WRITER_KIND) {
+  runAssemblyWriter(workerData);
 }
 
 /** The text of a file a diagnostic points into, if it can be read. */
