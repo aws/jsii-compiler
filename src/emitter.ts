@@ -158,11 +158,12 @@ export function emitProject(
       // Fall back to basename matching ONLY when it is unambiguous (a single
       // source file maps to this basename) and that file was not emitted where
       // its path maps to (else this is another file with the same name, such as
-      // an `index.js` that only re-exports); otherwise skip and say so.
+      // an `index.js` that only re-exports); otherwise skip, and say so when one
+      // of the files with this basename was not emitted where its path maps to.
       const candidates = jsRelsByBasename.get(path.basename(name));
       if (candidates?.size === 1 && !emittedJsRels.has([...candidates][0])) {
         classesHere = classesByJsRel.get([...candidates][0]);
-      } else if (candidates && candidates.size > 1) {
+      } else if (candidates && candidates.size > 1 && [...candidates].some((c) => !emittedJsRels.has(c))) {
         LOG.warn(
           `ts backend: skipping rtti injection for ${jsRel} (ambiguous basename across ${candidates.size} files)`,
         );
