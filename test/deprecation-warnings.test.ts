@@ -684,6 +684,42 @@ describe('cross-assembly validation', () => {
   });
 });
 
+describe('a dependency compiled with deprecation warnings whose assembly has no types', () => {
+  test('does not stop the validation of the types of the package', () => {
+    TestWorkspace.withWorkspace((ws) => {
+      ws.addDependency(
+        compileJsiiForTest(
+          'export class Foreign {}',
+          { packageJson: { name: 'foreign' } },
+          { addDeprecationWarnings: true },
+        ),
+      );
+      // The "types" of an assembly are optional in the schema.
+      const assemblyFile = path.join(ws.dependencyDir('foreign'), '.jsii');
+      const assembly = JSON.parse(fs.readFileSync(assemblyFile, 'utf-8'));
+      delete assembly.types;
+      fs.writeFileSync(assemblyFile, JSON.stringify(assembly));
+
+      const consumer = compileJsiiForTest(
+        `export interface Inner {
+          ${DEPRECATED}
+          readonly old?: string;
+        }
+        export interface Props {
+          readonly inner?: Inner;
+        }
+        export class Consumer {
+          public static consume(props: Props): Props { return props; }
+        }`,
+        { compilationDirectory: ws.rootDirectory, packageJson: { dependencies: { foreign: '0.0.1' } } },
+        { addDeprecationWarnings: true },
+      );
+
+      expect(jsFile(consumer, '.warnings.jsii')).toContain('module.exports.testpkg_Inner(p.inner);');
+    });
+  });
+});
+
 describe('Call injections', () => {
   test('does not add warnings by default', () => {
     const result = compileJsiiForTest(

@@ -95,6 +95,53 @@ describe('JSII3004 type-model/invalid-supertype', () => {
   });
 });
 
+describe('JSII5002 language-compatibility/override-changes-visibility', () => {
+  /** Where a diagnostic itself points: the text found at its position. */
+  function textOf(diagnostics: readonly JsiiDiagnostic[], code: number) {
+    const [diagnostic] = diagnostics.filter((d) => d.jsiiCode === code);
+    return diagnostic.file!.text.slice(diagnostic.start!, diagnostic.start! + diagnostic.length!);
+  }
+
+  test.each([
+    { member: 'method', base: 'protected member() {}', override: 'member() {}' },
+    { member: 'property', base: 'protected readonly member: string = "";', override: 'readonly member: string = "";' },
+  ])('points to the name of an overriding $member that has no visibility modifier', ({ base, override }) => {
+    const diagnostics = compileJsiiForDiagnostics(`
+      export class Base {
+        ${base}
+      }
+      export class Derived extends Base {
+        ${override}
+      }
+    `);
+
+    expect(textOf(diagnostics, 5002)).toBe('member');
+    expect(notesOf(diagnostics, 5002)).toEqual([
+      { message: 'The implemented declaration is here.', file: 'index.ts', line: 3, text: 'protected' },
+    ]);
+  });
+
+  test.each([
+    { member: 'method', declaration: 'member(): void;', implementation: 'protected member() {}' },
+    { member: 'property', declaration: 'readonly member: string;', implementation: 'protected readonly member = "";' },
+  ])('points the note to the name of an interface $member, which has no visibility modifier', (example) => {
+    // TypeScript also reports that the class does not implement the interface (TS2420).
+    const diagnostics = compileJsiiForDiagnostics(`
+      export interface IBase {
+        ${example.declaration}
+      }
+      export class Implementation implements IBase {
+        ${example.implementation}
+      }
+    `);
+
+    expect(textOf(diagnostics, 5002)).toBe('protected');
+    expect(notesOf(diagnostics, 5002)).toEqual([
+      { message: 'The implemented declaration is here.', file: 'index.ts', line: 3, text: 'member' },
+    ]);
+  });
+});
+
 describe('JSII5005 language-compatibility/override-changes-param-count', () => {
   test('points to the method that is overridden', () => {
     const diagnostics = compileJsiiForDiagnostics(`
@@ -133,6 +180,21 @@ describe('JSII5007 language-compatibility/override-changes-variadic', () => {
 
     expect(notesOf(diagnostics, 5007)).toEqual([
       { message: 'The implemented declaration is here.', file: 'index.ts', line: 3, text: '...' },
+    ]);
+  });
+});
+
+describe('JSII7001 documentation/illegal-hint', () => {
+  test('points to the whole declaration of an anonymous class marked "@struct"', () => {
+    const diagnostics = compileJsiiForDiagnostics('/** @struct */\nexport default class {}');
+
+    expect(notesOf(diagnostics, 7001)).toEqual([
+      {
+        message: 'The annotated declaration is here',
+        file: 'index.ts',
+        line: 2,
+        text: 'export default class {}',
+      },
     ]);
   });
 });

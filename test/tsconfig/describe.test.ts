@@ -169,6 +169,45 @@ describe('validateTypeScriptConfigFile()', () => {
     expect(violations.some((v) => v.field === 'removeComments')).toBe(true);
   });
 
+  test.each(['es2016', 'es2017', 'es2018', 'es2019', 'es2020', 'es2021'])(
+    'reports a "target" of %s as it is written in the tsconfig file',
+    (target) => {
+      const configPath = writeConfig({
+        compilerOptions: {
+          strict: true,
+          target,
+          lib: ['es2023'],
+          module: 'node16',
+          esModuleInterop: true,
+          skipLibCheck: true,
+          noEmitOnError: true,
+          declaration: true,
+        },
+      });
+
+      expect(validateTypeScriptConfigFile(configPath, TypeScriptConfigValidationRuleSet.STRICT)).toEqual([
+        { field: 'target', message: expect.stringContaining(`got: "${target}"`) },
+      ]);
+    },
+  );
+
+  test('accepts a "target" of es2022', () => {
+    const configPath = writeConfig({
+      compilerOptions: {
+        strict: true,
+        target: 'es2022',
+        lib: ['es2023'],
+        module: 'node16',
+        esModuleInterop: true,
+        skipLibCheck: true,
+        noEmitOnError: true,
+        declaration: true,
+      },
+    });
+
+    expect(validateTypeScriptConfigFile(configPath, TypeScriptConfigValidationRuleSet.STRICT)).toEqual([]);
+  });
+
   test('throws a JsiiError when the file does not exist', () => {
     expect(() => readTypeScriptConfig(join(workdir, 'does-not-exist.json'))).toThrow(JsiiError);
   });
