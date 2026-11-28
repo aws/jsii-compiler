@@ -139,3 +139,26 @@ describe('JSII8006 code-style/underscored-members-must-be-internal', () => {
     ]);
   });
 });
+
+describe('JSII8001 code-style/enum-members-must-use-all-caps', () => {
+  const locationsOf8001 = (source: string) =>
+    compileJsiiForDiagnostics(source)
+      .filter((d) => d.jsiiCode === 8001)
+      .map((d) => {
+        const { line, character } = d.file!.getLineAndCharacterOfPosition(d.start!);
+        return { message: d.messageText, line: line + 1, column: character + 1 };
+      });
+
+  test('is reported on the member', () => {
+    expect(locationsOf8001('export enum Plain {\n  lower = "a",\n}')).toEqual([
+      { message: 'Enum members must be ALL_CAPS. Rename "testpkg.Plain.lower" to "LOWER"', line: 2, column: 3 },
+    ]);
+  });
+
+  // This documents current behavior, see https://github.com/aws/jsii-compiler/issues/3145
+  test('is reported on the enum when the name of the member is quoted', () => {
+    expect(locationsOf8001("export enum Quoted {\n  'lower' = 'a',\n}")).toEqual([
+      { message: 'Enum members must be ALL_CAPS. Rename "testpkg.Quoted.lower" to "LOWER"', line: 1, column: 13 },
+    ]);
+  });
+});

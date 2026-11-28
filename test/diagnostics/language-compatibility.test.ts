@@ -162,3 +162,35 @@ describe('JSII5012 language-compatibility/namespace-in-type', () => {
     );
   });
 });
+
+describe('JSII5001 language-compatibility/potential-java-setter-conflict', () => {
+  test('is reported for a "setXxx" method with one parameter', () => {
+    const diagnostics = compileJsiiForDiagnostics(`
+      export class Klass {
+        public setFoo(_value: string) {
+          return;
+        }
+      }
+    `);
+
+    expect(diagnostics).toContainEqual(
+      expect.objectContaining({
+        jsiiCode: 5001,
+        messageText:
+          'Methods and properties cannot have names like "setXxx": those conflict with Java property setters. Rename "Klass.setFoo"',
+      }),
+    );
+  });
+
+  test('is not reported for a "setXxx" method without a parameter, which is not a Java setter', () => {
+    const diagnostics = compileJsiiForDiagnostics(`
+      export class Klass {
+        public setFoo() {
+          return;
+        }
+      }
+    `);
+
+    expect(diagnostics.map((d) => d.jsiiCode)).not.toContain(5001);
+  });
+});
