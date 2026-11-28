@@ -302,7 +302,7 @@ export function loadProjectInfo(projectRoot: string): ProjectInfoResult {
 
     // user-provided tsconfig
     tsconfig: pkg.jsii?.tsconfig,
-    validateTsconfig: _validateTsconfigRuleSet(pkg.jsii?.validateTsconfig ?? 'strict'),
+    validateTsconfig: validateTsconfigRuleSet(pkg.jsii?.validateTsconfig ?? 'strict'),
   };
   return { projectInfo, diagnostics };
 }
@@ -636,7 +636,10 @@ function _validateStability(stability: string | undefined, deprecated: string | 
   return stability as spec.Stability;
 }
 
-function _validateTsconfigRuleSet(ruleSet: string): TypeScriptConfigValidationRuleSet | undefined {
+/**
+ * Validate the value of the `.jsii.validateTsconfig` field
+ */
+export function validateTsconfigRuleSet(ruleSet: string | undefined): TypeScriptConfigValidationRuleSet | undefined {
   if (ruleSet == null) {
     return undefined;
   }
