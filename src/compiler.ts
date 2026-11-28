@@ -21,6 +21,16 @@ const LOG = log4js.getLogger('jsii/compiler');
 export const DIAGNOSTICS = 'diagnostics';
 export const JSII_DIAGNOSTICS_CODE = 9999;
 
+/**
+ * `tsconfig` parse errors that mean the configuration matched no input files:
+ * TS18002 is "The 'files' list in config file is empty", and TS18003 is
+ * "No inputs were found in config file". jsii reports these, because it
+ * otherwise cannot tell that the entry point was excluded by the
+ * configuration, and reports "Could not find main file" (JSII0004) instead
+ * (https://github.com/aws/jsii-compiler/issues/2982).
+ */
+const NO_INPUT_ERROR_CODES = new Set([18002, 18003]);
+
 export interface CompilerOptions {
   /** The information about the project to be built */
   projectInfo: ProjectInfo;
@@ -406,6 +416,16 @@ export class Compiler implements Emitter {
     const extended = ts.parseJsonConfigFileContent(config, ts.sys, projectRoot);
     // the tsconfig parser adds this in, but it is not an expected compilerOption
     delete extended.options.configFilePath;
+
+    // Report the "no inputs" errors found by TypeScript, so a configuration
+    // that excludes every source file fails with TypeScript's error instead of
+    // "Could not find main file" (https://github.com/aws/jsii-compiler/issues/2982).
+    // Other parse errors are intentionally ignored, as they were before.
+    for (const diagnostic of extended.errors) {
+      if (NO_INPUT_ERROR_CODES.has(diagnostic.code)) {
+        this.configDiagnostics.push(diagnostic);
+      }
+    }
 
     return {
       compilerOptions: extended.options,
