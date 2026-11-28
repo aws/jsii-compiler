@@ -335,7 +335,10 @@ export class Compiler {
         utils.formatCompilationSummary(emitResult.diagnostics, emitResult.emitSkipped, Date.now() - startTime),
       );
 
-      const errors = emitResult.diagnostics.filter((d) => d.category === DiagnosticCategory.Error).length;
+      // Like main, where the TypeScript 6 watch program counts its own errors: not jsii's.
+      const errors = emitResult.diagnostics.filter(
+        (d) => d.category === DiagnosticCategory.Error && d.code !== JSII_DIAGNOSTICS_CODE,
+      ).length;
       status(errors === 1 ? 6193 : 6194, `Found ${errors} error${errors === 1 ? '' : 's'}. Watching for file changes.`);
       opts?.compilationComplete?.(emitResult);
     };
