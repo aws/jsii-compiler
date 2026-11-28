@@ -134,3 +134,27 @@ prints TypeScript's internal name for it, and the number at its end differs. For
 with the program on both.
 
 **Who is affected:** only the text of the message. The same members are reported, with the same code and location.
+
+## `--watch` is a file watcher that runs the normal build again
+
+**What differs:** on `main`, `jsii --watch` runs TypeScript 6's watch program. On TypeScript 7, `jsii` watches the files
+itself and runs the normal build again after a change. The `Starting compilation in watch mode...` and
+`Found N errors. Watching for file changes.` lines are the same. These things differ:
+
+- **What starts a build:** the same files as on `main`: the program's source files, the tsconfig and the files it
+  `extends`, and new source files in the `include` directories. But a generated `tsconfig.json` is not watched, since
+  `jsii` writes it on every build. `include` patterns inherited from an `extends` base are not read. A new file that
+  `exclude` leaves out still starts a build, but the output stays the same.
+- **Cost of a build:** each build is a full build. TypeScript 6 checks and emits only what a change affects. For
+  `jsii-calc`, a build after a one-file edit takes about 0.6 s. Keeping the TypeScript 7 project open between builds
+  would save about 40 ms of that, so `jsii` does not.
+- **Errors and emit:** `main` turns off `noEmitOnError` in watch mode, so it writes `.js` files despite TypeScript
+  errors. TypeScript 7 keeps the tsconfig's setting.
+- **Output lines:** TypeScript's diagnostics are printed in `jsii`'s format, the way a normal build prints them, rather
+  than by TypeScript 6's watch reporter. The screen is not cleared before each build in a terminal.
+
+**Why it cannot match:** the TypeScript 7 API has no watch program and no incremental builder. Each build opens a new
+project in the TypeScript 7 process. Emitting with errors would mean rewriting the tsconfig the program is opened from.
+
+**Who is affected:** people who run `jsii --watch`. Builds may be slower on large projects, and the console looks a
+little different. The `.jsii` and emitted files are the same as a normal build's.
