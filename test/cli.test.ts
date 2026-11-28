@@ -338,16 +338,15 @@ describe('jsii compile', () => {
   describe('--verbose', () => {
     // Diagnostics are shown by their category: warnings by default, suggestions (such as the missing description)
     // only when the output is at its most verbose.
-    // This documents current behavior, see https://github.com/aws/jsii-compiler/issues/3002
-    // Showing a suggestion makes the compiler crash.
-    test('shows suggestions only at the highest levels of verbosity, where they make the CLI crash', async () => {
+    test('shows suggestions only at the highest levels of verbosity', async () => {
       const quiet = await runCli(project({}, { description: undefined }));
       const verbose = await runCli(project({}, { description: undefined }), '-vvv');
 
       expect(quiet.exitCode).toBeUndefined();
       expect(quiet.stdout).not.toContain('JSII0001');
-      expect(verbose.exitCode).toBe(1);
-      expect(verbose.stderr).toContain('Debug Failure. Should never get an Info diagnostic on the command line.');
+      expect(verbose.exitCode).toBeUndefined();
+      expect(verbose.stdout).toContain('JSII0001');
+      expect(verbose.stderr).not.toContain('Debug Failure');
     });
 
     test('shows messages (such as the use of unsupported syntax) from the second level of verbosity', async () => {
