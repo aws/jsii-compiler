@@ -1,5 +1,12 @@
-import { enumAsCamel, enumAsKebab, enumAsLower } from '../../../src/tsconfig/compiler-options';
-
+import * as ts from 'typescript';
+import {
+  convertForJson,
+  convertJsxForJson,
+  convertScriptTargetForJson,
+  enumAsCamel,
+  enumAsKebab,
+  enumAsLower,
+} from '../../../src/tsconfig/compiler-options';
 enum Sample {
   None = 0,
   FirstValue = 1,
@@ -26,5 +33,53 @@ describe('enum helpers', () => {
     expect(enumAsCamel(stringEnum)).toEqual(['alpha', 'betaGamma']);
     expect(enumAsLower(stringEnum)).toEqual(['alpha', 'betagamma']);
     expect(enumAsKebab(stringEnum)).toEqual(['alpha', 'beta-gamma']);
+  });
+});
+
+describe('convertJsxForJson', () => {
+  test('maps every JsxEmit value to its tsconfig spelling', () => {
+    const cases: Array<[ts.JsxEmit, string]> = [
+      [ts.JsxEmit.None, 'none'],
+      [ts.JsxEmit.Preserve, 'preserve'],
+      [ts.JsxEmit.React, 'react'],
+      [ts.JsxEmit.ReactNative, 'react-native'],
+      [ts.JsxEmit.ReactJSX, 'react-jsx'],
+      [ts.JsxEmit.ReactJSXDev, 'react-jsxdev'],
+    ];
+    for (const [jsx, expected] of cases) {
+      expect(convertJsxForJson(jsx)).toBe(expected);
+    }
+  });
+});
+
+describe('convertScriptTargetForJson', () => {
+  test('maps every ScriptTarget value to its tsconfig spelling', () => {
+    const cases: Array<[ts.ScriptTarget, string]> = [
+      [ts.ScriptTarget.ES3, 'es3'],
+      [ts.ScriptTarget.ES5, 'es5'],
+      [ts.ScriptTarget.ES2015, 'es2015'],
+      [ts.ScriptTarget.ES2023, 'es2023'],
+      [ts.ScriptTarget.ES2024, 'es2024'],
+      [ts.ScriptTarget.ESNext, 'esnext'],
+      [ts.ScriptTarget.Latest, 'esnext'],
+    ];
+    for (const [target, expected] of cases) {
+      expect(convertScriptTargetForJson(target)).toBe(expected);
+    }
+  });
+});
+
+describe('convertForJson', () => {
+  test('writes jsx and target using their tsconfig spellings', () => {
+    expect(
+      convertForJson({
+        jsx: ts.JsxEmit.ReactJSX,
+        target: ts.ScriptTarget.ESNext,
+      }),
+    ).toEqual({ jsx: 'react-jsx', target: 'esnext' });
+  });
+
+  test('writes react-jsxdev for the development jsx runtime', () => {
+    expect(convertForJson({ jsx: ts.JsxEmit.ReactJSXDev })).toEqual({ jsx: 'react-jsxdev' });
   });
 });
