@@ -155,6 +155,22 @@ The available rule sets are `strict`, `generated`, `minimal`, and `off`. They be
 option does during compilation; see [Upgrading to jsii 6.0](#arrow_up-upgrading-to-jsii-60) for guidance on the rules
 each set enforces.
 
+### Base configurations
+
+`jsii` ships a base configuration for the `strict`, `generated` and `minimal` rule sets that you can extend from your
+own `tsconfig.json`. A config that only extends one of them passes the rule set of the same name:
+
+```json
+{
+  "extends": "jsii/tsconfig.strict.json"
+}
+```
+
+The available base configurations are `jsii/tsconfig.strict.json`, `jsii/tsconfig.generated.json` (the base compiler
+options of the `tsconfig.json` jsii generates for you, without the settings derived from `jsii.tsc` such as `types`)
+and `jsii/tsconfig.minimal.json`. As `jsii/tsconfig.generated.json` enables `incremental`, also set `tsBuildInfoFile`
+in your own config when you extend it.
+
 ## :mute: Silencing Warnings
 
 The `--silence-warnings` option allows you to suppress specific warnings from the compiler output. Silenced warnings
