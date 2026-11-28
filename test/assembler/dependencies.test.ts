@@ -52,8 +52,7 @@ describe('dependencyClosure', () => {
 
 describe('re-exporting a dependency', () => {
   // This documents current behavior, see https://github.com/aws/jsii-compiler/issues/2951
-  // @TODO(ts7): the TypeScript 7 assembler does not copy the types of a re-exported dependency (https://github.com/aws/jsii-compiler/issues/2951) (some rows may pass; the table is skipped as a whole)
-  test.skip.each([
+  test.each([
     { statement: "export * from 'dependency';", copiedFqn: 'testpkg.Foreign' },
     { statement: "export * as dep from 'dependency';", copiedFqn: 'testpkg.dep.Foreign' },
   ])('"$statement" copies the dependency types into the assembly', ({ statement, copiedFqn }) =>

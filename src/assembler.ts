@@ -1287,6 +1287,8 @@ export class Assembler {
         seq: number;
       }>
     >();
+    // Types of a dependency that a module re-exports, by export: the classic assembler visited them as its own.
+    const foreignCandidates: Array<{ prefix: string; sym: any; aliasDeclH?: any; seq: number }> = [];
     const visitedModules = new Set<string>();
     // The order in which exports are seen: the classic assembler visited (and registered) types in this order.
     let seq = 0;
@@ -1306,7 +1308,11 @@ export class Assembler {
         const kind = declH.kind;
         if ([SyntaxKind.ClassDeclaration, SyntaxKind.InterfaceDeclaration, SyntaxKind.EnumDeclaration].includes(kind)) {
           if (this._dependencyOfPath(declH.path ?? '') != null) {
-            continue; // peer-dependency type: referenced externally, not owned
+            // A type of a dependency: references to it point at the dependency, but a re-export of it is visited
+            // again as a type of this assembly (see foreignCandidates).
+            const foreignAliasDeclH = (e.flags & SymbolFlags.Alias) !== 0 ? e.declarations?.[0] : undefined;
+            foreignCandidates.push({ prefix, sym, aliasDeclH: foreignAliasDeclH, seq: seq++ });
+            continue;
           }
           if (!candidates.has(sym.id)) {
             candidates.set(sym.id, []);
@@ -1356,8 +1362,11 @@ export class Assembler {
             continue;
           }
           visitedModules.add(key);
-          this.submoduleSymbols.set(subFqn, e);
-          this.submodules[subFqn] = this._submoduleSpec(e, sym, kind === SyntaxKind.SourceFile);
+          // Classic: a dependency re-exported as a namespace (`export * as ns from 'dependency'`) is no submodule.
+          if (kind !== SyntaxKind.SourceFile || this._dependencyOfPath(declH.path ?? '') == null) {
+            this.submoduleSymbols.set(subFqn, e);
+            this.submodules[subFqn] = this._submoduleSpec(e, sym, kind === SyntaxKind.SourceFile);
+          }
           const subDir = path.dirname(sym.declarations?.[0]?.path ?? moduleDir);
           const subFile = kind === SyntaxKind.SourceFile ? sym.declarations?.[0]?.path : undefined;
           const isSubmodule = kind === SyntaxKind.SourceFile;
@@ -1389,7 +1398,16 @@ export class Assembler {
     // re-export, e.g. aws_docdb re-exporting aws_rds.CaCertificate) gets a full
     // duplicate type entry under each such fqn — strada emits one entry per
     // namespace visit.
-    const registrations: Array<{ sym: any; name: string; fqn: string; seq: number }> = [];
+    const registrations: Array<{ sym: any; name: string; fqn: string; seq: number; foreign?: boolean }> = [];
+    const visitedByStrada = (aliasDeclH: any): boolean => {
+      if (aliasDeclH == null) {
+        return true;
+      }
+      if (aliasDeclH.kind !== SyntaxKind.ExportSpecifier) {
+        return false;
+      }
+      return aliasDeclH.resolve(this.project)?.parent?.parent?.moduleSpecifier != null;
+    };
     for (const [, cands] of candidates) {
       let best = cands[0];
       let bestLen = -1;
@@ -1427,15 +1445,8 @@ export class Assembler {
         // the fqns, and re-exporting through a local import drops the entry for no reason. After 7.1's first
         // release, keep one entry per type at its canonical fqn and treat every re-export (with or without a
         // module specifier) the same way.
-        if (c.aliasDeclH != null) {
-          if (c.aliasDeclH.kind !== SyntaxKind.ExportSpecifier) {
-            continue;
-          }
-          const aliasDecl = c.aliasDeclH.resolve(this.project);
-          const exportDeclNode = aliasDecl?.parent?.parent;
-          if (exportDeclNode?.moduleSpecifier == null) {
-            continue;
-          }
+        if (!visitedByStrada(c.aliasDeclH)) {
+          continue;
         }
         if (extraFqns.has(fqn)) {
           // The classic assembler visited the type again for this export, with the same result; only its log is
@@ -1451,6 +1462,18 @@ export class Assembler {
         registrations.push({ sym: c.sym, name, fqn, seq: c.seq });
       }
     }
+    // Classic: a type of a dependency that a module re-exports (`export * from 'dependency'`, `export { X } from
+    // 'dependency'`) is visited as a type of this assembly, under that module's fqn. References still point at the
+    // dependency.
+    // @TODO(NEXT): the assembly declares the dependency's type a second time, as on main
+    // (https://github.com/aws/jsii-compiler/issues/2951). After 7.1's first release: leave re-exported dependency
+    // types out of the assembly.
+    for (const c of foreignCandidates) {
+      const fqn = `${c.prefix}.${c.sym.name}`;
+      if (visitedByStrada(c.aliasDeclH) && !registrations.some((r) => r.fqn === fqn)) {
+        registrations.push({ sym: c.sym, name: c.sym.name, fqn, seq: c.seq, foreign: true });
+      }
+    }
     // Batch-prefetch docs for all candidate type symbols (used by the
     // isInternal/shouldStrip checks inside _registerType).
     this._prefetchDocs(registrations.map((r) => r.sym));
@@ -1459,7 +1482,7 @@ export class Assembler {
     for (const r of registrations) {
       const start = this.exported.length;
       this.registeringSeq = r.seq;
-      this._registerType(r.sym, r.name, r.fqn);
+      this._registerType(r.sym, r.name, r.fqn, r.foreign);
       for (const entry of this.exported.slice(start)) {
         this.exportedSeq.set(entry, r.seq);
       }
@@ -1575,7 +1598,8 @@ export class Assembler {
     }
   }
 
-  private _registerType(sym: any, name: string, fqn: string): void {
+  /** @param foreign a type of a dependency (references to it do not resolve to this entry) */
+  private _registerType(sym: any, name: string, fqn: string, foreign = false): void {
     const { SyntaxKind } = this.ts;
     const isFirst = !this.typeFqnBySymbolId.has(sym.id);
     if (!isFirst) {
@@ -1630,7 +1654,7 @@ export class Assembler {
     }
     // Classic: a stripped type is visited like any other (its diagnostics, its nested types), then removed from the
     // assembly; references to it do not resolve to it.
-    if (isFirst && !hiddenByName && !this.strippedTypeSymIds.has(sym.id)) {
+    if (isFirst && !foreign && !hiddenByName && !this.strippedTypeSymIds.has(sym.id)) {
       this.typeFqnBySymbolId.set(sym.id, fqn);
     }
     this.exported.push({ name, sym, decl, fqn });
@@ -1649,7 +1673,7 @@ export class Assembler {
             nDeclH.kind,
           )
         ) {
-          this._registerType(nsym, nsym.name, `${fqn}.${nsym.name}`);
+          this._registerType(nsym, nsym.name, `${fqn}.${nsym.name}`, foreign);
         }
       }
     }
