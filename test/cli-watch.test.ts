@@ -1,12 +1,15 @@
 import { spawn } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 import { makeCliProject } from './cli-helpers';
 
 jest.setTimeout(120_000);
 
-const TSX = path.join(__dirname, '..', 'node_modules', '.bin', 'tsx');
+// Run the CLI in this one node process. The `tsx` command starts the CLI in a second process,
+// which a signal sent to the command does not reach.
+const TSX_IMPORT = pathToFileURL(path.join(__dirname, '..', 'node_modules', 'tsx', 'dist', 'loader.mjs')).href;
 const MAIN = path.join(__dirname, '..', 'src', 'main.ts');
 
 async function eventually(condition: () => boolean, what: string, timeoutMs = 60_000) {
@@ -37,13 +40,17 @@ describe('jsii --watch', () => {
       child.kill('SIGKILL');
       await exited;
     }
+    if (child?.pid != null) {
+      // No watcher process is left behind: signal 0 only checks that the process exists.
+      expect(() => process.kill(child!.pid!, 0)).toThrow(expect.objectContaining({ code: 'ESRCH' }));
+    }
     child = undefined;
-    // A process that tsx started for the watcher can still be finishing a write.
+    // Second safety net: retry in case a late write is still finishing.
     fs.rmSync(dir, { force: true, recursive: true, maxRetries: 10, retryDelay: 100 });
   });
 
   function start(flag: string) {
-    child = spawn(TSX, [MAIN, flag], {
+    child = spawn(process.execPath, ['--import', TSX_IMPORT, MAIN, flag], {
       cwd: dir,
       env: { ...process.env, JSII_SILENCE_SUPPORT_WARNING: '1', NO_COLOR: '1' },
     });
