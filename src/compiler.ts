@@ -240,9 +240,6 @@ export class Compiler {
       opts?.compilationComplete?.(emitResult);
     };
 
-    status(6031, 'Starting compilation in watch mode...');
-    compile();
-
     // shortcut: watches every .ts/.tsx/.mts/.cts file under the project root except declaration files (those are
     // emitted), plus a user-provided tsconfig; main watches exactly the files of the program. Upgrade when
     // `CompilerHost` can report the program's files.
@@ -276,6 +273,15 @@ export class Compiler {
         watcher.close();
       },
     };
+
+    // The watcher is started first, so a change made during the first compilation is not missed.
+    status(6031, 'Starting compilation in watch mode...');
+    try {
+      compile();
+    } catch (e) {
+      handle.close();
+      throw e;
+    }
 
     if (opts?.nonBlocking) {
       return handle;
